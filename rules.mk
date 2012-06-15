@@ -14,8 +14,10 @@ include $(MAKEDIR)/header.mk
 # the variable BUILDDIRS, like this. $(BUILD_PATH) is the directory
 # where compilation output (like object files) goes. The variable $(d)
 # gets expanded to the directory containing this rules.mk file.
-BUILDDIRS += $(BUILD_PATH)/$(d)/getter
-BUILDDIRS += $(BUILD_PATH)/$(d)/randomizer
+BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
+BUILDDIRS += $(BUILD_PATH)/$(d)/dma_udp
+BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
+BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
 
 ### Local flags: these control how the compiler gets called.
 
@@ -35,7 +37,7 @@ CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a
 # demo (look in getter.cpp for how it's used).
-CXXFLAGS_$(d) := -DMY_MAGIC_NUMBER=0x1eaf1ab5 -I$(EXAMPLE_INCLUDE_DIR)
+CXXFLAGS_$(d) := -I$(EXAMPLE_INCLUDE_DIR)
 
 # ASFLAGS_$(d) are extra flags passed to the assembler. We don't
 # have any assembly language files in this example, so we'll just
@@ -50,7 +52,10 @@ ASFLAGS_$(d) :=
 ### Source files
 
 # cSRCS_$(d) are the C source files we want compiled.
-cSRCS_$(d) := randomizer/randomizer.c
+cSRCS_$(d) := cmc/cmc.c
+cSRCS_$(d) += dma_udp/dma_udp.c
+cSRCS_$(d) += nosc/nosc.c
+cSRCS_$(d) += tuio2/tuio2.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.
@@ -58,8 +63,7 @@ cSRCS_$(d) := randomizer/randomizer.c
 # We can't call our main file main.cpp, or libmaple's build system
 # will get confused and try to build it without our CXXFLAGS. So call
 # it something else. Annoying! Hopefully LeafLabs will fix it soon.
-cppSRCS_$(d) := real-main.cpp
-cppSRCS_$(d) += getter/getter.cpp
+cppSRCS_$(d) := chimaera.cpp
 
 # sSRCS_$(d) are the assembly sources. We don't have any.
 sSRCS_$(d) :=
