@@ -339,15 +339,15 @@ setup ()
 	uint8_t len = ADC_LENGTH;
 	if (len > 12)
 	{
-		ADC1->regs->SQR1 |= calc_adc_sequence (&(ADC_RawSequence[12]), len % 12); 
+		ADC1->regs->SQR1 = calc_adc_sequence (&(ADC_RawSequence[12]), len % 12); 
 		len -= len % 12;
 	}
 	if (len > 6)
 	{
-		ADC1->regs->SQR2 |= calc_adc_sequence (&(ADC_RawSequence[6]), len % 6);
+		ADC1->regs->SQR2 = calc_adc_sequence (&(ADC_RawSequence[6]), len % 6);
 		len -= len % 6;
 	}
-  ADC1->regs->SQR3 |= calc_adc_sequence (&(ADC_RawSequence[0]), len);
+  ADC1->regs->SQR3 = calc_adc_sequence (&(ADC_RawSequence[0]), len);
 
 	// set up DMA for ADC
   dma_setup_transfer (
