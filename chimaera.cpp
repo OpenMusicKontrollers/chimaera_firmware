@@ -82,6 +82,7 @@ extern "C" {
 #include <nosc.h>
 #include <cmc.h>
 #include <dma_udp.h>
+#include <config.h>
 
 void initSS ()
 {
@@ -102,24 +103,11 @@ void resetSS ()
 
 }
 
-uint8_t mac [] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-uint8_t ip [] = {192, 168, 1, 177};
-uint8_t gateway [] = {192, 168, 1, 1};
-uint8_t subnet [] = {255, 255, 255, 0};
-uint8_t tuio_sock = 0;
-uint16_t tuio_port = 3333;
-
-uint8_t config_sock = 1;
-uint16_t config_port = 4444;
-
-uint8_t remote_ip [] = {192, 168, 1, 255}; // send via local broadcast
+Config config;
 
 static uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
 static uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
 
-const uint16_t diff = 0;
-const uint16_t thresh0 = 60; // =0.03*0x7ff TODO make this configurable
-const uint16_t thresh1 = thresh0*2; // TODO make this configurable
 CMC *cmc = NULL;
 nOSC_Timestamp t0;
 nOSC_Timestamp timestamp;
@@ -180,7 +168,7 @@ cb1 ()
 
 		cmc_len = cmc_write (cmc, timestamp, buf);
 
-		dma_udp_send_nonblocking_1 (tuio_sock, buf, cmc_len);
+		dma_udp_send_nonblocking_1 (config.comm.tuio_sock, buf, cmc_len);
 	}
 }
 
@@ -188,20 +176,20 @@ void
 cb2 ()
 {
 	if (cmc_job)
-		dma_udp_send_nonblocking_2 (tuio_sock, buf, cmc_len);
+		dma_udp_send_nonblocking_2 (config.comm.tuio_sock, buf, cmc_len);
 }
 
 void
 cb3 ()
 {
 	if (cmc_job)
-		dma_udp_send_nonblocking_3 (tuio_sock, buf, cmc_len);
+		dma_udp_send_nonblocking_3 (config.comm.tuio_sock, buf, cmc_len);
 
 	// run osc server
 	uint16_t len;
-	if ( (len = dma_udp_available (config_sock)) )
+	if ( (len = dma_udp_available (config.comm.config_sock)) )
 	{
-		dma_udp_receive (config_sock, buf_in, len);
+		dma_udp_receive (config.comm.config_sock, buf_in, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len;
@@ -283,7 +271,7 @@ _timestamp_set (void *data, const char *path, const char *fmt, uint8_t argc, nOS
 
 	// send success status message
 	uint16_t size = nosc_message_vararg_serialize (buf, path, "T");
-	dma_udp_send (config_sock, buf, size);
+	dma_udp_send (config.comm.config_sock, buf, size);
 
 	return 1;
 }
@@ -293,7 +281,7 @@ _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, 
 {
 	// send success status message
 	uint16_t size = nosc_message_vararg_serialize (buf, path, "Tiii", FIRMWARE_VERSION_MAJOR, FIRMWARE_VERSION_MINOR, FIRMWARE_VERSION_PATCH_LEVEL);
-	dma_udp_send (config_sock, buf, size);
+	dma_udp_send (config.comm.config_sock, buf, size);
 
 	return 1;
 }
@@ -301,6 +289,8 @@ _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, 
 void
 setup ()
 {
+	config_init (&config);
+
 	uint8_t i;
 
   pinMode (BOARD_BUTTON_PIN, INPUT);
@@ -325,15 +315,15 @@ setup ()
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
-	dma_udp_init (mac, ip, gateway, subnet);
+	dma_udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
 
 	// init tuio socket
-	dma_udp_begin (tuio_sock, tuio_port);
-	dma_udp_set_remote (tuio_sock, remote_ip, tuio_port);
+	dma_udp_begin (config.comm.tuio_sock, config.comm.tuio_port);
+	dma_udp_set_remote (config.comm.tuio_sock, config.comm.remote_ip, config.comm.tuio_port);
 
 	// init config socket
-	dma_udp_begin (config_sock, config_port);
-	dma_udp_set_remote (config_sock, remote_ip, config_port);
+	dma_udp_begin (config.comm.config_sock, config.comm.config_port);
+	dma_udp_set_remote (config.comm.config_sock, config.comm.remote_ip, config.comm.config_port);
 
 	// add methods to OSC server
 	t0.part.sec = 0L;
@@ -342,8 +332,6 @@ setup ()
 	serv = nosc_server_method_add (serv, "/omk/mtr/firmware/version/get", "N", _firmware_version, NULL);
 
 	// set up ADC
-	adc_enable (ADC1);
-	adc_set_extsel (ADC1, ADC_SWSTART);
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
   ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
@@ -360,7 +348,6 @@ setup ()
 		len -= len % 6;
 	}
   ADC1->regs->SQR3 |= calc_adc_sequence (&(ADC_RawSequence[0]), len);
-	adc_calibrate (ADC1); // the ADC should be calibrated once at startup
 
 	// set up DMA for ADC
   dma_setup_transfer (
@@ -400,7 +387,7 @@ setup ()
 		}
 
 	// set up continuous music controller struct
-	cmc = cmc_new (24, 12, ADC_HALF_BITDEPTH, diff, thresh0, thresh1);
+	cmc = cmc_new (24, 12, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
 }
 
 __attribute__ ((constructor)) void
