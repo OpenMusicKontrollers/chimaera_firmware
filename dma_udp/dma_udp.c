@@ -25,11 +25,21 @@
 
 #include <string.h>
 
-#include "../../libmaple/dma.h"
-#include "../../libmaple/spi.h"
+#include <dma.h>
+#include <spi.h>
 
-void setSS ();
-void restSS ();
+static gpio_dev *ss_dev;
+static uint8_t ss_bit;
+
+inline void setSS ()
+{
+	gpio_write_bit (ss_dev, ss_bit, 0);
+}
+
+inline void resetSS ()
+{
+	gpio_write_bit (ss_dev, ss_bit, 1);
+}
 
 static uint8_t spi_tx_dma_buf [2048];
 static uint8_t spi_rx_dma_buf [2048];
@@ -188,8 +198,11 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 void
-dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit)
 {
+	ss_dev = dev;
+	ss_bit = bit;
+
 	// set up dma for SPI2RX
 	dma_setup_transfer (
 		DMA1,

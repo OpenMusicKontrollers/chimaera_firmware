@@ -21,12 +21,16 @@
  *     distribution.
  */
 
-#ifndef NOSC
-#define NOSC
+#ifndef _NOSC_H_
+#define _NOSC_H_
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Definitions
@@ -130,4 +134,8 @@ uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const ch
 
 void nosc_message_free (nOSC_Message *msg);
 
-#endif // NOSC
+#ifdef __cplusplus
+}
+#endif
+
+#endif

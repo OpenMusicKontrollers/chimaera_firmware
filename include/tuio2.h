@@ -21,12 +21,16 @@
  *     distribution.
  */
 
-#ifndef TUIO2_H
-#define TUIO2_H
+#ifndef _TUIO2_H_
+#define _TUIO2_H_
 
 #include <stdint.h>
 
 #include "nosc/nosc_private.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _Tuio2 Tuio2;
 
@@ -41,4 +45,8 @@ uint16_t tuio2_serialize (Tuio2 *tuio, uint8_t *buf, uint8_t end);
 void tuio2_frm_set (Tuio2 *tuio, uint32_t id, nOSC_Timestamp timestamp);
 void tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, float x, float p);
 
-#endif /* TUIO2_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif

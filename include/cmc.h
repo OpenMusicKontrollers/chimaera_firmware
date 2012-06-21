@@ -21,13 +21,17 @@
  *     distribution.
  */
 
-#ifndef CMC_H
-#define CMC_H
+#ifndef _CMC_H_
+#define _CMC_H_
 
 #include <stdint.h>
 #include <stdlib.h>
 
 #include <nosc.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _CMC CMC;
 
@@ -41,4 +45,8 @@ uint8_t cmc_process (CMC *cmc);
 uint16_t cmc_write (CMC *cmc, nOSC_Timestamp timestamp, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, uint8_t *buf);
 
-#endif /* CMC_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif

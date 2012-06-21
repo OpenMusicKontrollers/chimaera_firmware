@@ -21,10 +21,6 @@
  *     distribution.
  */
 
-#define FIRMWARE_VERSION_MAJOR 0
-#define FIRMWARE_VERSION_MINOR 1
-#define FIRMWARE_VERSION_PATCH_LEVEL 0
-
 /*
  * std lib headers
  */
@@ -77,33 +73,13 @@ const uint8_t PWDN = 12;
 /*
  * nano Open Sound Control lib
  * continuous music controller lib
+ * dma udp lib
+ * configuration lib
  */
-extern "C" {
 #include <nosc.h>
 #include <cmc.h>
 #include <dma_udp.h>
 #include <config.h>
-
-void initSS ()
-{
-	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
-}
-
-void setSS ()
-{
-  //gpio_write_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit, val);
-	digitalWrite (BOARD_SPI2_NSS_PIN, 0); // enable wiz820io
-}
-
-void resetSS ()
-{
-  //gpio_write_bit(PIN_MAP[pin].gpio_device, PIN_MAP[pin].gpio_bit, val);
-	digitalWrite (BOARD_SPI2_NSS_PIN, 1); // dsable wiz820io
-}
-
-}
-
-Config config;
 
 static uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
 static uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
@@ -280,7 +256,7 @@ uint8_t
 _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	// send success status message
-	uint16_t size = nosc_message_vararg_serialize (buf, path, "Tiii", FIRMWARE_VERSION_MAJOR, FIRMWARE_VERSION_MINOR, FIRMWARE_VERSION_PATCH_LEVEL);
+	uint16_t size = nosc_message_vararg_serialize (buf, path, "Tiii", config.version.major, config.version.minor, config.version.patch_level);
 	dma_udp_send (config.comm.config_sock, buf, size);
 
 	return 1;
@@ -289,8 +265,6 @@ _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, 
 void
 setup ()
 {
-	config_init (&config);
-
 	uint8_t i;
 
   pinMode (BOARD_BUTTON_PIN, INPUT);
@@ -310,12 +284,13 @@ setup ()
 
 	// set up dma_udp
   spi.begin (SPI_18MHZ, MSBFIRST, 0); 
-	initSS ();
+	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
-	dma_udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
+	dma_udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
+		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
 
 	// init tuio socket
 	dma_udp_begin (config.comm.tuio_sock, config.comm.tuio_port);

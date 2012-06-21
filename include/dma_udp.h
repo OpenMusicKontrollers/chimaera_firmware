@@ -21,12 +21,17 @@
  *     distribution.
  */
 
-#ifndef DMA_UDP_H
-#define DMA_UDP_H
+#ifndef _DMA_UDP_H_
+#define _DMA_UDP_H_
 
 #include <stdint.h>
+#include <gpio.h>
 
-void dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
 void dma_udp_begin (uint8_t sock, uint16_t port);
 void dma_udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len);
@@ -39,4 +44,8 @@ void dma_udp_send_nonblocking_3 (uint8_t sock, uint8_t *dat, uint16_t len);
 void dma_udp_send_nonblocking_4 (uint8_t sock, uint8_t *dat, uint16_t len);
 void dma_udp_send_nonblocking_5 (uint8_t sock, uint8_t *dat, uint16_t len);
 
-#endif // DMA_UDP_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif
