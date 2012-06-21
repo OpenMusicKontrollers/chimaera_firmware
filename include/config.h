@@ -55,6 +55,7 @@ struct _Config {
 	} comm;
 
 	struct _cmc {
+		uint16_t rate;
 		uint16_t diff;
 		uint16_t thresh0;
 		uint16_t thresh1;

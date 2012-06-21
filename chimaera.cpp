@@ -36,10 +36,14 @@
 #include <adc.h> // analog to digital converter
 #include <dma.h> // direct memory access
 
+#define MUX_DELAY 1
+const uint8_t MUX_LENGTH = 2;
+const uint8_t MUX_MAX = 4;
+uint8_t MUX_Sequence [MUX_LENGTH] = {9, 10}; // digital out pins to switch MUX channels
+
 volatile uint8_t adc_dma_done;
 const uint8_t ADC_LENGTH = 6; // the number of channels to be converted per ADC 
-int16_t adc_data[ADC_LENGTH]; // temporary binary data
-uint16_t rawDataArray[ADC_LENGTH]; // the dma temporary data array.
+uint16_t rawDataArray[ADC_LENGTH*MUX_MAX]; // the dma temporary data array.
 uint8_t ADC_Sequence [ADC_LENGTH] = {8, 3, 6, 5, 4, 7}; // analog input pins read out by the ADC
 uint8_t ADC_RawSequence [ADC_LENGTH] = {
 	PIN_MAP[ADC_Sequence[0]].adc_channel,
@@ -50,11 +54,6 @@ uint8_t ADC_RawSequence [ADC_LENGTH] = {
 	PIN_MAP[ADC_Sequence[5]].adc_channel}; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-
-#define MUX_DELAY 1
-const uint8_t MUX_LENGTH = 2;
-const uint8_t MUX_MAX = 4;
-uint8_t MUX_Sequence [MUX_LENGTH] = {9, 10}; // digital out pins to switch MUX channels
 
 uint8_t ADC_Order [MUX_MAX*ADC_LENGTH] = {
 	0+2, 0+6, 8+2, 8+6, 16+2, 16+6, 
@@ -90,6 +89,24 @@ nOSC_Timestamp timestamp;
 nOSC_Server *serv = NULL;
 
 HardwareSPI spi(2);
+HardwareTimer timer(1);
+
+volatile uint8_t mux_counter = MUX_MAX;
+
+void
+timer_irq (void)
+{
+	if (mux_counter < MUX_MAX)
+	{
+		digitalWrite (MUX_Sequence[0], (mux_counter&1));
+		digitalWrite (MUX_Sequence[1], (mux_counter&3)>>1);
+		delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
+		
+		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
+
+		mux_counter++;
+	}
+}
 
 void
 adc_dma_irq (void)
@@ -101,7 +118,7 @@ void
 adc_dma_run ()
 {
 	adc_dma_done = 0;
-	ADC1->regs->CR2 |= ADC_CR2_SWSTART;
+	mux_counter = 0;
 }
 
 void
@@ -109,29 +126,24 @@ adc_dma_block ()
 {
 	while (!adc_dma_done)
 		;
-	//ADC1->regs->SR |= ADC_SR_EOC; // clear the end-of-conversion bit XXX not needed in scan mode with DMA
 }
 
-typedef void (*Cb) ();
-
-volatile uint8_t cmc_job;
-volatile uint16_t cmc_len;
-
 void
-cb0 ()
+loop ()
 {
+	uint8_t cmc_job;
+	uint16_t len;
+
+	adc_dma_run ();
+
 	cmc_job = cmc_process (cmc);
 
 	/*
-	cmc_len = cmc_dump (cmc, buf);
-	dma_udp_send (tuio_sock, buf, cmc_len);
+	len = cmc_dump (cmc, buf);
+	dma_udp_send (config.comm.tuio_sock, buf, len);
 	cmc_job = 0;
 	*/
-}
 
-void
-cb1 ()
-{
 	if (cmc_job)
 	{
 		uint32_t sec = millis() / 1000;
@@ -142,27 +154,11 @@ cb1 ()
 			timestamp.part.sec += 1;
 		timestamp.part.frac = t0.part.frac + frac;
 
-		cmc_len = cmc_write (cmc, timestamp, buf);
-
-		dma_udp_send_nonblocking_1 (config.comm.tuio_sock, buf, cmc_len);
+		len = cmc_write (cmc, timestamp, buf);
+		dma_udp_send (config.comm.tuio_sock, buf, len);
 	}
-}
-
-void
-cb2 ()
-{
-	if (cmc_job)
-		dma_udp_send_nonblocking_2 (config.comm.tuio_sock, buf, cmc_len);
-}
-
-void
-cb3 ()
-{
-	if (cmc_job)
-		dma_udp_send_nonblocking_3 (config.comm.tuio_sock, buf, cmc_len);
 
 	// run osc server
-	uint16_t len;
 	if ( (len = dma_udp_available (config.comm.config_sock)) )
 	{
 		dma_udp_receive (config.comm.config_sock, buf_in, len);
@@ -183,38 +179,18 @@ cb3 ()
 			remaining -= 8 + src_size;
 		}
 	}
-}
 
-Cb cb [] = {cb0, cb1, cb2, cb3};
+	adc_dma_block ();
 
-void
-loop ()
-{
 	for (uint8_t p=0; p<MUX_MAX; p++)
-	{
-		// switch muxes to actual channel
-		digitalWrite (MUX_Sequence[0], (p&1));
-		digitalWrite (MUX_Sequence[1], (p&3)>>1);
-		delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
-
-		// start ADC conversion
-		adc_dma_run ();
-
-		// run callback
-		cb[p] ();
-
-		// wait for ADC conversion (wait for dma transfer complete flag)
-		adc_dma_block ();
-
-		// store in adc_data and in cmc struct
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
-			adc_data[i] = (rawDataArray[i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
-			adc_data[i] -= ADC_Offset[p*ADC_LENGTH + i];
-			adc_data[i] = abs (adc_data[i]); // [0, ADC_HALF_BITDPEPTH]
-			cmc_set (cmc, ADC_Order[p*ADC_LENGTH + i], adc_data[i]);
+			int16_t adc_data;
+			adc_data = (rawDataArray[p*ADC_LENGTH + i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
+			adc_data -= ADC_Offset[p*ADC_LENGTH + i];
+			adc_data = abs (adc_data); // [0, ADC_HALF_BITDPEPTH]
+			cmc_set (cmc, ADC_Order[p*ADC_LENGTH + i], adc_data);
 		}
-	}
 }
 
 /*
@@ -262,6 +238,23 @@ _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, 
 	return 1;
 }
 
+uint8_t
+_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	config.cmc.rate = args[0]->i;
+
+	timer.pause ();
+  timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	timer.refresh ();
+	timer.resume ();
+
+	// send success status message
+	uint16_t size = nosc_message_vararg_serialize (buf, path, "T");
+	dma_udp_send (config.comm.config_sock, buf, size);
+
+	return 1;
+}
+
 void
 setup ()
 {
@@ -278,6 +271,15 @@ setup ()
 
 	for (i=0; i<ADC_LENGTH; i++)
 		pinMode (ADC_Sequence[i], INPUT_ANALOG);
+
+	// init timer
+	timer.pause ();
+  timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	timer.attachCompare1Interrupt (timer_irq);
+	timer.refresh ();
+	timer.resume ();
 
 	// init DMA
 	dma_init (DMA1);
@@ -304,6 +306,7 @@ setup ()
 	t0.part.sec = 0L;
 	t0.part.frac = 0L;
 	serv = nosc_server_method_add (serv, "/omk/mtr/config/timestamp/set", "t", _timestamp_set, NULL);
+	serv = nosc_server_method_add (serv, "/omk/mtr/config/rate/set", "i", _rate_set, NULL);
 	serv = nosc_server_method_add (serv, "/omk/mtr/firmware/version/get", "N", _firmware_version, NULL);
 
 	// set up ADC
@@ -335,31 +338,25 @@ setup ()
 		DMA_MINC_MODE | DMA_CIRC_MODE | DMA_TRNS_CMPLT  //dma mode: Auto-increment memory address and circular mode
 	);
 	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_HIGH);    //Optional
-	dma_set_num_transfers (DMA1, DMA_CH1, ADC_LENGTH);
+	dma_set_num_transfers (DMA1, DMA_CH1, ADC_LENGTH*MUX_MAX);
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// calibrate sensors
 	for (uint8_t c=0; c<100; c++)
+	{
+		adc_dma_run ();
+		adc_dma_block ();
+
 		for (uint8_t p=0; p<MUX_MAX; p++)
-		{
-			// switch muxes to actual channel
-			digitalWrite (MUX_Sequence[0], (p&1));
-			digitalWrite (MUX_Sequence[1], (p&3)>>1);  
-			delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
-
-			// start ADC conversion and wait for conversion
-			adc_dma_run ();
-			adc_dma_block ();
-
-			// store in ADC_Offset
 			for (uint8 i=0; i<ADC_LENGTH; i++)
 			{
-				adc_data[i] = (rawDataArray[i] & ADC_BITDEPTH);
-				ADC_Offset[p*ADC_LENGTH + i] += adc_data[i];
+				int16_t adc_data;
+				adc_data = (rawDataArray[p*ADC_LENGTH + i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
+				ADC_Offset[p*ADC_LENGTH + i] += adc_data;
 				ADC_Offset[p*ADC_LENGTH + i] /= 2;
 			}
-		}
+	}
 
 	// set up continuous music controller struct
 	cmc = cmc_new (24, 12, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);

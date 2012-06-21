@@ -48,6 +48,7 @@ Config config = {
 	},
 
 	.cmc = {
+		.rate = 2000, // update rate in Hz
 		.diff = 0,
 		.thresh0 = 60,
 		.thresh1 = 120
