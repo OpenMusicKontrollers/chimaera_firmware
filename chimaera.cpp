@@ -100,7 +100,7 @@ timer_irq (void)
 	{
 		digitalWrite (MUX_Sequence[0], (mux_counter&1));
 		digitalWrite (MUX_Sequence[1], (mux_counter&3)>>1);
-		delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
+		//delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
 		
 		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 
