@@ -139,12 +139,12 @@ cmc_process (CMC *cmc)
 		float matrix [cmc->I][cmc->J];
 		for (i=0; i<cmc->I; i++) // old blobs
 			for (j=0; j<cmc->J; j++) // new blobs
-				matrix[i][j] = abs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
+				matrix[i][j] = fabs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
 
 		uint8_t ptr = cmc->J;
 		while (ptr)
 		{
-			float min = -1;
+			float min = 99.9;
 			uint8_t a = 0, b = 0;
 
 			for (i=0; i<cmc->I; i++) // old blobs
@@ -153,7 +153,7 @@ cmc_process (CMC *cmc)
 					if (matrix[i][j] == -1)
 						continue;
 
-					if ( (matrix[i][j] < min) || (min == -1) )
+					if (matrix[i][j] < min)
 					{
 						a = i;
 						b = j;
@@ -215,7 +215,7 @@ cmc_process (CMC *cmc)
 		idle++; // automatic overflow
 	}
 
-	// overwrite blobs that are to be ignore
+	// overwrite blobs that are to be ignored
 	uint8_t newJ = 0;
 	for (j=0; j<cmc->J; j++)
 	{
