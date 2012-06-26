@@ -19,6 +19,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/dma_udp
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
 BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
+BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
 
 ### Local flags: these control how the compiler gets called.
 
@@ -58,6 +59,7 @@ cSRCS_$(d) += dma_udp/dma_udp.c
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
 cSRCS_$(d) += config/config.c
+cSRCS_$(d) += sntp/sntp.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.

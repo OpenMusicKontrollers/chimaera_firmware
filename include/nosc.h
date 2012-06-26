@@ -28,6 +28,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#include <netdef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,7 +43,6 @@ typedef struct _nOSC_Bundle nOSC_Bundle;
 typedef struct _nOSC_Message nOSC_Message;
 typedef struct _nOSC_Server nOSC_Server;
 typedef union _nOSC_Arg nOSC_Arg;
-typedef union _nOSC_Timestamp nOSC_Timestamp;
 
 typedef enum _nOSC_Type {
 	nOSC_INT32 = 'i',
@@ -60,15 +61,6 @@ typedef enum _nOSC_Type {
 	nOSC_MIDI = 'm'
 } nOSC_Type;
 
-union _nOSC_Timestamp
-{
-	uint64_t all;
-	struct {
-		uint32_t sec;
-		uint32_t frac;
-	} part;
-};
-
 union _nOSC_Arg
 {
 	int32_t i;
@@ -77,7 +69,7 @@ union _nOSC_Arg
 
 	double d;
 	int64_t h;
-	nOSC_Timestamp t;
+	timestamp64u_t t;
 
 	uint8_t m[4];
 };
@@ -88,7 +80,7 @@ typedef uint8_t (*nOSC_Method_Cb) (void *data, const char *path, const char *fmt
  * Constants
  */
 
-#define nOSC_IMMEDIATE ((nOSC_Timestamp)1ULL)
+#define nOSC_IMMEDIATE ((timestamp64u_t)1ULL)
 
 /*
  * Server functions
@@ -106,7 +98,7 @@ void nosc_server_free (nOSC_Server *serv);
 
 nOSC_Bundle *nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path);
 
-uint16_t nosc_bundle_serialize (nOSC_Bundle *bund, nOSC_Timestamp timestamp, uint8_t *buf);
+uint16_t nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf);
 
 void nosc_bundle_free (nOSC_Bundle *bund);
 
@@ -125,7 +117,7 @@ nOSC_Message *nosc_message_add_infty (nOSC_Message *msg);
 
 nOSC_Message *nosc_message_add_double (nOSC_Message *msg, double d);
 nOSC_Message *nosc_message_add_int64 (nOSC_Message *msg, int64_t h);
-nOSC_Message *nosc_message_add_timestamp (nOSC_Message *msg, nOSC_Timestamp t);
+nOSC_Message *nosc_message_add_timestamp (nOSC_Message *msg, timestamp64u_t t);
 
 nOSC_Message *nosc_message_add_midi (nOSC_Message *msg, uint8_t m [4]);
 

@@ -249,7 +249,7 @@ cmc_process (CMC *cmc)
 }
 
 uint16_t
-cmc_write (CMC *cmc, nOSC_Timestamp timestamp, uint8_t *buf)
+cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t j;
 	uint16_t size;

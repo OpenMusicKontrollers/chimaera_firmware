@@ -21,41 +21,47 @@
  *     distribution.
  */
 
-#ifndef NOSC_PRIVATE_H
-#define NOSC_PRIVATE_H
+#ifndef _SNTP_PRIVATE_H_
+#define _SNTP_PRIVATE_H_
 
-#include <nosc.h>
+#include <stdint.h>
 
-/*
- * Structs 
- */
+#include <sntp.h>
 
-struct _nOSC_Bundle {
-	nOSC_Message *msg;
-	char *path;
-	char *fmt;
-	nOSC_Bundle *prev, *next;
+typedef union _timestamp32s_t timestamp32s_t;
+typedef union _timestamp32u_t timestamp32u_t;
+typedef struct _sntp_t sntp_t;
+
+union _timestamp32s_t {
+	uint32_t all;
+	struct {
+		uint16_t sec;
+		uint16_t frac;
+	} part;
 };
 
-struct _nOSC_Message {
-	nOSC_Arg arg;
-	nOSC_Type type;
-	nOSC_Message *prev, *next;
+union _timestamp32u_t {
+	uint32_t all;
+	struct {
+		int16_t sec;
+		uint16_t frac;
+	} part;
 };
 
-struct _nOSC_Server {
-	char *path;
-	char *fmt;
-	nOSC_Method_Cb cb;
-	void *data;
-	nOSC_Server *next;
+struct _sntp_t {
+	uint8_t li_vn_mode;
+	uint8_t stratum;
+	int8_t poll;
+	int8_t precision;
+
+	timestamp32s_t root_delay;
+	timestamp32u_t root_dispersion;
+	char reference_identifier[4];
+
+	timestamp64u_t reference_timestamp;
+	timestamp64u_t originate_timestamp;
+	timestamp64u_t receive_timestamp;
+	timestamp64u_t transmit_timestamp;
 };
 
-/*
- * Internal functions
- */
-
-nOSC_Bundle *_nosc_bundle_deserialize (uint8_t *buf, uint16_t size);
-nOSC_Message *_nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char**fmt);
-
-#endif // NOSC_PRIVATE_H
+#endif

@@ -33,12 +33,18 @@ extern "C" {
 typedef struct _Config Config;
 
 struct _Config {
+	/*
+	 * read-only
+	 */
 	struct _version {
 		uint8_t major;
 		uint8_t minor;
 		uint8_t patch_level;
 	} version;
 
+	/*
+	 * read-write
+	 */
 	struct _comm {
 		uint8_t mac [6];
 		uint8_t ip [4];
@@ -50,6 +56,10 @@ struct _Config {
 
 		uint8_t config_sock;
 		uint16_t config_port;
+
+		uint8_t sntp_ip [6];
+		uint8_t sntp_sock;
+		uint16_t sntp_port;
 
 		uint8_t remote_ip [4];
 	} comm;

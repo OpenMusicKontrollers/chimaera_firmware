@@ -117,7 +117,7 @@ tuio2_serialize (Tuio2 *tuio, uint8_t *buf, uint8_t end)
 }
 
 void 
-tuio2_frm_set (Tuio2 *tuio, uint32_t id, nOSC_Timestamp timestamp)
+tuio2_frm_set (Tuio2 *tuio, uint32_t id, timestamp64u_t timestamp)
 {
 	tuio->frm_id->arg.i = id;
 	tuio->frm_timestamp->arg.t = timestamp;

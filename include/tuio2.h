@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include <netdef.h>
 #include "nosc/nosc_private.h"
 
 #ifdef __cplusplus
@@ -42,7 +43,7 @@ void tuio2_free (Tuio2 *tuio);
 
 uint16_t tuio2_serialize (Tuio2 *tuio, uint8_t *buf, uint8_t end);
 
-void tuio2_frm_set (Tuio2 *tuio, uint32_t id, nOSC_Timestamp timestamp);
+void tuio2_frm_set (Tuio2 *tuio, uint32_t id, timestamp64u_t timestamp);
 void tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, float x, float p);
 
 #ifdef __cplusplus

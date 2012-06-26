@@ -21,41 +21,22 @@
  *     distribution.
  */
 
-#ifndef NOSC_PRIVATE_H
-#define NOSC_PRIVATE_H
+#ifndef _SNTP_H_
+#define _SNTP_H_
 
-#include <nosc.h>
+#include <stdint.h>
 
-/*
- * Structs 
- */
+#include <netdef.h>
 
-struct _nOSC_Bundle {
-	nOSC_Message *msg;
-	char *path;
-	char *fmt;
-	nOSC_Bundle *prev, *next;
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-struct _nOSC_Message {
-	nOSC_Arg arg;
-	nOSC_Type type;
-	nOSC_Message *prev, *next;
-};
+uint16_t sntp_request (uint8_t *buf, timestamp64u_t now);
+timestamp64u_t sntp_dispatch (uint8_t *buf, timestamp64u_t now, timestamp64u_t *roundtrip_delay, timestamp64s_t *clock_offset);
 
-struct _nOSC_Server {
-	char *path;
-	char *fmt;
-	nOSC_Method_Cb cb;
-	void *data;
-	nOSC_Server *next;
-};
+#ifdef __cplusplus
+}
+#endif
 
-/*
- * Internal functions
- */
-
-nOSC_Bundle *_nosc_bundle_deserialize (uint8_t *buf, uint16_t size);
-nOSC_Message *_nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char**fmt);
-
-#endif // NOSC_PRIVATE_H
+#endif

@@ -43,6 +43,10 @@ Config config = {
 		
 		.config_sock = 1,
 		.config_port = 4444,
+
+		.sntp_ip = {192, 168, 1, 10},
+		.sntp_sock = 2,
+		.sntp_port = 123,
 		
 		.remote_ip = {192, 168, 1, 255} // send via local broadcast
 	},

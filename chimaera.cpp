@@ -79,22 +79,42 @@ const uint8_t PWDN = 12;
 #include <cmc.h>
 #include <dma_udp.h>
 #include <config.h>
+#include <sntp.h>
 
 static uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
 static uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
 
 CMC *cmc = NULL;
-nOSC_Timestamp t0;
-nOSC_Timestamp timestamp;
+timestamp64u_t t0;
+timestamp64u_t now;
 nOSC_Server *serv = NULL;
 
 HardwareSPI spi(2);
-HardwareTimer timer(1);
+HardwareTimer adc_timer(1);
+HardwareTimer sntp_timer(2);
 
 volatile uint8_t mux_counter = MUX_MAX;
+volatile uint8_t sntp_should_request = 0;
 
 void
-timer_irq (void)
+timestamp_set (timestamp64u_t *ptr)
+{
+	timestamp64u_t tmp;
+
+	tmp.part.frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
+	tmp.part.sec = millis() / 1000;
+
+	*ptr = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_uint64 (tmp));
+}
+
+void
+sntp_timer_irq (void)
+{
+	sntp_should_request = 1;
+}
+
+void
+adc_timer_irq (void)
 {
 	if (mux_counter < MUX_MAX)
 	{
@@ -146,15 +166,9 @@ loop ()
 
 	if (cmc_job)
 	{
-		uint32_t sec = millis() / 1000;
-		uint32_t frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
+		timestamp_set (&now);
 
-		timestamp.part.sec = t0.part.sec + sec;
-		if (t0.part.frac + frac < t0.part.frac)
-			timestamp.part.sec += 1;
-		timestamp.part.frac = t0.part.frac + frac;
-
-		len = cmc_write (cmc, timestamp, buf);
+		len = cmc_write (cmc, now, buf);
 		dma_udp_send (config.comm.tuio_sock, buf, len);
 	}
 
@@ -170,8 +184,8 @@ loop ()
 			uint8_t *buf_in_ptr = buf_in+len-remaining;
 
 			// get UDP header info
-			uint8_t *src_ip = buf_in_ptr; // TODO handle it?
-			uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
+			//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
+			//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
 			uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
 		
 			nosc_server_dispatch (serv, buf_in_ptr+8, src_size); // skip UDP header
@@ -180,8 +194,51 @@ loop ()
 		}
 	}
 
+	// send sntp request
+	if (sntp_should_request)
+	{
+		sntp_should_request = 0;
+
+		timestamp_set (&now);
+		len = sntp_request (buf, now);
+		dma_udp_send (config.comm.sntp_sock, buf, len);
+	}
+
+	// receive sntp request answer
+	if ( (len = dma_udp_available (config.comm.sntp_sock)) )
+	{
+		dma_udp_receive (config.comm.sntp_sock, buf_in, len);
+
+		// separate concurrent UDP messages
+		uint16_t remaining = len;
+		while (remaining)
+		{
+			uint8_t *buf_in_ptr = buf_in+len-remaining;
+
+			// get UDP header info
+			//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
+			//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
+			uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
+
+			timestamp64u_t transmit;
+			timestamp64u_t roundtrip_delay;
+			timestamp64s_t clock_offset;
+
+			timestamp_set (&now);
+			transmit = sntp_dispatch (buf_in_ptr+8, now, &roundtrip_delay, &clock_offset);
+
+			if (t0.all == 0ULL)
+				t0 = transmit;
+			else
+				t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
+		
+			remaining -= 8 + src_size;
+		}
+	}
+
 	adc_dma_block ();
 
+	// store ADC values into CMC struct
 	for (uint8_t p=0; p<MUX_MAX; p++)
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
@@ -209,26 +266,6 @@ calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
 }
 
 uint8_t
-_timestamp_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	nOSC_Timestamp time = args[0]->t;
-
-	uint32_t sec = millis() / 1000;
-	uint32_t frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
-
-	t0.part.sec = time.part.sec - sec;
-	if (time.part.frac - frac > time.part.frac) // check for underflow
-		t0.part.sec -= 1;
-	t0.part.frac = time.part.frac - frac;
-
-	// send success status message
-	uint16_t size = nosc_message_vararg_serialize (buf, path, "T");
-	dma_udp_send (config.comm.config_sock, buf, size);
-
-	return 1;
-}
-
-uint8_t
 _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	// send success status message
@@ -243,10 +280,10 @@ _rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg
 {
 	config.cmc.rate = args[0]->i;
 
-	timer.pause ();
-  timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
-	timer.refresh ();
-	timer.resume ();
+	adc_timer.pause ();
+  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	adc_timer.refresh ();
+	adc_timer.resume ();
 
 	// send success status message
 	uint16_t size = nosc_message_vararg_serialize (buf, path, "T");
@@ -272,14 +309,23 @@ setup ()
 	for (i=0; i<ADC_LENGTH; i++)
 		pinMode (ADC_Sequence[i], INPUT_ANALOG);
 
-	// init timer
-	timer.pause ();
-  timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
-	timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	timer.attachCompare1Interrupt (timer_irq);
-	timer.refresh ();
-	timer.resume ();
+	// init adc_timer
+	adc_timer.pause ();
+  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	adc_timer.attachCompare1Interrupt (adc_timer_irq);
+	adc_timer.refresh ();
+	adc_timer.resume ();
+
+	// init sntp_timer
+	sntp_timer.pause ();
+  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
+	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
+	sntp_timer.refresh ();
+	sntp_timer.resume ();
 
 	// init DMA
 	dma_init (DMA1);
@@ -302,10 +348,12 @@ setup ()
 	dma_udp_begin (config.comm.config_sock, config.comm.config_port);
 	dma_udp_set_remote (config.comm.config_sock, config.comm.remote_ip, config.comm.config_port);
 
+	// init sntp socket
+	dma_udp_begin (config.comm.sntp_sock, config.comm.sntp_port);
+	dma_udp_set_remote (config.comm.sntp_sock, config.comm.sntp_ip, config.comm.sntp_port);
+
 	// add methods to OSC server
-	t0.part.sec = 0L;
-	t0.part.frac = 0L;
-	serv = nosc_server_method_add (serv, "/omk/mtr/config/timestamp/set", "t", _timestamp_set, NULL);
+	t0.all = 0ULL;
 	serv = nosc_server_method_add (serv, "/omk/mtr/config/rate/set", "i", _rate_set, NULL);
 	serv = nosc_server_method_add (serv, "/omk/mtr/firmware/version/get", "N", _firmware_version, NULL);
 

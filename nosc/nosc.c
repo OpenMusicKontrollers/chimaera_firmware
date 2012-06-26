@@ -245,7 +245,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 			case nOSC_TIMESTAMP:
 			{
 				uint64_t *tt = (uint64_t *) buf_ptr;
-				nOSC_Timestamp t = {*tt};
+				timestamp64u_t t = {*tt};
 				msg = nosc_message_add_timestamp (msg, t);
 				msg->arg.h = htonll (msg->arg.h);
 				buf_ptr += 8;
@@ -303,7 +303,7 @@ nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path)
 }
 
 uint16_t
-nosc_bundle_serialize (nOSC_Bundle *bund, nOSC_Timestamp timestamp, uint8_t *buf)
+nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -445,7 +445,7 @@ nosc_message_add_int64 (nOSC_Message *msg, int64_t h)
 }
 
 nOSC_Message * 
-nosc_message_add_timestamp (nOSC_Message *msg, nOSC_Timestamp t)
+nosc_message_add_timestamp (nOSC_Message *msg, timestamp64u_t t)
 {
 	nOSC_Message *new = _msg_add (msg, nOSC_TIMESTAMP);
 	new->arg.t = t;
@@ -598,7 +598,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
         break;
 			case nOSC_TIMESTAMP:
 			{
-				nOSC_Timestamp tt;
+				timestamp64u_t tt;
 				tt.all = va_arg (args, uint64_t);
 				msg = nosc_message_add_timestamp (msg, tt);
         break;
