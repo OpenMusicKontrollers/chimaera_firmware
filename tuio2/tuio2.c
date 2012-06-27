@@ -22,6 +22,7 @@
  */
 
 #include "tuio2_private.h"
+#include "../nosc/nosc_private.h"
 
 Tuio2 *
 tuio2_new (uint8_t len)

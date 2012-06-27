@@ -21,32 +21,42 @@
  *     distribution.
  */
 
-#ifndef _TUIO2_H_
-#define _TUIO2_H_
-
 #include <stdint.h>
 
-#include <netdef.h>
+#include <tube.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <adc.h>
+#include <spi.h>
 
-typedef struct _Tuio2 Tuio2;
+dma_tube_config adc_tube = {
+	.tube_src = &ADC1_BASE->DR,
+	.tube_src_size = DMA_SIZE_16BITS,
+	.tube_dst = NULL, //set me
+	.tube_dst_size = DMA_SIZE_16BITS,
+	.tube_nr_xfers = 0, //set me
+	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CIRC | DMA_CFG_CMPLT_IE,
+	.target_data = NULL,
+	.tube_req_src = DMA_REQ_SRC_ADC1
+};
 
-/*
- * (de)alloc
- */
-Tuio2 *tuio2_new (uint8_t len);
-void tuio2_free (Tuio2 *tuio);
+dma_tube_config spi2_rx_tube = {
+	.tube_src = &SPI2_BASE->DR,
+	.tube_src_size = DMA_SIZE_8BITS,
+	.tube_dst = NULL, //set me
+	.tube_dst_size = DMA_SIZE_8BITS,
+	.tube_nr_xfers = 0, //set me
+	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CMPLT_IE,
+	.target_data = NULL,
+	.tube_req_src = DMA_REQ_SRC_SPI2_RX
+};
 
-uint16_t tuio2_serialize (Tuio2 *tuio, uint8_t *buf, uint8_t end);
-
-void tuio2_frm_set (Tuio2 *tuio, uint32_t id, timestamp64u_t timestamp);
-void tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, float x, float p);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+dma_tube_config spi2_tx_tube = {
+	.tube_src = &SPI2_BASE->DR,
+	.tube_src_size = DMA_SIZE_8BITS,
+	.tube_dst = NULL, //set me
+	.tube_dst_size = DMA_SIZE_8BITS,
+	.tube_nr_xfers = 0, //set me
+	.tube_flags = DMA_CFG_DST_INC | DMA_CCR_DIR_FROM_MEM,
+	.target_data = NULL,
+	.tube_req_src = DMA_REQ_SRC_SPI2_TX
+};

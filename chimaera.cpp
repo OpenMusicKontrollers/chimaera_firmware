@@ -80,6 +80,7 @@ const uint8_t PWDN = 12;
 #include <dma_udp.h>
 #include <config.h>
 #include <sntp.h>
+#include <tube.h>
 
 static uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
 static uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
@@ -375,16 +376,10 @@ setup ()
 	}
   ADC1->regs->SQR3 = calc_adc_sequence (&(ADC_RawSequence[0]), len);
 
-	// set up DMA for ADC
-  dma_setup_transfer (
-		DMA1,               //dma_device
-		DMA_CH1,            //dma_channel 
-		&ADC1_BASE->DR,     //*peripheral_address,
-		DMA_SIZE_16BITS,    //peripheral_size,
-		rawDataArray,       //*memory_address, user defined array.
-		DMA_SIZE_16BITS,    //memory_size,
-		DMA_MINC_MODE | DMA_CIRC_MODE | DMA_TRNS_CMPLT  //dma mode: Auto-increment memory address and circular mode
-	);
+	// set up ADC DMA tube
+	adc_tube.tube_dst = rawDataArray;
+	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_HIGH);    //Optional
 	dma_set_num_transfers (DMA1, DMA_CH1, ADC_LENGTH*MUX_MAX);
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);

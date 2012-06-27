@@ -21,6 +21,8 @@
  *     distribution.
  */
 
+#include <tube.h>
+
 #include "dma_udp_private.h"
 
 #include <string.h>
@@ -200,32 +202,22 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 void
 dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit)
 {
+	int status;
+
 	ss_dev = dev;
 	ss_bit = bit;
 
 	// set up dma for SPI2RX
-	dma_setup_transfer (
-		DMA1,
-		DMA_CH4,
-		&SPI2->regs->DR,
-		DMA_SIZE_8BITS,
-		spi_rx_dma_buf,
-		DMA_SIZE_8BITS,
-		DMA_MINC_MODE | DMA_TRNS_CMPLT
-	);
+	spi2_rx_tube.tube_dst = spi_rx_dma_buf;
+	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
 	dma_attach_interrupt (DMA1, DMA_CH4, spi_dma_irq);
 
 	// set up dma for SPI2TX
-	dma_setup_transfer (
-		DMA1,
-		DMA_CH5,
-		&SPI2->regs->DR,
-		DMA_SIZE_8BITS,
-		spi_tx_dma_buf,
-		DMA_SIZE_8BITS,
-		DMA_MINC_MODE | DMA_FROM_MEM
-	);
+	spi2_tx_tube.tube_dst = spi_tx_dma_buf;
+	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
 
 	// init w5200
@@ -242,16 +234,16 @@ dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio
   }
 
 	// set MAC address of device
-	_dma_write (SHAR, mac, 6);
+	_dma_write (SHAR, mac, 6); //TODO make this configurable
 
 	// set IP of device
-	_dma_write (SIPR, ip, 4);
+	_dma_write (SIPR, ip, 4); //TODO make this configurable
 
 	// set Gateway of device
-	_dma_write (GAR, gateway, 4);
+	_dma_write (GAR, gateway, 4); //TODO make this configurable
 
 	// set Subnet Mask of device
-	_dma_write (SUBR, subnet, 4);
+	_dma_write (SUBR, subnet, 4); //TODO make this configurable
 }
 
 void

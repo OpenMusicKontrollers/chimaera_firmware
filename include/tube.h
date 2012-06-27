@@ -21,30 +21,21 @@
  *     distribution.
  */
 
-#ifndef TUIO2_PRIVATE_H
-#define TUIO2_PRIVATE_H
+#ifndef _TUBE_H_
+#define _TUBE_H_
 
-#include <tuio2.h>
-#include <nosc.h>
+#include <dma.h>
 
-typedef struct _Tuio2_Tok Tuio2_Tok;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-struct _Tuio2_Tok {
-	nOSC_Message *S;
-	nOSC_Message *x;
-	nOSC_Message *p;
-};
+extern dma_tube_config adc_tube;
+extern dma_tube_config spi2_rx_tube;
+extern dma_tube_config spi2_tx_tube;
 
-struct _Tuio2 {
-	uint8_t len;
+#ifdef __cplusplus
+}
+#endif
 
-	nOSC_Bundle **bndl;
-
-	nOSC_Message *frm_id;
-	nOSC_Message *frm_timestamp;
-
-	Tuio2_Tok *tok;
-	nOSC_Message **alv;
-};
-
-#endif /* TUIO2_PRIVATE_H */
+#endif
