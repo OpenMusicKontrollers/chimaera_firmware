@@ -31,6 +31,8 @@
 extern "C" {
 #endif
 
+#define UDP_HDR_SIZE 8
+
 void dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
 void dma_udp_begin (uint8_t sock, uint16_t port);
 void dma_udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);

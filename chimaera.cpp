@@ -189,9 +189,9 @@ loop ()
 			//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
 			uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
 		
-			nosc_server_dispatch (serv, buf_in_ptr+8, src_size); // skip UDP header
+			nosc_server_dispatch (serv, buf_in_ptr+UDP_HDR_SIZE, src_size); // skip UDP header
 
-			remaining -= 8 + src_size;
+			remaining -= UDP_HDR_SIZE + src_size;
 		}
 	}
 
@@ -226,14 +226,14 @@ loop ()
 			timestamp64s_t clock_offset;
 
 			timestamp_set (&now);
-			transmit = sntp_dispatch (buf_in_ptr+8, now, &roundtrip_delay, &clock_offset);
+			transmit = sntp_dispatch (buf_in_ptr+UDP_HDR_SIZE, now, &roundtrip_delay, &clock_offset);
 
 			if (t0.all == 0ULL)
 				t0 = transmit;
 			else
 				t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
 		
-			remaining -= 8 + src_size;
+			remaining -= UDP_HDR_SIZE + src_size;
 		}
 	}
 
@@ -267,7 +267,7 @@ calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
 }
 
 uint8_t
-_firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_firmware_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	// send success status message
 	uint16_t size = nosc_message_vararg_serialize (buf, path, "Tiii", config.version.major, config.version.minor, config.version.patch_level);
@@ -277,7 +277,7 @@ _firmware_version (void *data, const char *path, const char *fmt, uint8_t argc, 
 }
 
 uint8_t
-_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	config.cmc.rate = args[0]->i;
 
@@ -355,8 +355,8 @@ setup ()
 
 	// add methods to OSC server
 	t0.all = 0ULL;
-	serv = nosc_server_method_add (serv, "/omk/mtr/config/rate/set", "i", _rate_set, NULL);
-	serv = nosc_server_method_add (serv, "/omk/mtr/firmware/version/get", "N", _firmware_version, NULL);
+	serv = nosc_server_method_add (serv, "/chimaera/config/rate/set", "i", _config_rate_set, NULL);
+	serv = nosc_server_method_add (serv, "/chimaera/config/firmware/get", "N", _config_firmware_get, NULL);
 
 	// set up ADC
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
