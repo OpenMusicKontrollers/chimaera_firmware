@@ -36,36 +36,20 @@
 #include <adc.h> // analog to digital converter
 #include <dma.h> // direct memory access
 
-#define MUX_DELAY 1
-const uint8_t MUX_LENGTH = 2;
-const uint8_t MUX_MAX = 4;
-uint8_t MUX_Sequence [MUX_LENGTH] = {9, 10}; // digital out pins to switch MUX channels
+const uint8_t MUX_LENGTH = 4;
+const uint8_t MUX_MAX = 16;
+uint8_t MUX_Sequence [MUX_LENGTH] = {1, 2, 24, 25}; // TODO digital out pins to switch MUX channels
 
 volatile uint8_t adc_dma_done;
-const uint8_t ADC_LENGTH = 6; // the number of channels to be converted per ADC 
+const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
 uint16_t rawDataArray[ADC_LENGTH*MUX_MAX]; // the dma temporary data array.
-uint8_t ADC_Sequence [ADC_LENGTH] = {8, 3, 6, 5, 4, 7}; // analog input pins read out by the ADC
-uint8_t ADC_RawSequence [ADC_LENGTH] = {
-	PIN_MAP[ADC_Sequence[0]].adc_channel,
-	PIN_MAP[ADC_Sequence[1]].adc_channel,
-	PIN_MAP[ADC_Sequence[2]].adc_channel,
-	PIN_MAP[ADC_Sequence[3]].adc_channel,
-	PIN_MAP[ADC_Sequence[4]].adc_channel,
-	PIN_MAP[ADC_Sequence[5]].adc_channel}; // ^corresponding raw ADC channels
+uint8_t ADC_Sequence [ADC_LENGTH] = {3, 4, 5, 6, 7, 8, 9, 10, 11}; // analog input pins read out by the ADC
+uint8_t ADC_RawSequence [ADC_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-
-uint8_t ADC_Order [MUX_MAX*ADC_LENGTH] = {
-	0+2, 0+6, 8+2, 8+6, 16+2, 16+6, 
-	0+5, 0+1, 8+5, 8+1, 16+5, 16+1, 
-	0+3, 0+0, 8+3, 8+0, 16+3, 16+0, 
-	0+4, 0+7, 8+4, 8+7, 16+4, 16+7};
-
-uint16_t ADC_Offset [MUX_MAX*ADC_LENGTH] = {
-	ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH,
-	ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH,
-	ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH,
-	ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH, ADC_HALF_BITDEPTH};
+uint8_t ADC_Order_MUX [MUX_MAX] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+uint16_t ADC_Offset [MUX_MAX*ADC_LENGTH];
 
 const uint8_t PWDN = 12;
 
@@ -121,7 +105,6 @@ adc_timer_irq (void)
 	{
 		digitalWrite (MUX_Sequence[0], (mux_counter&1));
 		digitalWrite (MUX_Sequence[1], (mux_counter&3)>>1);
-		//delayMicroseconds (MUX_DELAY); // let muxes and sensors settle
 		
 		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 
@@ -157,26 +140,29 @@ loop ()
 
 	adc_dma_run ();
 
-	cmc_job = cmc_process (cmc);
-
-	/*
-	len = cmc_dump (cmc, buf);
-	dma_udp_send (config.comm.tuio_sock, buf, len);
-	cmc_job = 0;
-	*/
-
-	if (cmc_job)
+	if (config.dump.enabled)
 	{
-		timestamp_set (&now);
+		len = cmc_dump (cmc, buf);
+		dma_udp_send (config.dump.sock, buf, len);
+	}
 
-		len = cmc_write (cmc, now, buf);
-		dma_udp_send (config.comm.tuio_sock, buf, len);
+	if (config.tuio.enabled || config.rtpmidi.payload.enabled)
+	{
+		cmc_job = cmc_process (cmc);
+
+		if (cmc_job)
+		{
+			timestamp_set (&now);
+
+			len = cmc_write (cmc, now, buf);
+			dma_udp_send (config.tuio.sock, buf, len);
+		}
 	}
 
 	// run osc server
-	if ( (len = dma_udp_available (config.comm.config_sock)) )
+	if (config.config.enabled && (len = dma_udp_available (config.config.sock)) )
 	{
-		dma_udp_receive (config.comm.config_sock, buf_in, len);
+		dma_udp_receive (config.config.sock, buf_in, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len;
@@ -196,44 +182,47 @@ loop ()
 	}
 
 	// send sntp request
-	if (sntp_should_request)
+	if (config.sntp.enabled)
 	{
-		sntp_should_request = 0;
-
-		timestamp_set (&now);
-		len = sntp_request (buf, now);
-		dma_udp_send (config.comm.sntp_sock, buf, len);
-	}
-
-	// receive sntp request answer
-	if ( (len = dma_udp_available (config.comm.sntp_sock)) )
-	{
-		dma_udp_receive (config.comm.sntp_sock, buf_in, len);
-
-		// separate concurrent UDP messages
-		uint16_t remaining = len;
-		while (remaining)
+		if (sntp_should_request)
 		{
-			uint8_t *buf_in_ptr = buf_in+len-remaining;
-
-			// get UDP header info
-			//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
-			//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
-			uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
-
-			timestamp64u_t transmit;
-			timestamp64u_t roundtrip_delay;
-			timestamp64s_t clock_offset;
+			sntp_should_request = 0;
 
 			timestamp_set (&now);
-			transmit = sntp_dispatch (buf_in_ptr+UDP_HDR_SIZE, now, &roundtrip_delay, &clock_offset);
+			len = sntp_request (buf, now);
+			dma_udp_send (config.sntp.sock, buf, len);
+		}
 
-			if (t0.all == 0ULL)
-				t0 = transmit;
-			else
-				t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
-		
-			remaining -= UDP_HDR_SIZE + src_size;
+		// receive sntp request answer
+		if ( (len = dma_udp_available (config.sntp.sock)) )
+		{
+			dma_udp_receive (config.sntp.sock, buf_in, len);
+
+			// separate concurrent UDP messages
+			uint16_t remaining = len;
+			while (remaining)
+			{
+				uint8_t *buf_in_ptr = buf_in+len-remaining;
+
+				// get UDP header info
+				//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
+				//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
+				uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
+
+				timestamp64u_t transmit;
+				timestamp64u_t roundtrip_delay;
+				timestamp64s_t clock_offset;
+
+				timestamp_set (&now);
+				transmit = sntp_dispatch (buf_in_ptr+UDP_HDR_SIZE, now, &roundtrip_delay, &clock_offset);
+
+				if (t0.all == 0ULL)
+					t0 = transmit;
+				else
+					t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
+			
+				remaining -= UDP_HDR_SIZE + src_size;
+			}
 		}
 	}
 
@@ -247,7 +236,7 @@ loop ()
 			adc_data = (rawDataArray[p*ADC_LENGTH + i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
 			adc_data -= ADC_Offset[p*ADC_LENGTH + i];
 			adc_data = abs (adc_data); // [0, ADC_HALF_BITDPEPTH]
-			cmc_set (cmc, ADC_Order[p*ADC_LENGTH + i], adc_data);
+			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, adc_data);
 		}
 }
 
@@ -267,28 +256,22 @@ calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
 }
 
 uint8_t
-_config_firmware_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	// send success status message
-	uint16_t size = nosc_message_vararg_serialize (buf, path, "Tiii", config.version.major, config.version.minor, config.version.patch_level);
-	dma_udp_send (config.comm.config_sock, buf, size);
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
 
-	return 1;
-}
-
-uint8_t
-_config_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	config.cmc.rate = args[0]->i;
+	// TODO implement infinite rate (run at maximal rate), we need a working _irq_adc for this, though
+	config.cmc.rate = args[1]->i;
 
 	adc_timer.pause ();
   adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
 	adc_timer.refresh ();
 	adc_timer.resume ();
 
-	// send success status message
-	uint16_t size = nosc_message_vararg_serialize (buf, path, "T");
-	dma_udp_send (config.comm.config_sock, buf, size);
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -342,27 +325,64 @@ setup ()
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
 
 	// init tuio socket
-	dma_udp_begin (config.comm.tuio_sock, config.comm.tuio_port);
-	dma_udp_set_remote (config.comm.tuio_sock, config.comm.remote_ip, config.comm.tuio_port);
+	if (config.tuio.enabled)
+	{
+		dma_udp_begin (config.tuio.sock, config.tuio.port);
+		dma_udp_set_remote (config.tuio.sock, config.tuio.ip, config.tuio.port);
+	}
 
 	// init config socket
-	dma_udp_begin (config.comm.config_sock, config.comm.config_port);
-	dma_udp_set_remote (config.comm.config_sock, config.comm.remote_ip, config.comm.config_port);
+	if (config.config.enabled)
+	{
+		dma_udp_begin (config.config.sock, config.config.port);
+		dma_udp_set_remote (config.config.sock, config.config.ip, config.config.port);
+	}
 
 	// init sntp socket
-	dma_udp_begin (config.comm.sntp_sock, config.comm.sntp_port);
-	dma_udp_set_remote (config.comm.sntp_sock, config.comm.sntp_ip, config.comm.sntp_port);
+	if (config.sntp.enabled)
+	{
+		dma_udp_begin (config.sntp.sock, config.sntp.port);
+		dma_udp_set_remote (config.sntp.sock, config.sntp.ip, config.sntp.port);
+	}
+
+	// init dump socket
+	if (config.dump.enabled)
+	{
+		dma_udp_begin (config.dump.sock, config.dump.port);
+		dma_udp_set_remote (config.dump.sock, config.dump.ip, config.dump.port);
+	}
+
+	// init rtpmidi payload socket
+	if (config.rtpmidi.payload.enabled)
+	{
+		dma_udp_begin (config.rtpmidi.payload.sock, config.rtpmidi.payload.port);
+		dma_udp_set_remote (config.rtpmidi.payload.sock, config.rtpmidi.payload.ip, config.rtpmidi.payload.port);
+	}
+
+	// init rtpmidi session socket
+	if (config.rtpmidi.session.enabled)
+	{
+		dma_udp_begin (config.rtpmidi.session.sock, config.rtpmidi.session.port);
+		dma_udp_set_remote (config.rtpmidi.session.sock, config.rtpmidi.session.ip, config.rtpmidi.session.port);
+	}
 
 	// add methods to OSC server
 	t0.all = 0ULL;
-	serv = nosc_server_method_add (serv, "/chimaera/config/rate/set", "i", _config_rate_set, NULL);
-	serv = nosc_server_method_add (serv, "/chimaera/config/firmware/get", "N", _config_firmware_get, NULL);
+	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "i", _cmc_rate_set, NULL);
+	serv = config_methods_add (serv, buf);
 
 	// set up ADC
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
   ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
   adc_set_reg_seqlen (ADC1, ADC_LENGTH);  //The number of channels to be converted. 
+
+	for (uint8_t i=0; i<ADC_LENGTH; i++)
+		ADC_RawSequence[i] = PIN_MAP[ADC_Sequence[i]].adc_channel;
+
+	for (uint8_t i=0; i<ADC_LENGTH*MUX_MAX; i++)
+		ADC_Offset[i] = ADC_HALF_BITDEPTH;
+
 	uint8_t len = ADC_LENGTH;
 	if (len > 12)
 	{
@@ -402,7 +422,7 @@ setup ()
 	}
 
 	// set up continuous music controller struct
-	cmc = cmc_new (24, 12, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
+	cmc = cmc_new (144, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
 }
 
 __attribute__ ((constructor)) void

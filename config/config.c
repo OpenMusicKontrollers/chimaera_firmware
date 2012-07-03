@@ -25,6 +25,11 @@
 
 #include <string.h>
 
+#include <dma_udp.h>
+
+#define LAN_BROADCAST {192, 168, 1, 255}
+#define LAN_HOST {192, 168, 1, 10}
+
 Config config = {
 	.version = {
 		.major = 0,
@@ -36,19 +41,51 @@ Config config = {
 		.mac = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED},
 		.ip = {192, 168, 1, 177},
 		.gateway = {192, 168, 1, 1},
-		.subnet = {255, 255, 255, 0},
-		
-		.tuio_sock = 0,
-		.tuio_port = 3333,
-		
-		.config_sock = 1,
-		.config_port = 4444,
+		.subnet = {255, 255, 255, 0}
+	},
+	
+	.tuio = {
+		.enabled = 1, // enabled by default
+		.sock = 0,
+		.port = 3333,
+		.ip = LAN_BROADCAST
+	},
 
-		.sntp_ip = {192, 168, 1, 10},
-		.sntp_sock = 2,
-		.sntp_port = 123,
-		
-		.remote_ip = {192, 168, 1, 255} // send via local broadcast
+	.config = {
+		.enabled = 1, // enabled by default
+		.sock = 1,
+		.port = 4444,
+		.ip = LAN_BROADCAST
+	},
+
+	.sntp = {
+		.enabled = 1, // enabled by default
+		.sock = 2,
+		.port = 123,
+		.ip = LAN_HOST
+	},
+
+	.dump = {
+		.enabled = 0, // disabled by default
+		.sock = 3,
+		.port = 5555,
+		.ip = LAN_BROADCAST
+	},
+
+	.rtpmidi = {
+		.payload = {
+			.enabled = 0, // disabled by default
+			.sock = 4,
+			.port = 6666,
+			.ip = LAN_BROADCAST
+		},
+
+		.session = {
+			.enabled = 0, // disabled by default
+			.sock = 5,
+			.port = 7777,
+			.ip = LAN_BROADCAST
+		}
 	},
 
 	.cmc = {
@@ -58,3 +95,59 @@ Config config = {
 		.thresh1 = 120
 	}
 };
+
+uint8_t
+_version_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_dump_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (fmt[1] == nOSC_TRUE)
+	{
+		config.dump.enabled = 1;
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	}
+	else if (fmt[1] == nOSC_FALSE)
+	{
+		config.dump.enabled = 0;
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	}
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iFs", id, "wrong type: boolean expected at position [2]");
+
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+nOSC_Server *
+config_methods_add (nOSC_Server *serv, void *data)
+{
+	// read-only
+	serv = nosc_server_method_add (serv, "/chimaera/version/get", "N", _version_get, data);
+
+	/* TODO implement all _set and _get functions for config struct
+	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/get", "N", _comm_mac_get, data);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/set", "iiiiii", _comm_mac_set, data);
+	...
+	*/
+
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "T", _dump_enabled_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "F", _dump_enabled_set, data);
+
+	return serv;
+}

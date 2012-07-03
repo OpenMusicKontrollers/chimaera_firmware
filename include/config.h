@@ -26,11 +26,23 @@
 
 #include <stdint.h>
 
+#include <nosc.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define CONFIG_REPLY_PATH "/reply"
+
+typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
+
+struct _Socket_Config {
+	uint8_t enabled;
+	uint8_t sock;
+	uint16_t port;
+	uint8_t ip[4];
+};
 
 struct _Config {
 	/*
@@ -50,19 +62,16 @@ struct _Config {
 		uint8_t ip [4];
 		uint8_t gateway [4];
 		uint8_t subnet [4];
-
-		uint8_t tuio_sock;
-		uint16_t tuio_port;
-
-		uint8_t config_sock;
-		uint16_t config_port;
-
-		uint8_t sntp_ip [6];
-		uint8_t sntp_sock;
-		uint16_t sntp_port;
-
-		uint8_t remote_ip [4];
 	} comm;
+
+	Socket_Config tuio;
+	Socket_Config config;
+	Socket_Config sntp;
+	Socket_Config dump;
+	struct _rtpmidi {
+		Socket_Config payload;
+		Socket_Config session;
+	} rtpmidi;
 
 	struct _cmc {
 		uint16_t rate;
@@ -73,6 +82,8 @@ struct _Config {
 };
 
 extern Config config;
+
+nOSC_Server *config_methods_add (nOSC_Server *serv, void *data);
 
 #ifdef __cplusplus
 }
