@@ -38,20 +38,17 @@
 
 const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
-uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // TODO digital out pins to switch MUX channels
+uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
 
 volatile uint8_t adc_dma_done;
-//const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
-const uint8_t ADC_LENGTH = 3; // the number of channels to be converted per ADC 
+const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
 uint16_t rawDataArray[ADC_LENGTH*MUX_MAX]; // the dma temporary data array.
-//uint8_t ADC_Sequence [ADC_LENGTH] = {11, 10, 9, 8, 7, 6, 5, 4, 3}; // analog input pins read out by the ADC
-uint8_t ADC_Sequence [ADC_LENGTH] = {11, 10, 9}; // analog input pins read out by the ADC
+uint8_t ADC_Sequence [ADC_LENGTH] = {11, 10, 9, 8, 7, 6, 5, 4, 3}; // analog input pins read out by the ADC
 uint8_t ADC_RawSequence [ADC_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 uint8_t ADC_Order_MUX [MUX_MAX] = { 4, 5, 6, 7, 8, 9, 10, 11, 15, 14, 13, 12, 3, 2, 1, 0 };
-//uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2};
+uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
 uint16_t ADC_Offset [MUX_MAX*ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -104,17 +101,18 @@ sntp_timer_irq (void)
 void
 adc_timer_irq (void)
 {
-	if (mux_counter < MUX_MAX)
-	{
-		digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
-		digitalWrite (MUX_Sequence[1], (mux_counter & 0b0010)>>1);
-		digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
-		digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
-		
-		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
+	//if ( (ADC1->regs->SR & ADC_SR_EOC) == ADC_SR_EOC)
+		if (mux_counter < MUX_MAX)
+		{
+			digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
+			digitalWrite (MUX_Sequence[1], (mux_counter & 0b0010)>>1);
+			digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
+			digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
+			
+			ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 
-		mux_counter++;
-	}
+			mux_counter++;
+		}
 }
 
 void
@@ -143,14 +141,12 @@ loop ()
 	uint8_t cmc_job;
 	uint16_t len;
 
-	uint16_t size = nosc_message_vararg_serialize (buf, "/hello", "i", 1);
-	dma_udp_send (config.config.sock, buf, size);
-
 	adc_dma_run ();
 
 	if (config.dump.enabled)
 	{
-		len = cmc_dump (cmc, buf);
+		//len = cmc_dump (cmc, buf);
+		len = cmc_dump_partial (cmc, buf, 6*MUX_MAX, 9*MUX_MAX);
 		dma_udp_send (config.dump.sock, buf, len);
 	}
 
@@ -246,6 +242,12 @@ loop ()
 			adc_data = abs (adc_data); // [0, ADC_HALF_BITDPEPTH]
 			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, adc_data);
 		}
+
+	// TODO broken sensors
+	cmc_set (cmc, 0xc + 0x10*0, 0);
+	cmc_set (cmc, 0xd + 0x10*0, 0);
+	cmc_set (cmc, 0xf + 0x10*0, 0);
+	cmc_set (cmc, 0x3 + 0x10*1, 0);
 }
 
 /*
@@ -354,7 +356,7 @@ setup ()
 	}
 
 	// init dump socket
-	config.dump.enabled = 1; //TODO
+	//config.dump.enabled = 1; //TODO
 	if (config.dump.enabled)
 	{
 		dma_udp_begin (config.dump.sock, config.dump.port);
@@ -429,6 +431,15 @@ setup ()
 				ADC_Offset[p*ADC_LENGTH + i] /= 2;
 			}
 	}
+
+	/*
+	for (uint8_t i=0; i<ADC_LENGTH; i++)
+		for (uint8_t p=0; p<MUX_MAX; p++)
+		{
+			uint16_t size = nosc_message_vararg_serialize (buf, "/calibration", "iii", i, p, ADC_Offset[p*ADC_LENGTH + i]);
+			dma_udp_send (config.config.sock, buf, size);
+		}
+	*/
 
 	// set up continuous music controller struct
 	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);

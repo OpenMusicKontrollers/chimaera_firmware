@@ -288,7 +288,7 @@ nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path)
 		first = first->prev;
 
 	// write format
-	char fmt [32]; //TODO what size to use?
+	char fmt [256]; //TODO what size to use?
 	char *fmt_ptr = fmt;
 	nOSC_Message *ptr = first;
 	while (ptr)

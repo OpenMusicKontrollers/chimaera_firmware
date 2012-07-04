@@ -279,3 +279,18 @@ cmc_dump (CMC *cmc, uint8_t *buf)
 
 	return size;
 }
+
+uint16_t 
+cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1)
+{
+	uint8_t i;
+	uint16_t size;
+
+	nOSC_Message *msg = NULL;
+	for (i=s0; i<s1; i++)
+		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
+	size = nosc_message_serialize (msg, "/cmc/dump_partial", buf);
+	nosc_message_free (msg);
+
+	return size;
+}

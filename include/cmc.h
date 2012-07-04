@@ -44,6 +44,7 @@ void cmc_set (CMC *cmc, uint8_t i, uint16_t v);
 uint8_t cmc_process (CMC *cmc);
 uint16_t cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, uint8_t *buf);
+uint16_t cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1);
 
 #ifdef __cplusplus
 }
