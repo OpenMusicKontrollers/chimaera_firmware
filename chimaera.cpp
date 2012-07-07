@@ -47,8 +47,8 @@ uint8_t ADC_Sequence [ADC_LENGTH] = {11, 10, 9, 8, 7, 6, 5, 4, 3}; // analog inp
 uint8_t ADC_RawSequence [ADC_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-uint8_t ADC_Order_MUX [MUX_MAX] = { 4, 5, 6, 7, 8, 9, 10, 11, 15, 14, 13, 12, 3, 2, 1, 0 };
-uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
+uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0};
 uint16_t ADC_Offset [MUX_MAX*ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -244,10 +244,11 @@ loop ()
 		}
 
 	// TODO broken sensors
-	cmc_set (cmc, 0xc + 0x10*0, 0);
-	cmc_set (cmc, 0xd + 0x10*0, 0);
-	cmc_set (cmc, 0xf + 0x10*0, 0);
-	cmc_set (cmc, 0x3 + 0x10*1, 0);
+	cmc_set (cmc, 0x0 + 0x10*8, 0);
+	cmc_set (cmc, 0x2 + 0x10*8, 0);
+	cmc_set (cmc, 0x3 + 0x10*8, 0);
+
+	cmc_set (cmc, 0xc + 0x10*7, 0);
 }
 
 /*
