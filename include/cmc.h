@@ -46,6 +46,9 @@ uint16_t cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, uint8_t *buf);
 uint16_t cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1);
 
+void cmc_group_clear (CMC *cmc);
+void cmc_group_add (CMC *cmc, uint32_t cid, float x0, float x1);
+
 #ifdef __cplusplus
 }
 #endif

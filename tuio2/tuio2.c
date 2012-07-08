@@ -23,6 +23,7 @@
 
 #include "tuio2_private.h"
 #include "../nosc/nosc_private.h"
+#include "config.h"
 
 Tuio2 *
 tuio2_new (uint8_t len)
@@ -39,7 +40,14 @@ tuio2_new (uint8_t len)
 	// frm
 	tuio->frm_id = nosc_message_add_int32 (NULL, 0);
 	tuio->frm_timestamp = nosc_message_add_timestamp (tuio->frm_id, nOSC_IMMEDIATE);
+	tuio->frm_app = nosc_message_add_string (tuio->frm_timestamp, "chimaera");
+	tuio->frm_addr = nosc_message_add_int32 (tuio->frm_app, 0);
+	tuio->frm_inst = nosc_message_add_int32 (tuio->frm_addr, 0);
+	tuio->frm_dim = nosc_message_add_int32 (tuio->frm_inst, 0);
 	tuio->bndl[0] = nosc_bundle_add_message (NULL, tuio->frm_timestamp, "/tuio2/frm");
+
+	if (!config.tuio_long_header)
+		tuio->frm_timestamp->next = NULL;
 
 	// tok
 	tuio->tok = calloc (len, sizeof (Tuio2_Tok));
@@ -47,9 +55,10 @@ tuio2_new (uint8_t len)
 	{
 		Tuio2_Tok *tok = &tuio->tok[i];
 		tok->S = nosc_message_add_int32 (NULL, 0);
-		tok->x = nosc_message_add_float (tok->S, 0.0);
+		tok->I = nosc_message_add_int32 (tok->S, 0);
+		tok->x = nosc_message_add_float (tok->I, 0.0);
 		tok->p = nosc_message_add_float (tok->x, 0.0);
-		tuio->bndl[i+1] = nosc_bundle_add_message (tuio->bndl[i], tok->p, "/tuio2/_Sxp");
+		tuio->bndl[i+1] = nosc_bundle_add_message (tuio->bndl[i], tok->p, "/tuio2/_SIxp");
 	}
 	
 	// alv
@@ -125,10 +134,33 @@ tuio2_frm_set (Tuio2 *tuio, uint32_t id, timestamp64u_t timestamp)
 }
 
 void 
-tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, float x, float p)
+tuio2_frm_long_set (Tuio2 *tuio, const char *app, uint8_t *addr, uint16_t inst, uint16_t w, uint16_t h)
+{
+	uint32_t _addr = (addr[0]<<24) + (addr[1]<<16) + (addr[2]<<8) + addr[3];
+	uint32_t _dim = (w<<16) + h;
+
+	tuio->frm_app->arg.s = (char *) app;
+	tuio->frm_addr->arg.i = _addr;
+	tuio->frm_inst->arg.i = inst;
+	tuio->frm_dim->arg.i = _dim;
+
+	tuio->frm_timestamp->next = tuio->frm_app;
+	config.tuio_long_header = 1;
+}
+
+void
+tuio2_frm_long_unset (Tuio2 *tuio)
+{
+	tuio->frm_timestamp->next = NULL;
+	config.tuio_long_header = 0;
+}
+
+void 
+tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, uint32_t I, float x, float p)
 {
 	Tuio2_Tok *tok = &tuio->tok[pos];
 	tok->S->arg.i = S;
+	tok->I->arg.i = I;
 	tok->x->arg.f = x;
 	tok->p->arg.f = p;
 

@@ -93,7 +93,9 @@ Config config = {
 		.diff = 0,
 		.thresh0 = 60,
 		.thresh1 = 120
-	}
+	},
+
+	.tuio_long_header = 0
 };
 
 uint8_t

@@ -63,12 +63,15 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 
 	cmc->tuio = tuio2_new (mb);
 
+	cmc->groups = _cmc_group_new ();
+
 	return cmc;
 }
 
 void
 cmc_free (CMC *cmc)
 {
+	_cmc_group_free (cmc->groups);
 	tuio2_free (cmc->tuio);
 	free (cmc->new_blobs);
 	free (cmc->old_blobs);
@@ -173,13 +176,16 @@ cmc_process (CMC *cmc)
 							blb2->sid = ++(cmc->sid); // this is a new blob
 						else
 							blb2->ignore = 1;
+						blb2->group = NULL;
 						break;
 					case 2:
 						blb2->sid = blb->sid;
+						blb2->group = blb->group;
 						matrix[a][b] = -1;
 						break;
 					default:
 						blb2->sid = blb->sid;
+						blb2->group = blb->group;
 						for (i=0; i<cmc->I; i++)
 							matrix[i][b] = -1;
 						for (j=0; j<cmc->J; j++)
@@ -190,6 +196,7 @@ cmc_process (CMC *cmc)
 			else // J <= I
 			{
 				blb2->sid = blb->sid;
+				blb2->group = blb->group;
 				for (i=0; i<cmc->I; i++)
 					matrix[i][b] = -1;
 				for (j=0; j<cmc->J; j++)
@@ -206,8 +213,8 @@ cmc_process (CMC *cmc)
 				cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
 			else
 				cmc->new_blobs[j].ignore = 1;
+			cmc->new_blobs[j].group = NULL;
 		}
-
 	}
 	else if (!cmc->I && !cmc->J)
 	{
@@ -235,6 +242,26 @@ cmc_process (CMC *cmc)
 	}
 	cmc->J = newJ;
 
+	// relate blobs to groups
+	for (j=0; j<cmc->J; j++)
+	{
+		CMC_Blob *tar = &cmc->new_blobs[j];
+
+		CMC_Group *ptr = cmc->groups;
+		while (ptr)
+		{
+			if ( (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+			{
+				if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed
+					tar->sid = ++(cmc->sid);
+
+				tar->group = ptr;
+				break; // do not search further
+			}
+			ptr = ptr->next;
+		}
+	}
+
 	CMC_Blob *tmp = cmc->old_blobs;
 	cmc->old_blobs = cmc->new_blobs;
 	cmc->new_blobs = tmp;
@@ -257,10 +284,19 @@ cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 
 	tuio2_frm_set (cmc->tuio, cmc->fid, timestamp);
 	for (j=0; j<cmc->I; j++)
+	{
+		CMC_Group *group;
+		float X = cmc->old_blobs[j].x;
+		// resize x to group boundary
+		if (group = cmc->old_blobs[j].group)
+			X = X*(group->x1 - group->x0) + group->x0;
+
 		tuio2_tok_set (cmc->tuio, j,
 			cmc->old_blobs[j].sid,
-			cmc->old_blobs[j].x,
+			cmc->old_blobs[j].group->cid,
+			X,
 			cmc->old_blobs[j].p);
+	}
 	size = tuio2_serialize (cmc->tuio, buf, cmc->I);
 	return size;
 }
@@ -293,4 +329,54 @@ cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1)
 	nosc_message_free (msg);
 
 	return size;
+}
+
+void 
+_cmc_group_free (CMC_Group *group)
+{
+	CMC_Group *ptr = group;
+
+	while (ptr)
+		ptr = _cmc_group_pop (ptr);
+}
+
+CMC_Group *
+_cmc_group_push (CMC_Group *group, uint32_t cid, float x0, float x1)
+{
+	CMC_Group *new = calloc (1, sizeof (CMC_Group));
+
+	new->next = group;
+	new->cid = cid;
+	new->x0 = x0;
+	new->x1 = x1;
+
+	return new;
+}
+
+CMC_Group *
+_cmc_group_pop (CMC_Group *group)
+{
+	CMC_Group *tmp = group->next;
+	free (group);
+	return tmp;
+}
+
+void 
+cmc_group_clear (CMC *cmc)
+{
+	_cmc_group_clear (cmc->groups);
+	cmc->groups = _cmc_group_new ();
+}
+
+void 
+cmc_group_add (CMC *cmc, uint32_t cid, float x0, float x1)
+{
+	//TODO we cannot create an indefinite number of groups, put a limit and return an error when overrun
+	cmc->groups = _cmc_group_push (cmc->groups, cid, x0, x1);
+}
+
+CMC_Group *
+_cmc_group_new ()
+{
+	return NULL;
 }
