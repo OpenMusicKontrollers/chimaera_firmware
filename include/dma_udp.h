@@ -25,7 +25,8 @@
 #define _DMA_UDP_H_
 
 #include <stdint.h>
-#include <gpio.h>
+
+#include <libmaple/gpio.h>
 
 #ifdef __cplusplus
 extern "C" {

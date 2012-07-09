@@ -24,7 +24,7 @@
 #ifndef _TUBE_H_
 #define _TUBE_H_
 
-#include <dma.h>
+#include <libmaple/dma.h>
 
 #ifdef __cplusplus
 extern "C" {

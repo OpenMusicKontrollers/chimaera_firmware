@@ -89,13 +89,14 @@ Config config = {
 	},
 
 	.cmc = {
-		.rate = 1000, // update rate in Hz
+		.rate = 800, // update rate in Hz
 		.diff = 0,
 		.thresh0 = 60,
 		.thresh1 = 120
 	},
 
-	.tuio_long_header = 0
+	.tuio_long_header = 0,
+	.cmc_max_groups = 32
 };
 
 uint8_t
@@ -140,16 +141,16 @@ nOSC_Server *
 config_methods_add (nOSC_Server *serv, void *data)
 {
 	// read-only
-	serv = nosc_server_method_add (serv, "/chimaera/version/get", "N", _version_get, data);
+	serv = nosc_server_method_add (serv, "/chimaera/version/get", "i", _version_get, data);
 
 	/* TODO implement all _set and _get functions for config struct
-	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/get", "N", _comm_mac_get, data);
-	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/set", "iiiiii", _comm_mac_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/get", "i", _comm_mac_get, data);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/set", "iiiiiii", _comm_mac_set, data);
 	...
 	*/
 
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "T", _dump_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "F", _dump_enabled_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set, data);
 
 	return serv;
 }

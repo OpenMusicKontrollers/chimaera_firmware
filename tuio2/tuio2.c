@@ -55,10 +55,10 @@ tuio2_new (uint8_t len)
 	{
 		Tuio2_Tok *tok = &tuio->tok[i];
 		tok->S = nosc_message_add_int32 (NULL, 0);
-		tok->I = nosc_message_add_int32 (tok->S, 0);
-		tok->x = nosc_message_add_float (tok->I, 0.0);
+		tok->T = nosc_message_add_int32 (tok->S, 0);
+		tok->x = nosc_message_add_float (tok->T, 0.0);
 		tok->p = nosc_message_add_float (tok->x, 0.0);
-		tuio->bndl[i+1] = nosc_bundle_add_message (tuio->bndl[i], tok->p, "/tuio2/_SIxp");
+		tuio->bndl[i+1] = nosc_bundle_add_message (tuio->bndl[i], tok->p, "/tuio2/_STxp");
 	}
 	
 	// alv
@@ -156,11 +156,11 @@ tuio2_frm_long_unset (Tuio2 *tuio)
 }
 
 void 
-tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, uint32_t I, float x, float p)
+tuio2_tok_set (Tuio2 *tuio, uint8_t pos, uint32_t S, uint32_t T, float x, float p)
 {
 	Tuio2_Tok *tok = &tuio->tok[pos];
 	tok->S->arg.i = S;
-	tok->I->arg.i = I;
+	tok->T->arg.i = T;
 	tok->x->arg.f = x;
 	tok->p->arg.f = p;
 

@@ -25,8 +25,8 @@
 
 #include <tube.h>
 
-#include <adc.h>
-#include <spi.h>
+#include <libmaple/adc.h>
+#include <libmaple/spi.h>
 
 dma_tube_config adc_tube = {
 	.tube_src = &ADC1_BASE->DR,

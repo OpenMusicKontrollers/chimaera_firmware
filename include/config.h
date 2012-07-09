@@ -81,6 +81,7 @@ struct _Config {
 	} cmc;
 
 	uint8_t tuio_long_header;
+	uint8_t cmc_max_groups;
 };
 
 extern Config config;

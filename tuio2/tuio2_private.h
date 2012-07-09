@@ -31,7 +31,7 @@ typedef struct _Tuio2_Tok Tuio2_Tok;
 
 struct _Tuio2_Tok {
 	nOSC_Message *S;
-	nOSC_Message *I;
+	nOSC_Message *T;
 	nOSC_Message *x;
 	nOSC_Message *p;
 };

@@ -26,6 +26,8 @@
 #include <math.h>
 #include <string.h>
 
+#include "config.h"
+
 CMC *
 cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1)
 {
@@ -80,9 +82,10 @@ cmc_free (CMC *cmc)
 }
 
 void
-cmc_set (CMC* cmc, uint8_t i, uint16_t v)
+cmc_set (CMC* cmc, uint8_t i, uint16_t v, uint8_t n)
 {
 	cmc->sensors[i+1].v = v;
+	cmc->sensors[i+1].n = n;
 }
 
 static uint8_t idle = 0; // IDLE_CYCLE of 256
@@ -126,6 +129,7 @@ cmc_process (CMC *cmc)
 			cmc->new_blobs[cmc->J].sid = i;
 			cmc->new_blobs[cmc->J].x = x;
 			cmc->new_blobs[cmc->J].p = y;
+			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
 			cmc->new_blobs[cmc->J].above_thresh = cmc->sensors[i].v > cmc->thresh1 ? 1 : 0;
 			cmc->new_blobs[cmc->J].ignore = 0;
 
@@ -250,13 +254,13 @@ cmc_process (CMC *cmc)
 		CMC_Group *ptr = cmc->groups;
 		while (ptr)
 		{
-			if ( (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+			if ( ( (tar->uid & ptr->uid) == tar->uid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
 			{
-				if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed
+				if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
 					tar->sid = ++(cmc->sid);
 
 				tar->group = ptr;
-				break; // do not search further
+				break; // match found, do not search further
 			}
 			ptr = ptr->next;
 		}
@@ -268,7 +272,6 @@ cmc_process (CMC *cmc)
 	cmc->I = cmc->J;
 
 	// only increase frame count when there were changes or idle overflowed
-
 	if (changed || !idle)
 		++(cmc->fid);
 
@@ -285,15 +288,16 @@ cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 	tuio2_frm_set (cmc->tuio, cmc->fid, timestamp);
 	for (j=0; j<cmc->I; j++)
 	{
-		CMC_Group *group;
+		CMC_Group *group = cmc->old_blobs[j].group;
 		float X = cmc->old_blobs[j].x;
+
 		// resize x to group boundary
-		if (group = cmc->old_blobs[j].group)
-			X = X*(group->x1 - group->x0) + group->x0;
+		if (group->tid > 0)
+			X = (X - group->x0)*group->m;
 
 		tuio2_tok_set (cmc->tuio, j,
 			cmc->old_blobs[j].sid,
-			cmc->old_blobs[j].group->cid,
+			(cmc->old_blobs[j].uid<<16) | group->tid,
 			X,
 			cmc->old_blobs[j].p);
 	}
@@ -341,14 +345,16 @@ _cmc_group_free (CMC_Group *group)
 }
 
 CMC_Group *
-_cmc_group_push (CMC_Group *group, uint32_t cid, float x0, float x1)
+_cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1)
 {
 	CMC_Group *new = calloc (1, sizeof (CMC_Group));
 
 	new->next = group;
-	new->cid = cid;
+	new->tid = tid;
+	new->uid = uid;
 	new->x0 = x0;
 	new->x1 = x1;
+	new->m = 1.0/(x1-x0);
 
 	return new;
 }
@@ -361,22 +367,44 @@ _cmc_group_pop (CMC_Group *group)
 	return tmp;
 }
 
-void 
-cmc_group_clear (CMC *cmc)
-{
-	_cmc_group_clear (cmc->groups);
-	cmc->groups = _cmc_group_new ();
-}
-
-void 
-cmc_group_add (CMC *cmc, uint32_t cid, float x0, float x1)
-{
-	//TODO we cannot create an indefinite number of groups, put a limit and return an error when overrun
-	cmc->groups = _cmc_group_push (cmc->groups, cid, x0, x1);
-}
-
 CMC_Group *
 _cmc_group_new ()
 {
-	return NULL;
+	return _cmc_group_push (NULL, 0, CMC_BOTH, 0.0, 1.0);
+}
+
+void 
+cmc_group_clear (CMC *cmc)
+{
+	_cmc_group_free (cmc->groups);
+	cmc->groups = _cmc_group_new ();
+	cmc->n_groups = 1;
+}
+
+uint8_t 
+cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
+{
+	if (cmc->n_groups >= config.cmc_max_groups)
+		return 0;
+
+	cmc->groups = _cmc_group_push (cmc->groups, tid, uid, x0, x1);
+	cmc->n_groups += 1;
+	return 1;
+}
+
+uint8_t
+cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
+{
+	CMC_Group *ptr = cmc->groups;
+
+	while (ptr)
+		if (tid == ptr->tid)
+		{
+			ptr->uid = uid;
+			ptr->x0 = x0;
+			ptr->x1 = x1;
+			ptr->m = 1.0/(x1-x0);
+			return 1;
+		}
+	return 0;
 }

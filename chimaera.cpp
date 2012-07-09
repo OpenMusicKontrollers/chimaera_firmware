@@ -32,9 +32,9 @@
 /*
  * libmaple headers
  */
-#include <wirish.h>
-#include <adc.h> // analog to digital converter
-#include <dma.h> // direct memory access
+#include <wirish/wirish.h>
+#include <libmaple/adc.h> // analog to digital converter
+#include <libmaple/dma.h> // direct memory access
 
 const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
@@ -239,16 +239,15 @@ loop ()
 			int16_t adc_data;
 			adc_data = (rawDataArray[p*ADC_LENGTH + i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
 			adc_data -= ADC_Offset[p*ADC_LENGTH + i];
-			adc_data = abs (adc_data); // [0, ADC_HALF_BITDPEPTH]
-			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, adc_data);
+			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
 		}
 
 	// TODO broken sensors
-	cmc_set (cmc, 0x0 + 0x10*8, 0);
-	cmc_set (cmc, 0x2 + 0x10*8, 0);
-	cmc_set (cmc, 0x3 + 0x10*8, 0);
+	cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
+	cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
+	cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
 
-	cmc_set (cmc, 0xc + 0x10*7, 0);
+	cmc_set (cmc, 0xc + 0x10*7, 0, 0);
 }
 
 /*
@@ -282,6 +281,55 @@ _cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC
 	adc_timer.resume ();
 
 	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	cmc_group_clear (cmc);
+
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// TODO check whether enough arguments were given
+	if (cmc_group_add (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// TODO check whether enough arguments were given
+	if (cmc_group_set (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
 	dma_udp_send (config.config.sock, buf, size);
 
 	return 1;
@@ -380,7 +428,10 @@ setup ()
 
 	// add methods to OSC server
 	t0.all = 0ULL;
-	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "i", _cmc_rate_set, NULL);
+	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "ii", _cmc_rate_set, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set, buf);
 	serv = config_methods_add (serv, buf);
 
 	// set up ADC
