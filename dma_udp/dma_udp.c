@@ -27,8 +27,8 @@
 
 #include <string.h>
 
-#include <dma.h>
-#include <spi.h>
+#include <libmaple/dma.h>
+#include <libmaple/spi.h>
 
 static gpio_dev *ss_dev;
 static uint8_t ss_bit;

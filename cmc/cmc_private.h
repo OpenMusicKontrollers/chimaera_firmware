@@ -29,17 +29,29 @@
 
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
+typedef struct _CMC_Group CMC_Group;
 
 struct _CMC_Sensor {
 	float x;
 	uint16_t v;
+	uint8_t n; // negative?
 };
 
 struct _CMC_Blob {
 	uint32_t sid;
+	uint16_t uid;
+	CMC_Group *group;
 	float x, p;
 	uint8_t above_thresh;
 	uint8_t ignore;
+};
+
+struct _CMC_Group {
+	uint16_t tid;
+	uint16_t uid;
+	float x0, x1;
+	float m;
+	CMC_Group *next;
 };
 
 struct _CMC {
@@ -59,8 +71,15 @@ struct _CMC {
 	CMC_Sensor *sensors;
 	CMC_Blob *old_blobs;
 	CMC_Blob *new_blobs;
+	CMC_Group *groups;
+	uint8_t n_groups;
 
 	Tuio2 *tuio;
 };
+
+CMC_Group *_cmc_group_new ();
+void _cmc_group_free (CMC_Group *group);
+CMC_Group *_cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1);
+CMC_Group *_cmc_group_pop (CMC_Group *group);
 
 #endif /* CMC_PRIVATE_H */

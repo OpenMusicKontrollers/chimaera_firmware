@@ -25,7 +25,7 @@
 
 #include "nosc_private.h"
 
-//TODO get rid of calloc and strdup and use configurable buffers for it
+//TODO get rid of calloc and strdup and use configurable static buffers for it
 
 /*
  * Server
@@ -52,8 +52,8 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 	while (ptr)
 	{
 		// raw matches only of path and format strings
-		if ( ptr->path && !strcmp (ptr->path, path))
-			//if ( ptr->fmt && !strcmp (ptr->fmt, fmt)) //TODO not working properly atm
+		if ( !ptr->path || !strcmp (ptr->path, path))
+			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
 			{
 				nOSC_Message *tmp = msg;
 
@@ -142,7 +142,7 @@ _nosc_bundle_deserialize (uint8_t *buf, uint16_t size)
 	uint8_t *buf_ptr = buf;
 
 	buf_ptr += 8; // skip "#bundle"
-	buf_ptr += 8; // timestamp is ignored, we have too little memory to store messages for later dispatching
+	buf_ptr += 8; // XXX timestamp is ignored fo now and messages dispatched immediately, we have too little memory to store arbitrary amounts of messages for later dispatching
 
 	while (buf_ptr-buf < size)
 	{
@@ -302,19 +302,14 @@ nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path)
 	return new;
 }
 
+static const char *bundle = "#bundle";
+
 uint16_t
 nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
-	buf[0] = '#';
-	buf[1] = 'b';
-	buf[2] = 'u';
-	buf[3] = 'n';
-	buf[4] = 'd';
-	buf[5] = 'l';
-	buf[6] = 'e';
-	buf[7] = '\0';
+	memcpy (buf_ptr, bundle, 8);
 	buf_ptr += 8;
 
 	uint64_t tt = htonll (timestamp.all);

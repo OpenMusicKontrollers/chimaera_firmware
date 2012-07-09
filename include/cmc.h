@@ -33,6 +33,10 @@
 extern "C" {
 #endif
 
+#define CMC_NORTH 0x80
+#define CMC_SOUTH 0x100
+#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
+
 typedef struct _CMC CMC;
 
 typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
@@ -40,11 +44,15 @@ typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
 CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1);
 void cmc_free (CMC *cmc);
 
-void cmc_set (CMC *cmc, uint8_t i, uint16_t v);
+void cmc_set (CMC *cmc, uint8_t i, uint16_t v, uint8_t n);
 uint8_t cmc_process (CMC *cmc);
 uint16_t cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, uint8_t *buf);
 uint16_t cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1);
+
+void cmc_group_clear (CMC *cmc);
+uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
+uint8_t cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
 
 #ifdef __cplusplus
 }

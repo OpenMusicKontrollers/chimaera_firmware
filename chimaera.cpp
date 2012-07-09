@@ -32,26 +32,26 @@
 /*
  * libmaple headers
  */
-#include <wirish.h>
-#include <adc.h> // analog to digital converter
-#include <dma.h> // direct memory access
+#include <wirish/wirish.h>
+#include <libmaple/adc.h> // analog to digital converter
+#include <libmaple/dma.h> // direct memory access
 
 const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
 uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
 
 volatile uint8_t adc_dma_done;
-const uint8_t ADC_LENGTH = 8; // the number of channels to be converted per ADC 
-const uint8_t ADC_DUAL_LENGTH = 4; // the number of channels to be converted per ADC 
+const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
+const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
 uint16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {3, 5, 7, 9}; // analog input pins read out by the ADC
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {4, 6, 8, 10}; // analog input pins read out by the ADC
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-uint8_t ADC_Order_MUX [MUX_MAX] = { 4, 5, 6, 7, 8, 9, 10, 11, 15, 14, 13, 12, 3, 2, 1, 0 };
-uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -87,6 +87,14 @@ volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 
 void
+debug (const char *str)
+{
+	uint16_t size;
+	size = nosc_message_vararg_serialize (buf, "/debug", "s", str);
+	dma_udp_send (config.config.sock, buf, size);
+}
+
+void
 timestamp_set (timestamp64u_t *ptr)
 {
 	timestamp64u_t tmp;
@@ -119,6 +127,8 @@ adc_timer_irq (void)
 
 			mux_counter++;
 		}
+		else
+			adc_timer.pause ();
 }
 
 void
@@ -132,6 +142,7 @@ adc_dma_run ()
 {
 	adc_dma_done = 0;
 	mux_counter = 0;
+	adc_timer.resume ();
 }
 
 void
@@ -152,9 +163,9 @@ loop ()
 	if (config.dump.enabled)
 	{
 		//len = cmc_dump (cmc, buf);
-		len = cmc_dump_partial (cmc, buf, 0*MUX_MAX, 3*MUX_MAX);
+		//len = cmc_dump_partial (cmc, buf, 0*MUX_MAX, 3*MUX_MAX);
 		//len = cmc_dump_partial (cmc, buf, 3*MUX_MAX, 6*MUX_MAX);
-		//len = cmc_dump_partial (cmc, buf, 6*MUX_MAX, 9*MUX_MAX);
+		len = cmc_dump_partial (cmc, buf, 6*MUX_MAX, 9*MUX_MAX);
 		dma_udp_send (config.dump.sock, buf, len);
 	}
 
@@ -247,15 +258,15 @@ loop ()
 			int16_t adc_data;
 			adc_data = (rawDataArray[p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
 			adc_data -= ADC_Offset[p][i];
-			adc_data = abs (adc_data); // [0, ADC_HALF_BITDPEPTH]
-			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, adc_data);
+			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
 		}
 
 	// TODO broken sensors
-	cmc_set (cmc, 0xc + 0x10*0, 0);
-	cmc_set (cmc, 0xd + 0x10*0, 0);
-	cmc_set (cmc, 0xf + 0x10*0, 0);
-	cmc_set (cmc, 0x3 + 0x10*1, 0);
+	cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
+	cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
+	cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
+
+	cmc_set (cmc, 0xc + 0x10*7, 0, 0);
 }
 
 /*
@@ -294,6 +305,53 @@ _cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC
 	return 1;
 }
 
+uint8_t
+_cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	cmc_group_clear (cmc);
+
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_add (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+uint8_t
+_cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_set (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
 void
 setup ()
 {
@@ -313,24 +371,6 @@ setup ()
 		pinMode (ADC1_Sequence[i], INPUT_ANALOG);
 		pinMode (ADC2_Sequence[i], INPUT_ANALOG);
 	}
-
-	// init adc_timer
-	adc_timer.pause ();
-  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
-	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	adc_timer.attachCompare1Interrupt (adc_timer_irq);
-	adc_timer.refresh ();
-	adc_timer.resume ();
-
-	// init sntp_timer
-	sntp_timer.pause ();
-  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
-	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
-	sntp_timer.refresh ();
-	sntp_timer.resume ();
 
 	// init DMA
 	dma_init (DMA1);
@@ -367,7 +407,6 @@ setup ()
 	}
 
 	// init dump socket
-	config.dump.enabled = 1; //TODO
 	if (config.dump.enabled)
 	{
 		dma_udp_begin (config.dump.sock, config.dump.port);
@@ -390,7 +429,10 @@ setup ()
 
 	// add methods to OSC server
 	t0.all = 0ULL;
-	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "i", _cmc_rate_set, NULL);
+	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "ii", _cmc_rate_set, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add, buf);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set, buf);
 	serv = config_methods_add (serv, buf);
 
 	// set up ADC
@@ -399,6 +441,19 @@ setup ()
 
 	adc_set_extsel (ADC1, ADC_EXT_EV_SWSTART);
 	adc_set_extsel (ADC2, ADC_EXT_EV_SWSTART);
+
+	/*
+	ADC_SMPR_1_5
+	ADC_SMPR_7_5
+	ADC_SMPR_13_5
+	ADC_SMPR_28_5
+	ADC_SMPR_41_5
+	ADC_SMPR_55_5
+	ADC_SMPR_71_5
+	ADC_SMPR_239_5
+	*/
+	adc_set_sample_rate (ADC1, ADC_SMPR_28_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_28_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
@@ -409,8 +464,8 @@ setup ()
 	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
   ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
 
-  adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted. 
-  adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted. 
+  adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted 
+  adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
 
 	for (uint8_t i=0; i<ADC_DUAL_LENGTH; i++)
 	{
@@ -447,6 +502,27 @@ setup ()
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
+	// set up continuous music controller struct
+	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
+
+	// init adc_timer
+	adc_timer.pause ();
+  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	adc_timer.attachCompare1Interrupt (adc_timer_irq);
+	adc_timer.refresh ();
+	//adc_timer.resume ();
+
+	// init sntp_timer
+	sntp_timer.pause ();
+  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
+	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
+	sntp_timer.refresh ();
+	sntp_timer.resume ();
+
 	// calibrate sensors
 	for (uint8_t c=0; c<100; c++)
 	{
@@ -471,9 +547,6 @@ setup ()
 			dma_udp_send (config.config.sock, buf, size);
 		}
 	*/
-
-	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
 }
 
 __attribute__ ((constructor)) void

@@ -79,6 +79,9 @@ struct _Config {
 		uint16_t thresh0;
 		uint16_t thresh1;
 	} cmc;
+
+	uint8_t tuio_long_header;
+	uint8_t cmc_max_groups;
 };
 
 extern Config config;
