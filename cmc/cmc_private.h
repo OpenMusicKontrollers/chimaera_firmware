@@ -74,6 +74,8 @@ struct _CMC {
 	CMC_Group *groups;
 	uint8_t n_groups;
 
+	float **matrix;
+
 	Tuio2 *tuio;
 };
 

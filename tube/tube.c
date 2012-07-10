@@ -34,7 +34,7 @@ dma_tube_config adc_tube = {
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_32BITS,
 	.tube_nr_xfers = 0, //set me
-	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CIRC | DMA_CFG_CMPLT_IE,
+	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CIRC | DMA_CFG_HALF_CMPLT_IE | DMA_CFG_CMPLT_IE,
 	.target_data = NULL,
 	.tube_req_src = DMA_REQ_SRC_ADC1
 };

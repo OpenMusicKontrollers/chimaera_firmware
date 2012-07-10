@@ -40,6 +40,7 @@ const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
 uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
 
+volatile uint8_t adc_dma_half_done;
 volatile uint8_t adc_dma_done;
 const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
 const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
@@ -50,8 +51,8 @@ uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -134,15 +135,33 @@ adc_timer_irq (void)
 void
 adc_dma_irq (void)
 {
-	adc_dma_done = 1;
+	switch (dma_get_irq_cause (DMA1, DMA_CH1))
+	{
+		case DMA_TRANSFER_HALF_COMPLETE:
+			adc_dma_half_done = 1;
+			return;
+		case DMA_TRANSFER_COMPLETE:
+			adc_dma_done = 1;
+			return;
+		default:
+			break;
+	};
 }
 
 void
 adc_dma_run ()
 {
+	adc_dma_half_done = 0;
 	adc_dma_done = 0;
 	mux_counter = 0;
 	adc_timer.resume ();
+}
+
+void
+adc_dma_half_block ()
+{
+	while (!adc_dma_half_done)
+		;
 }
 
 void
@@ -151,6 +170,11 @@ adc_dma_block ()
 	while (!adc_dma_done)
 		;
 }
+
+static const uint16_t test_buf_len = 116;
+static uint8_t test_buf [test_buf_len];
+
+uint8_t first = 1;
 
 void
 loop ()
@@ -249,24 +273,39 @@ loop ()
 		}
 	}
 
-	adc_dma_block ();
+	if (!first)
+	{
+		// store second half of ADC values into CMC struct
+		for (uint8_t p=MUX_MAX/2; p<MUX_MAX; p++)
+			for (uint8_t i=0; i<ADC_LENGTH; i++)
+			{
+				int16_t adc_data;
+				adc_data = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
+				cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
+			}
 
-	// store ADC values into CMC struct
-	for (uint8_t p=0; p<MUX_MAX; p++)
+		// TODO broken sensors
+		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
+		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
+		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
+
+		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
+	}
+	else
+		first = 0;
+
+	adc_dma_half_block ();
+
+	// store first half of ADC values into CMC struct
+	for (uint8_t p=0; p<MUX_MAX/2; p++)
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
 			int16_t adc_data;
-			adc_data = (rawDataArray[p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
-			adc_data -= ADC_Offset[p][i];
+			adc_data = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
 			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
 		}
 
-	// TODO broken sensors
-	cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
-	cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
-	cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
-
-	cmc_set (cmc, 0xc + 0x10*7, 0, 0);
+	adc_dma_block ();
 }
 
 /*
@@ -543,7 +582,7 @@ setup ()
 	for (uint8_t i=0; i<ADC_LENGTH; i++)
 		for (uint8_t p=0; p<MUX_MAX; p++)
 		{
-			uint16_t size = nosc_message_vararg_serialize (buf, "/calibration", "iii", i, p, ADC_Offset[p*ADC_LENGTH + i]);
+			uint16_t size = nosc_message_vararg_serialize (buf, "/calibration", "iii", i, p, ADC_Offset[p][i]);
 			dma_udp_send (config.config.sock, buf, size);
 		}
 	*/

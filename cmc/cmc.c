@@ -63,6 +63,10 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 		cmc->sensors[i].v = 0x0;
 	}
 
+	cmc->matrix = calloc (mb, sizeof (float *));
+	for (i=0; i<mb; i++)
+		cmc->matrix[i] = calloc (mb, sizeof (float));
+
 	cmc->tuio = tuio2_new (mb);
 
 	cmc->groups = _cmc_group_new ();
@@ -73,8 +77,13 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 void
 cmc_free (CMC *cmc)
 {
+	uint8_t i;
+
 	_cmc_group_free (cmc->groups);
 	tuio2_free (cmc->tuio);
+	for (i=0; i<cmc->max_blobs; i++)
+		free (cmc->matrix[i]);
+	free (cmc->matrix);
 	free (cmc->new_blobs);
 	free (cmc->old_blobs);
 	free (cmc->sensors);
@@ -103,10 +112,7 @@ cmc_process (CMC *cmc)
 	for (i=1; i<cmc->n_sensors+1; i++)
 		if ( (cmc->sensors[i].v > cmc->thresh0) && (cmc->sensors[i].v - cmc->sensors[i-1].v > cmc->diff) && (cmc->sensors[i].v - cmc->sensors[i+1].v > cmc->diff) )
 		{
-			/*
-			 * fit parabola
-			 */
-
+			//fit parabola
 			float x1 = cmc->sensors[i].x;
 			float d = cmc->d;
 
@@ -139,14 +145,12 @@ cmc_process (CMC *cmc)
 	/*
 	 * relate new to old blobs
 	 */
-
 	if (cmc->I && cmc->J)
 	{
 		// fill distance matrix of old and new blobs
-		float matrix [cmc->I][cmc->J];
 		for (i=0; i<cmc->I; i++) // old blobs
 			for (j=0; j<cmc->J; j++) // new blobs
-				matrix[i][j] = fabs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
+				cmc->matrix[i][j] = fabs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
 
 		uint8_t ptr = cmc->J;
 		while (ptr)
@@ -157,14 +161,14 @@ cmc_process (CMC *cmc)
 			for (i=0; i<cmc->I; i++) // old blobs
 				for (j=0; j<cmc->J; j++) // new blobs
 				{
-					if (matrix[i][j] == -1)
+					if (cmc->matrix[i][j] == -1)
 						continue;
 
-					if (matrix[i][j] < min)
+					if (cmc->matrix[i][j] < min)
 					{
 						a = i;
 						b = j;
-						min = matrix[i][j];
+						min = cmc->matrix[i][j];
 					}
 				}
 
@@ -185,15 +189,15 @@ cmc_process (CMC *cmc)
 					case 2:
 						blb2->sid = blb->sid;
 						blb2->group = blb->group;
-						matrix[a][b] = -1;
+						cmc->matrix[a][b] = -1;
 						break;
 					default:
 						blb2->sid = blb->sid;
 						blb2->group = blb->group;
 						for (i=0; i<cmc->I; i++)
-							matrix[i][b] = -1;
+							cmc->matrix[i][b] = -1;
 						for (j=0; j<cmc->J; j++)
-							matrix[a][j] = -1;
+							cmc->matrix[a][j] = -1;
 						break;
 				}
 			}
@@ -202,9 +206,9 @@ cmc_process (CMC *cmc)
 				blb2->sid = blb->sid;
 				blb2->group = blb->group;
 				for (i=0; i<cmc->I; i++)
-					matrix[i][b] = -1;
+					cmc->matrix[i][b] = -1;
 				for (j=0; j<cmc->J; j++)
-					matrix[a][j] = -1;
+					cmc->matrix[a][j] = -1;
 			}
 			ptr--;
 		}
