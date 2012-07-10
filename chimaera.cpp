@@ -195,13 +195,13 @@ loop ()
 
 	if (config.tuio.enabled || config.rtpmidi.payload.enabled)
 	{
-		cmc_job = cmc_process (cmc);
+		cmc_job = cmc_process (cmc); //TODO speed this up (fixed point math or ARM Cortex M4;-)
 
 		if (cmc_job)
 		{
 			timestamp_set (&now);
 
-			len = cmc_write (cmc, now, buf);
+			len = cmc_write (cmc, now, buf); //TODO speed this up
 			dma_udp_send (config.tuio.sock, buf, len);
 		}
 	}
