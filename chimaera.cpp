@@ -186,10 +186,11 @@ loop ()
 
 	if (config.dump.enabled)
 	{
-		//len = cmc_dump (cmc, buf);
-		//len = cmc_dump_partial (cmc, buf, 0*MUX_MAX, 3*MUX_MAX);
-		//len = cmc_dump_partial (cmc, buf, 3*MUX_MAX, 6*MUX_MAX);
-		len = cmc_dump_partial (cmc, buf, 6*MUX_MAX, 9*MUX_MAX);
+		timestamp_set (&now);
+		//len = cmc_dump (cmc, now, buf);
+		len = cmc_dump_partial (cmc, now, buf, 0*MUX_MAX, 3*MUX_MAX);
+		//len = cmc_dump_partial (cmc, now, buf, 3*MUX_MAX, 6*MUX_MAX);
+		//len = cmc_dump_partial (cmc, now, buf, 6*MUX_MAX, 9*MUX_MAX);
 		dma_udp_send (config.dump.sock, buf, len);
 	}
 
@@ -446,6 +447,7 @@ setup ()
 	}
 
 	// init dump socket
+	//config.dump.enabled = 1;
 	if (config.dump.enabled)
 	{
 		dma_udp_begin (config.dump.sock, config.dump.port);
@@ -491,8 +493,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_28_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_28_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)

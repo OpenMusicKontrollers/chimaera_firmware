@@ -47,8 +47,8 @@ void cmc_free (CMC *cmc);
 void cmc_set (CMC *cmc, uint8_t i, uint16_t v, uint8_t n);
 uint8_t cmc_process (CMC *cmc);
 uint16_t cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_dump (CMC *cmc, uint8_t *buf);
-uint16_t cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1);
+uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
+uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
 
 void cmc_group_clear (CMC *cmc);
 uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);

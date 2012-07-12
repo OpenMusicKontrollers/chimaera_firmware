@@ -93,7 +93,7 @@ cmc_free (CMC *cmc)
 void
 cmc_set (CMC* cmc, uint8_t i, uint16_t v, uint8_t n)
 {
-	cmc->sensors[i+1].v = v;
+	cmc->sensors[i+1].v = v < cmc->thresh0 ? 0.0 : v;
 	cmc->sensors[i+1].n = n;
 }
 
@@ -110,8 +110,26 @@ cmc_process (CMC *cmc)
 	 */
 	cmc->J = 0;
 	for (i=1; i<cmc->n_sensors+1; i++)
-		if ( (cmc->sensors[i].v > cmc->thresh0) && (cmc->sensors[i].v - cmc->sensors[i-1].v > cmc->diff) && (cmc->sensors[i].v - cmc->sensors[i+1].v > cmc->diff) )
+		if ( (cmc->sensors[i].v > cmc->thresh0) && (cmc->sensors[i].v - cmc->sensors[i-1].v >= cmc->diff) && (cmc->sensors[i].v - cmc->sensors[i+1].v > cmc->diff) )
 		{
+			uint8_t I;
+			uint8_t local_max = 0;
+			for (I=2; I<3; I++)
+			{
+				if ( (i-I >= 0) && (cmc->sensors[i].v - cmc->sensors[i-I].v < cmc->diff) )
+				{
+					local_max = 1;
+					break;
+				}
+				if ( (i+I <= cmc->n_sensors) && (cmc->sensors[i].v - cmc->sensors[i+I].v < cmc->diff) )
+				{
+					local_max = 1;
+					break;
+				}
+			}
+			if (local_max)
+				continue;
+
 			//fit parabola
 			float x1 = cmc->sensors[i].x;
 			float d = cmc->d;
@@ -121,18 +139,19 @@ cmc_process (CMC *cmc)
 			float y2 = (float)cmc->sensors[i+1].v * cmc->_bitdepth;
 
 			float x = x1 + 0.5*d*(y0 - y2) / (y0 - 2.0*y1 + y2);
-			float y = y0 + y1 + y2; //TODO this can be bigger than 1.0
+			float y = (y0 + y1 + y2) * 0.33; //TODO this can be bigger than 1.0
 
 			// rescale according to threshold
 			y -= cmc->thresh0_f;
 			y *= cmc->_thresh0_f;
+			y *= 2.0;
 
 			if (x < 0.0) x = 0.0;
 			if (x > 1.0) x = 1.0;
 			if (y < 0.0) y = 0.0;
 			if (y > 1.0) y = 1.0;
 
-			cmc->new_blobs[cmc->J].sid = i;
+			cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
 			cmc->new_blobs[cmc->J].x = x;
 			cmc->new_blobs[cmc->J].p = y;
 			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
@@ -152,8 +171,10 @@ cmc_process (CMC *cmc)
 			for (j=0; j<cmc->J; j++) // new blobs
 				cmc->matrix[i][j] = fabs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
 
-		uint8_t ptr = cmc->J;
-		while (ptr)
+		// associate new with old blobs
+		uint8_t ptr;
+		uint8_t low = cmc->J <= cmc->I ? cmc->J : cmc->I;
+		for (ptr=0; ptr<low; ptr++)
 		{
 			float min = 99.9;
 			uint8_t a = 0, b = 0;
@@ -175,49 +196,32 @@ cmc_process (CMC *cmc)
 			CMC_Blob *blb = &(cmc->old_blobs[a]);
 			CMC_Blob *blb2 = &(cmc->new_blobs[b]);
 
-			if (cmc->J > cmc->I)
-			{
-				switch (ptr)
-				{
-					case 1:
-						if (blb2->above_thresh) // check whether it is above threshold for a new blob
-							blb2->sid = ++(cmc->sid); // this is a new blob
-						else
-							blb2->ignore = 1;
-						blb2->group = NULL;
-						break;
-					case 2:
-						blb2->sid = blb->sid;
-						blb2->group = blb->group;
-						cmc->matrix[a][b] = -1;
-						break;
-					default:
-						blb2->sid = blb->sid;
-						blb2->group = blb->group;
-						for (i=0; i<cmc->I; i++)
-							cmc->matrix[i][b] = -1;
-						for (j=0; j<cmc->J; j++)
-							cmc->matrix[a][j] = -1;
-						break;
-				}
-			}
-			else // J <= I
-			{
-				blb2->sid = blb->sid;
-				blb2->group = blb->group;
-				for (i=0; i<cmc->I; i++)
-					cmc->matrix[i][b] = -1;
-				for (j=0; j<cmc->J; j++)
-					cmc->matrix[a][j] = -1;
-			}
-			ptr--;
+			blb2->sid = blb->sid;
+			blb2->group = blb->group;
+
+			for (i=0; i<cmc->I; i++)
+				cmc->matrix[i][b] = -1;
+			for (j=0; j<cmc->J; j++)
+				cmc->matrix[a][j] = -1;
 		}
+
+		// handle all new blobs
+		if (cmc->J > cmc->I)
+			for (j=0; j<cmc->J; j++)
+				if (cmc->new_blobs[j].sid == -1)
+				{
+					if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
+						cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
+					else
+						cmc->new_blobs[j].ignore = 1;
+					cmc->new_blobs[j].group = NULL;
+				}
 	}
 	else if (!cmc->I && cmc->J)
 	{
-		for (j=0; j<cmc->J; j++) // check whether it is above threshold for a new blob
+		for (j=0; j<cmc->J; j++)
 		{
-			if (cmc->new_blobs[j].above_thresh)
+			if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
 				cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
 			else
 				cmc->new_blobs[j].ignore = 1;
@@ -236,7 +240,7 @@ cmc_process (CMC *cmc)
 	{
 		uint8_t ignore = cmc->new_blobs[j].ignore;
 
-		if (newJ != cmc->J)
+		if (newJ != j)
 		{
 			cmc->new_blobs[newJ].sid = cmc->new_blobs[j].sid;
 			cmc->new_blobs[newJ].x = cmc->new_blobs[j].x;
@@ -310,12 +314,13 @@ cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 }
 
 uint16_t 
-cmc_dump (CMC *cmc, uint8_t *buf)
+cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t i;
 	uint16_t size;
 
 	nOSC_Message *msg = NULL;
+	msg = nosc_message_add_timestamp (msg, timestamp);
 	for (i=0; i<cmc->n_sensors; i++)
 		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
 	size = nosc_message_serialize (msg, "/cmc/dump", buf);
@@ -325,12 +330,13 @@ cmc_dump (CMC *cmc, uint8_t *buf)
 }
 
 uint16_t 
-cmc_dump_partial (CMC *cmc, uint8_t *buf, uint8_t s0, uint8_t s1)
+cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1)
 {
 	uint8_t i;
 	uint16_t size;
 
 	nOSC_Message *msg = NULL;
+	msg = nosc_message_add_timestamp (msg, timestamp);
 	for (i=s0; i<s1; i++)
 		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
 	size = nosc_message_serialize (msg, "/cmc/dump_partial", buf);
