@@ -21,6 +21,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
 BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
 BUILDDIRS += $(BUILD_PATH)/$(d)/tube
+BUILDDIRS += $(BUILD_PATH)/$(d)/eeprom
 
 ### Local flags: these control how the compiler gets called.
 
@@ -62,6 +63,7 @@ cSRCS_$(d) += tuio2/tuio2.c
 cSRCS_$(d) += config/config.c
 cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += tube/tube.c
+cSRCS_$(d) += eeprom/eeprom.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.

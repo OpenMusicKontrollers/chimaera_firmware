@@ -33,6 +33,7 @@
  * libmaple headers
  */
 #include <wirish/wirish.h>
+#include <libmaple/i2c.h> // i2c for eeprom
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 
@@ -69,6 +70,7 @@ const uint8_t PWDN = 17;
 #include <config.h>
 #include <sntp.h>
 #include <tube.h>
+#include <eeprom.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
 
@@ -411,6 +413,10 @@ setup ()
 		pinMode (ADC1_Sequence[i], INPUT_ANALOG);
 		pinMode (ADC2_Sequence[i], INPUT_ANALOG);
 	}
+
+	// init eeprom for I2C1
+	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
+	//TODO implement reading and writing the config
 
 	// init DMA
 	dma_init (DMA1);
