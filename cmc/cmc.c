@@ -28,6 +28,44 @@
 
 #include "config.h"
 
+static RTP_MIDI_List note_on [] = {
+	{0x0, NOTE_ON}, // note on / channel 0
+	{0x0, 0x7f}, // key
+	{0x0, 0x7f}, // velocity
+
+	{0x0, PITCH_BEND}, // pitch bend / channel 0
+	{0x0, 0x7f}, // pitch bend LSB
+	{0x0, 0x7f}, // pitch bend MSB
+
+	{0x0 ,0xa0}, // control change / channel 0
+	{0x0, VOLUME}, // volume
+	{0x0, 0x1a}, // LSB
+
+	{0x0, 0xa0}, // control change / channel 0
+	{0x0, VOLUME}, // volume
+	{0x0, 0x1a} // MSB
+};
+
+static RTP_MIDI_List note_off [] = {
+	{0x0, NOTE_OFF}, // note on / channel 0
+	{0x0, 0x7f}, // key
+	{0x0, 0x00} // velocity
+};
+
+static RTP_MIDI_List note_set [] = {
+	{0x0, PITCH_BEND}, // pitch bend / channel 0
+	{0x0, 0x7f}, // pitch bend LSB
+	{0x0, 0x7f}, // pitch bend MSB
+
+	{0x0 ,0xa0}, // control change / channel 0
+	{0x0, VOLUME}, // volume
+	{0x0, 0x1a}, // LSB
+
+	{0x0, 0xa0}, // control change / channel 0
+	{0x0, VOLUME}, // volume
+	{0x0, 0x1a} // MSB
+};
+
 CMC *
 cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1)
 {
@@ -68,6 +106,7 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 		cmc->matrix[i] = calloc (mb, sizeof (float));
 
 	cmc->tuio = tuio2_new (mb);
+	cmc->rtpmidi_packet = rtpmidi_new ();
 
 	cmc->groups = _cmc_group_new ();
 
@@ -80,6 +119,7 @@ cmc_free (CMC *cmc)
 	uint8_t i;
 
 	_cmc_group_free (cmc->groups);
+	rtpmidi_free (cmc->rtpmidi_packet);
 	tuio2_free (cmc->tuio);
 	for (i=0; i<cmc->max_blobs; i++)
 		free (cmc->matrix[i]);
@@ -287,7 +327,7 @@ cmc_process (CMC *cmc)
 }
 
 uint16_t
-cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
+cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t j;
 	uint16_t size;
@@ -310,6 +350,24 @@ cmc_write (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 			cmc->old_blobs[j].p);
 	}
 	size = tuio2_serialize (cmc->tuio, buf, cmc->I);
+	return size;
+}
+
+uint16_t
+cmc_write_rtpmidi (CMC *cmc, uint8_t *buf)
+{
+	uint16_t size;
+	//TODO
+	uint32_t timestamp = 0x0;
+
+	//TODO
+	rtpmidi_header_set (cmc->rtpmidi_packet, cmc->fid, timestamp);
+
+	// note on
+	//TODO
+	rtpmidi_list_set (cmc->rtpmidi_packet, &note_on[0], sizeof (note_on));
+	
+	size = rtpmidi_serialize (cmc->rtpmidi_packet, buf);
 	return size;
 }
 

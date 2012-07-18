@@ -26,6 +26,7 @@
 
 #include <cmc.h>
 #include <tuio2.h>
+#include <rtpmidi.h>
 
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
@@ -77,6 +78,7 @@ struct _CMC {
 	float **matrix;
 
 	Tuio2 *tuio;
+	RTP_MIDI_Packet *rtpmidi_packet;
 };
 
 CMC_Group *_cmc_group_new ();

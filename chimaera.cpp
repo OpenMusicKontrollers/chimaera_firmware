@@ -63,6 +63,10 @@ const uint8_t PWDN = 17;
  * continuous music controller lib
  * dma udp lib
  * configuration lib
+ * simplified network time protocol lib
+ * dma tube configuration lib
+ * I2C eeprom lib
+ * RTP MIDI lib
  */
 #include <nosc.h>
 #include <cmc.h>
@@ -71,6 +75,7 @@ const uint8_t PWDN = 17;
 #include <sntp.h>
 #include <tube.h>
 #include <eeprom.h>
+#include <rtpmidi.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
 
@@ -173,9 +178,6 @@ adc_dma_block ()
 		;
 }
 
-static const uint16_t test_buf_len = 116;
-static uint8_t test_buf [test_buf_len];
-
 uint8_t first = 1;
 
 void
@@ -204,8 +206,17 @@ loop ()
 		{
 			timestamp_set (&now);
 
-			len = cmc_write (cmc, now, buf); //TODO speed this up
-			dma_udp_send (config.tuio.sock, buf, len);
+			if (config.tuio.enabled)
+			{
+				len = cmc_write_tuio2 (cmc, now, buf); //TODO speed this up
+				dma_udp_send (config.tuio.sock, buf, len);
+			}
+
+			if (config.rtpmidi.payload.enabled)
+			{
+				len = cmc_write_rtpmidi (cmc, buf);
+				dma_udp_send (config.rtpmidi.payload.sock, buf, len);
+			}
 		}
 	}
 

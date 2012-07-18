@@ -21,42 +21,45 @@
  *     distribution.
  */
 
-#ifndef _CMC_H_
-#define _CMC_H_
+#ifndef _RTPMIDI_H
+#define _RTPMIDI_H_
 
 #include <stdint.h>
-#include <stdlib.h>
-
-#include <nosc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CMC_NORTH 0x80
-#define CMC_SOUTH 0x100
-#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
+#define NOTE_OFF 0x80
+#define NOTE_ON 0x90
+#define AFTER_TOUCH 0xa0
+#define CONTROL_CHANGE 0xb0
+#define PITCH_BEND 0xe0
 
-typedef struct _CMC CMC;
+#define MOD_WHEEL 0x01
+#define BREATH_CONTROL 0x02
+#define VOLUME 0x07
+#define EFFECT_CONTROL_1 0x0c
+#define EFFECT_CONTROL_2 0x0d
 
-typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
+typedef struct _RTP_MIDI_List RTP_MIDI_List;
+typedef struct _RTP_MIDI_Packet RTP_MIDI_Packet;
 
-CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1);
-void cmc_free (CMC *cmc);
+struct _RTP_MIDI_List {
+	uint8_t delta_time;
+	uint8_t midi_command;
+};
 
-void cmc_set (CMC *cmc, uint8_t i, uint16_t v, uint8_t n);
-uint8_t cmc_process (CMC *cmc);
-uint16_t cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_write_rtpmidi (CMC *cmc, uint8_t *buf);
-uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
+RTP_MIDI_Packet *rtpmidi_new ();
+void rtpmidi_free (RTP_MIDI_Packet *packet);
 
-void cmc_group_clear (CMC *cmc);
-uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
+void rtpmidi_header_set (RTP_MIDI_Packet *packet, uint32_t sequence_number, uint32_t timestamp);
+void rtpmidi_list_set (RTP_MIDI_Packet *packet, RTP_MIDI_List *list, uint16_t len);
+
+uint16_t rtpmidi_serialize (RTP_MIDI_Packet *packet, uint8_t *buf);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // _RTPMIDI_H_
