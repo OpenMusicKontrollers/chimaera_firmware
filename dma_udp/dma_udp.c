@@ -112,6 +112,7 @@ _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 	return buf;
 }
 
+/*
 void
 _dma_write_nonblocking_in (uint8_t *buf)
 {
@@ -125,6 +126,7 @@ _dma_write_nonblocking_out ()
 	spi_dma_block ();
 	resetSS ();
 }
+*/
 
 void
 _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
@@ -317,82 +319,6 @@ dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 	flag = SnCR_SEND;
 	_dma_write_sock (sock, SnCR, &flag, 1);
 
-	uint8_t ir;
-	do
-	{
-		_dma_read_sock (sock, SnIR, &ir, 1);
-		if (ir & SnIR_TIMEOUT)
-		{
-			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
-			_dma_write_sock (sock, SnIR, &flag, 1);
-		}
-	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
-
-	flag = SnIR_SEND_OK;
-	_dma_write_sock (sock, SnIR, &flag, 1);
-}
-
-static struct {
-	uint16_t free;
-	uint16_t ptr;
-	uint16_t offset;
-	uint16_t SBASE;
-	uint16_t dstAddr;
-} mem;
-
-void
-dma_udp_send_nonblocking_1 (uint8_t sock, uint8_t *dat, uint16_t len)
-{
-	_dma_read_sock_16 (sock, SnTX_FSR, &mem.free);
-
-	if (len > mem.free)
-		return;
-
-	// move data to chip
-	_dma_read_sock_16 (sock, SnTX_WR, &mem.ptr);
-  mem.offset = mem.ptr & SMASK;
-	mem.SBASE = TXBUF_BASE + sock*SSIZE;
-  mem.dstAddr = mem.offset + mem.SBASE;
-}
-
-void
-dma_udp_send_nonblocking_2 (uint8_t sock, uint8_t *dat, uint16_t len)
-{
-	uint8_t *buf = spi_tx_dma_buf;
-
-	if (len > mem.free)
-		return;
-
-  if (mem.offset + len > SSIZE) 
-  {
-    // Wrap around circular buffer
-    uint16_t size = SSIZE - mem.offset;
-		buf = _dma_write_append (buf, mem.dstAddr, dat, size);
-		buf = _dma_write_append (buf, mem.SBASE, dat+size, len-size);
-  } 
-  else
-		buf = _dma_write_append (buf, mem.dstAddr, dat, len);
-
-  mem.ptr += len;
-	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, mem.ptr);
-
-	// send data
-	uint8_t flag;
-	flag = SnCR_SEND;
-	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
-
-	_dma_write_nonblocking_in (buf);
-}
-
-void
-dma_udp_send_nonblocking_3 (uint8_t sock, uint8_t *dat, uint16_t len)
-{
-	if (len > mem.free)
-		return;
-
-	_dma_write_nonblocking_out ();
-
-	uint8_t flag;
 	uint8_t ir;
 	do
 	{

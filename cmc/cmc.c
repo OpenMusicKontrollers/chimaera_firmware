@@ -29,6 +29,7 @@
 #include <chimaera.h>
 #include <config.h>
 
+/*
 static RTP_MIDI_List note_on [] = {
 	{0x0, NOTE_ON}, // note on / channel 0
 	{0x0, 0x7f}, // key
@@ -66,6 +67,7 @@ static RTP_MIDI_List note_set [] = {
 	{0x0, VOLUME}, // volume
 	{0x0, 0x1a} // MSB
 };
+*/
 
 CMC *
 cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1)
@@ -367,7 +369,7 @@ cmc_write_rtpmidi (CMC *cmc, uint8_t *buf)
 
 	// note on
 	//TODO
-	rtpmidi_list_set (cmc->rtpmidi_packet, &note_on[0], sizeof (note_on));
+	//rtpmidi_list_set (cmc->rtpmidi_packet, &note_on[0], sizeof (note_on));
 	
 	size = rtpmidi_serialize (cmc->rtpmidi_packet, buf);
 	return size;

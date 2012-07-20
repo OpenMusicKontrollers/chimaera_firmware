@@ -42,8 +42,8 @@ extern "C" {
 #define EFFECT_CONTROL_1 0x0c
 #define EFFECT_CONTROL_2 0x0d
 
-typedef struct _RTP_MIDI_List RTP_MIDI_List;
 typedef struct _RTP_MIDI_Packet RTP_MIDI_Packet;
+typedef struct _RTP_MIDI_List RTP_MIDI_List;
 
 struct _RTP_MIDI_List {
 	uint8_t delta_time;

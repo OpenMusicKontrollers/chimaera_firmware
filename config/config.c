@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include <chimaera.h>
 #include <dma_udp.h>
 
 #define LAN_BROADCAST {192, 168, 1, 255}
@@ -99,7 +100,7 @@ Config config = {
 	.cmc_max_groups = 32
 };
 
-uint8_t
+static uint8_t
 _version_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint8_t *buf = data;
@@ -112,7 +113,7 @@ _version_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_
 	return 1;
 }
 
-uint8_t
+static uint8_t
 _dump_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint8_t *buf = data;
@@ -137,6 +138,74 @@ _dump_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, 
 	return 1;
 }
 
+static uint8_t
+_cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// TODO implement infinite rate (run at maximal rate), we need a working _irq_adc for this, though
+	config.cmc.rate = args[1]->i;
+
+	adc_timer_pause ();
+	adc_timer_reconfigure ();
+	adc_timer_resume ();
+
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+static uint8_t
+_cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	cmc_group_clear (cmc);
+
+	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+static uint8_t
+_cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_add (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+static uint8_t
+_cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint8_t *buf = (uint8_t *)data;
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_set (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
+	dma_udp_send (config.config.sock, buf, size);
+
+	return 1;
+}
+
+
 nOSC_Server *
 config_methods_add (nOSC_Server *serv, void *data)
 {
@@ -151,6 +220,12 @@ config_methods_add (nOSC_Server *serv, void *data)
 
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set, data);
+
+	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "ii", _cmc_rate_set, data);
+
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear, data);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add, data);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set, data);
 
 	return serv;
 }

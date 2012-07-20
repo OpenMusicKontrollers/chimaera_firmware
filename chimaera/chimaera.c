@@ -21,11 +21,14 @@
  *     distribution.
  */
 
+#include <libmaple/nvic.h>
+
 #include <chimaera.h>
 #include <config.h>
 
-uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
-uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
+uint8_t buf_o[1024]; // general purpose output buffer
+uint8_t buf_i[1024]; // general purpose input buffer
+CMC *cmc = NULL;
 
 uint32_t debug_counter = 0;
 
@@ -33,22 +36,77 @@ void
 debug_str (const char *str)
 {
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf, "/debug", "is", debug_counter++, str);
-	dma_udp_send (config.config.sock, buf, size);
+	size = nosc_message_vararg_serialize (buf_o, "/debug", "is", debug_counter++, str);
+	dma_udp_send (config.config.sock, buf_o, size);
 }
 
 void
 debug_int32 (int32_t i)
 {
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf, "/debug", "ii", debug_counter++, i);
-	dma_udp_send (config.config.sock, buf, size);
+	size = nosc_message_vararg_serialize (buf_o, "/debug", "ii", debug_counter++, i);
+	dma_udp_send (config.config.sock, buf_o, size);
 }
 
 void
 debug_float (float f)
 {
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf, "/debug", "if", debug_counter++, f);
-	dma_udp_send (config.config.sock, buf, size);
+	size = nosc_message_vararg_serialize (buf_o, "/debug", "if", debug_counter++, f);
+	dma_udp_send (config.config.sock, buf_o, size);
+}
+
+void (*adc12_irq_handler) (void) = NULL;
+
+static void
+__irq_adc ()
+{
+	if (adc12_irq_handler)
+		adc12_irq_handler ();
+}
+
+void
+adc12_attach_interrupt (void (*handler) (void))
+{
+	adc12_irq_handler = handler;
+	nvic_irq_enable (NVIC_ADC_1_2);
+}
+
+void
+adc12_detach_interrupt ()
+{
+	nvic_irq_disable (NVIC_ADC_1_2);
+	adc12_irq_handler = NULL;
+}
+
+/*
+ * This function converts the array into one number by multiplying each 5-bits
+ * channel numbers by multiplications of 2^5
+ */
+static uint32_t
+_calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
+{
+	uint8_t i;
+  uint32_t adc_sequence=0;
+
+  for (i=0; i<n; i++)
+		adc_sequence += adc_sequence_array[i] << (i*5);
+
+  return adc_sequence;
+}
+
+void
+set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len)
+{
+	if (len > 12)
+	{
+		dev->regs->SQR1 = _calc_adc_sequence (&(seq[12]), len % 12); 
+		len -= len % 12;
+	}
+	if (len > 6)
+	{
+		dev->regs->SQR2 = _calc_adc_sequence (&(seq[6]), len % 6);
+		len -= len % 6;
+	}
+  dev->regs->SQR3 = _calc_adc_sequence (&(seq[0]), len);
 }

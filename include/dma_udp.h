@@ -41,12 +41,6 @@ void dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len);
 uint16_t dma_udp_available (uint8_t sock);
 void dma_udp_receive (uint8_t sock, uint8_t *buf, uint16_t len);
 
-void dma_udp_send_nonblocking_1 (uint8_t sock, uint8_t *dat, uint16_t len);
-void dma_udp_send_nonblocking_2 (uint8_t sock, uint8_t *dat, uint16_t len);
-void dma_udp_send_nonblocking_3 (uint8_t sock, uint8_t *dat, uint16_t len);
-void dma_udp_send_nonblocking_4 (uint8_t sock, uint8_t *dat, uint16_t len);
-void dma_udp_send_nonblocking_5 (uint8_t sock, uint8_t *dat, uint16_t len);
-
 #ifdef __cplusplus
 }
 #endif

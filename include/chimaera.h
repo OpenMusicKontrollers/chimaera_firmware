@@ -25,17 +25,40 @@
 #define _CHIMAERA_H_
 
 #include <stdint.h>
+#include <libmaple/adc.h>
+
+#include <nosc.h>
+#include <cmc.h>
+#include <dma_udp.h>
+#include <config.h>
+#include <sntp.h>
+#include <tube.h>
+#include <eeprom.h>
+//#include <rtpmidi.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
-extern uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
+extern uint8_t buf_o[]; // general purpose ourput buffer
+extern uint8_t buf_i[]; // general purpose input buffer
+extern CMC *cmc;
 
 void debug_str (const char *str);
 void debug_int32 (int32_t i);
 void debug_float (float f);
+
+void adc12_attach_interrupt (void (*handler) (void));
+void adc12_detach_interrupt ();
+void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
+
+void adc_timer_pause ();
+void adc_timer_reconfigure ();
+void adc_timer_resume ();
+
+void sntp_timer_pause ();
+void sntp_timer_reconfigure ();
+void sntp_timer_resume ();
 
 #ifdef __cplusplus
 }

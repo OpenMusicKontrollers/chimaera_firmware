@@ -64,28 +64,12 @@ uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 const uint8_t PWDN = 17;
 
 /*
- * nano Open Sound Control lib
- * continuous music controller lib
- * dma udp lib
- * configuration lib
- * simplified network time protocol lib
- * dma tube configuration lib
- * I2C eeprom lib
- * RTP MIDI lib
+ * include chimaera custom libraries
  */
 #include <chimaera.h>
-#include <nosc.h>
-#include <cmc.h>
-#include <dma_udp.h>
-#include <config.h>
-#include <sntp.h>
-#include <tube.h>
-#include <eeprom.h>
-#include <rtpmidi.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
 
-CMC *cmc = NULL;
 timestamp64u_t t0;
 timestamp64u_t now;
 nOSC_Server *serv = NULL;
@@ -96,6 +80,7 @@ HardwareTimer sntp_timer(2);
 
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
+uint8_t first = 1;
 
 void
 timestamp_set (timestamp64u_t *ptr)
@@ -108,16 +93,22 @@ timestamp_set (timestamp64u_t *ptr)
 	*ptr = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_uint64 (tmp));
 }
 
-void
-sntp_timer_irq (void)
+static void
+sntp_timer_irq ()
 {
 	sntp_should_request = 1;
 }
 
-void
-adc_timer_irq (void)
+static void
+adc_eoc_irq (void)
 {
-	//if ( (ADC1->regs->SR & ADC_SR_EOC) == ADC_SR_EOC)
+	//TODO
+}
+
+static void
+adc_timer_irq ()
+{
+	//if ( (ADC1->regs->SR & ADC_SR_EOC) == ADC_SR_EOC) TODO
 		if (mux_counter < MUX_MAX)
 		{
 			digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
@@ -134,8 +125,8 @@ adc_timer_irq (void)
 			adc_timer.pause ();
 }
 
-void
-adc_dma_irq (void)
+static void
+adc_dma_irq ()
 {
 	switch (dma_get_irq_cause (DMA1, DMA_CH1))
 	{
@@ -150,7 +141,7 @@ adc_dma_irq (void)
 	};
 }
 
-void
+inline void
 adc_dma_run ()
 {
 	adc_dma_half_done = 0;
@@ -159,23 +150,21 @@ adc_dma_run ()
 	adc_timer.resume ();
 }
 
-void
+inline void
 adc_dma_half_block ()
 {
 	while (!adc_dma_half_done)
 		;
 }
 
-void
+inline void
 adc_dma_block ()
 {
 	while (!adc_dma_done)
 		;
 }
 
-uint8_t first = 1;
-
-void
+inline void
 loop ()
 {
 	uint8_t cmc_job;
@@ -186,16 +175,16 @@ loop ()
 	if (config.dump.enabled)
 	{
 		timestamp_set (&now);
-		//len = cmc_dump (cmc, now, buf);
-		len = cmc_dump_partial (cmc, now, buf, 0*MUX_MAX, 3*MUX_MAX);
-		//len = cmc_dump_partial (cmc, now, buf, 3*MUX_MAX, 6*MUX_MAX);
-		//len = cmc_dump_partial (cmc, now, buf, 6*MUX_MAX, 9*MUX_MAX);
-		dma_udp_send (config.dump.sock, buf, len);
+		//len = cmc_dump (cmc, now, buf_o);
+		len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
+		//len = cmc_dump_partial (cmc, now, buf_o, 3*MUX_MAX, 6*MUX_MAX);
+		//len = cmc_dump_partial (cmc, now, buf_o, 6*MUX_MAX, 9*MUX_MAX);
+		dma_udp_send (config.dump.sock, buf_o, len);
 	}
 
 	if (config.tuio.enabled || config.rtpmidi.payload.enabled)
 	{
-		cmc_job = cmc_process (cmc); //TODO speed this up (fixed point math or ARM Cortex M4;-)
+		cmc_job = cmc_process (cmc);
 
 		if (cmc_job)
 		{
@@ -203,28 +192,28 @@ loop ()
 
 			if (config.tuio.enabled)
 			{
-				len = cmc_write_tuio2 (cmc, now, buf); //TODO speed this up
-				dma_udp_send (config.tuio.sock, buf, len);
+				len = cmc_write_tuio2 (cmc, now, buf_o); //TODO speed this up
+				dma_udp_send (config.tuio.sock, buf_o, len);
 			}
 
 			if (config.rtpmidi.payload.enabled)
 			{
-				len = cmc_write_rtpmidi (cmc, buf);
-				dma_udp_send (config.rtpmidi.payload.sock, buf, len);
+				len = cmc_write_rtpmidi (cmc, buf_o);
+				dma_udp_send (config.rtpmidi.payload.sock, buf_o, len);
 			}
 		}
 	}
 
-	// run osc server
+	// run osc config server
 	if (config.config.enabled && (len = dma_udp_available (config.config.sock)) )
 	{
-		dma_udp_receive (config.config.sock, buf_in, len);
+		dma_udp_receive (config.config.sock, buf_i, len);
 
 		// separate concurrent UDP messages
-		uint16_t remaining = len;
+		uint16_t remaining = len; //TODO implement UDP packet iterator
 		while (remaining)
 		{
-			uint8_t *buf_in_ptr = buf_in+len-remaining;
+			uint8_t *buf_in_ptr = buf_i+len-remaining;
 
 			// get UDP header info
 			//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
@@ -245,20 +234,20 @@ loop ()
 			sntp_should_request = 0;
 
 			timestamp_set (&now);
-			len = sntp_request (buf, now);
-			dma_udp_send (config.sntp.sock, buf, len);
+			len = sntp_request (buf_o, now);
+			dma_udp_send (config.sntp.sock, buf_o, len);
 		}
 
 		// receive sntp request answer
 		if ( (len = dma_udp_available (config.sntp.sock)) )
 		{
-			dma_udp_receive (config.sntp.sock, buf_in, len);
+			dma_udp_receive (config.sntp.sock, buf_i, len);
 
 			// separate concurrent UDP messages
 			uint16_t remaining = len;
 			while (remaining)
 			{
-				uint8_t *buf_in_ptr = buf_in+len-remaining;
+				uint8_t *buf_in_ptr = buf_i+len-remaining;
 
 				// get UDP header info
 				//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
@@ -322,90 +311,45 @@ loop ()
 	adc_dma_block ();
 }
 
-/*
- * This function converts the array into one number by multiplying each 5-bits
- * channel numbers by multiplications of 2^5
- */
-uint32_t
-calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
+extern "C" void adc_timer_pause ()
 {
-  uint32_t adc_sequence=0;
-
-  for (uint8_t i=0; i<n; i++) // there are 6 available sequences in each SQR3 SQR2, and 4 in SQR1.
-		adc_sequence += adc_sequence_array[i] << (i*5);
-
-  return adc_sequence;
-}
-
-uint8_t
-_cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	uint8_t *buf = (uint8_t *)data;
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	// TODO implement infinite rate (run at maximal rate), we need a working _irq_adc for this, though
-	config.cmc.rate = args[1]->i;
-
 	adc_timer.pause ();
+}
+
+extern "C" void adc_timer_reconfigure ()
+{
   adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	adc_timer.attachCompare1Interrupt (adc_timer_irq);
 	adc_timer.refresh ();
+}
+
+extern "C" void adc_timer_resume ()
+{
 	adc_timer.resume ();
-
-	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	dma_udp_send (config.config.sock, buf, size);
-
-	return 1;
 }
 
-uint8_t
-_cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+extern "C" void sntp_timer_pause ()
 {
-	uint8_t *buf = (uint8_t *)data;
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	cmc_group_clear (cmc);
-
-	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	dma_udp_send (config.config.sock, buf, size);
-
-	return 1;
+	sntp_timer.pause ();
 }
 
-uint8_t
-_cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+extern "C" void sntp_timer_reconfigure ()
 {
-	uint8_t *buf = (uint8_t *)data;
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	if (cmc_group_add (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
-	dma_udp_send (config.config.sock, buf, size);
-
-	return 1;
+  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
+	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
+	sntp_timer.refresh ();
 }
 
-uint8_t
-_cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+extern "C" void sntp_timer_resume ()
 {
-	uint8_t *buf = (uint8_t *)data;
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	if (cmc_group_set (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
-	dma_udp_send (config.config.sock, buf, size);
-
-	return 1;
+	sntp_timer.resume ();
 }
 
-void
+inline void
 setup ()
 {
 	uint8_t i;
@@ -464,7 +408,6 @@ setup ()
 	}
 
 	// init dump socket
-	//config.dump.enabled = 1;
 	if (config.dump.enabled)
 	{
 		dma_udp_begin (config.dump.sock, config.dump.port);
@@ -485,15 +428,13 @@ setup ()
 		dma_udp_set_remote (config.rtpmidi.session.sock, config.rtpmidi.session.ip, config.rtpmidi.session.port);
 	}
 
-	// add methods to OSC server
+	// set start time to 0
 	t0.all = 0ULL;
-	serv = nosc_server_method_add (serv, "/chimaera/cmc/rate/set", "ii", _cmc_rate_set, buf);
-	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear, buf);
-	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add, buf);
-	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set, buf);
-	serv = config_methods_add (serv, buf);
 
-	// set up ADC
+	// add methods to OSC server
+	serv = config_methods_add (serv, buf_o);
+
+	// set up ADCs
 	adc_set_exttrig (ADC1, 1);
 	adc_set_exttrig (ADC2, 1);
 
@@ -518,6 +459,7 @@ setup ()
 
 	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
 	//ADC2->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
+	//adc12_attach_interrupt (adc_eoc_irq);
 
 	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
   ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
@@ -525,31 +467,16 @@ setup ()
   adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted 
   adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
 
+	// fill raw sequence array with corresponding ADC channels
 	for (uint8_t i=0; i<ADC_DUAL_LENGTH; i++)
 	{
 		ADC1_RawSequence[i] = PIN_MAP[ADC1_Sequence[i]].adc_channel;
 		ADC2_RawSequence[i] = PIN_MAP[ADC2_Sequence[i]].adc_channel;
 	}
 
-	for (uint8_t p=0; p<MUX_MAX; p++)
-		for (uint8_t i=0; i<ADC_LENGTH; i++)
-			ADC_Offset[p][i] = ADC_HALF_BITDEPTH;
-
-	uint8_t len = ADC_DUAL_LENGTH;
-	if (len > 12)
-	{
-		ADC1->regs->SQR1 = calc_adc_sequence (&(ADC1_RawSequence[12]), len % 12); 
-		ADC2->regs->SQR1 = calc_adc_sequence (&(ADC2_RawSequence[12]), len % 12); 
-		len -= len % 12;
-	}
-	if (len > 6)
-	{
-		ADC1->regs->SQR2 = calc_adc_sequence (&(ADC1_RawSequence[6]), len % 6);
-		ADC2->regs->SQR2 = calc_adc_sequence (&(ADC2_RawSequence[6]), len % 6);
-		len -= len % 6;
-	}
-  ADC1->regs->SQR3 = calc_adc_sequence (&(ADC1_RawSequence[0]), len);
-  ADC2->regs->SQR3 = calc_adc_sequence (&(ADC2_RawSequence[0]), len);
+	// set channels in register
+	set_adc_sequence (ADC1, ADC1_RawSequence, ADC_DUAL_LENGTH);
+	set_adc_sequence (ADC2, ADC2_RawSequence, ADC_DUAL_LENGTH);
 
 	// set up ADC DMA tube
 	adc_tube.tube_dst = (void *)rawDataArray;
@@ -563,25 +490,16 @@ setup ()
 	// set up continuous music controller struct
 	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
 
-	// init adc_timer
-	adc_timer.pause ();
-  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
-	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	adc_timer.attachCompare1Interrupt (adc_timer_irq);
-	adc_timer.refresh ();
-	//adc_timer.resume ();
+	// init adc_timer (but do not start it yet)
+	adc_timer_pause ();
+	adc_timer_reconfigure ();
 
-	// init sntp_timer
-	sntp_timer.pause ();
-  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
-	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
-	sntp_timer.refresh ();
-	sntp_timer.resume ();
+	// initialize sensor offsets 
+	for (uint8_t p=0; p<MUX_MAX; p++)
+		for (uint8_t i=0; i<ADC_LENGTH; i++)
+			ADC_Offset[p][i] = ADC_HALF_BITDEPTH;
 
-	// calibrate sensors
+	// calibrate sensors offsets
 	for (uint8_t c=0; c<100; c++)
 	{
 		adc_dma_run ();
@@ -597,14 +515,10 @@ setup ()
 			}
 	}
 
-	/*
-	for (uint8_t i=0; i<ADC_LENGTH; i++)
-		for (uint8_t p=0; p<MUX_MAX; p++)
-		{
-			uint16_t size = nosc_message_vararg_serialize (buf, "/calibration", "iii", i, p, ADC_Offset[p][i]);
-			dma_udp_send (config.config.sock, buf, size);
-		}
-	*/
+	// init sntp_timer
+	sntp_timer_pause ();
+	sntp_timer_reconfigure ();
+	sntp_timer_resume ();
 }
 
 __attribute__ ((constructor)) void
