@@ -27,13 +27,14 @@
 #include <cmc.h>
 #include <tuio2.h>
 #include <rtpmidi.h>
+#include <armfix.h>
 
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
 typedef struct _CMC_Group CMC_Group;
 
 struct _CMC_Sensor {
-	float x;
+	ufix32_t x;
 	uint16_t v;
 	uint8_t n; // negative?
 };
@@ -42,7 +43,7 @@ struct _CMC_Blob {
 	uint32_t sid;
 	uint16_t uid;
 	CMC_Group *group;
-	float x, p;
+	ufix32_t x, p;
 	uint8_t above_thresh;
 	uint8_t ignore;
 };
@@ -50,8 +51,8 @@ struct _CMC_Blob {
 struct _CMC_Group {
 	uint16_t tid;
 	uint16_t uid;
-	float x0, x1;
-	float m;
+	ufix32_t x0, x1;
+	ufix32_t m;
 	CMC_Group *next;
 };
 
@@ -59,15 +60,15 @@ struct _CMC {
 	uint8_t I, J;
 	uint32_t fid, sid;
 	uint8_t n_sensors, max_blobs;
-	float d;
+	ufix32_t d;
 	uint16_t bitdepth;
-	float _bitdepth; // 1/bitdepth
+	ufix32_t _bitdepth; // 1/bitdepth
 
 	uint16_t diff;
 	uint16_t thresh0;
 	uint16_t thresh1;
-	float thresh0_f;
-	float _thresh0_f; // 1/(1-thresh0_f)
+	ufix32_t thresh0_f;
+	ufix32_t _thresh0_f;
 
 	CMC_Sensor *sensors;
 	CMC_Blob *old_blobs;
@@ -75,7 +76,7 @@ struct _CMC {
 	CMC_Group *groups;
 	uint8_t n_groups;
 
-	float **matrix;
+	fix31_t **matrix;
 
 	Tuio2 *tuio;
 	RTP_MIDI_Packet *rtpmidi_packet;

@@ -73,6 +73,7 @@ const uint8_t PWDN = 17;
  * I2C eeprom lib
  * RTP MIDI lib
  */
+#include <chimaera.h>
 #include <nosc.h>
 #include <cmc.h>
 #include <dma_udp.h>
@@ -83,9 +84,6 @@ const uint8_t PWDN = 17;
 #include <rtpmidi.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
-
-static uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
-static uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
 
 CMC *cmc = NULL;
 timestamp64u_t t0;
@@ -98,18 +96,6 @@ HardwareTimer sntp_timer(2);
 
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
-
-uint32_t debug_counter = 0;
-
-extern caddr_t _sbrk(int incr);
-
-extern "C" void
-debug (const char *str)
-{
-	uint16_t size;
-	size = nosc_message_vararg_serialize (buf, "/debug", "is", debug_counter++, str);
-	dma_udp_send (config.config.sock, buf, size);
-}
 
 void
 timestamp_set (timestamp64u_t *ptr)

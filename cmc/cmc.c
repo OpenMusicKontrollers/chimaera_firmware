@@ -26,7 +26,8 @@
 #include <math.h>
 #include <string.h>
 
-#include "config.h"
+#include <chimaera.h>
+#include <config.h>
 
 static RTP_MIDI_List note_on [] = {
 	{0x0, NOTE_ON}, // note on / channel 0
@@ -82,14 +83,14 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 	cmc->max_blobs = mb;
 	cmc->diff = df;
 	cmc->bitdepth = bitdepth;
-	cmc->_bitdepth = 1.0 / (float)bitdepth;
+	cmc->_bitdepth = 1.0ur / bitdepth;
 
 	cmc->thresh0 = th0;
 	cmc->thresh1 = th1;
-	cmc->thresh0_f = (float)cmc->thresh0 * cmc->_bitdepth;
-	cmc->_thresh0_f = 1.0 / (1.0 - cmc->thresh0_f);
+	cmc->thresh0_f = cmc->thresh0 * cmc->_bitdepth;
+	cmc->_thresh0_f = 1.0ur - cmc->thresh0_f;
 
-	cmc->d = 1.0 / (ns-1.0);
+	cmc->d = 1.0ur / (ns-1);
 
 	cmc->sensors = calloc (ns+2, sizeof (CMC_Sensor));
 	cmc->old_blobs = calloc (mb, sizeof (CMC_Blob));
@@ -97,13 +98,13 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 
 	for (i=0; i<ns+2; i++)
 	{
-		cmc->sensors[i].x = cmc->d * (i-1.0);
+		cmc->sensors[i].x = cmc->d * (i-1);
 		cmc->sensors[i].v = 0x0;
 	}
 
-	cmc->matrix = calloc (mb, sizeof (float *));
+	cmc->matrix = calloc (mb, sizeof (fix31_t *));
 	for (i=0; i<mb; i++)
-		cmc->matrix[i] = calloc (mb, sizeof (float));
+		cmc->matrix[i] = calloc (mb, sizeof (fix31_t));
 
 	cmc->tuio = tuio2_new (mb);
 	cmc->rtpmidi_packet = rtpmidi_new ();
@@ -133,7 +134,7 @@ cmc_free (CMC *cmc)
 void
 cmc_set (CMC* cmc, uint8_t i, uint16_t v, uint8_t n)
 {
-	cmc->sensors[i+1].v = v < cmc->thresh0 ? 0.0 : v;
+	cmc->sensors[i+1].v = v < cmc->thresh0 ? 0 : v;
 	cmc->sensors[i+1].n = n;
 }
 
@@ -171,25 +172,24 @@ cmc_process (CMC *cmc)
 				continue;
 
 			//fit parabola
-			float x1 = cmc->sensors[i].x;
-			float d = cmc->d;
+			ufix32_t x1 = cmc->sensors[i].x;
+			ufix32_t d = cmc->d;
 
-			float y0 = (float)cmc->sensors[i-1].v * cmc->_bitdepth;
-			float y1 = (float)cmc->sensors[i].v * cmc->_bitdepth;
-			float y2 = (float)cmc->sensors[i+1].v * cmc->_bitdepth;
+			fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
+			fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
+			fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
 
-			float x = x1 + 0.5*d*(y0 - y2) / (y0 - 2.0*y1 + y2);
-			float y = (y0 + y1 + y2) * 0.33; //TODO this can be bigger than 1.0
+			ufix32_t x = x1 + d/2*(y0 - y2) / (y0 - y1 + y2 - y1);
+			ufix32_t y = (y0*0.5ur + y1*0.5ur + y2*0.5ur); // TODO is there a better formula
 
 			// rescale according to threshold
 			y -= cmc->thresh0_f;
-			y *= cmc->_thresh0_f;
-			y *= 2.0;
+			y /= cmc->_thresh0_f; // TODO division is expensive, solve differently
 
-			if (x < 0.0) x = 0.0;
-			if (x > 1.0) x = 1.0;
-			if (y < 0.0) y = 0.0;
-			if (y > 1.0) y = 1.0;
+			if (x < 0.0ur) x = 0.0ur;
+			if (x > 1.0ur) x = 1.0ur;
+			if (y < 0.0ur) y = 0.0ur;
+			if (y > 1.0ur) y = 1.0ur;
 
 			cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
 			cmc->new_blobs[cmc->J].x = x;
@@ -209,20 +209,23 @@ cmc_process (CMC *cmc)
 		// fill distance matrix of old and new blobs
 		for (i=0; i<cmc->I; i++) // old blobs
 			for (j=0; j<cmc->J; j++) // new blobs
-				cmc->matrix[i][j] = fabs (cmc->new_blobs[j].x - cmc->old_blobs[i].x); // 1D
+			{
+				cmc->matrix[i][j] = (fix31_t)cmc->new_blobs[j].x - (fix31_t)cmc->old_blobs[i].x; // 1D
+				cmc->matrix[i][j] = cmc->matrix[i][j] < 0.0r ? -cmc->matrix[i][j] : cmc->matrix[i][j]; //TODO how to to a fixed-point abs?
+			}
 
 		// associate new with old blobs
 		uint8_t ptr;
 		uint8_t low = cmc->J <= cmc->I ? cmc->J : cmc->I;
 		for (ptr=0; ptr<low; ptr++)
 		{
-			float min = 99.9;
+			fix31_t min = 1.0r;
 			uint8_t a = 0, b = 0;
 
 			for (i=0; i<cmc->I; i++) // old blobs
 				for (j=0; j<cmc->J; j++) // new blobs
 				{
-					if (cmc->matrix[i][j] == -1)
+					if (cmc->matrix[i][j] == -0.5r)
 						continue;
 
 					if (cmc->matrix[i][j] < min)
@@ -240,9 +243,9 @@ cmc_process (CMC *cmc)
 			blb2->group = blb->group;
 
 			for (i=0; i<cmc->I; i++)
-				cmc->matrix[i][b] = -1;
+				cmc->matrix[i][b] = -0.5r;
 			for (j=0; j<cmc->J; j++)
-				cmc->matrix[a][j] = -1;
+				cmc->matrix[a][j] = -0.5r;
 		}
 
 		// handle all new blobs
@@ -331,13 +334,12 @@ cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 {
 	uint8_t j;
 	uint16_t size;
-	float rx;
 
 	tuio2_frm_set (cmc->tuio, cmc->fid, timestamp);
 	for (j=0; j<cmc->I; j++)
 	{
 		CMC_Group *group = cmc->old_blobs[j].group;
-		float X = cmc->old_blobs[j].x;
+		ufix32_t X = cmc->old_blobs[j].x;
 
 		// resize x to group boundary
 		if (group->tid > 0)
@@ -422,7 +424,7 @@ _cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x
 	new->uid = uid;
 	new->x0 = x0;
 	new->x1 = x1;
-	new->m = 1.0/(x1-x0);
+	new->m = 1.0ur/(x1-x0);
 
 	return new;
 }
@@ -471,7 +473,7 @@ cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
 			ptr->uid = uid;
 			ptr->x0 = x0;
 			ptr->x1 = x1;
-			ptr->m = 1.0/(x1-x0);
+			ptr->m = 1.0ur/(x1-x0);
 			return 1;
 		}
 	return 0;

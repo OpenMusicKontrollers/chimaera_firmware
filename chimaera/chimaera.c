@@ -21,24 +21,34 @@
  *     distribution.
  */
 
-#ifndef _CHIMAERA_H_
-#define _CHIMAERA_H_
+#include <chimaera.h>
+#include <config.h>
 
-#include <stdint.h>
+uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
+uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+uint32_t debug_counter = 0;
 
-extern uint8_t buf[1024]; // general purpose buffer used mainly for nOSC serialization
-extern uint8_t buf_in[1024]; // general purpose buffer used mainly for nOSC serialization
-
-void debug_str (const char *str);
-void debug_int32 (int32_t i);
-void debug_float (float f);
-
-#ifdef __cplusplus
+void
+debug_str (const char *str)
+{
+	uint16_t size;
+	size = nosc_message_vararg_serialize (buf, "/debug", "is", debug_counter++, str);
+	dma_udp_send (config.config.sock, buf, size);
 }
-#endif
 
-#endif
+void
+debug_int32 (int32_t i)
+{
+	uint16_t size;
+	size = nosc_message_vararg_serialize (buf, "/debug", "ii", debug_counter++, i);
+	dma_udp_send (config.config.sock, buf, size);
+}
+
+void
+debug_float (float f)
+{
+	uint16_t size;
+	size = nosc_message_vararg_serialize (buf, "/debug", "if", debug_counter++, f);
+	dma_udp_send (config.config.sock, buf, size);
+}
