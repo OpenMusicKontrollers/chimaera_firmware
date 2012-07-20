@@ -23,6 +23,8 @@
 
 #include <string.h>
 
+#include <chimaera.h>
+
 #include "sntp_private.h"
 
 uint16_t 
@@ -41,27 +43,27 @@ sntp_request (uint8_t *buf, timestamp64u_t now)
 	return len;
 }
 
-timestamp64u_t 
+timestamp64u_t *
 sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay, timestamp64s_t *clock_offset)
 {
 	sntp_t *answer = (sntp_t *) buf;
 
-	timestamp64u_t T1 = answer->originate_timestamp;
-	timestamp64u_t T2 = answer->receive_timestamp;
-	timestamp64u_t T3 = answer->transmit_timestamp;
+	timestamp64u_t *T1 = &answer->originate_timestamp;
+	timestamp64u_t *T2 = &answer->receive_timestamp;
+	timestamp64u_t *T3 = &answer->transmit_timestamp;
 
-	T1.part.sec = htonl (T1.part.sec);
-	T1.part.frac = htonl (T1.part.frac);
+	T1->part.sec = htonl (T1->part.sec);
+	T1->part.frac = htonl (T1->part.frac);
 
-	T2.part.sec = htonl (T2.part.sec);
-	T2.part.frac = htonl (T2.part.frac);
+	T2->part.sec = htonl (T2->part.sec);
+	T2->part.frac = htonl (T2->part.frac);
 
-	T3.part.sec = htonl (T3.part.sec);
-	T3.part.frac = htonl (T3.part.frac);
+	T3->part.sec = htonl (T3->part.sec);
+	T3->part.frac = htonl (T3->part.frac);
 
-	uint64_t t1 = timestamp_to_uint64 (T1);
-	uint64_t t2 = timestamp_to_uint64 (T2);
-	uint64_t t3 = timestamp_to_uint64 (T3);
+	uint64_t t1 = timestamp_to_uint64 (*T1);
+	uint64_t t2 = timestamp_to_uint64 (*T2);
+	uint64_t t3 = timestamp_to_uint64 (*T3);
 	uint64_t t4 = timestamp_to_uint64 (T4);
 
 	//Originate Timestamp     T1   time request sent by client

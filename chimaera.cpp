@@ -43,17 +43,22 @@ uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switc
 
 volatile uint8_t adc_dma_half_done;
 volatile uint8_t adc_dma_done;
-const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC 
-const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
+//const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  FIXME
+//const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC FIXME
+const uint8_t ADC_LENGTH = 3; // the number of channels to be converted per ADC 
+const uint8_t ADC_DUAL_LENGTH = 2; // the number of channels to be converted per ADC 
 uint16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC
+//uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC FIXME
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {4, 4}; // analog input pins read out by the ADC
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC
+//uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC FIXME
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {3, 5}; // analog input pins read out by the ADC
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+//static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 }; //FIXME
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2 };
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -94,11 +99,15 @@ HardwareTimer sntp_timer(2);
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 
-void
+uint32_t debug_counter = 0;
+
+extern caddr_t _sbrk(int incr);
+
+extern "C" void
 debug (const char *str)
 {
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf, "/debug", "s", str);
+	size = nosc_message_vararg_serialize (buf, "/debug", "is", debug_counter++, str);
 	dma_udp_send (config.config.sock, buf, size);
 }
 
@@ -270,7 +279,7 @@ loop ()
 				//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
 				uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
 
-				timestamp64u_t transmit;
+				timestamp64u_t *transmit;
 				timestamp64u_t roundtrip_delay;
 				timestamp64s_t clock_offset;
 
@@ -278,7 +287,10 @@ loop ()
 				transmit = sntp_dispatch (buf_in_ptr+UDP_HDR_SIZE, now, &roundtrip_delay, &clock_offset);
 
 				if (t0.all == 0ULL)
-					t0 = transmit;
+				{
+					t0.part.sec = transmit->part.sec;
+					t0.part.frac = transmit->part.frac;
+				}
 				else
 					t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
 			
@@ -298,12 +310,14 @@ loop ()
 				cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
 			}
 
+		/*
 		// TODO broken sensors
 		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
 		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
 		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
 
 		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
+		*/
 	}
 	else
 		first = 0;

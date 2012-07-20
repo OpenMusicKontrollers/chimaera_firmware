@@ -21,19 +21,16 @@
  *     distribution.
  */
 
-#ifndef _SNTP_H_
-#define _SNTP_H_
+#ifndef _CHIMAERA_H_
+#define _CHIMAERA_H_
 
-#include <stdint.h>
-
-#include <netdef.h>
+#include <stdfix.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-uint16_t sntp_request (uint8_t *buf, timestamp64u_t now);
-timestamp64u_t *sntp_dispatch (uint8_t *buf, timestamp64u_t now, timestamp64u_t *roundtrip_delay, timestamp64s_t *clock_offset);
+void debug (const char *str);
 
 #ifdef __cplusplus
 }
