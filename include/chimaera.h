@@ -29,7 +29,7 @@
 
 #include <nosc.h>
 #include <cmc.h>
-#include <dma_udp.h>
+#include <udp.h>
 #include <config.h>
 #include <sntp.h>
 #include <tube.h>

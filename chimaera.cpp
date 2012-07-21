@@ -179,7 +179,7 @@ loop ()
 		len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 3*MUX_MAX, 6*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 6*MUX_MAX, 9*MUX_MAX);
-		dma_udp_send (config.dump.sock, buf_o, len);
+		udp_send (config.dump.sock, buf_o, len);
 	}
 
 	if (config.tuio.enabled || config.rtpmidi.payload.enabled)
@@ -193,21 +193,21 @@ loop ()
 			if (config.tuio.enabled)
 			{
 				len = cmc_write_tuio2 (cmc, now, buf_o); //TODO speed this up
-				dma_udp_send (config.tuio.sock, buf_o, len);
+				udp_send (config.tuio.sock, buf_o, len);
 			}
 
 			if (config.rtpmidi.payload.enabled)
 			{
 				len = cmc_write_rtpmidi (cmc, buf_o);
-				dma_udp_send (config.rtpmidi.payload.sock, buf_o, len);
+				udp_send (config.rtpmidi.payload.sock, buf_o, len);
 			}
 		}
 	}
 
 	// run osc config server
-	if (config.config.enabled && (len = dma_udp_available (config.config.sock)) )
+	if (config.config.enabled && (len = udp_available (config.config.sock)) )
 	{
-		dma_udp_receive (config.config.sock, buf_i, len);
+		udp_receive (config.config.sock, buf_i, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len; //TODO implement UDP packet iterator
@@ -235,13 +235,13 @@ loop ()
 
 			timestamp_set (&now);
 			len = sntp_request (buf_o, now);
-			dma_udp_send (config.sntp.sock, buf_o, len);
+			udp_send (config.sntp.sock, buf_o, len);
 		}
 
 		// receive sntp request answer
-		if ( (len = dma_udp_available (config.sntp.sock)) )
+		if ( (len = udp_available (config.sntp.sock)) )
 		{
-			dma_udp_receive (config.sntp.sock, buf_i, len);
+			udp_receive (config.sntp.sock, buf_i, len);
 
 			// separate concurrent UDP messages
 			uint16_t remaining = len;
@@ -376,56 +376,56 @@ setup ()
 	// init DMA
 	dma_init (DMA1);
 
-	// set up dma_udp
+	// set up udp
   spi.begin (SPI_18MHZ, MSBFIRST, 0); 
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
-	dma_udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
+	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
 
 	// init tuio socket
 	if (config.tuio.enabled)
 	{
-		dma_udp_begin (config.tuio.sock, config.tuio.port);
-		dma_udp_set_remote (config.tuio.sock, config.tuio.ip, config.tuio.port);
+		udp_begin (config.tuio.sock, config.tuio.port);
+		udp_set_remote (config.tuio.sock, config.tuio.ip, config.tuio.port);
 	}
 
 	// init config socket
 	if (config.config.enabled)
 	{
-		dma_udp_begin (config.config.sock, config.config.port);
-		dma_udp_set_remote (config.config.sock, config.config.ip, config.config.port);
+		udp_begin (config.config.sock, config.config.port);
+		udp_set_remote (config.config.sock, config.config.ip, config.config.port);
 	}
 
 	// init sntp socket
 	if (config.sntp.enabled)
 	{
-		dma_udp_begin (config.sntp.sock, config.sntp.port);
-		dma_udp_set_remote (config.sntp.sock, config.sntp.ip, config.sntp.port);
+		udp_begin (config.sntp.sock, config.sntp.port);
+		udp_set_remote (config.sntp.sock, config.sntp.ip, config.sntp.port);
 	}
 
 	// init dump socket
 	if (config.dump.enabled)
 	{
-		dma_udp_begin (config.dump.sock, config.dump.port);
-		dma_udp_set_remote (config.dump.sock, config.dump.ip, config.dump.port);
+		udp_begin (config.dump.sock, config.dump.port);
+		udp_set_remote (config.dump.sock, config.dump.ip, config.dump.port);
 	}
 
 	// init rtpmidi payload socket
 	if (config.rtpmidi.payload.enabled)
 	{
-		dma_udp_begin (config.rtpmidi.payload.sock, config.rtpmidi.payload.port);
-		dma_udp_set_remote (config.rtpmidi.payload.sock, config.rtpmidi.payload.ip, config.rtpmidi.payload.port);
+		udp_begin (config.rtpmidi.payload.sock, config.rtpmidi.payload.port);
+		udp_set_remote (config.rtpmidi.payload.sock, config.rtpmidi.payload.ip, config.rtpmidi.payload.port);
 	}
 
 	// init rtpmidi session socket
 	if (config.rtpmidi.session.enabled)
 	{
-		dma_udp_begin (config.rtpmidi.session.sock, config.rtpmidi.session.port);
-		dma_udp_set_remote (config.rtpmidi.session.sock, config.rtpmidi.session.ip, config.rtpmidi.session.port);
+		udp_begin (config.rtpmidi.session.sock, config.rtpmidi.session.port);
+		udp_set_remote (config.rtpmidi.session.sock, config.rtpmidi.session.ip, config.rtpmidi.session.port);
 	}
 
 	// set start time to 0

@@ -26,7 +26,7 @@
 #include <string.h>
 
 #include <chimaera.h>
-#include <dma_udp.h>
+#include <udp.h>
 
 #define LAN_BROADCAST {192, 168, 1, 255}
 #define LAN_HOST {192, 168, 1, 10}
@@ -108,7 +108,7 @@ _version_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_
 	int32_t id = args[0]->i;
 
 	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -133,7 +133,7 @@ _dump_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, 
 	else
 		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iFs", id, "wrong type: boolean expected at position [2]");
 
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -153,7 +153,7 @@ _cmc_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC
 	adc_timer_resume ();
 
 	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -168,7 +168,7 @@ _cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, n
 	cmc_group_clear (cmc);
 
 	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -184,7 +184,7 @@ _cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOS
 		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }
@@ -200,7 +200,7 @@ _cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOS
 		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
-	dma_udp_send (config.config.sock, buf, size);
+	udp_send (config.config.sock, buf, size);
 
 	return 1;
 }

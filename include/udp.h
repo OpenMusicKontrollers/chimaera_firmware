@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef _DMA_UDP_H_
-#define _DMA_UDP_H_
+#ifndef _UDP_H_
+#define _UDP_H_
 
 #include <stdint.h>
 
@@ -34,12 +34,12 @@ extern "C" {
 
 #define UDP_HDR_SIZE 8
 
-void dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
-void dma_udp_begin (uint8_t sock, uint16_t port);
-void dma_udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
-void dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len);
-uint16_t dma_udp_available (uint8_t sock);
-void dma_udp_receive (uint8_t sock, uint8_t *buf, uint16_t len);
+void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
+void udp_begin (uint8_t sock, uint16_t port);
+void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
+void udp_send (uint8_t sock, uint8_t *dat, uint16_t len);
+uint16_t udp_available (uint8_t sock);
+void udp_receive (uint8_t sock, uint8_t *buf, uint16_t len);
 
 #ifdef __cplusplus
 }

@@ -15,7 +15,7 @@ include $(MAKEDIR)/header.mk
 # where compilation output (like object files) goes. The variable $(d)
 # gets expanded to the directory containing this rules.mk file.
 BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
-BUILDDIRS += $(BUILD_PATH)/$(d)/dma_udp
+BUILDDIRS += $(BUILD_PATH)/$(d)/udp
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
 BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
@@ -59,7 +59,7 @@ ASFLAGS_$(d) :=
 
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
-cSRCS_$(d) += dma_udp/dma_udp.c
+cSRCS_$(d) += udp/udp.c
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
 cSRCS_$(d) += config/config.c

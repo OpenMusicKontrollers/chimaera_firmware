@@ -37,7 +37,7 @@ debug_str (const char *str)
 {
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "is", debug_counter++, str);
-	dma_udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.sock, buf_o, size);
 }
 
 void
@@ -45,7 +45,7 @@ debug_int32 (int32_t i)
 {
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "ii", debug_counter++, i);
-	dma_udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.sock, buf_o, size);
 }
 
 void
@@ -53,7 +53,7 @@ debug_float (float f)
 {
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "if", debug_counter++, f);
-	dma_udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.sock, buf_o, size);
 }
 
 void (*adc12_irq_handler) (void) = NULL;

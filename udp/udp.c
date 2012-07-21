@@ -23,7 +23,7 @@
 
 #include <tube.h>
 
-#include "dma_udp_private.h"
+#include "udp_private.h"
 
 #include <string.h>
 
@@ -48,14 +48,14 @@ static uint8_t spi_rx_dma_buf [2048];
 
 volatile uint8_t spi_dma_done;
 
-void
-spi_dma_irq (void)
+static void
+_spi_dma_irq (void)
 {
 	spi_dma_done = 1;
 }
 
-void
-spi_dma_run (uint16_t len)
+inline void
+_spi_dma_run (uint16_t len)
 {
 	spi_dma_done = 0;
 
@@ -66,8 +66,8 @@ spi_dma_run (uint16_t len)
 	dma_enable (DMA1, DMA_CH5); // Tx
 }
 
-void
-spi_dma_block ()
+inline void
+_spi_dma_block ()
 {
 	while (!spi_dma_done)
 		;
@@ -91,8 +91,8 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	buf += len;
 
 	setSS ();
-	spi_dma_run (buf-spi_tx_dma_buf);
-	spi_dma_block ();
+	_spi_dma_run (buf-spi_tx_dma_buf);
+	_spi_dma_block ();
 	resetSS ();
 }
 
@@ -117,13 +117,13 @@ void
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	setSS ();
-	spi_dma_run (buf-spi_tx_dma_buf);
+	_spi_dma_run (buf-spi_tx_dma_buf);
 }
 
 void
 _dma_write_nonblocking_out ()
 {
-	spi_dma_block ();
+	_spi_dma_block ();
 	resetSS ();
 }
 */
@@ -143,8 +143,8 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 	buf += len;
 
 	setSS ();
-	spi_dma_run (buf-spi_tx_dma_buf);
-	spi_dma_block ();
+	_spi_dma_run (buf-spi_tx_dma_buf);
+	_spi_dma_block ();
 	resetSS ();
 
 	memcpy (dat, &spi_rx_dma_buf[4], len);
@@ -202,7 +202,7 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 void
-dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit)
+udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit)
 {
 	int status;
 
@@ -214,7 +214,7 @@ dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
-	dma_attach_interrupt (DMA1, DMA_CH4, spi_dma_irq);
+	dma_attach_interrupt (DMA1, DMA_CH4, _spi_dma_irq);
 
 	// set up dma for SPI2TX
 	spi2_tx_tube.tube_dst = spi_tx_dma_buf;
@@ -222,7 +222,7 @@ dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
 
-	// init w5200
+	// init udp
 	uint8_t i;
 	uint8_t flag;
 
@@ -249,7 +249,7 @@ dma_udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio
 }
 
 void
-dma_udp_begin (uint8_t sock, uint16_t port)
+udp_begin (uint8_t sock, uint16_t port)
 {
 	uint8_t flag;
 
@@ -277,7 +277,7 @@ dma_udp_begin (uint8_t sock, uint16_t port)
 }
 
 void
-dma_udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
+udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 {
 	// set remote ip
 	_dma_write_sock (sock, SnDIPR, ip, 4);
@@ -287,7 +287,7 @@ dma_udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 }
 
 void
-dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
+udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 {
 	uint16_t free;
 	_dma_read_sock_16 (sock, SnTX_FSR, &free);
@@ -335,7 +335,7 @@ dma_udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 }
 
 uint16_t
-dma_udp_available (uint8_t sock)
+udp_available (uint8_t sock)
 {
 	uint16_t len;
 	_dma_read_sock_16 (sock, SnRX_RSR, &len);
@@ -343,7 +343,7 @@ dma_udp_available (uint8_t sock)
 }
 
 void
-dma_udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
+udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 {
 	uint16_t ptr;
 	_dma_read_sock_16 (sock, SnRX_RD, &ptr);

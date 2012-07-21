@@ -21,10 +21,10 @@
  *     distribution.
  */
 
-#ifndef DMA_UDP_PRIVATE_H
-#define DMA_UDP_PRIVATE_H
+#ifndef UDP_PRIVATE_H
+#define UDP_PRIVATE_H
 
-#include <dma_udp.h>
+#include <udp.h>
 
 #define MR		 0x0000
 #define GAR		 0x0001
@@ -107,4 +107,4 @@
 // SBASE(s) = TXBUF_BASE + s*SSIZE
 // RBASE(s) = RXBUF_BASE + s*RSIZE
 
-#endif // DMA_UDP_PRIVATE_H
+#endif // UDP_PRIVATE_H
