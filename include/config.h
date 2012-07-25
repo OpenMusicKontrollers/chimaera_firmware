@@ -38,7 +38,6 @@ typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
 
 struct _Socket_Config {
-	uint8_t enabled;
 	uint8_t sock;
 	uint16_t port;
 	uint8_t ip[4];
@@ -64,24 +63,55 @@ struct _Config {
 		uint8_t subnet [4];
 	} comm;
 
-	Socket_Config tuio;
-	Socket_Config config;
-	Socket_Config sntp;
-	Socket_Config dump;
+	struct _tuio {
+		uint8_t enabled;
+		Socket_Config socket;
+		uint8_t long_header;
+	} tuio;
+
+	struct _config {
+		uint8_t enabled;
+		Socket_Config socket;
+	} config;
+
+	struct _sntp {
+		uint8_t enabled;
+		Socket_Config socket;
+	} sntp;
+
+	struct _dump {
+		uint8_t enabled;
+		Socket_Config socket;
+	} dump;
+
+	struct _debug {
+		uint8_t enabled;
+		Socket_Config socket;
+	} debug;
+
 	struct _rtpmidi {
-		Socket_Config payload;
-		Socket_Config session;
+		uint8_t enabled;
+		struct _payload {
+			Socket_Config socket;
+		} payload;
+		struct _session {
+			Socket_Config socket;
+		} session;
 	} rtpmidi;
 
+	struct _ping {
+		uint8_t enabled;
+		Socket_Config socket;
+	} ping;
+
 	struct _cmc {
-		uint16_t rate;
 		uint16_t diff;
 		uint16_t thresh0;
 		uint16_t thresh1;
+		uint8_t max_groups;
 	} cmc;
 
-	uint8_t tuio_long_header;
-	uint8_t cmc_max_groups;
+	uint16_t rate;
 };
 
 extern Config config;

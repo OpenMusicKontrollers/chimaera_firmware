@@ -46,7 +46,7 @@ tuio2_new (uint8_t len)
 	tuio->frm_dim = nosc_message_add_int32 (tuio->frm_inst, 0);
 	tuio->bndl[0] = nosc_bundle_add_message (NULL, tuio->frm_timestamp, "/tuio2/frm");
 
-	if (!config.tuio_long_header)
+	if (!config.tuio.long_header)
 		tuio->frm_timestamp->next = NULL;
 
 	// tok
@@ -145,14 +145,14 @@ tuio2_frm_long_set (Tuio2 *tuio, const char *app, uint8_t *addr, uint16_t inst, 
 	tuio->frm_dim->arg.i = _dim;
 
 	tuio->frm_timestamp->next = tuio->frm_app;
-	config.tuio_long_header = 1;
+	config.tuio.long_header = 1;
 }
 
 void
 tuio2_frm_long_unset (Tuio2 *tuio)
 {
 	tuio->frm_timestamp->next = NULL;
-	config.tuio_long_header = 0;
+	config.tuio.long_header = 0;
 }
 
 void 

@@ -66,7 +66,7 @@ const uint8_t PWDN = 17;
 /*
  * include chimaera custom libraries
  */
-#include <chimaera.h>
+#include <chimutil.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
 
@@ -179,10 +179,10 @@ loop ()
 		len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 3*MUX_MAX, 6*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 6*MUX_MAX, 9*MUX_MAX);
-		udp_send (config.dump.sock, buf_o, len);
+		udp_send (config.dump.socket.sock, buf_o, len);
 	}
 
-	if (config.tuio.enabled || config.rtpmidi.payload.enabled)
+	if (config.tuio.enabled || config.rtpmidi.enabled)
 	{
 		cmc_job = cmc_process (cmc);
 
@@ -193,21 +193,21 @@ loop ()
 			if (config.tuio.enabled)
 			{
 				len = cmc_write_tuio2 (cmc, now, buf_o); //TODO speed this up
-				udp_send (config.tuio.sock, buf_o, len);
+				udp_send (config.tuio.socket.sock, buf_o, len);
 			}
 
-			if (config.rtpmidi.payload.enabled)
+			if (config.rtpmidi.enabled)
 			{
 				len = cmc_write_rtpmidi (cmc, buf_o);
-				udp_send (config.rtpmidi.payload.sock, buf_o, len);
+				udp_send (config.rtpmidi.payload.socket.sock, buf_o, len);
 			}
 		}
 	}
 
 	// run osc config server
-	if (config.config.enabled && (len = udp_available (config.config.sock)) )
+	if (config.config.enabled && (len = udp_available (config.config.socket.sock)) )
 	{
-		udp_receive (config.config.sock, buf_i, len);
+		udp_receive (config.config.socket.sock, buf_i, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len; //TODO implement UDP packet iterator
@@ -235,13 +235,13 @@ loop ()
 
 			timestamp_set (&now);
 			len = sntp_request (buf_o, now);
-			udp_send (config.sntp.sock, buf_o, len);
+			udp_send (config.sntp.socket.sock, buf_o, len);
 		}
 
 		// receive sntp request answer
-		if ( (len = udp_available (config.sntp.sock)) )
+		if ( (len = udp_available (config.sntp.socket.sock)) )
 		{
-			udp_receive (config.sntp.sock, buf_i, len);
+			udp_receive (config.sntp.socket.sock, buf_i, len);
 
 			// separate concurrent UDP messages
 			uint16_t remaining = len;
@@ -318,7 +318,7 @@ extern "C" void adc_timer_pause ()
 
 extern "C" void adc_timer_reconfigure ()
 {
-  adc_timer.setPeriod (1e6/config.cmc.rate/MUX_MAX); // set period based on update rate and mux channels
+  adc_timer.setPeriod (1e6/config.rate/MUX_MAX); // set period based on update rate and mux channels
 	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
 	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
 	adc_timer.attachCompare1Interrupt (adc_timer_irq);
@@ -386,47 +386,13 @@ setup ()
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
 
-	// init tuio socket
-	if (config.tuio.enabled)
-	{
-		udp_begin (config.tuio.sock, config.tuio.port);
-		udp_set_remote (config.tuio.sock, config.tuio.ip, config.tuio.port);
-	}
-
-	// init config socket
-	if (config.config.enabled)
-	{
-		udp_begin (config.config.sock, config.config.port);
-		udp_set_remote (config.config.sock, config.config.ip, config.config.port);
-	}
-
-	// init sntp socket
-	if (config.sntp.enabled)
-	{
-		udp_begin (config.sntp.sock, config.sntp.port);
-		udp_set_remote (config.sntp.sock, config.sntp.ip, config.sntp.port);
-	}
-
-	// init dump socket
-	if (config.dump.enabled)
-	{
-		udp_begin (config.dump.sock, config.dump.port);
-		udp_set_remote (config.dump.sock, config.dump.ip, config.dump.port);
-	}
-
-	// init rtpmidi payload socket
-	if (config.rtpmidi.payload.enabled)
-	{
-		udp_begin (config.rtpmidi.payload.sock, config.rtpmidi.payload.port);
-		udp_set_remote (config.rtpmidi.payload.sock, config.rtpmidi.payload.ip, config.rtpmidi.payload.port);
-	}
-
-	// init rtpmidi session socket
-	if (config.rtpmidi.session.enabled)
-	{
-		udp_begin (config.rtpmidi.session.sock, config.rtpmidi.session.port);
-		udp_set_remote (config.rtpmidi.session.sock, config.rtpmidi.session.ip, config.rtpmidi.session.port);
-	}
+	tuio_enable (config.tuio.enabled);
+	config_enable (config.config.enabled);
+	sntp_enable (config.sntp.enabled);
+	dump_enable (config.dump.enabled);
+	debug_enable (config.debug.enabled);
+	rtpmidi_enable (config.rtpmidi.enabled);
+	ping_enable (config.ping.enabled);
 
 	// set start time to 0
 	t0.all = 0ULL;

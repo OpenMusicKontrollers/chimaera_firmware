@@ -23,7 +23,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
 BUILDDIRS += $(BUILD_PATH)/$(d)/tube
 BUILDDIRS += $(BUILD_PATH)/$(d)/eeprom
 BUILDDIRS += $(BUILD_PATH)/$(d)/rtpmidi
-BUILDDIRS += $(BUILD_PATH)/$(d)/chimaera
+BUILDDIRS += $(BUILD_PATH)/$(d)/chimutil
 
 ### Local flags: these control how the compiler gets called.
 
@@ -67,7 +67,7 @@ cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += tube/tube.c
 cSRCS_$(d) += eeprom/eeprom.c
 cSRCS_$(d) += rtpmidi/rtpmidi.c
-cSRCS_$(d) += chimaera/chimaera.c
+cSRCS_$(d) += chimutil/chimutil.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.

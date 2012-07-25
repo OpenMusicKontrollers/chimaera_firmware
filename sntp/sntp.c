@@ -23,7 +23,7 @@
 
 #include <string.h>
 
-#include <chimaera.h>
+#include <chimutil.h>
 
 #include "sntp_private.h"
 

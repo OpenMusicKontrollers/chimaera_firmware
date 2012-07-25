@@ -23,8 +23,7 @@
 
 #include <libmaple/nvic.h>
 
-#include <chimaera.h>
-#include <config.h>
+#include <chimutil.h>
 
 uint8_t buf_o[1024]; // general purpose output buffer
 uint8_t buf_i[1024]; // general purpose input buffer
@@ -35,25 +34,31 @@ uint32_t debug_counter = 0;
 void
 debug_str (const char *str)
 {
+	if (!config.debug.enabled)
+		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "is", debug_counter++, str);
-	udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.socket.sock, buf_o, size);
 }
 
 void
 debug_int32 (int32_t i)
 {
+	if (!config.debug.enabled)
+		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "ii", debug_counter++, i);
-	udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.socket.sock, buf_o, size);
 }
 
 void
 debug_float (float f)
 {
+	if (!config.debug.enabled)
+		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (buf_o, "/debug", "if", debug_counter++, f);
-	udp_send (config.config.sock, buf_o, size);
+	udp_send (config.config.socket.sock, buf_o, size);
 }
 
 void (*adc12_irq_handler) (void) = NULL;
@@ -109,4 +114,84 @@ set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len)
 		len -= len % 6;
 	}
   dev->regs->SQR3 = _calc_adc_sequence (&(seq[0]), len);
+}
+
+void 
+tuio_enable (uint8_t b)
+{
+	config.tuio.enabled = b;
+	if (config.tuio.enabled)
+	{
+		udp_begin (config.tuio.socket.sock, config.tuio.socket.port);
+		udp_set_remote (config.tuio.socket.sock, config.tuio.socket.ip, config.tuio.socket.port);
+	}
+}
+
+void 
+config_enable (uint8_t b)
+{
+	config.config.enabled = b;
+	if (config.config.enabled)
+	{
+		udp_begin (config.config.socket.sock, config.config.socket.port);
+		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port);
+	}
+}
+
+void 
+sntp_enable (uint8_t b)
+{
+	config.sntp.enabled = b;
+	if (config.sntp.enabled)
+	{
+		udp_begin (config.sntp.socket.sock, config.sntp.socket.port);
+		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port);
+	}
+}
+
+void 
+dump_enable (uint8_t b)
+{
+	config.dump.enabled = b;
+	if (config.dump.enabled)
+	{
+		udp_begin (config.dump.socket.sock, config.dump.socket.port);
+		udp_set_remote (config.dump.socket.sock, config.dump.socket.ip, config.dump.socket.port);
+	}
+}
+
+void 
+debug_enable (uint8_t b)
+{
+	config.debug.enabled = b;
+	if (config.debug.enabled)
+	{
+		udp_begin (config.debug.socket.sock, config.debug.socket.port);
+		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port);
+	}
+}
+
+void 
+rtpmidi_enable (uint8_t b)
+{
+	config.rtpmidi.enabled = b;
+	if (config.rtpmidi.enabled)
+	{
+		udp_begin (config.rtpmidi.payload.socket.sock, config.rtpmidi.payload.socket.port);
+		udp_set_remote (config.rtpmidi.payload.socket.sock, config.rtpmidi.payload.socket.ip, config.rtpmidi.payload.socket.port);
+
+		udp_begin (config.rtpmidi.session.socket.sock, config.rtpmidi.session.socket.port);
+		udp_set_remote (config.rtpmidi.session.socket.sock, config.rtpmidi.session.socket.ip, config.rtpmidi.session.socket.port);
+	}
+}
+
+void 
+ping_enable (uint8_t b)
+{
+	config.ping.enabled = b;
+	if (config.ping.enabled)
+	{
+		udp_begin (config.ping.socket.sock, config.ping.socket.port);
+		udp_set_remote (config.ping.socket.sock, config.ping.socket.ip, config.ping.socket.port);
+	}
 }

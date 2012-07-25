@@ -26,7 +26,7 @@
 #include <math.h>
 #include <string.h>
 
-#include <chimaera.h>
+#include <util.h>
 #include <config.h>
 
 /*
@@ -456,7 +456,7 @@ cmc_group_clear (CMC *cmc)
 uint8_t 
 cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
 {
-	if (cmc->n_groups >= config.cmc_max_groups)
+	if (cmc->n_groups >= config.cmc.max_groups)
 		return 0;
 
 	cmc->groups = _cmc_group_push (cmc->groups, tid, uid, x0, x1);
