@@ -85,7 +85,7 @@ Config config = {
 	},
 
 	.debug = {
-		.enabled = 1, // disabled by default TODO
+		.enabled = 0,
 		.socket = {
 			.sock = 4,
 			.port = 6666,

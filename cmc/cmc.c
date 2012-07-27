@@ -89,7 +89,7 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 
 	cmc->thresh0 = th0;
 	cmc->thresh1 = th1;
-	cmc->thresh0_f = cmc->thresh0 * cmc->_bitdepth;
+	cmc->thresh0_f = sqrt (cmc->thresh0 * cmc->_bitdepth);
 	cmc->_thresh0_f = 1.0ur - cmc->thresh0_f;
 
 	cmc->d = 1.0ur / (ns-1);
@@ -177,22 +177,22 @@ cmc_process (CMC *cmc)
 			ufix32_t x1 = cmc->sensors[i].x;
 			ufix32_t d = cmc->d;
 
-			//TODO look up table of Y~B
-			fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
-			fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
-			fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
+			//fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
+			//fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
+			//fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
+
+			// lookup table
+			fix31_t y0 = dist[cmc->sensors[i-1].v];
+			fix31_t y1 = dist[cmc->sensors[i].v];
+			fix31_t y2 = dist[cmc->sensors[i+1].v];
 
 			ufix32_t x = x1 + d/2*(y0 - y2) / (y0 - y1 + y2 - y1);
-			ufix32_t y = (y0*0.5ur + y1*0.5ur + y2*0.5ur); // TODO is there a better formula
+			//ufix32_t y = (-0.125r*y0_2 - 0.125r*y2_2 + 0.25r*y0*y2 + y0*y1 - y1_2 + y1*y2 - y1_2) * teiler;
+			ufix32_t y = y0*0.5r + y1*0.5r + y2*0.5r; // TODO is this good enough an approximation?
 
 			// rescale according to threshold
 			y -= cmc->thresh0_f;
-			y /= cmc->_thresh0_f; // TODO division is expensive, solve differently
-
-			if (x < 0.0ur) x = 0.0ur;
-			if (x > 1.0ur) x = 1.0ur;
-			if (y < 0.0ur) y = 0.0ur;
-			if (y > 1.0ur) y = 1.0ur;
+			y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
 
 			cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
 			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
@@ -241,7 +241,6 @@ cmc_process (CMC *cmc)
 			CMC_Blob *blb2 = &(cmc->new_blobs[b]);
 
 			blb2->sid = blb->sid;
-			//blb2->uid = blb->uid; //TODO this is not necessary
 			blb2->group = blb->group;
 
 			switch (low-ptr)

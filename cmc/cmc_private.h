@@ -29,6 +29,8 @@
 #include <rtpmidi.h>
 #include <armfix.h>
 
+extern ufix32_t dist [];
+
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
 typedef struct _CMC_Group CMC_Group;
