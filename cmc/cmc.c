@@ -26,7 +26,7 @@
 #include <math.h>
 #include <string.h>
 
-#include <util.h>
+#include <chimutil.h>
 #include <config.h>
 
 /*
@@ -177,6 +177,7 @@ cmc_process (CMC *cmc)
 			ufix32_t x1 = cmc->sensors[i].x;
 			ufix32_t d = cmc->d;
 
+			//TODO look up table of Y~B
 			fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
 			fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
 			fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
@@ -194,9 +195,10 @@ cmc_process (CMC *cmc)
 			if (y > 1.0ur) y = 1.0ur;
 
 			cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
+			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
+			cmc->new_blobs[cmc->J].group = NULL;
 			cmc->new_blobs[cmc->J].x = x;
 			cmc->new_blobs[cmc->J].p = y;
-			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
 			cmc->new_blobs[cmc->J].above_thresh = cmc->sensors[i].v > cmc->thresh1 ? 1 : 0;
 			cmc->new_blobs[cmc->J].ignore = 0;
 
@@ -211,10 +213,7 @@ cmc_process (CMC *cmc)
 		// fill distance matrix of old and new blobs
 		for (i=0; i<cmc->I; i++) // old blobs
 			for (j=0; j<cmc->J; j++) // new blobs
-			{
-				cmc->matrix[i][j] = (fix31_t)cmc->new_blobs[j].x - (fix31_t)cmc->old_blobs[i].x; // 1D
-				cmc->matrix[i][j] = cmc->matrix[i][j] < 0.0r ? -cmc->matrix[i][j] : cmc->matrix[i][j]; //TODO how to to a fixed-point abs?
-			}
+				cmc->matrix[i][j] = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
 
 		// associate new with old blobs
 		uint8_t ptr;
@@ -227,7 +226,7 @@ cmc_process (CMC *cmc)
 			for (i=0; i<cmc->I; i++) // old blobs
 				for (j=0; j<cmc->J; j++) // new blobs
 				{
-					if (cmc->matrix[i][j] == -0.5r)
+					if (cmc->matrix[i][j] < 0.0r) // already handled
 						continue;
 
 					if (cmc->matrix[i][j] < min)
@@ -242,18 +241,28 @@ cmc_process (CMC *cmc)
 			CMC_Blob *blb2 = &(cmc->new_blobs[b]);
 
 			blb2->sid = blb->sid;
+			//blb2->uid = blb->uid; //TODO this is not necessary
 			blb2->group = blb->group;
 
-			for (i=0; i<cmc->I; i++)
-				cmc->matrix[i][b] = -0.5r;
-			for (j=0; j<cmc->J; j++)
-				cmc->matrix[a][j] = -0.5r;
+			switch (low-ptr)
+			{
+				case 1:
+					cmc->matrix[a][b] = -0.5r;
+					break;
+
+				default:
+					for (i=0; i<cmc->I; i++)
+						cmc->matrix[i][b] = -0.5r;
+					for (j=0; j<cmc->J; j++)
+						cmc->matrix[a][j] = -0.5r;
+					break;
+			}
 		}
 
 		// handle all new blobs
 		if (cmc->J > cmc->I)
 			for (j=0; j<cmc->J; j++)
-				if (cmc->new_blobs[j].sid == -1)
+				if (cmc->new_blobs[j].sid == -1) // only consider not-yet associated blobs
 				{
 					if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
 						cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
@@ -288,6 +297,8 @@ cmc_process (CMC *cmc)
 		if (newJ != j)
 		{
 			cmc->new_blobs[newJ].sid = cmc->new_blobs[j].sid;
+			cmc->new_blobs[newJ].uid = cmc->new_blobs[j].uid;
+			cmc->new_blobs[newJ].group = cmc->new_blobs[j].group;
 			cmc->new_blobs[newJ].x = cmc->new_blobs[j].x;
 			cmc->new_blobs[newJ].p = cmc->new_blobs[j].p;
 			cmc->new_blobs[newJ].above_thresh = cmc->new_blobs[j].above_thresh;
@@ -402,6 +413,22 @@ cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, 
 	for (i=s0; i<s1; i++)
 		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
 	size = nosc_message_serialize (msg, "/cmc/dump_partial", buf);
+	nosc_message_free (msg);
+
+	return size;
+}
+
+uint16_t 
+cmc_dump_first (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
+{
+	uint8_t i;
+	uint16_t size;
+
+	nOSC_Message *msg = NULL;
+	msg = nosc_message_add_timestamp (msg, timestamp);
+	for (i=0; i<cmc->n_sensors; i+=0x10)
+		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
+	size = nosc_message_serialize (msg, "/cmc/dump_first", buf);
 	nosc_message_free (msg);
 
 	return size;

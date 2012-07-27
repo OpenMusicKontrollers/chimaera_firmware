@@ -43,8 +43,8 @@ inline void resetSS ()
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
-static uint8_t spi_tx_dma_buf [2048];
-static uint8_t spi_rx_dma_buf [2048];
+static uint8_t spi_tx_dma_buf [1024]; //TODO how much do we need?
+static uint8_t spi_rx_dma_buf [512]; //TODO how much do we need?
 
 volatile uint8_t spi_dma_done;
 

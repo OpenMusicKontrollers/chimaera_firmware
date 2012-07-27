@@ -43,22 +43,17 @@ uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switc
 
 volatile uint8_t adc_dma_half_done;
 volatile uint8_t adc_dma_done;
-//const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  FIXME
-//const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC FIXME
-const uint8_t ADC_LENGTH = 3; // the number of channels to be converted per ADC 
-const uint8_t ADC_DUAL_LENGTH = 2; // the number of channels to be converted per ADC 
+const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  
+const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
 uint16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-//uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC FIXME
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {4, 4}; // analog input pins read out by the ADC
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 11, 10, 9, 8}; // analog input pins read out by the ADC 
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-//uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC FIXME
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {3, 5}; // analog input pins read out by the ADC
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {3, 4, 5, 6, 7}; // analog input pins read out by the ADC 
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-//static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 }; //FIXME
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 1, 2 };
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 8, 1, 7, 2, 6, 3, 5, 4 };
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -176,7 +171,8 @@ loop ()
 	{
 		timestamp_set (&now);
 		//len = cmc_dump (cmc, now, buf_o);
-		len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
+		len = cmc_dump_first (cmc, now, buf_o);
+		//len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 3*MUX_MAX, 6*MUX_MAX);
 		//len = cmc_dump_partial (cmc, now, buf_o, 6*MUX_MAX, 9*MUX_MAX);
 		udp_send (config.dump.socket.sock, buf_o, len);
@@ -285,14 +281,12 @@ loop ()
 				cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
 			}
 
-		/*
 		// TODO broken sensors
 		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
 		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
 		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
 
 		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
-		*/
 	}
 	else
 		first = 0;
@@ -401,11 +395,14 @@ setup ()
 	serv = config_methods_add (serv, buf_o);
 
 	// set up ADCs
-	adc_set_exttrig (ADC1, 1);
-	adc_set_exttrig (ADC2, 1);
+	adc_disable (ADC1);
+	adc_disable (ADC2);
 
 	adc_set_extsel (ADC1, ADC_EXT_EV_SWSTART);
 	adc_set_extsel (ADC2, ADC_EXT_EV_SWSTART);
+
+	adc_set_exttrig (ADC1, 1);
+	adc_set_exttrig (ADC2, 1);
 
 	/*
 	ADC_SMPR_1_5
@@ -417,18 +414,11 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_28_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_28_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
-
-	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
-	//ADC2->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
-	//adc12_attach_interrupt (adc_eoc_irq);
-
-	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
-  ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
 
   adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted 
   adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
@@ -444,6 +434,19 @@ setup ()
 	set_adc_sequence (ADC1, ADC1_RawSequence, ADC_DUAL_LENGTH);
 	set_adc_sequence (ADC2, ADC2_RawSequence, ADC_DUAL_LENGTH);
 
+	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
+	//ADC2->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
+	//adc12_attach_interrupt (adc_eoc_irq);
+
+	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
+  ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
+
+	adc_enable (ADC1);
+	adc_enable (ADC2);
+
+	adc_calibrate (ADC1);
+	adc_calibrate (ADC2);
+
 	// set up ADC DMA tube
 	adc_tube.tube_dst = (void *)rawDataArray;
 	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
@@ -454,7 +457,7 @@ setup ()
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 8, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
+	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 4, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1); //TODO make mb configurable
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();

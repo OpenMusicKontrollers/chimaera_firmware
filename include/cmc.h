@@ -50,6 +50,7 @@ uint16_t cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_write_rtpmidi (CMC *cmc, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
+uint16_t cmc_dump_first (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 
 void cmc_group_clear (CMC *cmc);
 uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);

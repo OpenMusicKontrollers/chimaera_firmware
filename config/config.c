@@ -85,7 +85,7 @@ Config config = {
 	},
 
 	.debug = {
-		.enabled = 0, // disabled by default
+		.enabled = 1, // disabled by default TODO
 		.socket = {
 			.sock = 4,
 			.port = 6666,
@@ -95,6 +95,7 @@ Config config = {
 
 	.rtpmidi = {
 		.enabled = 0, // disabled by default
+
 		.payload = {
 			.socket = {
 				.sock = 5,
@@ -113,7 +114,7 @@ Config config = {
 	},
 
 	.ping = {
-		.enabled = 1, // disabled by default
+		.enabled = 0, // disabled by default
 		.socket = {
 			.sock = 7,
 			.port = 255,
@@ -128,7 +129,7 @@ Config config = {
 		.max_groups = 32
 	},
 
-	.rate = 2000 // update rate in Hz
+	.rate = 1500 // update rate in Hz
 };
 
 static uint8_t

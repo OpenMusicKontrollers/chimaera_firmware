@@ -34,7 +34,7 @@
 #include <sntp.h>
 #include <tube.h>
 #include <eeprom.h>
-#include <rtpmidi.h>
+//#include <rtpmidi.h>
 
 #ifdef __cplusplus
 extern "C" {
