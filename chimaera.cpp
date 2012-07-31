@@ -45,15 +45,16 @@ volatile uint8_t adc_dma_half_done;
 volatile uint8_t adc_dma_done;
 const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  
 const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
-uint16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 11, 10, 9, 8}; // analog input pins read out by the ADC 
+int16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {3, 4, 5, 6, 7}; // analog input pins read out by the ADC 
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 0, 8, 1, 7, 2, 6, 3, 5, 4 };
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+static uint8_t ADC_Order [MUX_MAX][ADC_DUAL_LENGTH*2];
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 const uint8_t PWDN = 17;
@@ -65,6 +66,26 @@ const uint8_t PWDN = 17;
 
 #define ADC_CR1_DUALMOD_BIT 16
 
+Stop_Watch sw_cmc = {
+	"cmc"
+};
+
+Stop_Watch sw_server = {
+	"server"
+};
+
+Stop_Watch sw_adc1 = {
+	"adc1"
+};
+
+Stop_Watch sw_adc2 = {
+	"adc2"
+};
+
+Stop_Watch sw_ref = {
+	"ref"
+};
+
 timestamp64u_t t0;
 timestamp64u_t now;
 nOSC_Server *serv = NULL;
@@ -75,6 +96,7 @@ HardwareTimer sntp_timer(2);
 
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
+volatile uint8_t sntp_should_listen = 0;
 uint8_t first = 1;
 
 void
@@ -159,150 +181,131 @@ adc_dma_block ()
 		;
 }
 
+void
+config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	nosc_server_dispatch (serv, buf, len);
+}
+
+void
+sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	timestamp64u_t *transmit;
+	timestamp64u_t roundtrip_delay;
+	timestamp64s_t clock_offset;
+
+	timestamp_set (&now);
+	transmit = sntp_dispatch (buf, now, &roundtrip_delay, &clock_offset);
+
+	if (t0.all == 0ULL)
+	{
+		t0.part.sec = transmit->part.sec;
+		t0.part.frac = transmit->part.frac;
+	}
+	else
+		t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
+
+	sntp_should_listen = 0;
+}
+
+uint8_t cmc_job = 0;
+uint16_t len = 0;
+
 inline void
 loop ()
 {
-	uint8_t cmc_job;
-	uint16_t len;
-
 	adc_dma_run ();
 
+	// store ADC values into CMC struct
+	stop_watch_start (&sw_adc2);	
+	if (!first)
+	{
+		for (uint8_t p=MUX_MAX/2; p<MUX_MAX; p++)
+			for (uint8_t i=0; i<ADC_LENGTH; i++)
+			{
+				int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
+				cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
+			}
+	}
+	else
+		first = 0;
+	stop_watch_stop (&sw_adc2);	
+
+	// dump raw sensor data
 	if (config.dump.enabled)
 	{
 		timestamp_set (&now);
-		//len = cmc_dump (cmc, now, buf_o);
-		len = cmc_dump_first (cmc, now, buf_o);
-		//len = cmc_dump_partial (cmc, now, buf_o, 0*MUX_MAX, 3*MUX_MAX);
-		//len = cmc_dump_partial (cmc, now, buf_o, 3*MUX_MAX, 6*MUX_MAX);
-		//len = cmc_dump_partial (cmc, now, buf_o, 6*MUX_MAX, 9*MUX_MAX);
-		udp_send (config.dump.socket.sock, buf_o, len);
+
+		for (uint8_t u=0; u<ADC_LENGTH; u++)
+		{
+			len = cmc_dump_unit (cmc, now, buf_o, u);
+			udp_send (config.dump.socket.sock, buf_o, len);
+		}
 	}
 
-	if (config.tuio.enabled || config.rtpmidi.enabled)
+	// do touch recognition and interpolation
+	if (config.tuio.enabled)
 	{
-		cmc_job = cmc_process (cmc);
-
 		if (cmc_job)
+			udp_send_nonblocking (config.tuio.socket.sock, buf_o2, len);
+
+		uint8_t job = cmc_process (cmc);
+
+		if (job)
 		{
 			timestamp_set (&now);
-
-			if (config.tuio.enabled)
-			{
-				len = cmc_write_tuio2 (cmc, now, buf_o); //TODO speed this up
-				udp_send (config.tuio.socket.sock, buf_o, len);
-			}
-
-			if (config.rtpmidi.enabled)
-			{
-				len = cmc_write_rtpmidi (cmc, buf_o);
-				udp_send (config.rtpmidi.payload.socket.sock, buf_o, len);
-			}
+			len = cmc_write_tuio2 (cmc, now, buf_o2);
 		}
+
+		if (cmc_job)
+			udp_send_block (config.tuio.socket.sock);
+
+		cmc_job = job;
 	}
 
+	stop_watch_start (&sw_server);	
 	// run osc config server
-	if (config.config.enabled && (len = udp_available (config.config.socket.sock)) )
-	{
-		udp_receive (config.config.socket.sock, buf_i, len);
+	if (config.config.enabled) //TODO add a timer and volatile config_should_request to reduce mcu cycles, run it at 10Hz or sow, that'll be enough
+		udp_dispatch (config.config.socket.sock, buf_i, config_cb);
+	stop_watch_stop (&sw_server);	
 
-		// separate concurrent UDP messages
-		uint16_t remaining = len; //TODO implement UDP packet iterator
-		while (remaining)
-		{
-			uint8_t *buf_in_ptr = buf_i+len-remaining;
-
-			// get UDP header info
-			//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
-			//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
-			uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
-		
-			nosc_server_dispatch (serv, buf_in_ptr+UDP_HDR_SIZE, src_size); // skip UDP header
-
-			remaining -= UDP_HDR_SIZE + src_size;
-		}
-	}
-
-	// send sntp request
+	// run sntp client
 	if (config.sntp.enabled)
 	{
+		// send sntp request
 		if (sntp_should_request)
 		{
 			sntp_should_request = 0;
+			sntp_should_listen = 1;
 
 			timestamp_set (&now);
 			len = sntp_request (buf_o, now);
 			udp_send (config.sntp.socket.sock, buf_o, len);
 		}
 
-		// receive sntp request answer
-		if ( (len = udp_available (config.sntp.socket.sock)) )
-		{
-			udp_receive (config.sntp.socket.sock, buf_i, len);
-
-			// separate concurrent UDP messages
-			uint16_t remaining = len;
-			while (remaining)
-			{
-				uint8_t *buf_in_ptr = buf_i+len-remaining;
-
-				// get UDP header info
-				//uint8_t *src_ip = buf_in_ptr; // TODO handle it?
-				//uint16_t src_port = (buf_in_ptr[4] << 8) + buf_in_ptr[5]; // TODO handle it?
-				uint16_t src_size = (buf_in_ptr[6] << 8) + buf_in_ptr[7];
-
-				timestamp64u_t *transmit;
-				timestamp64u_t roundtrip_delay;
-				timestamp64s_t clock_offset;
-
-				timestamp_set (&now);
-				transmit = sntp_dispatch (buf_in_ptr+UDP_HDR_SIZE, now, &roundtrip_delay, &clock_offset);
-
-				if (t0.all == 0ULL)
-				{
-					t0.part.sec = transmit->part.sec;
-					t0.part.frac = transmit->part.frac;
-				}
-				else
-					t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
-			
-				remaining -= UDP_HDR_SIZE + src_size;
-			}
-		}
+		// listen for sntp request answer
+		if (sntp_should_listen)
+			udp_dispatch (config.sntp.socket.sock, buf_i, sntp_cb);
 	}
-
-	if (!first)
-	{
-		// store second half of ADC values into CMC struct
-		for (uint8_t p=MUX_MAX/2; p<MUX_MAX; p++)
-			for (uint8_t i=0; i<ADC_LENGTH; i++)
-			{
-				int16_t adc_data;
-				adc_data = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
-				cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
-			}
-
-		// TODO broken sensors
-		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
-		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
-		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
-
-		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
-	}
-	else
-		first = 0;
 
 	adc_dma_half_block ();
 
-	// store first half of ADC values into CMC struct
+	// store ADC values into CMC struct
+	stop_watch_start (&sw_adc1);	
 	for (uint8_t p=0; p<MUX_MAX/2; p++)
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
-			int16_t adc_data;
-			adc_data = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
-			cmc_set (cmc, ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX, abs (adc_data), adc_data < 0);
+			int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
+			cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
 		}
+	stop_watch_stop (&sw_adc1);	
 
 	adc_dma_block ();
+}
+
+extern "C" uint32_t _micros ()
+{
+	return micros ();
 }
 
 extern "C" void adc_timer_pause ()
@@ -351,12 +354,15 @@ setup ()
   pinMode (BOARD_BUTTON_PIN, INPUT);
   pinMode (BOARD_LED_PIN, OUTPUT);
 
+	// enable wiz820io module
 	pinMode (PWDN, OUTPUT);
 	digitalWrite (PWDN, 0); // enable wiz820io
 
+	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
 		pinMode (MUX_Sequence[i], OUTPUT);
 
+	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
 		pinMode (ADC1_Sequence[i], INPUT_ANALOG);
@@ -367,19 +373,21 @@ setup ()
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
 	//TODO implement reading and writing the config
 
-	// init DMA
+	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
 
-	// set up udp
+	// set up SPI for usage with wiz820io
   spi.begin (SPI_18MHZ, MSBFIRST, 0); 
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
+	// initialize wiz820io
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
 
+	// initialize sockets
 	tuio_enable (config.tuio.enabled);
 	config_enable (config.config.enabled);
 	sntp_enable (config.sntp.enabled);
@@ -392,7 +400,7 @@ setup ()
 	t0.all = 0ULL;
 
 	// add methods to OSC server
-	serv = config_methods_add (serv, buf_o);
+	serv = config_methods_add (serv, buf_o); //TODO move to config_enable
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -430,6 +438,10 @@ setup ()
 		ADC2_RawSequence[i] = PIN_MAP[ADC2_Sequence[i]].adc_channel;
 	}
 
+	for (uint8_t p=0; p<MUX_MAX; p++)
+		for (uint8_t i=0; i<ADC_LENGTH; i++)
+			ADC_Order[p][i] = ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX;
+
 	// set channels in register
 	set_adc_sequence (ADC1, ADC1_RawSequence, ADC_DUAL_LENGTH);
 	set_adc_sequence (ADC2, ADC2_RawSequence, ADC_DUAL_LENGTH);
@@ -457,7 +469,7 @@ setup ()
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, 4, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1); //TODO make mb configurable
+	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();
@@ -468,7 +480,7 @@ setup ()
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 			ADC_Offset[p][i] = ADC_HALF_BITDEPTH;
 
-	// calibrate sensors offsets
+	// calibrate sensor offsets
 	for (uint8_t c=0; c<100; c++)
 	{
 		adc_dma_run ();
@@ -479,10 +491,18 @@ setup ()
 			{
 				int16_t adc_data;
 				adc_data = (rawDataArray[p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
+
+				// calculate running mean
 				ADC_Offset[p][i] += adc_data;
 				ADC_Offset[p][i] /= 2;
 			}
 	}
+
+	/*
+	for (uint8_t p=0; p<MUX_MAX; p++)
+		for (uint8_t i=0; i<ADC_LENGTH; i++)
+			debug_int32 (ADC_Offset[p][i]);
+	*/
 
 	// init sntp_timer
 	sntp_timer_pause ();

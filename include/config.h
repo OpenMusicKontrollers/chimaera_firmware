@@ -109,6 +109,7 @@ struct _Config {
 		uint16_t thresh0;
 		uint16_t thresh1;
 		uint8_t max_groups;
+		uint8_t max_blobs;
 	} cmc;
 
 	uint16_t rate;

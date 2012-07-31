@@ -25,8 +25,9 @@
 
 #include <chimutil.h>
 
-uint8_t buf_o[1024]; // general purpose output buffer
-uint8_t buf_i[1024]; // general purpose input buffer
+uint8_t buf_o[768]; // general purpose output buffer //TODO how big?
+uint8_t buf_o2[768]; // general purpose output buffer //TODO how big?
+uint8_t buf_i[256]; // general purpose input buffer //TODO how big?
 CMC *cmc = NULL;
 
 uint32_t debug_counter = 0;
@@ -193,5 +194,28 @@ ping_enable (uint8_t b)
 	{
 		udp_begin (config.ping.socket.sock, config.ping.socket.port);
 		udp_set_remote (config.ping.socket.sock, config.ping.socket.ip, config.ping.socket.port);
+	}
+}
+
+void
+stop_watch_start (Stop_Watch *sw)
+{
+	sw->micros -= _micros ();
+}
+
+void
+stop_watch_stop (Stop_Watch *sw)
+{
+	sw->micros += _micros ();
+	sw->counter++;
+
+	if (sw->counter > 1000)
+	{
+		uint16_t size;
+		size = nosc_message_vararg_serialize (buf_o, "/stop_watch", "si", sw->id, sw->micros/1000);
+		udp_send (config.debug.socket.sock, buf_o, size);
+
+		sw->micros = 0;
+		sw->counter = 0;
 	}
 }

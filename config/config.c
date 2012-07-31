@@ -85,7 +85,7 @@ Config config = {
 	},
 
 	.debug = {
-		.enabled = 0,
+		.enabled = 1,
 		.socket = {
 			.sock = 4,
 			.port = 6666,
@@ -124,12 +124,15 @@ Config config = {
 
 	.cmc = {
 		.diff = 0,
-		.thresh0 = 60,
-		.thresh1 = 120,
-		.max_groups = 32
+		//.thresh0 = 60,
+		//.thresh1 = 120,
+		.thresh0 = 100,
+		.thresh1 = 160,
+		.max_groups = 32,
+		.max_blobs = 16
 	},
 
-	.rate = 1500 // update rate in Hz
+	.rate = 1600 // update rate in Hz
 };
 
 static uint8_t

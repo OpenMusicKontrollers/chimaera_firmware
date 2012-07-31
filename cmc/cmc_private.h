@@ -78,7 +78,7 @@ struct _CMC {
 	CMC_Group *groups;
 	uint8_t n_groups;
 
-	fix31_t **matrix;
+	fix15_t **matrix;
 
 	Tuio2 *tuio;
 	RTP_MIDI_Packet *rtpmidi_packet;

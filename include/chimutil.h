@@ -40,7 +40,8 @@
 extern "C" {
 #endif
 
-extern uint8_t buf_o[]; // general purpose ourput buffer
+extern uint8_t buf_o[]; // general purpose output buffer
+extern uint8_t buf_o2[]; // general purpose output buffer
 extern uint8_t buf_i[]; // general purpose input buffer
 extern CMC *cmc;
 
@@ -67,6 +68,18 @@ void dump_enable (uint8_t b);
 void debug_enable (uint8_t b);
 void rtpmidi_enable (uint8_t b);
 void ping_enable (uint8_t b);
+
+typedef struct _Stop_Watch Stop_Watch;
+
+struct _Stop_Watch {
+	const char *id;
+	int32_t micros;
+	uint16_t counter;
+};
+
+uint32_t _micros ();
+void stop_watch_start (Stop_Watch *sw);
+void stop_watch_stop (Stop_Watch *sw);
 
 #ifdef __cplusplus
 }

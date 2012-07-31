@@ -45,12 +45,14 @@ CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t t
 void cmc_free (CMC *cmc);
 
 void cmc_set (CMC *cmc, uint8_t i, uint16_t v, uint8_t n);
+void cmc_set_array (CMC *cmc, int16_t raw[16][10], uint8_t order[16][10], uint8_t mux_min, uint8_t mux_max, uint8_t adc_len);
 uint8_t cmc_process (CMC *cmc);
 uint16_t cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_write_rtpmidi (CMC *cmc, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
 uint16_t cmc_dump_first (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
+uint16_t cmc_dump_unit (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t unit);
 
 void cmc_group_clear (CMC *cmc);
 uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);

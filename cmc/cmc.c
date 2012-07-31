@@ -104,9 +104,9 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 		cmc->sensors[i].v = 0x0;
 	}
 
-	cmc->matrix = calloc (mb, sizeof (fix31_t *));
+	cmc->matrix = calloc (mb, sizeof (fix15_t *));
 	for (i=0; i<mb; i++)
-		cmc->matrix[i] = calloc (mb, sizeof (fix31_t));
+		cmc->matrix[i] = calloc (mb, sizeof (fix15_t));
 
 	cmc->tuio = tuio2_new (mb);
 	cmc->rtpmidi_packet = rtpmidi_new ();
@@ -138,6 +138,35 @@ cmc_set (CMC* cmc, uint8_t i, uint16_t v, uint8_t n)
 {
 	cmc->sensors[i+1].v = v < cmc->thresh0 ? 0 : v;
 	cmc->sensors[i+1].n = n;
+}
+
+void 
+cmc_set_array (CMC *cmc, int16_t raw[16][10], uint8_t order[16][10], uint8_t mux_min, uint8_t mux_max, uint8_t adc_len)
+{
+	uint8_t p, i;
+	uint16_t val;
+	uint8_t pos;
+
+	for (p=mux_min; p<mux_max; p++)
+		for (i=0; i<adc_len; i++)
+		{
+			pos = order[p][i] + 1;
+			val = abs (raw[p][i]);
+
+			cmc->sensors[pos].v = val < cmc->thresh0 ? 0 : val;
+			cmc->sensors[pos].n = raw[p][i] < 0;
+		}
+
+	// TODO broken sensors
+	cmc->sensors[1 + 0x0 + 0x10*8].v = 0;
+	cmc->sensors[1 + 0x2 + 0x10*8].v = 0;
+	cmc->sensors[1 + 0x3 + 0x10*8].v = 0;
+	cmc->sensors[1 + 0xc + 0x10*7].v = 0;
+
+	cmc->sensors[1 + 0x0 + 0x10*8].n = 0;
+	cmc->sensors[1 + 0x2 + 0x10*8].n = 0;
+	cmc->sensors[1 + 0x3 + 0x10*8].n = 0;
+	cmc->sensors[1 + 0xc + 0x10*7].n = 0;
 }
 
 static uint8_t idle = 0; // IDLE_CYCLE of 256
@@ -210,65 +239,73 @@ cmc_process (CMC *cmc)
 	 */
 	if (cmc->I && cmc->J)
 	{
-		// fill distance matrix of old and new blobs
-		for (i=0; i<cmc->I; i++) // old blobs
-			for (j=0; j<cmc->J; j++) // new blobs
-				cmc->matrix[i][j] = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
-
-		// associate new with old blobs
-		uint8_t ptr;
-		uint8_t low = cmc->J <= cmc->I ? cmc->J : cmc->I;
-		for (ptr=0; ptr<low; ptr++)
+		if ( (cmc->I == 1) && (cmc->J == 1) ) // special case where we don't need to calculate the distance matrix
 		{
-			fix31_t min = 1.0r;
-			uint8_t a = 0, b = 0;
-
+			cmc->new_blobs[0].sid = cmc->old_blobs[0].sid;
+			cmc->new_blobs[0].group = cmc->old_blobs[0].group;
+		}
+		else
+		{
+			// fill distance matrix of old and new blobs
 			for (i=0; i<cmc->I; i++) // old blobs
 				for (j=0; j<cmc->J; j++) // new blobs
-				{
-					if (cmc->matrix[i][j] < 0.0r) // already handled
-						continue;
+					cmc->matrix[i][j] = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
 
-					if (cmc->matrix[i][j] < min)
-					{
-						a = i;
-						b = j;
-						min = cmc->matrix[i][j];
-					}
-				}
-
-			CMC_Blob *blb = &(cmc->old_blobs[a]);
-			CMC_Blob *blb2 = &(cmc->new_blobs[b]);
-
-			blb2->sid = blb->sid;
-			blb2->group = blb->group;
-
-			switch (low-ptr)
+			// associate new with old blobs
+			uint8_t ptr;
+			uint8_t low = cmc->J <= cmc->I ? cmc->J : cmc->I;
+			for (ptr=0; ptr<low; ptr++)
 			{
-				case 1:
-					cmc->matrix[a][b] = -0.5r;
-					break;
+				fix15_t min = 1.0hr;
+				uint8_t a = 0, b = 0;
 
-				default:
-					for (i=0; i<cmc->I; i++)
-						cmc->matrix[i][b] = -0.5r;
-					for (j=0; j<cmc->J; j++)
-						cmc->matrix[a][j] = -0.5r;
-					break;
-			}
-		}
+				for (i=0; i<cmc->I; i++) // old blobs
+					for (j=0; j<cmc->J; j++) // new blobs
+					{
+						if (cmc->matrix[i][j] < 0.0hr) // already handled
+							continue;
 
-		// handle all new blobs
-		if (cmc->J > cmc->I)
-			for (j=0; j<cmc->J; j++)
-				if (cmc->new_blobs[j].sid == -1) // only consider not-yet associated blobs
+						if (cmc->matrix[i][j] < min)
+						{
+							a = i;
+							b = j;
+							min = cmc->matrix[i][j];
+						}
+					}
+
+				CMC_Blob *blb = &(cmc->old_blobs[a]);
+				CMC_Blob *blb2 = &(cmc->new_blobs[b]);
+
+				blb2->sid = blb->sid;
+				blb2->group = blb->group;
+
+				switch (low-ptr)
 				{
-					if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
-						cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
-					else
-						cmc->new_blobs[j].ignore = 1;
-					cmc->new_blobs[j].group = NULL;
+					case 1:
+						cmc->matrix[a][b] = -0.5hr;
+						break;
+
+					default:
+						for (i=0; i<cmc->I; i++)
+							cmc->matrix[i][b] = -0.5hr;
+						for (j=0; j<cmc->J; j++)
+							cmc->matrix[a][j] = -0.5hr;
+						break;
 				}
+			}
+
+			// handle all new blobs
+			if (cmc->J > cmc->I)
+				for (j=0; j<cmc->J; j++)
+					if (cmc->new_blobs[j].sid == -1) // only consider not-yet associated blobs
+					{
+						if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
+							cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
+						else
+							cmc->new_blobs[j].ignore = 1;
+						cmc->new_blobs[j].group = NULL;
+					}
+		}
 	}
 	else if (!cmc->I && cmc->J)
 	{
@@ -428,6 +465,23 @@ cmc_dump_first (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 	for (i=0; i<cmc->n_sensors; i+=0x10)
 		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].v);
 	size = nosc_message_serialize (msg, "/cmc/dump_first", buf);
+	nosc_message_free (msg);
+
+	return size;
+}
+
+uint16_t 
+cmc_dump_unit (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t unit)
+{
+	uint8_t i;
+	uint16_t size;
+
+	nOSC_Message *msg = NULL;
+	msg = nosc_message_add_timestamp (msg, timestamp);
+	msg = nosc_message_add_int32 (msg, unit);
+	for (i=unit*0x10; i<(unit+1)*0x10; i++)
+		msg = nosc_message_add_int32 (msg, cmc->sensors[i+1].n ? -cmc->sensors[i+1].v : cmc->sensors[i+1].v);
+	size = nosc_message_serialize (msg, "/cmc/dump_unit", buf);
 	nosc_message_free (msg);
 
 	return size;

@@ -43,14 +43,28 @@ inline void resetSS ()
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
-static uint8_t spi_tx_dma_buf [1024]; //TODO how much do we need?
-static uint8_t spi_rx_dma_buf [512]; //TODO how much do we need?
+static uint8_t spi_tx_dma_buf [768]; //TODO how much do we need?
+static uint8_t spi_rx_dma_buf [256]; //TODO how much do we need?
 
 volatile uint8_t spi_dma_done;
+
+/*
+static void
+_default_cb (void)
+{
+	spi_dma_done = 1;
+}
+
+void (*dma_done_cb) (void) = _default_cb;
+*/
 
 static void
 _spi_dma_irq (void)
 {
+	/*
+	if (dma_done_cb)
+		dma_done_cb ();
+	*/
 	spi_dma_done = 1;
 }
 
@@ -112,7 +126,6 @@ _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 	return buf;
 }
 
-/*
 void
 _dma_write_nonblocking_in (uint8_t *buf)
 {
@@ -126,7 +139,6 @@ _dma_write_nonblocking_out ()
 	_spi_dma_block ();
 	resetSS ();
 }
-*/
 
 void
 _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
@@ -334,6 +346,65 @@ udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 	_dma_write_sock (sock, SnIR, &flag, 1);
 }
 
+void 
+udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
+{
+	uint8_t *buf = spi_tx_dma_buf;
+
+	uint16_t free;
+	_dma_read_sock_16 (sock, SnTX_FSR, &free);
+	if (len > free)
+		return;
+
+	// move data to chip
+	uint16_t ptr;
+	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
+  uint16_t offset = ptr & SMASK;
+	uint16_t SBASE = TXBUF_BASE + sock*SSIZE;
+  uint16_t dstAddr = offset + SBASE;
+
+  if (offset + len > SSIZE) 
+  {
+    // Wrap around circular buffer
+    uint16_t size = SSIZE - offset;
+		buf = _dma_write_append (buf, dstAddr, dat, size);
+		buf = _dma_write_append (buf, SBASE, dat+size, len-size);
+  } 
+  else
+		buf = _dma_write_append (buf, dstAddr, dat, len);
+
+  ptr += len;
+	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, ptr);
+
+	// send data
+	uint8_t flag;
+	flag = SnCR_SEND;
+	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
+
+	_dma_write_nonblocking_in (buf);
+}
+
+void 
+udp_send_block (uint8_t sock)
+{
+	_dma_write_nonblocking_out ();
+
+	uint8_t ir;
+	uint8_t flag;
+	do
+	{
+		_dma_read_sock (sock, SnIR, &ir, 1);
+		if (ir & SnIR_TIMEOUT)
+		{
+			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
+			_dma_write_sock (sock, SnIR, &flag, 1);
+		}
+	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
+
+	flag = SnIR_SEND_OK;
+	_dma_write_sock (sock, SnIR, &flag, 1);
+}
+
 uint16_t
 udp_available (uint8_t sock)
 {
@@ -372,4 +443,30 @@ udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 	uint8_t flag;
 	flag = SnCR_RECV;
 	_dma_write_sock (sock, SnCR, &flag, 1);
+}
+
+void 
+udp_dispatch (uint8_t sock, uint8_t *buf, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+{
+	uint16_t len;
+
+	if ( (len = udp_available (sock)) )
+	{
+		udp_receive (sock, buf, len);
+
+		// separate concurrent UDP messages
+		uint16_t remaining = len;
+		while (remaining)
+		{
+			uint8_t *buf_in_ptr = buf + len - remaining;
+
+			uint8_t *ip = buf_in_ptr;
+			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
+			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
+
+			cb (ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
+
+			remaining -= UDP_HDR_SIZE + size;
+		}
+	}
 }
