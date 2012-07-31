@@ -58,6 +58,7 @@ Config config = {
 	},
 
 	.config = {
+		.rate = 10, // rate in Hz
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 1,
@@ -67,6 +68,7 @@ Config config = {
 	},
 
 	.sntp = {
+		.tau = 4, // delay in seconds
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 2,

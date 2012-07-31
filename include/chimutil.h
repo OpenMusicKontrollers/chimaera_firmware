@@ -61,6 +61,10 @@ void sntp_timer_pause ();
 void sntp_timer_reconfigure ();
 void sntp_timer_resume ();
 
+void config_timer_pause ();
+void config_timer_reconfigure ();
+void config_timer_resume ();
+
 void tuio_enable (uint8_t b);
 void config_enable (uint8_t b);
 void sntp_enable (uint8_t b);

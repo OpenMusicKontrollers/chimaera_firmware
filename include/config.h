@@ -70,11 +70,13 @@ struct _Config {
 	} tuio;
 
 	struct _config {
+		uint16_t rate;
 		uint8_t enabled;
 		Socket_Config socket;
 	} config;
 
 	struct _sntp {
+		uint8_t tau;
 		uint8_t enabled;
 		Socket_Config socket;
 	} sntp;

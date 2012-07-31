@@ -93,10 +93,12 @@ nOSC_Server *serv = NULL;
 HardwareSPI spi(2);
 HardwareTimer adc_timer(1);
 HardwareTimer sntp_timer(2);
+HardwareTimer config_timer(3);
 
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
+volatile uint8_t config_should_request = 0;
 uint8_t first = 1;
 
 void
@@ -114,6 +116,12 @@ static void
 sntp_timer_irq ()
 {
 	sntp_should_request = 1;
+}
+
+static void
+config_timer_irq ()
+{
+	config_should_request = 1;
 }
 
 static void
@@ -265,8 +273,11 @@ loop ()
 
 	stop_watch_start (&sw_server);	
 	// run osc config server
-	if (config.config.enabled) //TODO add a timer and volatile config_should_request to reduce mcu cycles, run it at 10Hz or sow, that'll be enough
+	if (config.config.enabled && config_should_request)
+	{
 		udp_dispatch (config.config.socket.sock, buf_i, config_cb);
+		config_should_request = 0;
+	}
 	stop_watch_stop (&sw_server);	
 
 	// run sntp client
@@ -334,7 +345,7 @@ extern "C" void sntp_timer_pause ()
 
 extern "C" void sntp_timer_reconfigure ()
 {
-  sntp_timer.setPeriod (1e6 * 6); // update at 6Hz
+  sntp_timer.setPeriod (1e6 * config.sntp.tau);
 	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
 	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
 	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
@@ -344,6 +355,25 @@ extern "C" void sntp_timer_reconfigure ()
 extern "C" void sntp_timer_resume ()
 {
 	sntp_timer.resume ();
+}
+
+extern "C" void config_timer_pause ()
+{
+	config_timer.pause ();
+}
+
+extern "C" void config_timer_reconfigure ()
+{
+  config_timer.setPeriod (1e6/config.config.rate); // set period based on update rate
+	config_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
+	config_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
+	config_timer.attachCompare1Interrupt (config_timer_irq);
+	config_timer.refresh ();
+}
+
+extern "C" void config_timer_resume ()
+{
+	config_timer.resume ();
 }
 
 inline void
@@ -508,6 +538,11 @@ setup ()
 	sntp_timer_pause ();
 	sntp_timer_reconfigure ();
 	sntp_timer_resume ();
+
+	// init config_timer
+	config_timer_pause ();
+	config_timer_reconfigure ();
+	config_timer_resume ();
 }
 
 __attribute__ ((constructor)) void
