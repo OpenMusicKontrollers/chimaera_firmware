@@ -226,8 +226,9 @@ loop ()
 
 	// store ADC values into CMC struct
 	stop_watch_start (&sw_adc2);	
-	if (!first)
+	if (!first) // in the first round there is no data in the second half of the buffer
 	{
+		//TODO this is not really save, possible race coditions with DMA
 		for (uint8_t p=MUX_MAX/2; p<MUX_MAX; p++)
 			for (uint8_t i=0; i<ADC_LENGTH; i++)
 			{
@@ -246,27 +247,31 @@ loop ()
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			len = cmc_dump_unit (cmc, now, buf_o, u);
-			udp_send (config.dump.socket.sock, buf_o, len);
+			len = cmc_dump_unit (cmc, now, buf_o, u); //TODO make this faster
+			udp_send (config.dump.socket.sock, buf_o, len); //TODO nonblocking sending
 		}
 	}
 
 	// do touch recognition and interpolation
 	if (config.tuio.enabled)
 	{
-		if (cmc_job)
+		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			udp_send_nonblocking (config.tuio.socket.sock, buf_o2, len);
 
-		uint8_t job = cmc_process (cmc);
+		uint8_t job = cmc_process (cmc); // touch recognition of current cycle
 
 		if (job)
 		{
 			timestamp_set (&now);
-			len = cmc_write_tuio2 (cmc, now, buf_o2);
+			len = cmc_write_tuio2 (cmc, now, buf_o); // serialization to tuio2 of current cycle blobs
 		}
 
-		if (cmc_job)
+		//TODO this may go even further down, just before adc_dma_block?
+		if (cmc_job) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
+
+		if (job) // copy buf_o over to buf_o2 for next cycle
+			memcpy (buf_o2, buf_o, len); //TODO better swap buffers than memcopying
 
 		cmc_job = job;
 	}
