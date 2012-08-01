@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 extern dma_tube_config adc_tube;
+extern dma_tube_config adc_tube_non_circ;
 extern dma_tube_config spi2_rx_tube;
 extern dma_tube_config spi2_tx_tube;
 

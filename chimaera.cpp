@@ -151,6 +151,14 @@ adc_timer_irq ()
 }
 
 static void
+adc_dma_irq_non_circ ()
+{
+	//TODO switch muxes
+	//TODO start next ADC conversion
+	//TODO reset DMA
+}
+
+static void
 adc_dma_irq ()
 {
 	switch (dma_get_irq_cause (DMA1, DMA_CH1))
