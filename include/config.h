@@ -91,16 +91,6 @@ struct _Config {
 		Socket_Config socket;
 	} debug;
 
-	struct _rtpmidi {
-		uint8_t enabled;
-		struct _payload {
-			Socket_Config socket;
-		} payload;
-		struct _session {
-			Socket_Config socket;
-		} session;
-	} rtpmidi;
-
 	struct _ping {
 		uint8_t enabled;
 		Socket_Config socket;

@@ -29,46 +29,6 @@
 #include <chimutil.h>
 #include <config.h>
 
-/*
-static RTP_MIDI_List note_on [] = {
-	{0x0, NOTE_ON}, // note on / channel 0
-	{0x0, 0x7f}, // key
-	{0x0, 0x7f}, // velocity
-
-	{0x0, PITCH_BEND}, // pitch bend / channel 0
-	{0x0, 0x7f}, // pitch bend LSB
-	{0x0, 0x7f}, // pitch bend MSB
-
-	{0x0 ,0xa0}, // control change / channel 0
-	{0x0, VOLUME}, // volume
-	{0x0, 0x1a}, // LSB
-
-	{0x0, 0xa0}, // control change / channel 0
-	{0x0, VOLUME}, // volume
-	{0x0, 0x1a} // MSB
-};
-
-static RTP_MIDI_List note_off [] = {
-	{0x0, NOTE_OFF}, // note on / channel 0
-	{0x0, 0x7f}, // key
-	{0x0, 0x00} // velocity
-};
-
-static RTP_MIDI_List note_set [] = {
-	{0x0, PITCH_BEND}, // pitch bend / channel 0
-	{0x0, 0x7f}, // pitch bend LSB
-	{0x0, 0x7f}, // pitch bend MSB
-
-	{0x0 ,0xa0}, // control change / channel 0
-	{0x0, VOLUME}, // volume
-	{0x0, 0x1a}, // LSB
-
-	{0x0, 0xa0}, // control change / channel 0
-	{0x0, VOLUME}, // volume
-	{0x0, 0x1a} // MSB
-};
-*/
-
 CMC *
 cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1)
 {
@@ -109,7 +69,6 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 		cmc->matrix[i] = calloc (mb, sizeof (fix15_t));
 
 	cmc->tuio = tuio2_new (mb);
-	//cmc->rtpmidi_packet = rtpmidi_new (); //TODO enable me
 
 	cmc->groups = _cmc_group_new ();
 
@@ -122,7 +81,6 @@ cmc_free (CMC *cmc)
 	uint8_t i;
 
 	_cmc_group_free (cmc->groups);
-	//rtpmidi_free (cmc->rtpmidi_packet); //TODO enable me
 	tuio2_free (cmc->tuio);
 	for (i=0; i<cmc->max_blobs; i++)
 		free (cmc->matrix[i]);
@@ -186,7 +144,7 @@ cmc_process (CMC *cmc)
 		{
 			uint8_t I;
 			uint8_t local_max = 0;
-			for (I=2; I<3; I++)
+			for (I=2; I<3; I++) //TODO this is not efficient at all, use an algorithm with only one pass
 			{
 				if ( (i-I >= 0) && (cmc->sensors[i].v - cmc->sensors[i-I].v < cmc->diff) )
 				{
@@ -249,7 +207,7 @@ cmc_process (CMC *cmc)
 		}
 		else
 		{
-			// fill distance matrix of old and new blobs
+			// fill distance matrix of old and new blobs TODO this is not efficient (O~I*J), use sweep algorithm (O~I+J)
 			for (i=0; i<cmc->I; i++) // old blobs
 				for (j=0; j<cmc->J; j++) // new blobs
 					cmc->matrix[i][j] = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
@@ -321,11 +279,6 @@ cmc_process (CMC *cmc)
 			cmc->new_blobs[j].group = NULL;
 		}
 	}
-	else if (!cmc->I && !cmc->J)
-	{
-		changed = 0;
-		idle++; // automatic overflow
-	}
 
 	// overwrite blobs that are to be ignored
 	uint8_t newJ = 0;
@@ -348,6 +301,12 @@ cmc_process (CMC *cmc)
 			newJ++;
 	}
 	cmc->J = newJ;
+
+	if (!cmc->I && !cmc->J)
+	{
+		changed = 0;
+		idle++; // automatic overflow
+	}
 
 	// relate blobs to groups
 	for (j=0; j<cmc->J; j++)
@@ -404,24 +363,6 @@ cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf)
 			cmc->old_blobs[j].p);
 	}
 	size = tuio2_serialize (cmc->tuio, buf, cmc->I);
-	return size;
-}
-
-uint16_t
-cmc_write_rtpmidi (CMC *cmc, uint8_t *buf)
-{
-	uint16_t size;
-	//TODO
-	uint32_t timestamp = 0x0;
-
-	//TODO
-	rtpmidi_header_set (cmc->rtpmidi_packet, cmc->fid, timestamp);
-
-	// note on
-	//TODO
-	//rtpmidi_list_set (cmc->rtpmidi_packet, &note_on[0], sizeof (note_on));
-	
-	size = rtpmidi_serialize (cmc->rtpmidi_packet, buf);
 	return size;
 }
 

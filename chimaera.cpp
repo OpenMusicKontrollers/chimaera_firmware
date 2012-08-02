@@ -41,19 +41,19 @@ const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
 uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
 
-volatile uint8_t adc_dma_half_done;
 volatile uint8_t adc_dma_done;
+volatile uint8_t adc_dma_ptr = 0;
 const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  
 const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
-int16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
+int16_t rawDataArray[2][MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {4, 4, 6, 8, 10}; // analog input pins read out by the ADC 
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 1, 6, 3, 4, 5, 2, 7, 0 };
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 static uint8_t ADC_Order [MUX_MAX][ADC_DUAL_LENGTH*2];
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
@@ -131,31 +131,24 @@ adc_eoc_irq (void)
 }
 
 static void
-adc_timer_irq ()
+adc_timer_irq_1 ()
 {
-	//if ( (ADC1->regs->SR & ADC_SR_EOC) == ADC_SR_EOC) TODO
-		if (mux_counter < MUX_MAX)
-		{
-			digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
-			digitalWrite (MUX_Sequence[1], (mux_counter & 0b0010)>>1);
-			digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
-			digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
-		
-			//delayMicroseconds (5); //TODO don't use delay in interrupt
-			ADC1->regs->CR2 |= ADC_CR2_SWSTART;
-
-			mux_counter++;
-		}
-		else
-			adc_timer.pause ();
+	digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
+	digitalWrite (MUX_Sequence[1], (mux_counter & 0b0010)>>1);
+	digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
+	digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
 }
 
 static void
-adc_dma_irq_non_circ ()
+adc_timer_irq_2 ()
 {
-	//TODO switch muxes
-	//TODO start next ADC conversion
-	//TODO reset DMA
+	if (mux_counter < MUX_MAX)
+	{
+		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
+		mux_counter++;
+	}
+	else
+		adc_timer.pause ();
 }
 
 static void
@@ -164,9 +157,11 @@ adc_dma_irq ()
 	switch (dma_get_irq_cause (DMA1, DMA_CH1))
 	{
 		case DMA_TRANSFER_HALF_COMPLETE:
-			adc_dma_half_done = 1;
+			adc_dma_ptr = 0;
+			adc_dma_done = 1;
 			return;
 		case DMA_TRANSFER_COMPLETE:
+			adc_dma_ptr = 1;
 			adc_dma_done = 1;
 			return;
 		default:
@@ -177,17 +172,9 @@ adc_dma_irq ()
 inline void
 adc_dma_run ()
 {
-	adc_dma_half_done = 0;
 	adc_dma_done = 0;
 	mux_counter = 0;
 	adc_timer.resume ();
-}
-
-inline void
-adc_dma_half_block ()
-{
-	while (!adc_dma_half_done)
-		;
 }
 
 inline void
@@ -224,7 +211,9 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	sntp_should_listen = 0;
 }
 
+uint8_t send_status = 0;
 uint8_t cmc_job = 0;
+uint16_t cmc_len = 0;
 uint16_t len = 0;
 
 inline void
@@ -235,11 +224,10 @@ loop ()
 	// store ADC values into CMC struct (67us)
 	if (!first) // in the first round there is no data in the second half of the buffer
 	{
-		//TODO this is not really save, possible race coditions with DMA
-		for (uint8_t p=MUX_MAX/2; p<MUX_MAX; p++)
+		for (uint8_t p=0; p<MUX_MAX; p++)
 			for (uint8_t i=0; i<ADC_LENGTH; i++)
 			{
-				int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
+				int16_t val = (rawDataArray[adc_dma_ptr][p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
 				cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
 			}
 
@@ -268,22 +256,21 @@ loop ()
 	if (config.tuio.enabled)
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
-			udp_send_nonblocking (config.tuio.socket.sock, buf_o2, len);
+			send_status = udp_send_nonblocking (config.tuio.socket.sock, buf_o2, cmc_len);
 
 		uint8_t job = cmc_process (cmc); // touch recognition of current cycle
 
 		if (job)
 		{
 			timestamp_set (&now);
-			len = cmc_write_tuio2 (cmc, now, buf_o); // serialization to tuio2 of current cycle blobs
+			cmc_len = cmc_write_tuio2 (cmc, now, buf_o); // serialization to tuio2 of current cycle blobs
 		}
 
-		//TODO this may go even further down, just before adc_dma_block?
-		if (cmc_job) // block for end of sending of last cycles tuio output
+		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
 
 		if (job) // copy buf_o over to buf_o2 for next cycle
-			memcpy (buf_o2, buf_o, len); //TODO better swap buffers than memcopying
+			memcpy (buf_o2, buf_o, cmc_len); //TODO better swap buffers than memcopying
 
 		cmc_job = job;
 	}
@@ -311,18 +298,10 @@ loop ()
 
 		// listen for sntp request answer
 		if (sntp_should_listen)
-			udp_dispatch (config.sntp.socket.sock, buf_i, sntp_cb);
-	}
-
-	adc_dma_half_block ();
-
-	// store ADC values into CMC struct (56us)
-	for (uint8_t p=0; p<MUX_MAX/2; p++)
-		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
-			int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
-			cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
+			udp_dispatch (config.sntp.socket.sock, buf_i, sntp_cb);
 		}
+	}
 
 	adc_dma_block ();
 }
@@ -340,9 +319,19 @@ extern "C" void adc_timer_pause ()
 extern "C" void adc_timer_reconfigure ()
 {
   adc_timer.setPeriod (1e6/config.rate/MUX_MAX); // set period based on update rate and mux channels
-	adc_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	adc_timer.attachCompare1Interrupt (adc_timer_irq);
+
+	adc_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	adc_timer.setCompare (TIMER_CH1, adc_timer.getOverflow ());
+	adc_timer.attachInterrupt (TIMER_CH1, adc_timer_irq_1);
+	// prescaler = 1
+	// overflow = 72Mhz / rate / MUX_MAX = 4500 cycles @ 1kHz, 3460 cycles @ 1.3kHz, 3000 cycles @ 1.5kHz, 2250 cycles @ 2kHz
+
+	adc_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
+	adc_timer.setCompare (TIMER_CH2, 2000); 
+	adc_timer.attachInterrupt (TIMER_CH2, adc_timer_irq_2);
+	// sample time = 72Mhz / 14 MHz * (12.5 + ADC_SAMPLE_RATE) * ADC_DUAL_LENGTH
+	// sample time = 1748 cycles @ 55.5 cycles, 1028 cycles @ 27.5 cycles
+
 	adc_timer.refresh ();
 }
 
@@ -359,9 +348,9 @@ extern "C" void sntp_timer_pause ()
 extern "C" void sntp_timer_reconfigure ()
 {
   sntp_timer.setPeriod (1e6 * config.sntp.tau);
-	sntp_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	sntp_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	sntp_timer.attachCompare1Interrupt (sntp_timer_irq);
+	sntp_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	sntp_timer.setCompare (TIMER_CH1, sntp_timer.getOverflow ());  // Interrupt 1 count after each update
+	sntp_timer.attachInterrupt (TIMER_CH1, sntp_timer_irq);
 	sntp_timer.refresh ();
 }
 
@@ -378,9 +367,9 @@ extern "C" void config_timer_pause ()
 extern "C" void config_timer_reconfigure ()
 {
   config_timer.setPeriod (1e6/config.config.rate); // set period based on update rate
-	config_timer.setChannel1Mode (TIMER_OUTPUT_COMPARE);
-	config_timer.setCompare (TIMER_CH1, 1);  // Interrupt 1 count after each update
-	config_timer.attachCompare1Interrupt (config_timer_irq);
+	config_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	config_timer.setCompare (TIMER_CH1, config_timer.getOverflow ());  // Interrupt 1 count after each update
+	config_timer.attachInterrupt (TIMER_CH1, config_timer_irq);
 	config_timer.refresh ();
 }
 
@@ -436,7 +425,6 @@ setup ()
 	sntp_enable (config.sntp.enabled);
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
-	rtpmidi_enable (config.rtpmidi.enabled);
 	ping_enable (config.ping.enabled);
 
 	// set start time to 0
@@ -507,7 +495,7 @@ setup ()
 	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_HIGH);    //Optional
-	dma_set_num_transfers (DMA1, DMA_CH1, ADC_DUAL_LENGTH*MUX_MAX);
+	dma_set_num_transfers (DMA1, DMA_CH1, ADC_DUAL_LENGTH*MUX_MAX*2);
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
@@ -533,7 +521,7 @@ setup ()
 			for (uint8_t i=0; i<ADC_LENGTH; i++)
 			{
 				int16_t adc_data;
-				adc_data = (rawDataArray[p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
+				adc_data = (rawDataArray[adc_dma_ptr][p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
 
 				// calculate running mean
 				ADC_Offset[p][i] += adc_data;

@@ -26,7 +26,6 @@
 
 #include <cmc.h>
 #include <tuio2.h>
-#include <rtpmidi.h>
 #include <armfix.h>
 
 extern ufix32_t dist [];
@@ -81,7 +80,6 @@ struct _CMC {
 	fix15_t **matrix;
 
 	Tuio2 *tuio;
-	RTP_MIDI_Packet *rtpmidi_packet;
 };
 
 CMC_Group *_cmc_group_new ();

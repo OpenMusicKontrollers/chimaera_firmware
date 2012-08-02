@@ -25,8 +25,8 @@
 
 #include <chimutil.h>
 
-uint8_t buf_o[768]; // general purpose output buffer //TODO how big?
-uint8_t buf_o2[768]; // general purpose output buffer //TODO how big?
+uint8_t buf_o[512]; // general purpose output buffer //TODO how big?
+uint8_t buf_o2[512]; // general purpose output buffer //TODO how big?
 uint8_t buf_i[256]; // general purpose input buffer //TODO how big?
 CMC *cmc = NULL;
 
@@ -169,20 +169,6 @@ debug_enable (uint8_t b)
 	{
 		udp_begin (config.debug.socket.sock, config.debug.socket.port);
 		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port);
-	}
-}
-
-void 
-rtpmidi_enable (uint8_t b)
-{
-	config.rtpmidi.enabled = b;
-	if (config.rtpmidi.enabled)
-	{
-		udp_begin (config.rtpmidi.payload.socket.sock, config.rtpmidi.payload.socket.port);
-		udp_set_remote (config.rtpmidi.payload.socket.sock, config.rtpmidi.payload.socket.ip, config.rtpmidi.payload.socket.port);
-
-		udp_begin (config.rtpmidi.session.socket.sock, config.rtpmidi.session.socket.port);
-		udp_set_remote (config.rtpmidi.session.socket.sock, config.rtpmidi.session.socket.ip, config.rtpmidi.session.socket.port);
 	}
 }
 

@@ -34,7 +34,6 @@
 #include <sntp.h>
 #include <tube.h>
 #include <eeprom.h>
-//#include <rtpmidi.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,7 +69,6 @@ void config_enable (uint8_t b);
 void sntp_enable (uint8_t b);
 void dump_enable (uint8_t b);
 void debug_enable (uint8_t b);
-void rtpmidi_enable (uint8_t b);
 void ping_enable (uint8_t b);
 
 typedef struct _Stop_Watch Stop_Watch;

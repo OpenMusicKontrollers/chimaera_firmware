@@ -43,28 +43,16 @@ inline void resetSS ()
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
-static uint8_t spi_tx_dma_buf [768]; //TODO how much do we need?
-static uint8_t spi_rx_dma_buf [256]; //TODO how much do we need?
+#define TXRX_BUFSIZE 512
+static uint8_t spi_tx_dma_buf [TXRX_BUFSIZE]; //TODO how much do we need?
+static uint8_t spi_rx_dma_buf [TXRX_BUFSIZE]; //TODO how much do we need?
 
 volatile uint8_t spi_dma_done;
 
-/*
-static void
-_default_cb (void)
-{
-	spi_dma_done = 1;
-}
-
-void (*dma_done_cb) (void) = _default_cb;
-*/
 
 static void
 _spi_dma_irq (void)
 {
-	/*
-	if (dma_done_cb)
-		dma_done_cb ();
-	*/
 	spi_dma_done = 1;
 }
 
@@ -94,7 +82,6 @@ void
 _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = spi_tx_dma_buf;
-	uint16_t i;
 
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
@@ -105,16 +92,23 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	buf += len;
 
 	setSS ();
-	_spi_dma_run (buf-spi_tx_dma_buf);
+	_spi_dma_run (buf - spi_tx_dma_buf);
 	_spi_dma_block ();
+
+	// wait for SPI TXE==1
+	while ( !(SPI2->regs->SR & SPI_SR_TXE) )
+		;
+
+	// wait for SPI BSY==0
+	while ( (SPI2->regs->SR & SPI_SR_BSY) )
+		;
+
 	resetSS ();
 }
 
 uint8_t *
 _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 {
-	uint16_t i;
-
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
 	*buf++ = (0x80 | ((len & 0x7F00) >> 8));
@@ -130,13 +124,22 @@ void
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	setSS ();
-	_spi_dma_run (buf-spi_tx_dma_buf);
+	_spi_dma_run (buf - spi_tx_dma_buf);
 }
 
 void
 _dma_write_nonblocking_out ()
 {
 	_spi_dma_block ();
+
+	// wait for SPI TXE==1
+	while ( !(SPI2->regs->SR & SPI_SR_TXE) )
+		;
+
+	// wait for SPI BSY==0
+	while ( (SPI2->regs->SR & SPI_SR_BSY) )
+		;
+
 	resetSS ();
 }
 
@@ -240,7 +243,8 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 
 	flag = 1 << RST;
 	_dma_write (MR, &flag, 1);
- 
+
+	// initialize all socket memory TX and RX sizes to 2kB
  	flag = 2;
   for (i=0; i<MAX_SOCK_NUM; i++) {
 		_dma_write_sock (i, SnTX_MS, &flag, 1); // TX_MEMSIZE
@@ -301,10 +305,14 @@ udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 void
 udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 {
-	uint16_t free;
-	_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	if (len > free)
+	if (len > (TXRX_BUFSIZE - 4) ) // return when buffer exceedes given size
 		return;
+
+	// wait until there is enough space left in buffer
+	uint16_t free;
+	do
+		_dma_read_sock_16 (sock, SnTX_FSR, &free);
+	while (len > free);
 
 	// move data to chip
 	uint16_t ptr;
@@ -346,15 +354,19 @@ udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 	_dma_write_sock (sock, SnIR, &flag, 1);
 }
 
-void 
+uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
 {
+	if (len > (TXRX_BUFSIZE - 16) ) // return when buffer exceedes given size
+		return 0;
+
 	uint8_t *buf = spi_tx_dma_buf;
 
+	// wait until there is enough space left in buffer
 	uint16_t free;
-	_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	if (len > free)
-		return;
+	do
+		_dma_read_sock_16 (sock, SnTX_FSR, &free);
+	while (len > free);
 
 	// move data to chip
 	uint16_t ptr;
@@ -382,6 +394,8 @@ udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
 	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
 
 	_dma_write_nonblocking_in (buf);
+
+	return 1;
 }
 
 void 
@@ -416,6 +430,9 @@ udp_available (uint8_t sock)
 void
 udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 {
+	if (len > (TXRX_BUFSIZE - 4) ) // return when buffer exceedes given size
+		return;
+
 	uint16_t ptr;
 	_dma_read_sock_16 (sock, SnRX_RD, &ptr);
 

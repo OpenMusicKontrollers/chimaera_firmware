@@ -95,35 +95,6 @@ Config config = {
 		}
 	},
 
-	.rtpmidi = {
-		.enabled = 0, // disabled by default
-
-		.payload = {
-			.socket = {
-				.sock = 5,
-				.port = 7777,
-				.ip = LAN_BROADCAST
-			}
-		},
-
-		.session = {
-			.socket = {
-				.sock = 6,
-				.port = 8888,
-				.ip = LAN_BROADCAST
-			}
-		}
-	},
-
-	.ping = {
-		.enabled = 0, // disabled by default
-		.socket = {
-			.sock = 7,
-			.port = 255,
-			.ip = GLOB_BROADCAST
-		}
-	},
-
 	.cmc = {
 		.diff = 0,
 		//.thresh0 = 60,
@@ -131,7 +102,7 @@ Config config = {
 		.thresh0 = 100,
 		.thresh1 = 160,
 		.max_groups = 32,
-		.max_blobs = 16
+		.max_blobs = 8
 	},
 
 	.rate = 1000 // update rate in Hz
@@ -205,12 +176,6 @@ _debug_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc,
 }
 
 static uint8_t
-_rtpmidi_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	return _enabled_set (rtpmidi_enable, data, path, fmt, argc, args);
-}
-
-static uint8_t
 _ping_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	return _enabled_set (ping_enable, data, path, fmt, argc, args);
@@ -271,18 +236,6 @@ static uint8_t
 _debug_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	return _socket_set (&config.debug.socket, debug_enable, data, path, fmt, argc, args);
-}
-
-static uint8_t
-_rtpmidi_payload_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	return _socket_set (&config.rtpmidi.payload.socket, rtpmidi_enable, data, path, fmt, argc, args);
-}
-
-static uint8_t
-_rtpmidi_session_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	return _socket_set (&config.rtpmidi.session.socket, rtpmidi_enable, data, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -393,11 +346,6 @@ config_methods_add (nOSC_Server *serv, void *data)
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiii", _debug_socket_set, data);
-
-	serv = nosc_server_method_add (serv, "/chimaera/rtpmidi/enabled/set", "iT", _rtpmidi_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/rtpmidi/enabled/set", "iF", _rtpmidi_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/rtpmidi/payload/socket/set", "iiiiii", _rtpmidi_payload_socket_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/rtpmidi/session/socket/set", "iiiiii", _rtpmidi_session_socket_set, data);
 
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set, data);

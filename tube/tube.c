@@ -39,20 +39,9 @@ dma_tube_config adc_tube = {
 	.tube_req_src = DMA_REQ_SRC_ADC1
 };
 
-dma_tube_config adc_tube_non_circ = {
-	.tube_src = &ADC1_BASE->DR,
-	.tube_src_size = DMA_SIZE_32BITS,
-	.tube_dst = NULL, //set me
-	.tube_dst_size = DMA_SIZE_32BITS,
-	.tube_nr_xfers = 0, //set me
-	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CMPLT_IE,
-	.target_data = NULL,
-	.tube_req_src = DMA_REQ_SRC_ADC1
-};
-
 dma_tube_config spi2_rx_tube = {
 	.tube_src = &SPI2_BASE->DR,
-	.tube_src_size = DMA_SIZE_8BITS, //TODO can we use 16 or 32 bit?
+	.tube_src_size = DMA_SIZE_8BITS, //TODO can we use 32 bit, this should be faster and fine with OSC...
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_8BITS,
 	.tube_nr_xfers = 0, //set me
