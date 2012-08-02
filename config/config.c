@@ -134,7 +134,7 @@ Config config = {
 		.max_blobs = 16
 	},
 
-	.rate = 1600 // update rate in Hz
+	.rate = 1000 // update rate in Hz
 };
 
 static uint8_t
@@ -371,6 +371,7 @@ config_methods_add (nOSC_Server *serv, void *data)
 
 	//TODO comm/mac/set, comm/ip/set, comm/gateway/set, comm/subnet/set
 
+	/*
 	// enable/disable sockets
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set, data);
@@ -401,6 +402,7 @@ config_methods_add (nOSC_Server *serv, void *data)
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set, data);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiii", _ping_socket_set, data);
+	*/
 
 	// cmc TODO cmc/diff/set, cmc/thresh0/set, cmc/thresh1/set, cmc/max_groups/set
 

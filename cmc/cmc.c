@@ -109,7 +109,7 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 		cmc->matrix[i] = calloc (mb, sizeof (fix15_t));
 
 	cmc->tuio = tuio2_new (mb);
-	cmc->rtpmidi_packet = rtpmidi_new ();
+	//cmc->rtpmidi_packet = rtpmidi_new (); //TODO enable me
 
 	cmc->groups = _cmc_group_new ();
 
@@ -122,7 +122,7 @@ cmc_free (CMC *cmc)
 	uint8_t i;
 
 	_cmc_group_free (cmc->groups);
-	rtpmidi_free (cmc->rtpmidi_packet);
+	//rtpmidi_free (cmc->rtpmidi_packet); //TODO enable me
 	tuio2_free (cmc->tuio);
 	for (i=0; i<cmc->max_blobs; i++)
 		free (cmc->matrix[i]);
@@ -232,6 +232,9 @@ cmc_process (CMC *cmc)
 			cmc->new_blobs[cmc->J].ignore = 0;
 
 			cmc->J++;
+
+			if (cmc->J >= cmc->max_blobs) // make sure to not exceed maximal number of blobs
+				break;
 		}
 
 	/*

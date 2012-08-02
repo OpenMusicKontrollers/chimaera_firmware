@@ -46,14 +46,14 @@ volatile uint8_t adc_dma_done;
 const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  
 const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
 int16_t rawDataArray[MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
+uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
+uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {4, 4, 6, 8, 10}; // analog input pins read out by the ADC 
 uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 1, 6, 3, 4, 5, 2, 7, 0 };
 static uint8_t ADC_Order [MUX_MAX][ADC_DUAL_LENGTH*2];
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
@@ -141,7 +141,7 @@ adc_timer_irq ()
 			digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
 			digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
 		
-			delayMicroseconds (1); //TODO don't use delay in interrupt
+			//delayMicroseconds (5); //TODO don't use delay in interrupt
 			ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 
 			mux_counter++;
@@ -232,8 +232,7 @@ loop ()
 {
 	adc_dma_run ();
 
-	// store ADC values into CMC struct
-	stop_watch_start (&sw_adc2);	
+	// store ADC values into CMC struct (67us)
 	if (!first) // in the first round there is no data in the second half of the buffer
 	{
 		//TODO this is not really save, possible race coditions with DMA
@@ -243,10 +242,15 @@ loop ()
 				int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
 				cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
 			}
+
+		// TODO broken sensors
+		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
+		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
+		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
+		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
 	}
 	else
 		first = 0;
-	stop_watch_stop (&sw_adc2);	
 
 	// dump raw sensor data
 	if (config.dump.enabled)
@@ -284,14 +288,12 @@ loop ()
 		cmc_job = job;
 	}
 
-	stop_watch_start (&sw_server);	
 	// run osc config server
 	if (config.config.enabled && config_should_request)
 	{
 		udp_dispatch (config.config.socket.sock, buf_i, config_cb);
 		config_should_request = 0;
 	}
-	stop_watch_stop (&sw_server);	
 
 	// run sntp client
 	if (config.sntp.enabled)
@@ -314,15 +316,13 @@ loop ()
 
 	adc_dma_half_block ();
 
-	// store ADC values into CMC struct
-	stop_watch_start (&sw_adc1);	
+	// store ADC values into CMC struct (56us)
 	for (uint8_t p=0; p<MUX_MAX/2; p++)
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
 		{
 			int16_t val = (rawDataArray[p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
 			cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
 		}
-	stop_watch_stop (&sw_adc1);	
 
 	adc_dma_block ();
 }
@@ -465,8 +465,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_28_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_28_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
@@ -548,14 +548,20 @@ setup ()
 	*/
 
 	// init sntp_timer
-	sntp_timer_pause ();
-	sntp_timer_reconfigure ();
-	sntp_timer_resume ();
+	if (config.sntp.enabled)
+	{
+		sntp_timer_pause ();
+		sntp_timer_reconfigure ();
+		sntp_timer_resume ();
+	}
 
 	// init config_timer
-	config_timer_pause ();
-	config_timer_reconfigure ();
-	config_timer_resume ();
+	if (config.config.enabled)
+	{
+		config_timer_pause ();
+		config_timer_reconfigure ();
+		config_timer_resume ();
+	}
 }
 
 __attribute__ ((constructor)) void
