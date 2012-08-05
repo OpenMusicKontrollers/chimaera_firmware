@@ -35,6 +35,72 @@ static gpio_dev *ss_dev;
 static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
 
+static uint16_t SSIZE [] = {
+	0x2000, // 8k for socket 0
+	0x0800, // 2k for socket 1
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400 // 1k
+};
+
+static uint16_t RSIZE [] = {
+	0x2000, // 8k for socket 0
+	0x0800, // 2k for socket 1
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400, // 1k
+	0x0400 // 1k
+};
+
+static uint16_t SBASE [] = {
+	TX_BUF_BASE + 0x0000,
+	TX_BUF_BASE + 0x2000,
+	TX_BUF_BASE + 0x2800,
+	TX_BUF_BASE + 0x2c00,
+	TX_BUF_BASE + 0x3000,
+	TX_BUF_BASE + 0x3400,
+	TX_BUF_BASE + 0x3800,
+	TX_BUF_BASE + 0x3c00
+};
+
+static uint16_t RBASE [] = {
+	RX_BUF_BASE + 0x0000,
+	RX_BUF_BASE + 0x2000,
+	RX_BUF_BASE + 0x2800,
+	RX_BUF_BASE + 0x2c00,
+	RX_BUF_BASE + 0x3000,
+	RX_BUF_BASE + 0x3400,
+	RX_BUF_BASE + 0x3800,
+	RX_BUF_BASE + 0x3c00
+};
+
+static uint16_t SMASK [] = {
+	0x2000 - 1,
+	0x0800 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1
+};
+
+static uint16_t RMASK [] = {
+	0x2000 - 1,
+	0x0800 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1,
+	0x0400 - 1
+};
+
 inline void setSS ()
 {
 	gpio_write_bit (ss_dev, ss_bit, 0);
@@ -250,17 +316,22 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
 
 	// init udp
-	uint8_t i;
+	uint8_t sock;
 	uint8_t flag;
 
 	flag = 1 << RST;
 	_dma_write (MR, &flag, 1);
 
-	// initialize all socket memory TX and RX sizes to 2kB
- 	flag = 2;
-  for (i=0; i<MAX_SOCK_NUM; i++) {
-		_dma_write_sock (i, SnTX_MS, &flag, 1); // TX_MEMSIZE
-		_dma_write_sock (i, SnRX_MS, &flag, 1); // RX_MEMSIZE
+	// initialize all socket memory TX and RX sizes to their corresponding sizes
+  for (sock=0; sock<MAX_SOCK_NUM; sock++) {
+		flag = SSIZE[sock] / 0x0400; // how many kB?
+		if (flag == 0x10)
+			flag = 0x0f; // special case
+		_dma_write_sock (sock, SnTX_MS, &flag, 1); // TX_MEMSIZE
+		flag = RSIZE[sock] / 0x0400; // how many kB?
+		if (flag == 0x10) 
+			flag = 0x0f; // special case
+		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
 
 	// set MAC address of device
@@ -327,7 +398,7 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
-	if (len > (CHIMAERA_BUFSIZE - 16) ) // return when buffer exceedes given size
+	if (len > (CHIMAERA_BUFSIZE - 16) ) // return when buffer exceeds given size
 		return 0;
 
 	// switch DMA memory source to right buffer
@@ -352,20 +423,20 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
 	*/
 	uint16_t ptr = Sn_Tx_WR[sock];
-  uint16_t offset = ptr & SMASK;
-	uint16_t SBASE = TXBUF_BASE + sock*SSIZE; //TODO store this statically in an array per socket
-  uint16_t dstAddr = offset + SBASE;
+  uint16_t offset = ptr & SMASK[sock];
+	//uint16_t SBASE = TXBUF_BASE + sock*SSIZE; //TODO store this statically in an array per socket
+  uint16_t dstAddr = offset + SBASE[sock];
 
-  if (offset + len > SSIZE) 
+  if ( (offset + len) > SSIZE[sock]) 
   {
     // Wrap around circular buffer
-    uint16_t size = SSIZE - offset;
+    uint16_t size = SSIZE[sock] - offset;
 		buf = _dma_write_inline (buf, dstAddr, size);
 		// we have to move the remaining 4 bytes to the right on the buffer to fill in the SPI address commands
 		uint16_t i;
 		for (i=len-1; i>=size; i--)
 			buf[i+4] = buf[i]; //TODO check whether i+4 does not exceed CHIMAERA_BUF_SIZE
-		buf = _dma_write_inline (buf, SBASE, len-size);
+		buf = _dma_write_inline (buf, SBASE[sock], len-size);
   } 
   else
 		buf = _dma_write_inline (buf, dstAddr, len);
@@ -426,17 +497,17 @@ udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 	uint16_t size;
 	uint16_t src_mask;
 	uint16_t src_ptr;
-	uint16_t RBASE = RXBUF_BASE + sock*RSIZE;
+	//uint16_t RBASE = RXBUF_BASE + sock*RSIZE;
 
-	src_mask = ptr & RMASK;
-	src_ptr = RBASE + src_mask;
+	src_mask = ptr & RMASK[sock];
+	src_ptr = RBASE[sock] + src_mask;
 
 	// read message
-	if ( (src_mask + len) > RSIZE)
+	if ( (src_mask + len) > RSIZE[sock])
 	{
-		size = RSIZE - src_mask;
+		size = RSIZE[sock] - src_mask;
 		_dma_read (src_ptr, buf, size);
-		_dma_read (RBASE, buf+size, len-size);
+		_dma_read (RBASE[sock], buf+size, len-size);
 	}
 	else
 		_dma_read (src_ptr, buf, len);

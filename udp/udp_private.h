@@ -92,19 +92,10 @@
 #define CH_BASE 0x4000
 #define	CH_SIZE 0x0100
 
-#define SMASK 0x07FF // Tx buffer MASK
-#define	RMASK 0x07FF // Rx buffer MASK
-
-#define SSIZE 2048 // Max Tx buffer size
-#define	RSIZE 2048 // Max Rx buffer size
-
-#define TXBUF_BASE 0x8000
-#define RXBUF_BASE 0xC000
+#define TX_BUF_BASE 0x8000
+#define RX_BUF_BASE 0xC000
 
 #define RST 7 // Reset BIT
 #define MAX_SOCK_NUM 8
-
-// SBASE(s) = TXBUF_BASE + s*SSIZE
-// RBASE(s) = RXBUF_BASE + s*RSIZE
 
 #endif // UDP_PRIVATE_H
