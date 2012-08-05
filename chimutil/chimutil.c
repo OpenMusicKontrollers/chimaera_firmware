@@ -25,10 +25,37 @@
 
 #include <chimutil.h>
 
-uint8_t buf_o[512]; // general purpose output buffer //TODO how big?
-uint8_t buf_o2[512]; // general purpose output buffer //TODO how big?
+uint8_t buf_o_ptr = 0;
+uint8_t buf_o[2][512]; // general purpose output buffer //TODO how big?
 uint8_t buf_i[256]; // general purpose input buffer //TODO how big?
 CMC *cmc = NULL;
+
+volatile uint8_t mem2mem_dma_done = 0;
+
+void
+_mem2mem_dma_irq (void)
+{
+	mem2mem_dma_done = 1;
+}
+
+void 
+dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len)
+{
+	mem2mem_tube.tube_src = src;
+	mem2mem_tube.tube_dst = dst;
+	mem2mem_tube.tube_nr_xfers = len;
+
+	int status = dma_tube_cfg (DMA1, DMA_CH2, &mem2mem_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	dma_set_priority (DMA1, DMA_CH2, DMA_PRIORITY_HIGH);
+	dma_attach_interrupt (DMA1, DMA_CH2, _mem2mem_dma_irq);
+
+	mem2mem_dma_done = 0;
+	dma_enable (DMA1, DMA_CH2);
+	while (!mem2mem_dma_done)
+		;
+	dma_disable (DMA1, DMA_CH2);
+}
 
 uint32_t debug_counter = 0;
 
@@ -38,8 +65,8 @@ debug_str (const char *str)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf_o, "/debug", "is", debug_counter++, str);
-	udp_send (config.debug.socket.sock, buf_o, size);
+	size = nosc_message_vararg_serialize (buf_o[buf_o_ptr], "/debug", "is", debug_counter++, str);
+	udp_send (config.debug.socket.sock, buf_o[buf_o_ptr], size);
 }
 
 void
@@ -48,8 +75,8 @@ debug_int32 (int32_t i)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf_o, "/debug", "ii", debug_counter++, i);
-	udp_send (config.debug.socket.sock, buf_o, size);
+	size = nosc_message_vararg_serialize (buf_o[buf_o_ptr], "/debug", "ii", debug_counter++, i);
+	udp_send (config.debug.socket.sock, buf_o[buf_o_ptr], size);
 }
 
 void
@@ -58,8 +85,8 @@ debug_float (float f)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (buf_o, "/debug", "if", debug_counter++, f);
-	udp_send (config.debug.socket.sock, buf_o, size);
+	size = nosc_message_vararg_serialize (buf_o[buf_o_ptr], "/debug", "if", debug_counter++, f);
+	udp_send (config.debug.socket.sock, buf_o[buf_o_ptr], size);
 }
 
 void (*adc12_irq_handler) (void) = NULL;
@@ -198,8 +225,8 @@ stop_watch_stop (Stop_Watch *sw)
 	if (sw->counter > 1000)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (buf_o, "/stop_watch", "si", sw->id, sw->micros/1000);
-		udp_send (config.debug.socket.sock, buf_o, size);
+		size = nosc_message_vararg_serialize (buf_o[buf_o_ptr], "/stop_watch", "si", sw->id, sw->micros/1000);
+		udp_send (config.debug.socket.sock, buf_o[buf_o_ptr], size);
 
 		sw->micros = 0;
 		sw->counter = 0;

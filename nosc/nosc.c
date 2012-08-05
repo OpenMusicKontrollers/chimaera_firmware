@@ -23,6 +23,8 @@
 
 #include <string.h>
 
+#include <chimutil.h>
+
 #include "nosc_private.h"
 
 //TODO get rid of calloc and strdup and use configurable static buffers for it
@@ -187,31 +189,21 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 		switch (*type)
 		{
 			case nOSC_INT32:
-			{
-				int32_t *i = (int32_t *) buf_ptr;
-				msg = nosc_message_add_int32 (msg, *i);
-				msg->arg.i = htonl (msg->arg.i);
+				msg = nosc_message_add_int32 (msg, memcpy_ntohl (buf_ptr));
 				buf_ptr += 4;
 				break;
-			}
 			case nOSC_FLOAT:
-			{
-				float *f = (float *) buf_ptr;
-				msg = nosc_message_add_float (msg, *f);
-				msg->arg.i = htonl (msg->arg.i);
+				msg = nosc_message_add_float (msg, 0.0);
+				msg->arg.i = memcpy_ntohl (buf_ptr);
 				buf_ptr += 4;
 				break;
-			}
 			case nOSC_STRING:
-			{
-				char *s = (char *) buf_ptr;
-				msg = nosc_message_add_string (msg, s);
-				len = strlen (s)+1;
+				msg = nosc_message_add_string (msg, buf_ptr);
+				len = strlen (buf_ptr)+1;
 				if (len%4)
 					len += 4 - len%4;
 				buf_ptr += len;
 				break;
-			}
 
 			case nOSC_TRUE:
 				msg = nosc_message_add_true (msg);
@@ -227,38 +219,23 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				break;
 
 			case nOSC_DOUBLE:
-			{
-				double *d = (double *) buf_ptr;
-				msg = nosc_message_add_double (msg, *d);
-				msg->arg.h = htonll (msg->arg.h);
+				msg = nosc_message_add_double (msg, 0.0);
+				msg->arg.h = memcpy_ntohll (buf_ptr);;
 				buf_ptr += 8;
 				break;
-			}
 			case nOSC_INT64:
-			{
-				int64_t *h = (int64_t *) buf_ptr;
-				msg = nosc_message_add_int64 (msg, *h);
-				msg->arg.h = htonll (msg->arg.h);
+				msg = nosc_message_add_int64 (msg, memcpy_ntohll (buf_ptr));
 				buf_ptr += 8;
 				break;
-			}
 			case nOSC_TIMESTAMP:
-			{
-				uint64_t *tt = (uint64_t *) buf_ptr;
-				timestamp64u_t t = {*tt};
-				msg = nosc_message_add_timestamp (msg, t);
-				msg->arg.h = htonll (msg->arg.h);
+				msg = nosc_message_add_timestamp (msg, (timestamp64u_t){memcpy_ntohll (buf_ptr)});
 				buf_ptr += 8;
 				break;
-			}
 
 			case nOSC_MIDI:
-			{
-				uint8_t *m = buf_ptr;
-				msg = nosc_message_add_midi (msg, m);
+				msg = nosc_message_add_midi (msg, buf_ptr);
 				buf_ptr += 4;
 				break;
-			}
 		}
 		type++;
 	}
@@ -312,8 +289,7 @@ nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf
 	memcpy (buf_ptr, bundle, 8);
 	buf_ptr += 8;
 
-	uint64_t tt = htonll (timestamp.all);
-	memcpy (buf_ptr, &tt, 8);
+	memcpy_htonll (buf_ptr, timestamp.all);
 	buf_ptr += 8;
 
 	// get first bundle
@@ -328,8 +304,7 @@ nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf
 		int32_t i;
 
 		msg_size = nosc_message_serialize (ptr->msg, ptr->path, buf_ptr+4);
-		i = htonl (msg_size);
-		memcpy (buf_ptr, &i, 4);
+		memcpy_htonl (buf_ptr, msg_size);
 		buf_ptr += msg_size + 4;
 
 		ptr = ptr->next;
@@ -501,12 +476,9 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 		{
 			case nOSC_INT32:
 			case nOSC_FLOAT:
-			{
-				int32_t i = htonl (ptr->arg.i);
-				memcpy (buf_ptr, &i, 4);
+				memcpy_htonl (buf_ptr, ptr->arg.i);
 				buf_ptr += 4;
 				break;
-			}
 
 			case nOSC_MIDI:
 			{
@@ -537,12 +509,9 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 			case nOSC_DOUBLE:
 			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
-			{
-				int64_t h = htonll (ptr->arg.h);
-				memcpy (buf_ptr, &h, 8);
+				memcpy_htonll (buf_ptr, ptr->arg.h);
 				buf_ptr += 8;
 				break;
-			}
 		}
 		ptr = ptr->next;
 	}

@@ -39,10 +39,12 @@
 extern "C" {
 #endif
 
-extern uint8_t buf_o[]; // general purpose output buffer
-extern uint8_t buf_o2[]; // general purpose output buffer
-extern uint8_t buf_i[]; // general purpose input buffer
+extern uint8_t buf_o_ptr;
+extern uint8_t buf_o[2][512]; // general purpose output buffer
+extern uint8_t buf_i[256]; // general purpose input buffer
 extern CMC *cmc;
+
+void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
 void debug_str (const char *str);
 void debug_int32 (int32_t i);

@@ -22,6 +22,7 @@
  */
 
 #include <tube.h>
+#include <chimutil.h>
 
 #include "udp_private.h"
 
@@ -44,11 +45,11 @@ inline void resetSS ()
 }
 
 #define TXRX_BUFSIZE 512
-static uint8_t spi_tx_dma_buf [TXRX_BUFSIZE]; //TODO how much do we need?
+uint8_t spi_tx_dma_buf [TXRX_BUFSIZE]; //TODO how much do we need?
 static uint8_t spi_rx_dma_buf [TXRX_BUFSIZE]; //TODO how much do we need?
+static uint16_t Sn_Tx_WR[8];
 
 volatile uint8_t spi_dma_done;
-
 
 static void
 _spi_dma_irq (void)
@@ -290,6 +291,9 @@ udp_begin (uint8_t sock, uint16_t port)
 	_dma_write_sock (sock, SnCR, &flag, 1);
 	do _dma_read_sock (sock, SnSR, &flag, 1);
 	while (flag != SnSR_UDP);
+
+	// get write pointer
+	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 }
 
 void
@@ -305,55 +309,11 @@ udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 void
 udp_send (uint8_t sock, uint8_t *dat, uint16_t len)
 {
-	if (len > (TXRX_BUFSIZE - 4) ) // return when buffer exceedes given size
-		return;
-
-	// wait until there is enough space left in buffer
-	uint16_t free;
-	do
-		_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	while (len > free);
-
-	// move data to chip
-	uint16_t ptr;
-	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
-  uint16_t offset = ptr & SMASK;
-	uint16_t SBASE = TXBUF_BASE + sock*SSIZE;
-  uint16_t dstAddr = offset + SBASE;
-
-  if (offset + len > SSIZE) 
-  {
-    // Wrap around circular buffer
-    uint16_t size = SSIZE - offset;
-		_dma_write (dstAddr, dat, size);
-		_dma_write (SBASE, dat+size, len-size);
-  } 
-  else
-		_dma_write (dstAddr, dat, len);
-
-  ptr += len;
-	_dma_write_sock_16 (sock, SnTX_WR, ptr);
-
-	// send data
-	uint8_t flag;
-	flag = SnCR_SEND;
-	_dma_write_sock (sock, SnCR, &flag, 1);
-
-	uint8_t ir;
-	do
-	{
-		_dma_read_sock (sock, SnIR, &ir, 1);
-		if (ir & SnIR_TIMEOUT)
-		{
-			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
-			_dma_write_sock (sock, SnIR, &flag, 1);
-		}
-	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
-
-	flag = SnIR_SEND_OK;
-	_dma_write_sock (sock, SnIR, &flag, 1);
+	if (udp_send_nonblocking (sock, dat, len))
+		udp_send_block (sock);
 }
 
+//TODO get rid of memcpy
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
 {
@@ -362,15 +322,20 @@ udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
 
 	uint8_t *buf = spi_tx_dma_buf;
 
-	// wait until there is enough space left in buffer
+	// wait until there is enough space left in buffer XXX we don't need this as we always send stuff immediately and do not accumulate data in the buffer
+	/*
 	uint16_t free;
 	do
 		_dma_read_sock_16 (sock, SnTX_FSR, &free);
 	while (len > free);
+	*/
 
 	// move data to chip
+	/* XXX we don't need this as we keep track of the write position with an array instead
 	uint16_t ptr;
 	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
+	*/
+	uint16_t ptr = Sn_Tx_WR[sock];
   uint16_t offset = ptr & SMASK;
 	uint16_t SBASE = TXBUF_BASE + sock*SSIZE;
   uint16_t dstAddr = offset + SBASE;
@@ -387,6 +352,7 @@ udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len)
 
   ptr += len;
 	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, ptr);
+	Sn_Tx_WR[sock] = ptr;
 
 	// send data
 	uint8_t flag;
@@ -427,6 +393,7 @@ udp_available (uint8_t sock)
 	return len;
 }
 
+//TODO write a nonblocking version for receiving, too
 void
 udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 {

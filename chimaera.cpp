@@ -70,20 +70,12 @@ Stop_Watch sw_cmc = {
 	"cmc"
 };
 
-Stop_Watch sw_server = {
-	"server"
+Stop_Watch sw_tuio = {
+	"tuio"
 };
 
-Stop_Watch sw_adc1 = {
-	"adc1"
-};
-
-Stop_Watch sw_adc2 = {
-	"adc2"
-};
-
-Stop_Watch sw_ref = {
-	"ref"
+Stop_Watch sw_send = {
+	"send"
 };
 
 timestamp64u_t t0;
@@ -247,33 +239,40 @@ loop ()
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			len = cmc_dump_unit (cmc, now, buf_o, u); //TODO make this faster
-			udp_send (config.dump.socket.sock, buf_o, len); //TODO nonblocking sending
+			len = cmc_dump_unit (cmc, now, buf_o[buf_o_ptr], u); //TODO make this faster
+			udp_send (config.dump.socket.sock, buf_o[buf_o_ptr], len); //TODO nonblocking sending
 		}
 	}
 
 	// do touch recognition and interpolation
+	stop_watch_start (&sw_cmc);
 	if (config.tuio.enabled)
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
-			send_status = udp_send_nonblocking (config.tuio.socket.sock, buf_o2, cmc_len);
+			send_status = udp_send_nonblocking (config.tuio.socket.sock, buf_o[!buf_o_ptr], cmc_len);
 
-		uint8_t job = cmc_process (cmc); // touch recognition of current cycle
+		//uint8_t job = cmc_process (cmc); // touch recognition of current cycle
+		uint8_t job = 1;
 
+		stop_watch_start (&sw_tuio);
 		if (job)
 		{
 			timestamp_set (&now);
-			cmc_len = cmc_write_tuio2 (cmc, now, buf_o); // serialization to tuio2 of current cycle blobs
+			cmc_len = cmc_write_tuio2 (cmc, now, buf_o[buf_o_ptr]); // serialization to tuio2 of current cycle blobs
 		}
 
+		stop_watch_start (&sw_send);
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
 
-		if (job) // copy buf_o over to buf_o2 for next cycle
-			memcpy (buf_o2, buf_o, cmc_len); //TODO better swap buffers than memcopying
+		if (job) // switch output buffer
+			buf_o_ptr = !buf_o_ptr;
 
 		cmc_job = job;
 	}
+	stop_watch_stop (&sw_send);
+	stop_watch_stop (&sw_tuio);
+	stop_watch_stop (&sw_cmc);
 
 	// run osc config server
 	if (config.config.enabled && config_should_request)
@@ -292,8 +291,8 @@ loop ()
 			sntp_should_listen = 1;
 
 			timestamp_set (&now);
-			len = sntp_request (buf_o, now);
-			udp_send (config.sntp.socket.sock, buf_o, len);
+			len = sntp_request (buf_o[buf_o_ptr], now);
+			udp_send (config.sntp.socket.sock, buf_o[buf_o_ptr], len);
 		}
 
 		// listen for sntp request answer
@@ -431,7 +430,7 @@ setup ()
 	t0.all = 0ULL;
 
 	// add methods to OSC server
-	serv = config_methods_add (serv, buf_o); //TODO move to config_enable
+	serv = config_methods_add (serv, buf_o[buf_o_ptr]); //TODO move to config_enable
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -550,6 +549,15 @@ setup ()
 		config_timer_reconfigure ();
 		config_timer_resume ();
 	}
+
+	cmc_set (cmc, 0x3 + 0x10*1, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*2, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*3, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*4, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*5, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*6, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*7, 1000, 0); //TODO
+	cmc_process (cmc);
 }
 
 __attribute__ ((constructor)) void

@@ -33,6 +33,7 @@ extern "C" {
 extern dma_tube_config adc_tube;
 extern dma_tube_config spi2_rx_tube;
 extern dma_tube_config spi2_tx_tube;
+extern dma_tube_config mem2mem_tube;
 
 #ifdef __cplusplus
 }
