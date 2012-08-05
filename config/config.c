@@ -109,82 +109,79 @@ Config config = {
 };
 
 static uint8_t
-_version_get (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_version_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
-	udp_send (config.config.socket.sock, buf, size);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_enabled_set (void (*cb) (uint8_t b), void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 	if (fmt[1] == nOSC_TRUE)
 	{
 		cb (1);
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 	else if (fmt[1] == nOSC_FALSE)
 	{
 		cb (0);
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iFs", id, "wrong type: boolean expected at position [2]");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong type: boolean expected at position [2]");
 
-	udp_send (config.config.socket.sock, buf, size);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 } 
 
 static uint8_t
-_tuio_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (tuio_enable, data, path, fmt, argc, args);
+	return _enabled_set (tuio_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (config_enable, data, path, fmt, argc, args);
+	return _enabled_set (config_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (sntp_enable, data, path, fmt, argc, args);
+	return _enabled_set (sntp_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (dump_enable, data, path, fmt, argc, args);
+	return _enabled_set (dump_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (debug_enable, data, path, fmt, argc, args);
+	return _enabled_set (debug_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_ping_enabled_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_ping_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (ping_enable, data, path, fmt, argc, args);
+	return _enabled_set (ping_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_socket_set (Socket_Config *socket, void (*cb) (uint8_t b), void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_socket_set (Socket_Config *socket, void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
@@ -198,56 +195,55 @@ _socket_set (Socket_Config *socket, void (*cb) (uint8_t b), void *data, const ch
 
 		cb (config.tuio.enabled);
 
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x100 and numbers in IP must be < 0x10");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x100 and numbers in IP must be < 0x10");
 
-	udp_send (config.config.socket.sock, buf, size);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_tuio_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.tuio.socket, tuio_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.tuio.socket, tuio_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.config.socket, config_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.config.socket, config_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.sntp.socket, sntp_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.sntp.socket, sntp_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.dump.socket, dump_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.dump.socket, dump_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.debug.socket, debug_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.debug.socket, debug_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_ping_socket_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_ping_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.ping.socket, ping_enable, data, path, fmt, argc, args);
+	return _socket_set (&config.ping.socket, ping_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_rate_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = (uint8_t *)data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
@@ -258,108 +254,105 @@ _rate_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg
 	adc_timer_reconfigure ();
 	adc_timer_resume ();
 
-	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	udp_send (config.config.socket.sock, buf, size);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_cmc_group_clear (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_cmc_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = (uint8_t *)data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
 	cmc_group_clear (cmc);
 
-	size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
-	udp_send (config.config.socket.sock, buf, size);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_cmc_group_add (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_cmc_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = (uint8_t *)data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
 	if (cmc_group_add (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
-	udp_send (config.config.socket.sock, buf, size);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_cmc_group_set (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	uint8_t *buf = (uint8_t *)data;
 	uint16_t size;
 	int32_t id = args[0]->i;
 
 	if (cmc_group_set (cmc, args[1]->i, args[2]->i, args[3]->f, args[4]->f))
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (buf, CONFIG_REPLY_PATH, "iF", id, "group not found");
-	udp_send (config.config.socket.sock, buf, size);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group not found");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 
 nOSC_Server *
-config_methods_add (nOSC_Server *serv, void *data)
+config_methods_add (nOSC_Server *serv)
 {
 	// read-only
-	serv = nosc_server_method_add (serv, "/chimaera/version/get", "i", _version_get, data);
+	serv = nosc_server_method_add (serv, "/chimaera/version/get", "i", _version_get);
 
 	// config TODO
-	//serv = nosc_server_method_add (serv, "/chimaera/config/get", "i", _config_get, data);
-	//serv = nosc_server_method_add (serv, "/chimaera/config/save", "i", _save, data), TODO
+	//serv = nosc_server_method_add (serv, "/chimaera/config/get", "i", _config_get);
+	//serv = nosc_server_method_add (serv, "/chimaera/config/save", "i", _save), TODO
 
 	//TODO comm/mac/set, comm/ip/set, comm/gateway/set, comm/subnet/set
 
 	/*
 	// enable/disable sockets
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiii", _tuio_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiii", _tuio_socket_set);
 	//TODO tuio/long_header/enabled/set
 
-	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiii", _config_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiii", _config_socket_set);
 
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiii", _sntp_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiii", _sntp_socket_set);
 
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/socket/set", "iiiiii", _dump_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/socket/set", "iiiiii", _dump_socket_set);
 
-	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiii", _debug_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiii", _debug_socket_set);
 
-	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set, data);
-	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiii", _ping_socket_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set);
+	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiii", _ping_socket_set);
 	*/
 
 	// cmc TODO cmc/diff/set, cmc/thresh0/set, cmc/thresh1/set, cmc/max_groups/set
 
-	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear, data);
-	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add, data);
-	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
 
 	// sample rate
-	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set, data);
+	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set);
 
 	return serv;
 }

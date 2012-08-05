@@ -109,7 +109,7 @@ struct _Config {
 
 extern Config config;
 
-nOSC_Server *config_methods_add (nOSC_Server *serv, void *data);
+nOSC_Server *config_methods_add (nOSC_Server *serv);
 
 #ifdef __cplusplus
 }

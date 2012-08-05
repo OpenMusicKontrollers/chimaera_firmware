@@ -34,7 +34,7 @@
  */
 
 nOSC_Server * 
-nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb, void *data)
+nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb)
 {
 	nOSC_Server *new = calloc (1, sizeof (nOSC_Server));
 	if (path)
@@ -42,7 +42,6 @@ nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nO
 	if (fmt)
 		new->fmt = strdup (fmt);
 	new->cb = cb;
-	new->data = data;
 	new->next = serv;
 	return new;
 }
@@ -75,7 +74,7 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 					tmp = tmp->next;
 				}
 
-				uint8_t res = ptr->cb (ptr->data, path, fmt, argc, argv);
+				uint8_t res = ptr->cb (path, fmt, argc, argv);
 
 				free (argv);
 

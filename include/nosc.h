@@ -74,7 +74,7 @@ union _nOSC_Arg
 	uint8_t m[4];
 };
 
-typedef uint8_t (*nOSC_Method_Cb) (void *data, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **argb);
+typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **argb);
 
 /*
  * Constants
@@ -86,7 +86,7 @@ typedef uint8_t (*nOSC_Method_Cb) (void *data, const char *path, const char *fmt
  * Server functions
  */
 
-nOSC_Server *nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb, void *data);
+nOSC_Server *nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb);
 
 void nosc_server_dispatch (nOSC_Server *serv, uint8_t *buf, uint16_t size);
 

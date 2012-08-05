@@ -239,8 +239,8 @@ loop ()
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			len = cmc_dump_unit (cmc, now, buf_o[buf_o_ptr], u); //TODO make this faster
-			udp_send (config.dump.socket.sock, buf_o[buf_o_ptr], len); //TODO nonblocking sending
+			len = cmc_dump_unit (cmc, now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
+			udp_send (config.dump.socket.sock, buf_o_ptr, len); //TODO nonblocking sending
 		}
 	}
 
@@ -249,7 +249,7 @@ loop ()
 	if (config.tuio.enabled)
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
-			send_status = udp_send_nonblocking (config.tuio.socket.sock, buf_o[!buf_o_ptr], cmc_len);
+			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
 		//uint8_t job = cmc_process (cmc); // touch recognition of current cycle
 		uint8_t job = 1;
@@ -258,7 +258,7 @@ loop ()
 		if (job)
 		{
 			timestamp_set (&now);
-			cmc_len = cmc_write_tuio2 (cmc, now, buf_o[buf_o_ptr]); // serialization to tuio2 of current cycle blobs
+			cmc_len = cmc_write_tuio2 (cmc, now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
 		}
 
 		stop_watch_start (&sw_send);
@@ -291,8 +291,8 @@ loop ()
 			sntp_should_listen = 1;
 
 			timestamp_set (&now);
-			len = sntp_request (buf_o[buf_o_ptr], now);
-			udp_send (config.sntp.socket.sock, buf_o[buf_o_ptr], len);
+			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
+			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
 
 		// listen for sntp request answer
@@ -430,7 +430,7 @@ setup ()
 	t0.all = 0ULL;
 
 	// add methods to OSC server
-	serv = config_methods_add (serv, buf_o[buf_o_ptr]); //TODO move to config_enable
+	serv = config_methods_add (serv); //TODO move to config_enable
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -557,6 +557,7 @@ setup ()
 	cmc_set (cmc, 0x3 + 0x10*5, 1000, 0); //TODO
 	cmc_set (cmc, 0x3 + 0x10*6, 1000, 0); //TODO
 	cmc_set (cmc, 0x3 + 0x10*7, 1000, 0); //TODO
+	cmc_set (cmc, 0x3 + 0x10*8, 1000, 0); //TODO
 	cmc_process (cmc);
 }
 

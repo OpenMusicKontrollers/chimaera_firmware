@@ -47,7 +47,6 @@ struct _nOSC_Server {
 	char *path;
 	char *fmt;
 	nOSC_Method_Cb cb;
-	void *data;
 	nOSC_Server *next;
 };
 

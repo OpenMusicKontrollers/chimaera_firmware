@@ -39,9 +39,11 @@
 extern "C" {
 #endif
 
+#define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
+
 extern uint8_t buf_o_ptr;
-extern uint8_t buf_o[2][512]; // general purpose output buffer
-extern uint8_t buf_i[256]; // general purpose input buffer
+extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
+extern uint8_t buf_i[CHIMAERA_BUFSIZE]; // general purpose input buffer
 extern CMC *cmc;
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);

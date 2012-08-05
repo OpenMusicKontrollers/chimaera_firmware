@@ -33,12 +33,13 @@ extern "C" {
 #endif
 
 #define UDP_HDR_SIZE 8
+#define UDP_SEND_OFFSET 4
 
 void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
 void udp_begin (uint8_t sock, uint16_t port);
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
-void udp_send (uint8_t sock, uint8_t *dat, uint16_t len);
-uint8_t udp_send_nonblocking (uint8_t sock, uint8_t *dat, uint16_t len);
+void udp_send (uint8_t sock, uint8_t ptr, uint16_t len);
+uint8_t udp_send_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
 void udp_send_block (uint8_t sock);
 uint16_t udp_available (uint8_t sock);
 void udp_receive (uint8_t sock, uint8_t *buf, uint16_t len);
