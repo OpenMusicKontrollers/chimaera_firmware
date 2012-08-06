@@ -398,7 +398,7 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
-	if (len > (CHIMAERA_BUFSIZE - 16) ) // return when buffer exceeds given size
+	if (len > (CHIMAERA_BUFSIZE - 2*UDP_SEND_OFFSET) ) // return when buffer exceeds given size
 		return 0;
 
 	// switch DMA memory source to right buffer
@@ -409,8 +409,8 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 
 	uint8_t *buf = buf_o[buf_ptr];
 
-	// wait until there is enough space left in buffer XXX we don't need this as we always send stuff immediately and do not accumulate data in the buffer
-	/*
+	// wait until there is enough space left in buffer
+	/* XXX we don't need this as we always send stuff immediately and do not accumulate data in the buffer
 	uint16_t free;
 	do
 		_dma_read_sock_16 (sock, SnTX_FSR, &free);
@@ -424,7 +424,6 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	*/
 	uint16_t ptr = Sn_Tx_WR[sock];
   uint16_t offset = ptr & SMASK[sock];
-	//uint16_t SBASE = TXBUF_BASE + sock*SSIZE; //TODO store this statically in an array per socket
   uint16_t dstAddr = offset + SBASE[sock];
 
   if ( (offset + len) > SSIZE[sock]) 
@@ -432,10 +431,10 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
     // Wrap around circular buffer
     uint16_t size = SSIZE[sock] - offset;
 		buf = _dma_write_inline (buf, dstAddr, size);
-		// we have to move the remaining 4 bytes to the right on the buffer to fill in the SPI address commands
+		// we have to move the remaining data 4 bytes to the right on the buffer to fill in the SPI address commands
 		uint16_t i;
-		for (i=len-1; i>=size; i--)
-			buf[i+4] = buf[i]; //TODO check whether i+4 does not exceed CHIMAERA_BUF_SIZE
+		for (i=len-size; i>0; i--)
+			buf[i - 1 + UDP_SEND_OFFSET] = buf[i-1];
 		buf = _dma_write_inline (buf, SBASE[sock], len-size);
   } 
   else
