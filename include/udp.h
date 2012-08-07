@@ -35,7 +35,10 @@ extern "C" {
 #define UDP_HDR_SIZE 8
 #define UDP_SEND_OFFSET 4
 
-void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit);
+#define UDP_RESET 7 // Reset BIT
+#define UDP_MAX_SOCK_NUM 8
+
+void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[UDP_MAX_SOCK_NUM], uint8_t rx_mem[UDP_MAX_SOCK_NUM]);
 void udp_begin (uint8_t sock, uint16_t port);
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_send (uint8_t sock, uint8_t ptr, uint16_t len);

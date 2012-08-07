@@ -95,7 +95,4 @@
 #define TX_BUF_BASE 0x8000
 #define RX_BUF_BASE 0xC000
 
-#define RST 7 // Reset BIT
-#define MAX_SOCK_NUM 8
-
 #endif // UDP_PRIVATE_H

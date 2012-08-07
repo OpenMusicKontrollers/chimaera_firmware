@@ -35,71 +35,14 @@ static gpio_dev *ss_dev;
 static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
 
-static uint16_t SSIZE [] = {
-	0x2000, // 8k for socket 0
-	0x0800, // 2k for socket 1
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400 // 1k
-};
+static uint16_t SSIZE [UDP_MAX_SOCK_NUM];
+static uint16_t RSIZE [UDP_MAX_SOCK_NUM];
 
-static uint16_t RSIZE [] = {
-	0x2000, // 8k for socket 0
-	0x0800, // 2k for socket 1
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400, // 1k
-	0x0400 // 1k
-};
+static uint16_t SBASE [UDP_MAX_SOCK_NUM];
+static uint16_t RBASE [UDP_MAX_SOCK_NUM];
 
-static uint16_t SBASE [] = {
-	TX_BUF_BASE + 0x0000,
-	TX_BUF_BASE + 0x2000,
-	TX_BUF_BASE + 0x2800,
-	TX_BUF_BASE + 0x2c00,
-	TX_BUF_BASE + 0x3000,
-	TX_BUF_BASE + 0x3400,
-	TX_BUF_BASE + 0x3800,
-	TX_BUF_BASE + 0x3c00
-};
-
-static uint16_t RBASE [] = {
-	RX_BUF_BASE + 0x0000,
-	RX_BUF_BASE + 0x2000,
-	RX_BUF_BASE + 0x2800,
-	RX_BUF_BASE + 0x2c00,
-	RX_BUF_BASE + 0x3000,
-	RX_BUF_BASE + 0x3400,
-	RX_BUF_BASE + 0x3800,
-	RX_BUF_BASE + 0x3c00
-};
-
-static uint16_t SMASK [] = {
-	0x2000 - 1,
-	0x0800 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1
-};
-
-static uint16_t RMASK [] = {
-	0x2000 - 1,
-	0x0800 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1,
-	0x0400 - 1
-};
+static uint16_t SMASK [UDP_MAX_SOCK_NUM];
+static uint16_t RMASK [UDP_MAX_SOCK_NUM];
 
 inline void setSS ()
 {
@@ -295,7 +238,7 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 void
-udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit)
+udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[UDP_MAX_SOCK_NUM], uint8_t rx_mem[UDP_MAX_SOCK_NUM])
 {
 	int status;
 
@@ -319,20 +262,38 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	uint8_t sock;
 	uint8_t flag;
 
-	flag = 1 << RST;
-	_dma_write (MR, &flag, 1);
-
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
-  for (sock=0; sock<MAX_SOCK_NUM; sock++) {
-		flag = SSIZE[sock] / 0x0400; // how many kB?
+  for (sock=0; sock<UDP_MAX_SOCK_NUM; sock++)
+	{
+		// initialize tx registers
+		SSIZE[sock] = tx_mem[sock] * 0x0400;
+		SMASK[sock] = SSIZE[sock] - 1;
+		if (sock>0)
+			SBASE[sock] = SBASE[sock-1] + SSIZE[sock-1];
+		else
+			SBASE[sock] = 0x0000;
+
+		flag = tx_mem[sock];
 		if (flag == 0x10)
 			flag = 0x0f; // special case
 		_dma_write_sock (sock, SnTX_MS, &flag, 1); // TX_MEMSIZE
-		flag = RSIZE[sock] / 0x0400; // how many kB?
+
+		// initialize rx registers
+		RSIZE[sock] = rx_mem[sock] * 0x0400;
+		RMASK[sock] = RSIZE[sock] - 1;
+		if (sock>0)
+			RBASE[sock] = RBASE[sock-1] + RSIZE[sock-1];
+		else
+			RBASE[sock] = 0x0000;
+
+		flag = rx_mem[sock];
 		if (flag == 0x10) 
 			flag = 0x0f; // special case
 		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
+
+	flag = 1 << UDP_RESET;
+	_dma_write (MR, &flag, 1);
 
 	// set MAC address of device
 	_dma_write (SHAR, mac, 6); //TODO make this configurable

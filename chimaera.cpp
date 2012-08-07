@@ -422,8 +422,10 @@ setup ()
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
 	// initialize wiz820io
+	uint8_t tx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
+	uint8_t rx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
-		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit);
+		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, rx_mem, tx_mem);
 
 	// initialize sockets
 	tuio_enable (config.tuio.enabled);
