@@ -39,7 +39,8 @@
 
 const uint8_t MUX_LENGTH = 4;
 const uint8_t MUX_MAX = 16;
-uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
+//uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
+uint8_t MUX_Sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 
 volatile uint8_t adc_dma_done;
 volatile uint8_t adc_dma_ptr = 0;
@@ -57,7 +58,8 @@ static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 static uint8_t ADC_Order [MUX_MAX][ADC_DUAL_LENGTH*2];
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
-const uint8_t PWDN = 17;
+//const uint8_t PWDN = 17;
+const uint8_t PWDN = 0;
 
 /*
  * include chimaera custom libraries
@@ -297,9 +299,7 @@ loop ()
 
 		// listen for sntp request answer
 		if (sntp_should_listen)
-		{
 			udp_dispatch (config.sntp.socket.sock, buf_i, sntp_cb);
-		}
 	}
 
 	adc_dma_block ();
@@ -326,7 +326,7 @@ extern "C" void adc_timer_reconfigure ()
 	// overflow = 72Mhz / rate / MUX_MAX = 4500 cycles @ 1kHz, 3460 cycles @ 1.3kHz, 3000 cycles @ 1.5kHz, 2250 cycles @ 2kHz
 
 	adc_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH2, 2000); 
+	adc_timer.setCompare (TIMER_CH2, 2000);  //TODO = overflow of channel 1 - constant value to switch muxes and let signals setle
 	adc_timer.attachInterrupt (TIMER_CH2, adc_timer_irq_2);
 	// sample time = 72Mhz / 14 MHz * (12.5 + ADC_SAMPLE_RATE) * ADC_DUAL_LENGTH
 	// sample time = 1748 cycles @ 55.5 cycles, 1028 cycles @ 27.5 cycles
@@ -400,9 +400,16 @@ setup ()
 		pinMode (ADC2_Sequence[i], INPUT_ANALOG);
 	}
 
+	delay_us (1e6);
+
 	// init eeprom for I2C1
+	uint8_t magic;
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
-	//TODO implement reading and writing the config
+	eeprom_byte_read (I2C1, 0x0000, &magic);
+	if (magic == config.magic) // EEPROM and FLASH config versions match
+		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+	else // EEPROM and FLASH config version do not match, overwrite old with new default one
+		eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
@@ -425,6 +432,11 @@ setup ()
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
 	ping_enable (config.ping.enabled);
+
+	if (magic == config.magic)
+		debug_str ("read config from EEPROM");
+	else
+		debug_str ("wrote config to EEPROM");
 
 	// set start time to 0
 	t0.all = 0ULL;

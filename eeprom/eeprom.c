@@ -27,7 +27,7 @@
 
 #include <eeprom.h>
 
-#define TIMEOUT 10 // us
+#define TIMEOUT 1 // ms
 
 static i2c_msg write_msg;
 static uint8_t write_msg_data [_24LC64_ADDR_SIZE + _24LC64_PAGE_SIZE];
@@ -42,18 +42,31 @@ _eeprom_set_address (uint16_t addr)
 }
 
 inline void
-_eeprom_check_res (i2c_dev *dev, uint8_t res)
+_eeprom_check_res (i2c_dev *dev, int32_t res)
 {
 	if (res != 0)
 	{
 		i2c_disable (dev);
+		i2c_bus_reset (dev);
 		i2c_master_enable (dev, I2C_BUS_RESET);
 	}
+}
+	
+inline void
+_eeprom_ack_poll (i2c_dev *dev)
+{
+	/* TODO implement acknowledge polling to see whether chip is ready for further data
+	write_msg.length = 0;
+	while (i2c_master_xfer (dev, &write_msg, 1, TIMEOUT) != 0)
+		;
+	*/
+	delay_us (2500); // 2 ms typical write cycle time for page write
 }
 
 void
 eeprom_init (i2c_dev *dev, uint8_t slave_addr)
 {
+	i2c_init (dev);
 	i2c_master_enable (dev, 0);
 	i2c_enable_ack (dev);
 
@@ -77,9 +90,12 @@ eeprom_byte_write (i2c_dev *dev, uint16_t addr, uint8_t byte)
 	write_msg_data[2] = byte;
 	write_msg.length = _24LC64_ADDR_SIZE + 1;
 
-	uint8_t res;
+	int32_t res;
 	res = i2c_master_xfer (dev, &write_msg, 1, TIMEOUT);
+	debug_int32 (res);
 	_eeprom_check_res (dev, res);
+
+	_eeprom_ack_poll (dev); // wait until written
 }
 
 void
@@ -92,9 +108,11 @@ eeprom_page_write (i2c_dev *dev, uint16_t addr, uint8_t *page, uint8_t len)
 	memcpy (&write_msg_data[2], page, len);
 	write_msg.length = _24LC64_ADDR_SIZE + len;
 
-	uint8_t res;
+	int32_t res;
 	res = i2c_master_xfer (dev, &write_msg, 1, TIMEOUT);
 	_eeprom_check_res (dev, res);
+
+	_eeprom_ack_poll (dev); // wait until written
 }
 
 void
@@ -127,7 +145,7 @@ eeprom_byte_read (i2c_dev *dev, uint16_t addr, uint8_t *byte)
 	read_msg.length = 1;
 	read_msg.data = byte;
 
-	uint8_t res;
+	int32_t res;
 	res = i2c_master_xfer (dev, &write_msg, 1, TIMEOUT);
 	_eeprom_check_res (dev, res);
 	res = i2c_master_xfer (dev, &read_msg, 1, TIMEOUT);
@@ -146,7 +164,7 @@ eeprom_bulk_read (i2c_dev *dev, uint16_t addr, uint8_t *bulk, uint16_t len)
 	read_msg.length = len;
 	read_msg.data = bulk;
 
-	uint8_t res;
+	int32_t res;
 	res = i2c_master_xfer (dev, &write_msg, 1, TIMEOUT);
 	_eeprom_check_res (dev, res);
 	res = i2c_master_xfer (dev, &read_msg, 1, TIMEOUT);
