@@ -35,14 +35,14 @@ static gpio_dev *ss_dev;
 static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
 
-static uint16_t SSIZE [UDP_MAX_SOCK_NUM];
-static uint16_t RSIZE [UDP_MAX_SOCK_NUM];
+uint16_t SSIZE [UDP_MAX_SOCK_NUM];
+uint16_t RSIZE [UDP_MAX_SOCK_NUM];
 
-static uint16_t SBASE [UDP_MAX_SOCK_NUM];
-static uint16_t RBASE [UDP_MAX_SOCK_NUM];
+uint16_t SBASE [UDP_MAX_SOCK_NUM];
+uint16_t RBASE [UDP_MAX_SOCK_NUM];
 
-static uint16_t SMASK [UDP_MAX_SOCK_NUM];
-static uint16_t RMASK [UDP_MAX_SOCK_NUM];
+uint16_t SMASK [UDP_MAX_SOCK_NUM];
+uint16_t RMASK [UDP_MAX_SOCK_NUM];
 
 inline void setSS ()
 {
@@ -262,16 +262,19 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	uint8_t sock;
 	uint8_t flag;
 
+	flag = 1 << UDP_RESET;
+	_dma_write (MR, &flag, 1);
+
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
   for (sock=0; sock<UDP_MAX_SOCK_NUM; sock++)
 	{
 		// initialize tx registers
-		SSIZE[sock] = tx_mem[sock] * 0x0400;
+		SSIZE[sock] = (uint16_t)tx_mem[sock] * 0x0400;
 		SMASK[sock] = SSIZE[sock] - 1;
 		if (sock>0)
 			SBASE[sock] = SBASE[sock-1] + SSIZE[sock-1];
 		else
-			SBASE[sock] = 0x0000;
+			SBASE[sock] = TX_BUF_BASE;
 
 		flag = tx_mem[sock];
 		if (flag == 0x10)
@@ -279,21 +282,18 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 		_dma_write_sock (sock, SnTX_MS, &flag, 1); // TX_MEMSIZE
 
 		// initialize rx registers
-		RSIZE[sock] = rx_mem[sock] * 0x0400;
+		RSIZE[sock] = (uint16_t)rx_mem[sock] * 0x0400;
 		RMASK[sock] = RSIZE[sock] - 1;
 		if (sock>0)
 			RBASE[sock] = RBASE[sock-1] + RSIZE[sock-1];
 		else
-			RBASE[sock] = 0x0000;
+			RBASE[sock] = RX_BUF_BASE;
 
 		flag = rx_mem[sock];
 		if (flag == 0x10) 
 			flag = 0x0f; // special case
 		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
-
-	flag = 1 << UDP_RESET;
-	_dma_write (MR, &flag, 1);
 
 	// set MAC address of device
 	_dma_write (SHAR, mac, 6); //TODO make this configurable

@@ -425,7 +425,7 @@ setup ()
 	uint8_t tx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
-		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, rx_mem, tx_mem);
+		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
 
 	// initialize sockets
 	tuio_enable (config.tuio.enabled);
