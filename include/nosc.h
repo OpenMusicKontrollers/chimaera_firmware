@@ -44,10 +44,16 @@ typedef struct _nOSC_Message nOSC_Message;
 typedef struct _nOSC_Server nOSC_Server;
 typedef union _nOSC_Arg nOSC_Arg;
 
+struct _nOSC_Blob {
+	int32_t len;
+	uint8_t *dat;
+};
+
 typedef enum _nOSC_Type {
 	nOSC_INT32 = 'i',
 	nOSC_FLOAT = 'f',
 	nOSC_STRING = 's',
+	nOSC_BLOB = 'b',
 
 	nOSC_TRUE = 'T',
 	nOSC_FALSE = 'F',
@@ -66,6 +72,7 @@ union _nOSC_Arg
 	int32_t i;
 	float f;
 	char *s;
+	nOSC_Blob b;
 
 	double d;
 	int64_t h;
@@ -109,6 +116,7 @@ void nosc_bundle_free (nOSC_Bundle *bund);
 nOSC_Message *nosc_message_add_int32 (nOSC_Message *msg, int32_t i);
 nOSC_Message *nosc_message_add_float (nOSC_Message *msg, float f);
 nOSC_Message *nosc_message_add_string (nOSC_Message *msg, const char *s);
+nOSC_Message *nosc_message_add_blob (nOSC_Message *msg, uint8_t *dat, int32_t len);
 
 nOSC_Message *nosc_message_add_true (nOSC_Message *msg);
 nOSC_Message *nosc_message_add_false (nOSC_Message *msg);

@@ -203,6 +203,14 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 					len += 4 - len%4;
 				buf_ptr += len;
 				break;
+			case nOSC_BLOB:
+			{
+				int32_t len = memcpy_ntohl (buf_ptr);
+				buf_ptr += 4;
+				msg = nosc_message_add_blob (msg, buf_ptr, len);
+				buf_ptr += len;
+				break;
+			}
 
 			case nOSC_TRUE:
 				msg = nosc_message_add_true (msg);
@@ -370,6 +378,16 @@ nosc_message_add_string (nOSC_Message *msg, const char *s)
 }
 
 nOSC_Message * 
+nosc_message_add_blob (nOSC_Message *msg, uint8_t *dat, int32_t len)
+{
+	nOSC_Message *new = _msg_add (msg, nOSC_BLOB);
+	new->arg.b.len = len;
+	new->arg.b.dat = dat;
+	//TODO caution, data is not copied, but only referenced, so should not be changed until sent
+	return new;
+}
+
+nOSC_Message * 
 nosc_message_add_true (nOSC_Message *msg)
 {
 	nOSC_Message *new = _msg_add (msg, nOSC_TRUE);
@@ -499,6 +517,19 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 				break;
 			}
 
+			case nOSC_BLOB:
+			{
+				int32_t len = ptr->arg.b.len;
+				if (len % 4) // len must be a multiple of 32bit
+					len += 1;
+				memcpy_htonl (buf_ptr, ptr->arg.b.len);
+				buf_ptr += 4;
+				memcpy (buf_ptr, ptr->arg.b.dat, ptr->arg.b.len);
+				//TODO do we need to zero the ramining bytes up to len?
+				buf_ptr += len;
+				break;
+			}
+
 			case nOSC_TRUE:
 			case nOSC_FALSE:
 			case nOSC_NIL:
@@ -538,6 +569,9 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
         break;
 			case nOSC_STRING:
 				msg = nosc_message_add_string (msg, va_arg (args, char *));
+        break;
+			case nOSC_BLOB:
+				msg = nosc_message_add_blob (msg, va_arg (args, uint8_t *), va_arg (args, int32_t));
         break;
 
 			case nOSC_TRUE:
