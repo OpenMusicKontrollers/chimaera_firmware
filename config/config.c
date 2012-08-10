@@ -34,7 +34,7 @@
 #define LAN_HOST {192, 168, 1, 10}
 
 Config config = {
-	.magic = 0x01, // used to compare EEPROM and FLASH config versions
+	.magic = 0x02, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -70,8 +70,8 @@ Config config = {
 	},
 
 	.sntp = {
-		.tau = 4, // delay in seconds
-		.enabled = 0, // enabled by default
+		.tau = 4, // delay between SNTP requests in seconds
+		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 2,
 			.port = {123, 123},

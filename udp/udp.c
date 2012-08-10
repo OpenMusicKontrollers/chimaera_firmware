@@ -31,6 +31,8 @@
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
 
+#define SPI_CMD_SIZE 4
+
 static gpio_dev *ss_dev;
 static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
@@ -168,7 +170,6 @@ void
 _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = buf_o[tmp_buf_o_ptr];
-	uint16_t i;
 
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
@@ -183,7 +184,21 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 	_spi_dma_block ();
 	resetSS ();
 
-	memcpy (dat, &buf_i[4], len);
+	memcpy (dat, &buf_i[SPI_CMD_SIZE], len);
+}
+
+uint8_t *
+_dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len)
+{
+	*buf++ = addr >> 8;
+	*buf++ = addr & 0xFF;
+	*buf++ = (0x00 | ((len & 0x7F00) >> 8));
+	*buf++ = len & 0x00FF;
+	
+	memset (buf, 0x00, len);
+	buf += len;
+
+	return buf;
 }
 
 void
@@ -446,7 +461,7 @@ udp_available (uint8_t sock)
 
 //TODO write a nonblocking version for receiving, too
 void
-udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
+udp_receive (uint8_t sock, uint16_t len)
 {
 	if (len > (CHIMAERA_BUFSIZE - 4) ) // return when buffer exceedes given size
 		return;
@@ -454,23 +469,27 @@ udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 	uint16_t ptr;
 	_dma_read_sock_16 (sock, SnRX_RD, &ptr);
 
-	uint16_t size;
-	uint16_t src_mask;
-	uint16_t src_ptr;
-	//uint16_t RBASE = RXBUF_BASE + sock*RSIZE;
+	uint16_t size = 0;
+	uint16_t offset = ptr & RMASK[sock];
+	uint16_t dstAddr = offset + RBASE[sock];
 
-	src_mask = ptr & RMASK[sock];
-	src_ptr = RBASE[sock] + src_mask;
+	uint8_t *buf = buf_o[tmp_buf_o_ptr];
 
 	// read message
-	if ( (src_mask + len) > RSIZE[sock])
+	if ( (offset + len) > RSIZE[sock])
 	{
-		size = RSIZE[sock] - src_mask;
-		_dma_read (src_ptr, buf, size);
-		_dma_read (RBASE[sock], buf+size, len-size);
+		size = RSIZE[sock] - offset;
+		buf = _dma_read_append (buf, dstAddr, size);
+		buf = _dma_read_append (buf, RBASE[sock], len-size);
 	}
 	else
-		_dma_read (src_ptr, buf, len);
+		buf = _dma_read_append (buf, dstAddr, len);
+
+	_dma_write_nonblocking_in (buf);
+	_dma_write_nonblocking_out ();
+
+	if (size)
+		memcpy (buf_i + SPI_CMD_SIZE + len - size, buf_i + SPI_CMD_SIZE + len - size + SPI_CMD_SIZE, size);
 
 	ptr += len;
 	_dma_write_sock_16 (sock, SnRX_RD, ptr);
@@ -481,19 +500,19 @@ udp_receive (uint8_t sock, uint8_t *buf, uint16_t len)
 }
 
 void 
-udp_dispatch (uint8_t sock, uint8_t *buf, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+udp_dispatch (uint8_t sock, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
 	uint16_t len;
 
 	if ( (len = udp_available (sock)) )
 	{
-		udp_receive (sock, buf, len);
+		udp_receive (sock, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len;
-		while (remaining)
+		while (remaining > 0)
 		{
-			uint8_t *buf_in_ptr = buf + len - remaining;
+			uint8_t *buf_in_ptr = buf_i + SPI_CMD_SIZE + len - remaining;
 
 			uint8_t *ip = buf_in_ptr;
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];

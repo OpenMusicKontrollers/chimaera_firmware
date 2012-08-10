@@ -45,8 +45,8 @@ void udp_send (uint8_t sock, uint8_t ptr, uint16_t len);
 uint8_t udp_send_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
 void udp_send_block (uint8_t sock);
 uint16_t udp_available (uint8_t sock);
-void udp_receive (uint8_t sock, uint8_t *buf, uint16_t len);
-void udp_dispatch (uint8_t sock, uint8_t *buf, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)); 
+void udp_receive (uint8_t sock, uint16_t len);
+void udp_dispatch (uint8_t sock, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)); 
 
 #ifdef __cplusplus
 }

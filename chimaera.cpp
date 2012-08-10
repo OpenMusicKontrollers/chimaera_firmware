@@ -279,13 +279,17 @@ loop ()
 	// run osc config server
 	if (config.config.enabled && config_should_request)
 	{
-		udp_dispatch (config.config.socket.sock, buf_i, config_cb);
+		udp_dispatch (config.config.socket.sock, config_cb);
 		config_should_request = 0;
 	}
 
 	// run sntp client
 	if (config.sntp.enabled)
 	{
+		// listen for sntp request answer
+		if (sntp_should_listen)
+			udp_dispatch (config.sntp.socket.sock, sntp_cb);
+
 		// send sntp request
 		if (sntp_should_request)
 		{
@@ -296,10 +300,6 @@ loop ()
 			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
-
-		// listen for sntp request answer
-		if (sntp_should_listen)
-			udp_dispatch (config.sntp.socket.sock, buf_i, sntp_cb);
 	}
 
 	adc_dma_block ();
@@ -404,10 +404,12 @@ setup ()
 	uint8_t magic;
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
 	eeprom_byte_read (I2C1, 0x0000, &magic);
+	/*TODO FIXME
 	if (magic == config.magic) // EEPROM and FLASH config versions match
 		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+	*/
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
