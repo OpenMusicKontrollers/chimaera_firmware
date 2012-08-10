@@ -400,8 +400,6 @@ setup ()
 		pinMode (ADC2_Sequence[i], INPUT_ANALOG);
 	}
 
-	delay_us (1e6);
-
 	// init eeprom for I2C1
 	uint8_t magic;
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);

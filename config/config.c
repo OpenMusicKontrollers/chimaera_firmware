@@ -34,7 +34,7 @@
 #define LAN_HOST {192, 168, 1, 10}
 
 Config config = {
-	.magic = 0x04, // used to compare EEPROM and FLASH config versions
+	.magic = 0x01, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -53,7 +53,7 @@ Config config = {
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 0,
-			.port = { 3333, 3333},
+			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
 		.long_header = 0,
@@ -64,7 +64,7 @@ Config config = {
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 1,
-			.port = {4444, 444},
+			.port = {4444, 4444},
 			.ip = LAN_BROADCAST
 		}
 	},
@@ -83,7 +83,7 @@ Config config = {
 		.enabled = 0, // disabled by default
 		.socket = {
 			.sock = 3,
-			.port = {5555, 555},
+			.port = {5555, 5555},
 			.ip = LAN_BROADCAST
 		}
 	},
