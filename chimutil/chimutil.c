@@ -150,8 +150,8 @@ tuio_enable (uint8_t b)
 	config.tuio.enabled = b;
 	if (config.tuio.enabled)
 	{
-		udp_begin (config.tuio.socket.sock, config.tuio.socket.port);
-		udp_set_remote (config.tuio.socket.sock, config.tuio.socket.ip, config.tuio.socket.port);
+		udp_begin (config.tuio.socket.sock, config.tuio.socket.port[SRC_PORT]);
+		udp_set_remote (config.tuio.socket.sock, config.tuio.socket.ip, config.tuio.socket.port[DST_PORT]);
 	}
 }
 
@@ -161,8 +161,8 @@ config_enable (uint8_t b)
 	config.config.enabled = b;
 	if (config.config.enabled)
 	{
-		udp_begin (config.config.socket.sock, config.config.socket.port);
-		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port);
+		udp_begin (config.config.socket.sock, config.config.socket.port[SRC_PORT]);
+		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port[DST_PORT]);
 	}
 }
 
@@ -172,8 +172,8 @@ sntp_enable (uint8_t b)
 	config.sntp.enabled = b;
 	if (config.sntp.enabled)
 	{
-		udp_begin (config.sntp.socket.sock, config.sntp.socket.port);
-		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port);
+		udp_begin (config.sntp.socket.sock, config.sntp.socket.port[SRC_PORT]);
+		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port[DST_PORT]);
 	}
 }
 
@@ -183,8 +183,8 @@ dump_enable (uint8_t b)
 	config.dump.enabled = b;
 	if (config.dump.enabled)
 	{
-		udp_begin (config.dump.socket.sock, config.dump.socket.port);
-		udp_set_remote (config.dump.socket.sock, config.dump.socket.ip, config.dump.socket.port);
+		udp_begin (config.dump.socket.sock, config.dump.socket.port[SRC_PORT]);
+		udp_set_remote (config.dump.socket.sock, config.dump.socket.ip, config.dump.socket.port[DST_PORT]);
 	}
 }
 
@@ -194,8 +194,8 @@ debug_enable (uint8_t b)
 	config.debug.enabled = b;
 	if (config.debug.enabled)
 	{
-		udp_begin (config.debug.socket.sock, config.debug.socket.port);
-		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port);
+		udp_begin (config.debug.socket.sock, config.debug.socket.port[SRC_PORT]);
+		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port[DST_PORT]);
 	}
 }
 
@@ -205,8 +205,8 @@ ping_enable (uint8_t b)
 	config.ping.enabled = b;
 	if (config.ping.enabled)
 	{
-		udp_begin (config.ping.socket.sock, config.ping.socket.port);
-		udp_set_remote (config.ping.socket.sock, config.ping.socket.ip, config.ping.socket.port);
+		udp_begin (config.ping.socket.sock, config.ping.socket.port[SRC_PORT]);
+		udp_set_remote (config.ping.socket.sock, config.ping.socket.ip, config.ping.socket.port[DST_PORT]);
 	}
 }
 

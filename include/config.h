@@ -33,13 +33,15 @@ extern "C" {
 #endif
 
 #define CONFIG_REPLY_PATH "/reply"
+#define SRC_PORT 0
+#define DST_PORT 1
 
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
 
 struct _Socket_Config {
 	uint8_t sock;
-	uint16_t port;
+	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
 };
 

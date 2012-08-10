@@ -53,7 +53,7 @@ Config config = {
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 0,
-			.port = 3333,
+			.port = { 3333, 3333},
 			.ip = LAN_BROADCAST
 		},
 		.long_header = 0,
@@ -64,7 +64,7 @@ Config config = {
 		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 1,
-			.port = 4444,
+			.port = {4444, 444},
 			.ip = LAN_BROADCAST
 		}
 	},
@@ -74,7 +74,7 @@ Config config = {
 		.enabled = 0, // enabled by default
 		.socket = {
 			.sock = 2,
-			.port = 123,
+			.port = {123, 123},
 			.ip = LAN_HOST
 		}
 	},
@@ -83,7 +83,7 @@ Config config = {
 		.enabled = 0, // disabled by default
 		.socket = {
 			.sock = 3,
-			.port = 5555,
+			.port = {5555, 555},
 			.ip = LAN_BROADCAST
 		}
 	},
@@ -92,7 +92,7 @@ Config config = {
 		.enabled = 1,
 		.socket = {
 			.sock = 4,
-			.port = 6666,
+			.port = {6666, 6666},
 			.ip = LAN_BROADCAST
 		}
 	},
@@ -182,20 +182,21 @@ _ping_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 }
 
 static uint8_t
-_socket_set (Socket_Config *socket, void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_socket_set (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	if ( (args[1]->i < 0x100) && (args[2]->i < 0x10) && (args[3]->i < 0x10) && (args[4]->i < 0x10) && (args[5]->i < 0x10) )
+	if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x10) && (args[4]->i < 0x10) && (args[5]->i < 0x10) && (args[6]->i < 0x10) )
 	{
-		socket->port = args[1]->i;
-		socket->ip[0] = args[2]->i;
-		socket->ip[1] = args[3]->i;
-		socket->ip[2] = args[4]->i;
-		socket->ip[3] = args[5]->i;
+		socket->port[0] = args[1]->i;
+		socket->port[1] = args[2]->i;
+		socket->ip[0] = args[3]->i;
+		socket->ip[1] = args[4]->i;
+		socket->ip[2] = args[5]->i;
+		socket->ip[3] = args[6]->i;
 
-		cb (config.tuio.enabled);
+		cb (flag);
 
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
@@ -210,37 +211,37 @@ _socket_set (Socket_Config *socket, void (*cb) (uint8_t b), const char *path, co
 static uint8_t
 _tuio_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.tuio.socket, tuio_enable, path, fmt, argc, args);
+	return _socket_set (&config.tuio.socket, tuio_enable, config.tuio.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
 _config_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.config.socket, config_enable, path, fmt, argc, args);
+	return _socket_set (&config.config.socket, config_enable, config.config.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
 _sntp_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.sntp.socket, sntp_enable, path, fmt, argc, args);
+	return _socket_set (&config.sntp.socket, sntp_enable, config.sntp.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
 _dump_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.dump.socket, dump_enable, path, fmt, argc, args);
+	return _socket_set (&config.dump.socket, dump_enable, config.dump.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
 _debug_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.debug.socket, debug_enable, path, fmt, argc, args);
+	return _socket_set (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
 _ping_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.ping.socket, ping_enable, path, fmt, argc, args);
+	return _socket_set (&config.ping.socket, ping_enable, config.ping.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -323,28 +324,28 @@ config_methods_add (nOSC_Server *serv)
 	// enable/disable sockets
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiii", _tuio_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set);
 	//TODO tuio/long_header/enabled/set
 
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiii", _config_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiiii", _config_socket_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiii", _sntp_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiiii", _sntp_socket_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/socket/set", "iiiiii", _dump_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/dump/socket/set", "iiiiiii", _dump_socket_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiii", _debug_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiiii", _debug_socket_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiii", _ping_socket_set);
+	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiiii", _ping_socket_set);
 	*/
 
 	// cmc TODO cmc/diff/set, cmc/thresh0/set, cmc/thresh1/set, cmc/max_groups/set
