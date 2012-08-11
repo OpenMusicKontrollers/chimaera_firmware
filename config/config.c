@@ -97,6 +97,16 @@ Config config = {
 		}
 	},
 
+	.ping = {
+		.rate = 2,
+		.enabled = 1,
+		.socket = {
+			.sock = 5,
+			.port = {1111, 1111},
+			.ip = GLOB_BROADCAST
+		}
+	},
+
 	.cmc = {
 		.diff = 0,
 		//.thresh0 = 60,
@@ -307,7 +317,6 @@ _cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 	return 1;
 }
 
-
 nOSC_Server *
 config_methods_add (nOSC_Server *serv)
 {
@@ -356,6 +365,27 @@ config_methods_add (nOSC_Server *serv)
 
 	// sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set);
+
+	return serv;
+}
+
+static uint8_t
+_ping (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/chimaera/pong", "iiii",
+		config.comm.ip[0], config.comm.ip[1], config.comm.ip[2], config.comm.ip[3]);
+
+	udp_send (config.ping.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+nOSC_Server *
+ping_methods_add (nOSC_Server *serv)
+{
+	serv = nosc_server_method_add (serv, "/chimaera/ping", "N", _ping);
 
 	return serv;
 }

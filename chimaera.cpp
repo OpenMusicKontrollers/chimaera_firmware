@@ -83,16 +83,19 @@ Stop_Watch sw_send = {
 timestamp64u_t t0;
 timestamp64u_t now;
 nOSC_Server *serv = NULL;
+nOSC_Server *ping = NULL;
 
 HardwareSPI spi(2);
 HardwareTimer adc_timer(1);
 HardwareTimer sntp_timer(2);
 HardwareTimer config_timer(3);
+HardwareTimer ping_timer(4);
 
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t config_should_request = 0;
+volatile uint8_t ping_should_request = 0;
 uint8_t first = 1;
 
 void
@@ -116,6 +119,12 @@ static void
 config_timer_irq ()
 {
 	config_should_request = 1;
+}
+
+static void
+ping_timer_irq ()
+{
+	ping_should_request = 1;
 }
 
 static void
@@ -182,6 +191,12 @@ void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	nosc_server_dispatch (serv, buf, len);
+}
+
+void
+ping_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	nosc_server_dispatch (ping, buf, len);
 }
 
 void
@@ -283,6 +298,13 @@ loop ()
 		config_should_request = 0;
 	}
 
+	// run ping server
+	if (config.ping.enabled && ping_should_request)
+	{
+		udp_dispatch (config.ping.socket.sock, ping_cb);
+		ping_should_request = 0;
+	}
+
 	// run sntp client
 	if (config.sntp.enabled)
 	{
@@ -377,6 +399,26 @@ extern "C" void config_timer_resume ()
 	config_timer.resume ();
 }
 
+extern "C" void ping_timer_pause ()
+{
+	ping_timer.pause ();
+}
+
+extern "C" void ping_timer_reconfigure ()
+{
+  ping_timer.setPeriod (1e6/config.ping.rate); // set period based on update rate
+	ping_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	ping_timer.setCompare (TIMER_CH1, ping_timer.getOverflow ());  // Interrupt 1 count after each update
+	ping_timer.attachInterrupt (TIMER_CH1, ping_timer_irq);
+	ping_timer.refresh ();
+}
+
+extern "C" void ping_timer_resume ()
+{
+	ping_timer.resume ();
+}
+
+
 inline void
 setup ()
 {
@@ -445,6 +487,9 @@ setup ()
 
 	// add methods to OSC server
 	serv = config_methods_add (serv); //TODO move to config_enable
+
+	// add method to ping server
+	ping = ping_methods_add (ping); // TODO move to ping_enable
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -562,6 +607,14 @@ setup ()
 		config_timer_pause ();
 		config_timer_reconfigure ();
 		config_timer_resume ();
+	}
+
+	// init ping_timer
+	if (config.ping.enabled)
+	{
+		ping_timer_pause ();
+		ping_timer_reconfigure ();
+		ping_timer_resume ();
 	}
 
 	cmc_set (cmc, 0x3 + 0x10*1, 1000, 0); //TODO

@@ -96,6 +96,7 @@ struct _Config {
 	} debug;
 
 	struct _ping {
+		uint16_t rate;
 		uint8_t enabled;
 		Socket_Config socket;
 	} ping;
@@ -114,6 +115,7 @@ struct _Config {
 extern Config config;
 
 nOSC_Server *config_methods_add (nOSC_Server *serv);
+nOSC_Server *ping_methods_add (nOSC_Server *serv);
 
 #ifdef __cplusplus
 }

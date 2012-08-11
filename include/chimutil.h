@@ -43,7 +43,7 @@ extern "C" {
 
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
-extern uint8_t buf_i[CHIMAERA_BUFSIZE]; // general purpose input buffer
+extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer
 extern CMC *cmc;
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
@@ -67,6 +67,10 @@ void sntp_timer_resume ();
 void config_timer_pause ();
 void config_timer_reconfigure ();
 void config_timer_resume ();
+
+void ping_timer_pause ();
+void ping_timer_reconfigure ();
+void ping_timer_resume ();
 
 void tuio_enable (uint8_t b);
 void config_enable (uint8_t b);
