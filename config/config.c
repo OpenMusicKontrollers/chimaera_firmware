@@ -274,6 +274,25 @@ _rate_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
+_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	int32_t sec = args[1]->i;
+	if (sec < 1)
+		sec = 1;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	delay_us (sec * 1e6); // delay sec seconds until reset
+	nvic_sys_reset ();
+
+	return 1;
+}
+
+static uint8_t
 _cmc_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
@@ -365,6 +384,9 @@ config_methods_add (nOSC_Server *serv)
 
 	// sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set);
+
+	// reset
+	serv = nosc_server_method_add (serv, "/chimaera/reset", "ii", _reset);
 
 	return serv;
 }
