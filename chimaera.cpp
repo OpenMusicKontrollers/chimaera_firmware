@@ -240,11 +240,23 @@ loop ()
 				cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
 			}
 
-		// TODO broken sensors
-		cmc_set (cmc, 0x0 + 0x10*8, 0, 0);
-		cmc_set (cmc, 0x2 + 0x10*8, 0, 0);
-		cmc_set (cmc, 0x3 + 0x10*8, 0, 0);
-		cmc_set (cmc, 0xc + 0x10*7, 0, 0);
+		// TODO missing sensors
+		cmc_set (cmc, 0x0 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x1 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x2 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x3 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x4 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x5 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x6 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x7 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x8 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0x9 + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xa + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xb + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xc + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xd + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xe + 0x10*0, 0, 0);
+		cmc_set (cmc, 0xf + 0x10*0, 0, 0);
 	}
 	else
 		first = 0;
@@ -268,8 +280,7 @@ loop ()
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		//uint8_t job = cmc_process (cmc); // touch recognition of current cycle
-		uint8_t job = 1;
+		uint8_t job = cmc_process (cmc); // touch recognition of current cycle
 
 		stop_watch_start (&sw_tuio);
 		if (job)
@@ -616,16 +627,6 @@ setup ()
 		ping_timer_reconfigure ();
 		ping_timer_resume ();
 	}
-
-	cmc_set (cmc, 0x3 + 0x10*1, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*2, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*3, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*4, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*5, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*6, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*7, 1000, 0); //TODO
-	cmc_set (cmc, 0x3 + 0x10*8, 1000, 0); //TODO
-	cmc_process (cmc);
 }
 
 __attribute__ ((constructor)) void
