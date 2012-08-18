@@ -102,11 +102,11 @@ struct _Config {
 	} ping;
 
 	struct _cmc {
-		uint16_t diff;
 		uint16_t thresh0;
 		uint16_t thresh1;
 		uint8_t max_groups;
 		uint8_t max_blobs;
+		uint8_t peak_thresh;
 	} cmc;
 
 	uint16_t rate;

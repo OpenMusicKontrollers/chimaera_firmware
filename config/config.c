@@ -108,13 +108,11 @@ Config config = {
 	},
 
 	.cmc = {
-		.diff = 0,
-		//.thresh0 = 60,
-		//.thresh1 = 120,
-		.thresh0 = 100,
-		.thresh1 = 160,
+		.thresh0 = 30,
+		.thresh1 = 65,
 		.max_groups = 32,
-		.max_blobs = 8
+		.max_blobs = 8,
+		.peak_thresh = 3,
 	},
 
 	.rate = 1000 // update rate in Hz

@@ -28,7 +28,7 @@ while (1)
 				y[,id] <- dat3[[i]][2:17]
 			}
 
-			plot (c(y), type ='h', ylim=c(-0x7ff,0x7ff), xlab='sensor number', ylab='magnetic flux')
+			plot (c(y), type ='h', ylim=c(-0x7ff,0x7ff), xlab='sensor number', ylab='sensor value')
 		}
 	}
 }

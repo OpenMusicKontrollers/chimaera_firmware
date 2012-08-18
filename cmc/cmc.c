@@ -30,7 +30,7 @@
 #include <config.h>
 
 CMC *
-cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, uint16_t th1)
+cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
 {
 	uint8_t i;
 
@@ -43,7 +43,6 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t df, uint16_t th0, u
 
 	cmc->n_sensors = ns;
 	cmc->max_blobs = mb;
-	cmc->diff = df;
 	cmc->bitdepth = bitdepth;
 	cmc->_bitdepth = 1.0ur / bitdepth;
 
@@ -94,106 +93,96 @@ cmc_free (CMC *cmc)
 void
 cmc_set (CMC* cmc, uint8_t i, uint16_t v, uint8_t n)
 {
-	cmc->sensors[i+1].v = v < cmc->thresh0 ? 0 : v;
+	//cmc->sensors[i+1].v = v < cmc->thresh0 ? 0 : v;
+	cmc->sensors[i+1].v = v;
 	cmc->sensors[i+1].n = n;
-}
-
-void 
-cmc_set_array (CMC *cmc, int16_t raw[16][10], uint8_t order[16][10], uint8_t mux_min, uint8_t mux_max, uint8_t adc_len)
-{
-	uint8_t p, i;
-	uint16_t val;
-	uint8_t pos;
-
-	for (p=mux_min; p<mux_max; p++)
-		for (i=0; i<adc_len; i++)
-		{
-			pos = order[p][i] + 1;
-			val = abs (raw[p][i]);
-
-			cmc->sensors[pos].v = val < cmc->thresh0 ? 0 : val;
-			cmc->sensors[pos].n = raw[p][i] < 0;
-		}
-
-	// TODO broken sensors
-	cmc->sensors[1 + 0x0 + 0x10*8].v = 0;
-	cmc->sensors[1 + 0x2 + 0x10*8].v = 0;
-	cmc->sensors[1 + 0x3 + 0x10*8].v = 0;
-	cmc->sensors[1 + 0xc + 0x10*7].v = 0;
-
-	cmc->sensors[1 + 0x0 + 0x10*8].n = 0;
-	cmc->sensors[1 + 0x2 + 0x10*8].n = 0;
-	cmc->sensors[1 + 0x3 + 0x10*8].n = 0;
-	cmc->sensors[1 + 0xc + 0x10*7].n = 0;
 }
 
 static uint8_t idle = 0; // IDLE_CYCLE of 256
 
 uint8_t
-cmc_process (CMC *cmc)
+cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len)
 {
+	uint8_t p;
 	uint8_t i, j;
+
+	for (p=0; p<mux_max; p++)
+		for (i=0; i<adc_len; i++)
+		{
+			uint8_t pos = order[p][i];
+			int16_t val = raw[p][i] - offset[p][i];
+			cmc->sensors[pos+1].v = abs (val) < config.cmc.thresh0 ? 0 : abs (val); // TODO get rid of duplicate values, just use one array
+			cmc->sensors[pos+1].n = val < 0;
+		}
+
+	// FIXME missing sensors
+	for (i=0; i<0x10; i++)
+		cmc->sensors[i+1].v = 0;
+
 	uint8_t changed = 1; //TODO actually check for changes
 
 	/*
 	 * find maxima
 	 */
 	cmc->J = 0;
+
 	for (i=1; i<cmc->n_sensors+1; i++)
-		if ( (cmc->sensors[i].v > cmc->thresh0) && (cmc->sensors[i].v - cmc->sensors[i-1].v >= cmc->diff) && (cmc->sensors[i].v - cmc->sensors[i+1].v > cmc->diff) )
+	{
+		uint8_t I;
+		uint8_t no_max = 0;
+
+		for (I=1; I<config.cmc.peak_thresh; I++)
 		{
-			uint8_t I;
-			uint8_t local_max = 0;
-			for (I=2; I<3; I++) //TODO this is not efficient at all, use an algorithm with only one pass
+			if ( (i-I >= 0) && (cmc->sensors[i].v <= cmc->sensors[i-I].v) )
 			{
-				if ( (i-I >= 0) && (cmc->sensors[i].v - cmc->sensors[i-I].v < cmc->diff) )
-				{
-					local_max = 1;
-					break;
-				}
-				if ( (i+I <= cmc->n_sensors) && (cmc->sensors[i].v - cmc->sensors[i+I].v < cmc->diff) )
-				{
-					local_max = 1;
-					break;
-				}
-			}
-			if (local_max)
-				continue;
-
-			//fit parabola
-			ufix32_t x1 = cmc->sensors[i].x;
-			ufix32_t d = cmc->d;
-
-			//fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
-			//fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
-			//fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
-
-			// lookup table
-			fix31_t y0 = dist[cmc->sensors[i-1].v];
-			fix31_t y1 = dist[cmc->sensors[i].v];
-			fix31_t y2 = dist[cmc->sensors[i+1].v];
-
-			ufix32_t x = x1 + d/2*(y0 - y2) / (y0 - y1 + y2 - y1);
-			//ufix32_t y = (-0.125r*y0_2 - 0.125r*y2_2 + 0.25r*y0*y2 + y0*y1 - y1_2 + y1*y2 - y1_2) * teiler;
-			ufix32_t y = y0*0.5r + y1*0.5r + y2*0.5r; // TODO is this good enough an approximation?
-
-			// rescale according to threshold
-			y -= cmc->thresh0_f;
-			y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
-
-			cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
-			cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
-			cmc->new_blobs[cmc->J].group = NULL;
-			cmc->new_blobs[cmc->J].x = x;
-			cmc->new_blobs[cmc->J].p = y;
-			cmc->new_blobs[cmc->J].above_thresh = cmc->sensors[i].v > cmc->thresh1 ? 1 : 0;
-			cmc->new_blobs[cmc->J].ignore = 0;
-
-			cmc->J++;
-
-			if (cmc->J >= cmc->max_blobs) // make sure to not exceed maximal number of blobs
+				no_max = 1;
 				break;
+			}
+
+			if ( (i+I <= cmc->n_sensors) && (cmc->sensors[i].v < cmc->sensors[i+I].v) )
+			{
+				no_max = 1;
+				break;
+			}
 		}
+
+		if (no_max) // go to next sensor if not a maximum
+			continue;
+
+		//fit parabola
+		ufix32_t x1 = cmc->sensors[i].x;
+		ufix32_t d = cmc->d;
+
+		//fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
+		//fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
+		//fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
+
+		// lookup table
+		fix31_t y0 = dist[cmc->sensors[i-1].v];
+		fix31_t y1 = dist[cmc->sensors[i].v];
+		fix31_t y2 = dist[cmc->sensors[i+1].v];
+
+		ufix32_t x = x1 + d/2*(y0 - y2) / (y0 - y1 + y2 - y1);
+		//ufix32_t y = (-0.125r*y0_2 - 0.125r*y2_2 + 0.25r*y0*y2 + y0*y1 - y1_2 + y1*y2 - y1_2) * teiler;
+		ufix32_t y = y0*0.5r + y1*0.5r + y2*0.5r; // TODO is this good enough an approximation?
+
+		// rescale according to threshold
+		y -= cmc->thresh0_f;
+		y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
+
+		cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
+		cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
+		cmc->new_blobs[cmc->J].group = NULL;
+		cmc->new_blobs[cmc->J].x = x;
+		cmc->new_blobs[cmc->J].p = y;
+		cmc->new_blobs[cmc->J].above_thresh = cmc->sensors[i].v > cmc->thresh1 ? 1 : 0;
+		cmc->new_blobs[cmc->J].ignore = 0;
+
+		cmc->J++;
+
+		if (cmc->J >= cmc->max_blobs) // make sure to not exceed maximal number of blobs
+			break;
+	}
 
 	/*
 	 * relate new to old blobs

@@ -55,7 +55,7 @@ const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
 const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
 static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
-static uint8_t ADC_Order [MUX_MAX][ADC_DUAL_LENGTH*2];
+static uint8_t ADC_Order [MUX_MAX][ADC_LENGTH];
 uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
 //const uint8_t PWDN = 17;
@@ -127,11 +127,13 @@ ping_timer_irq ()
 	ping_should_request = 1;
 }
 
+/*
 static void
 adc_eoc_irq (void)
 {
 	//TODO
 }
+*/
 
 static void
 adc_timer_irq_1 ()
@@ -230,36 +232,12 @@ loop ()
 {
 	adc_dma_run ();
 
-	// store ADC values into CMC struct (67us)
-	if (!first) // in the first round there is no data in the second half of the buffer
+	if (first) // in the first round there is no data
 	{
-		for (uint8_t p=0; p<MUX_MAX; p++)
-			for (uint8_t i=0; i<ADC_LENGTH; i++)
-			{
-				int16_t val = (rawDataArray[adc_dma_ptr][p][i] & ADC_BITDEPTH) - ADC_Offset[p][i];
-				cmc_set (cmc, ADC_Order[p][i], abs (val), val < 0);
-			}
-
-		// TODO missing sensors
-		cmc_set (cmc, 0x0 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x1 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x2 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x3 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x4 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x5 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x6 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x7 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x8 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0x9 + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xa + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xb + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xc + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xd + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xe + 0x10*0, 0, 0);
-		cmc_set (cmc, 0xf + 0x10*0, 0, 0);
-	}
-	else
+		adc_dma_block ();
 		first = 0;
+		return;
+	}
 
 	// dump raw sensor data
 	if (config.dump.enabled)
@@ -280,7 +258,7 @@ loop ()
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		uint8_t job = cmc_process (cmc); // touch recognition of current cycle
+		uint8_t job = cmc_process (cmc, rawDataArray[adc_dma_ptr], ADC_Offset, ADC_Order, MUX_MAX, ADC_LENGTH); // touch recognition of current cycle
 
 		stop_watch_start (&sw_tuio);
 		if (job)
@@ -569,7 +547,7 @@ setup ()
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.diff, config.cmc.thresh0, config.cmc.thresh1);
+	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.thresh0, config.cmc.thresh1);
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();
