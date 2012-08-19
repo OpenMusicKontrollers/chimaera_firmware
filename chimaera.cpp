@@ -252,7 +252,7 @@ loop ()
 	}
 
 	// do touch recognition and interpolation
-	stop_watch_start (&sw_cmc);
+	//stop_watch_start (&sw_cmc);
 	if (config.tuio.enabled)
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
@@ -260,14 +260,14 @@ loop ()
 
 		uint8_t job = cmc_process (cmc, rawDataArray[adc_dma_ptr], ADC_Offset, ADC_Order, MUX_MAX, ADC_LENGTH); // touch recognition of current cycle
 
-		stop_watch_start (&sw_tuio);
+		//stop_watch_start (&sw_tuio);
 		if (job)
 		{
 			timestamp_set (&now);
 			cmc_len = cmc_write_tuio2 (cmc, now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
 		}
 
-		stop_watch_start (&sw_send);
+		//stop_watch_start (&sw_send);
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
 
@@ -276,9 +276,9 @@ loop ()
 
 		cmc_job = job;
 	}
-	stop_watch_stop (&sw_send);
-	stop_watch_stop (&sw_tuio);
-	stop_watch_stop (&sw_cmc);
+	//stop_watch_stop (&sw_send);
+	//stop_watch_stop (&sw_tuio);
+	//stop_watch_stop (&sw_cmc);
 
 	// run osc config server
 	if (config.config.enabled && config_should_request)
@@ -337,10 +337,10 @@ extern "C" void adc_timer_reconfigure ()
 	// overflow = 72Mhz / rate / MUX_MAX = 4500 cycles @ 1kHz, 3460 cycles @ 1.3kHz, 3000 cycles @ 1.5kHz, 2250 cycles @ 2kHz
 
 	adc_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH2, 2000);  //TODO = overflow of channel 1 - constant value to switch muxes and let signals setle
+	adc_timer.setCompare (TIMER_CH2, 1500);  //TODO = overflow of channel 1 - constant value to switch muxes and let signals settle
 	adc_timer.attachInterrupt (TIMER_CH2, adc_timer_irq_2);
 	// sample time = 72Mhz / 14 MHz * (12.5 + ADC_SAMPLE_RATE) * ADC_DUAL_LENGTH
-	// sample time = 1748 cycles @ 55.5 cycles, 1028 cycles @ 27.5 cycles
+	// sample time = 3500 cycles @ 55.5 cycles, 2100 cycles @ 28.5 cycles
 
 	adc_timer.refresh ();
 }
@@ -500,8 +500,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_13_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_13_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)

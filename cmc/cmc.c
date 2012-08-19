@@ -53,7 +53,6 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
 
 	cmc->d = 1.0ur / (ns-1);
 
-	cmc->aoi = calloc (ns, sizeof (uint8_t));
 	cmc->sensors = calloc (ns+2, sizeof (CMC_Sensor));
 	cmc->old_blobs = calloc (mb, sizeof (CMC_Blob));
 	cmc->new_blobs = calloc (mb, sizeof (CMC_Blob));
@@ -89,7 +88,6 @@ cmc_free (CMC *cmc)
 	free (cmc->new_blobs);
 	free (cmc->old_blobs);
 	free (cmc->sensors);
-	free (cmc->aoi);
 	free (cmc);
 }
 
@@ -100,7 +98,6 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 {
 	uint8_t p;
 	uint8_t i, j;
-	uint8_t n_aoi = 0;
 
 	// 11us
 	for (p=0; p<mux_max; p++)
@@ -113,7 +110,7 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 			if (aval > cmc->thresh0)
 			{
 				cmc->sensors[pos+1].v = aval;
-				cmc->aoi[n_aoi++] = pos+1;
+				cmc->sensors[pos+1].n = val < 0;
 			}
 			else
 				cmc->sensors[pos+1].v = 0;
@@ -128,33 +125,9 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	 */
 	cmc->J = 0;
 
-	// bubble sort aoi
-	uint8_t n = n_aoi;
-	do
+	// look at array for blobs
+	for (i=1; i<cmc->n_sensors+1; i++) // TODO merge the loop with the upper one ^^^^
 	{
-		uint8_t newn = 1;
-		for (i=0; i<n-1; ++i)
-		{
-			if (cmc->aoi[i] > cmc->aoi[i+1])
-			{
-				uint8_t tmp;
-				tmp = cmc->aoi[i];
-				cmc->aoi[i] = cmc->aoi[i+1];
-				cmc->aoi[i+1] = tmp;
-				newn = i+1;
-			}
-		}
-		n = newn;
-	}
-	while (n > 1);
-
-	return 0;
-
-	// look at aoi
-	uint8_t aoi_ptr;
-	for (aoi_ptr=0; aoi_ptr<n_aoi; aoi_ptr++)
-	{
-		uint8_t i = cmc->aoi[aoi_ptr];
 		if (cmc->sensors[i].v)
 		{
 			uint8_t I;
@@ -214,100 +187,9 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 		}
 	}
 
-	// 0 blobs: 84us
-	// 1 blobs: 171us
-	// 2 blobs: 261us
-	// 3 blobs: 349us
-	// 4 blobs: 437us
-
 	/*
 	 * relate new to old blobs
 	 */
-
-	/*
-	if (cmc->I && cmc->J)
-	{
-		if ( (cmc->I == 1) && (cmc->J == 1) ) // special case where we don't need to calculate the distance matrix
-		{
-			cmc->new_blobs[0].sid = cmc->old_blobs[0].sid;
-			cmc->new_blobs[0].group = cmc->old_blobs[0].group;
-		}
-		else
-		{
-			// fill distance matrix of old and new blobs TODO this is not efficient (O~I*J), use sweep algorithm (O~I+J)
-			for (i=0; i<cmc->I; i++) // old blobs
-				for (j=0; j<cmc->J; j++) // new blobs
-					cmc->matrix[i][j] = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
-
-			// associate new with old blobs
-			uint8_t ptr;
-			uint8_t low = cmc->J <= cmc->I ? cmc->J : cmc->I;
-			for (ptr=0; ptr<low; ptr++)
-			{
-				fix15_t min = 1.0hr;
-				uint8_t a = 0, b = 0;
-
-				for (i=0; i<cmc->I; i++) // old blobs
-					for (j=0; j<cmc->J; j++) // new blobs
-					{
-						if (cmc->matrix[i][j] < 0.0hr) // already handled
-							continue;
-
-						if (cmc->matrix[i][j] < min)
-						{
-							a = i;
-							b = j;
-							min = cmc->matrix[i][j];
-						}
-					}
-
-				CMC_Blob *blb = &(cmc->old_blobs[a]);
-				CMC_Blob *blb2 = &(cmc->new_blobs[b]);
-
-				blb2->sid = blb->sid;
-				blb2->group = blb->group;
-
-				switch (low-ptr)
-				{
-					case 1:
-						cmc->matrix[a][b] = -0.5hr;
-						break;
-
-					default:
-						for (i=0; i<cmc->I; i++)
-							cmc->matrix[i][b] = -0.5hr;
-						for (j=0; j<cmc->J; j++)
-							cmc->matrix[a][j] = -0.5hr;
-						break;
-				}
-			}
-
-			// handle all new blobs
-			if (cmc->J > cmc->I)
-				for (j=0; j<cmc->J; j++)
-					if (cmc->new_blobs[j].sid == -1) // only consider not-yet associated blobs
-					{
-						if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
-							cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
-						else
-							cmc->new_blobs[j].ignore = 1;
-						cmc->new_blobs[j].group = NULL;
-					}
-		}
-	}
-	else if (!cmc->I && cmc->J)
-	{
-		for (j=0; j<cmc->J; j++)
-		{
-			if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
-				cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
-			else
-				cmc->new_blobs[j].ignore = 1;
-			cmc->new_blobs[j].group = NULL;
-		}
-	}
-	*/
-
 	if (cmc->I || cmc->J)
 	{
 		if (cmc->I == cmc->J) // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
@@ -454,18 +336,6 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	// only increase frame count when there were changes or idle overflowed
 	if (changed || !idle)
 		++(cmc->fid);
-
-	// 0 blobs: 85us (+1us)
-	// 1 blobs: 183us (+12us)
-	// 2 blobs: 293us (+32us)
-	// 3 blobs: 431us (+82us)
-	// 4 blobs: 577us (+140us)
-
-	// 0 blobs: 84us
-	// 1 blobs: 171us
-	// 2 blobs: 261us
-	// 3 blobs: 349us
-	// 4 blobs: 437us
 
 	return changed || !idle;
 }

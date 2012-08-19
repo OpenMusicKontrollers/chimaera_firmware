@@ -70,7 +70,6 @@ struct _CMC {
 	ufix32_t thresh0_f;
 	ufix32_t _thresh0_f;
 	
-	uint8_t *aoi;
 	CMC_Sensor *sensors;
 	CMC_Blob *old_blobs;
 	CMC_Blob *new_blobs;

@@ -80,7 +80,7 @@ Config config = {
 	},
 
 	.dump = {
-		.enabled = 1, // disabled by default
+		.enabled = 0, // disabled by default
 		.socket = {
 			.sock = 3,
 			.port = {5555, 5555},
@@ -115,7 +115,7 @@ Config config = {
 		.peak_thresh = 3,
 	},
 
-	.rate = 1000 // update rate in Hz
+	.rate = 1500 // update rate in Hz
 };
 
 static uint8_t
