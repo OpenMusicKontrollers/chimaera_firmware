@@ -80,7 +80,7 @@ Config config = {
 	},
 
 	.dump = {
-		.enabled = 0, // disabled by default
+		.enabled = 1, // disabled by default
 		.socket = {
 			.sock = 3,
 			.port = {5555, 5555},
@@ -108,8 +108,8 @@ Config config = {
 	},
 
 	.cmc = {
-		.thresh0 = 30,
-		.thresh1 = 65,
+		.thresh0 = 60,
+		.thresh1 = 80,
 		.max_groups = 32,
 		.max_blobs = 8,
 		.peak_thresh = 3,

@@ -128,6 +128,29 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	 */
 	cmc->J = 0;
 
+	// bubble sort aoi
+	uint8_t n = n_aoi;
+	do
+	{
+		uint8_t newn = 1;
+		for (i=0; i<n-1; ++i)
+		{
+			if (cmc->aoi[i] > cmc->aoi[i+1])
+			{
+				uint8_t tmp;
+				tmp = cmc->aoi[i];
+				cmc->aoi[i] = cmc->aoi[i+1];
+				cmc->aoi[i+1] = tmp;
+				newn = i+1;
+			}
+		}
+		n = newn;
+	}
+	while (n > 1);
+
+	return 0;
+
+	// look at aoi
 	uint8_t aoi_ptr;
 	for (aoi_ptr=0; aoi_ptr<n_aoi; aoi_ptr++)
 	{
@@ -200,6 +223,8 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	/*
 	 * relate new to old blobs
 	 */
+
+	/*
 	if (cmc->I && cmc->J)
 	{
 		if ( (cmc->I == 1) && (cmc->J == 1) ) // special case where we don't need to calculate the distance matrix
@@ -281,55 +306,146 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 			cmc->new_blobs[j].group = NULL;
 		}
 	}
+	*/
 
-	// overwrite blobs that are to be ignored
-	uint8_t newJ = 0;
-	for (j=0; j<cmc->J; j++)
+	if (cmc->I || cmc->J)
 	{
-		uint8_t ignore = cmc->new_blobs[j].ignore;
-
-		if (newJ != j)
+		if (cmc->I == cmc->J) // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
 		{
-			cmc->new_blobs[newJ].sid = cmc->new_blobs[j].sid;
-			cmc->new_blobs[newJ].uid = cmc->new_blobs[j].uid;
-			cmc->new_blobs[newJ].group = cmc->new_blobs[j].group;
-			cmc->new_blobs[newJ].x = cmc->new_blobs[j].x;
-			cmc->new_blobs[newJ].p = cmc->new_blobs[j].p;
-			cmc->new_blobs[newJ].above_thresh = cmc->new_blobs[j].above_thresh;
-			cmc->new_blobs[newJ].ignore = cmc->new_blobs[j].ignore;
+			for (j=0; j<cmc->J; j++)
+			{
+				cmc->new_blobs[j].sid = cmc->old_blobs[j].sid;
+				cmc->new_blobs[j].group = cmc->old_blobs[j].group;
+			}
+		}
+		else if (cmc->I > cmc->J) // old blobs have disappeared
+		{
+			uint8_t n_less = cmc->I - cmc->J; // how many blobs have disappeared
+			i = 0;
+			for (j=0; j<cmc->J; )
+			{
+				ufix32_t diff0, diff1;
+
+				if (n_less)
+				{
+					diff0 = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
+					diff1 = cmc->new_blobs[j].x > cmc->old_blobs[i+1].x ? cmc->new_blobs[j].x - cmc->old_blobs[i+1].x : cmc->old_blobs[i+1].x - cmc->new_blobs[j].x;
+				}
+
+				if ( n_less && (diff1 < diff0) )
+				{
+					i += 1;
+					cmc->new_blobs[j].sid = cmc->old_blobs[i].sid;
+					cmc->new_blobs[j].group = cmc->old_blobs[i].group;
+
+					i += 1;
+					j += 1;
+				}
+				else
+				{
+					cmc->new_blobs[j].sid = cmc->old_blobs[i].sid;
+					cmc->new_blobs[j].group = cmc->old_blobs[i].group;
+
+					i += 1;
+					j += 1;
+				}
+			}
+		}
+		else // cmc->J > cmc->I // news blobs have appeared
+		{
+			uint8_t n_more = cmc->J - cmc->I; // how many blobs have appeared
+			j = 0;
+			for (i=0; i<cmc->I; )
+			{
+				ufix32_t diff0, diff1;
+				
+				if (n_more) // only calculate differences when there are still new blobs to be found
+				{
+					diff0 = cmc->new_blobs[j].x > cmc->old_blobs[i].x ? cmc->new_blobs[j].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j].x;
+					diff1 = cmc->new_blobs[j+1].x > cmc->old_blobs[i].x ? cmc->new_blobs[j+1].x - cmc->old_blobs[i].x : cmc->old_blobs[i].x - cmc->new_blobs[j+1].x;
+				}
+
+				if ( n_more && (diff1 < diff0) ) // cmc->new_blobs[j] is the new blob
+				{
+					if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
+						cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
+					else
+						cmc->new_blobs[j].ignore = 1;
+					cmc->new_blobs[j].group = NULL;
+
+					n_more -= 1;
+					j += 1;
+					// do not increase i
+				}
+				else // 1:1 relation
+				{
+					cmc->new_blobs[j].sid = cmc->old_blobs[i].sid;
+					cmc->new_blobs[j].group = cmc->old_blobs[i].group;
+					j += 1;
+					i += 1;
+				}
+			}
+
+			if (n_more)
+				for (j=cmc->J - n_more; j<cmc->J; j++)
+				{
+					if (cmc->new_blobs[j].above_thresh) // check whether it is above threshold for a new blob
+						cmc->new_blobs[j].sid = ++(cmc->sid); // this is a new blob
+					else
+						cmc->new_blobs[j].ignore = 1;
+					cmc->new_blobs[j].group = NULL;
+				}
 		}
 
-		if (!ignore)
-			newJ++;
-	}
-	cmc->J = newJ;
+		// overwrite blobs that are to be ignored
+		uint8_t newJ = 0;
+		for (j=0; j<cmc->J; j++)
+		{
+			uint8_t ignore = cmc->new_blobs[j].ignore;
 
-	if (!cmc->I && !cmc->J)
+			if (newJ != j)
+			{
+				cmc->new_blobs[newJ].sid = cmc->new_blobs[j].sid;
+				cmc->new_blobs[newJ].uid = cmc->new_blobs[j].uid;
+				cmc->new_blobs[newJ].group = cmc->new_blobs[j].group;
+				cmc->new_blobs[newJ].x = cmc->new_blobs[j].x;
+				cmc->new_blobs[newJ].p = cmc->new_blobs[j].p;
+				cmc->new_blobs[newJ].above_thresh = cmc->new_blobs[j].above_thresh;
+				cmc->new_blobs[newJ].ignore = cmc->new_blobs[j].ignore;
+			}
+
+			if (!ignore)
+				newJ++;
+		}
+		cmc->J = newJ;
+
+		// relate blobs to groups
+		for (j=0; j<cmc->J; j++)
+		{
+			CMC_Blob *tar = &cmc->new_blobs[j];
+
+			CMC_Group *ptr = cmc->groups;
+			while (ptr)
+			{
+				if ( ( (tar->uid & ptr->uid) == tar->uid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+				{
+					if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
+						tar->sid = ++(cmc->sid);
+
+					tar->group = ptr;
+					break; // match found, do not search further
+				}
+				ptr = ptr->next;
+			}
+		}
+	}
+	else // cmc->I == cmc->J == 0
 	{
 		changed = 0;
 		idle++; // automatic overflow
 	}
 
-	// relate blobs to groups
-	for (j=0; j<cmc->J; j++)
-	{
-		CMC_Blob *tar = &cmc->new_blobs[j];
-
-		CMC_Group *ptr = cmc->groups;
-		while (ptr)
-		{
-			if ( ( (tar->uid & ptr->uid) == tar->uid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
-			{
-				if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
-					tar->sid = ++(cmc->sid);
-
-				tar->group = ptr;
-				break; // match found, do not search further
-			}
-			ptr = ptr->next;
-		}
-	}
-
+	// switch blob buffers
 	CMC_Blob *tmp = cmc->old_blobs;
 	cmc->old_blobs = cmc->new_blobs;
 	cmc->new_blobs = tmp;
@@ -339,11 +455,11 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	if (changed || !idle)
 		++(cmc->fid);
 
-	// 0 blobs: 86us (+2us)
-	// 1 blobs: 198us (+27us)
-	// 2 blobs: 304us (+43us)
-	// 3 blobs: 412us (+72us)
-	// 4 blobs: 556us (+119us)
+	// 0 blobs: 85us (+1us)
+	// 1 blobs: 183us (+12us)
+	// 2 blobs: 293us (+32us)
+	// 3 blobs: 431us (+82us)
+	// 4 blobs: 577us (+140us)
 
 	// 0 blobs: 84us
 	// 1 blobs: 171us
