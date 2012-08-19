@@ -33,7 +33,7 @@ struct _Tuio2_Tok {
 	nOSC_Message *S;
 	nOSC_Message *T;
 	nOSC_Message *x;
-	nOSC_Message *p;
+	nOSC_Message *z;
 };
 
 struct _Tuio2 {
