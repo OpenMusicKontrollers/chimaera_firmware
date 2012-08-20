@@ -320,6 +320,21 @@ _cmc_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
+_cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_del (cmc, args[1]->i))
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
@@ -378,6 +393,7 @@ config_methods_add (nOSC_Server *serv)
 
 	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear);
 	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
+	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
 	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
 
 	// sample rate

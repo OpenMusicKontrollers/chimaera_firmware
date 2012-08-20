@@ -30,13 +30,11 @@
 extern "C" {
 #endif
 
-typedef sat unsigned short fract ufix16_t;
-
-typedef sat short fract fix15_t;
-
 typedef sat unsigned fract ufix32_t;
-
 typedef sat fract fix31_t;
+
+typedef sat unsigned accum ufix16_t;
+typedef sat accum fix15_t;
 
 #ifdef __cplusplus
 }

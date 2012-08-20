@@ -54,6 +54,7 @@ uint16_t cmc_dump_unit (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_
 void cmc_group_clear (CMC *cmc);
 uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
 uint8_t cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
+uint8_t cmc_group_del (CMC *cmc, uint16_t tid);
 
 #ifdef __cplusplus
 }

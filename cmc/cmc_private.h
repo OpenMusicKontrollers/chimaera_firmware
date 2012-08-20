@@ -62,6 +62,7 @@ struct _CMC {
 	uint32_t fid, sid;
 	uint8_t n_sensors, max_blobs;
 	ufix32_t d;
+	ufix32_t d_2;
 	uint16_t bitdepth;
 	ufix32_t _bitdepth; // 1/bitdepth
 

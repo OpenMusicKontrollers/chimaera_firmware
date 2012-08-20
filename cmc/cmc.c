@@ -29,6 +29,9 @@
 #include <chimutil.h>
 #include <config.h>
 
+#define s2d2 0.70710678118655r // sqrt(2) / 2
+#define os8 0.35355339059327r // 1 / sqrt(8)
+
 CMC *
 cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
 {
@@ -52,6 +55,7 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
 	cmc->_thresh0_f = 1.0ur - cmc->thresh0_f;
 
 	cmc->d = 1.0ur / (ns-1);
+	cmc->d_2 = cmc->d / 2;
 
 	cmc->sensors = calloc (ns+2, sizeof (CMC_Sensor));
 	cmc->old_blobs = calloc (mb, sizeof (CMC_Blob));
@@ -151,25 +155,26 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 			if (peak)
 			{
 				//fit parabola
-				ufix32_t x1 = cmc->sensors[i].x;
-				ufix32_t d = cmc->d;
-
-				//fix31_t y0 = cmc->sensors[i-1].v * cmc->_bitdepth;
-				//fix31_t y1 = cmc->sensors[i].v * cmc->_bitdepth;
-				//fix31_t y2 = cmc->sensors[i+1].v * cmc->_bitdepth;
 
 				// lookup table
-				fix31_t y0 = dist[cmc->sensors[i-1].v];
-				fix31_t y1 = dist[cmc->sensors[i].v];
-				fix31_t y2 = dist[cmc->sensors[i+1].v];
+				fix31_t y0 = dist[cmc->sensors[i-1].v - cmc->thresh0];
+				fix31_t y1 = dist[cmc->sensors[i].v   - cmc->thresh0];
+				fix31_t y2 = dist[cmc->sensors[i+1].v - cmc->thresh0];
 
-				ufix32_t x = x1 + d/2*(y0 - y2) / (y0 - y1 + y2 - y1);
-				//ufix32_t y = (-0.125r*y0_2 - 0.125r*y2_2 + 0.25r*y0*y2 + y0*y1 - y1_2 + y1*y2 - y1_2) * teiler;
-				ufix32_t y = y0*0.5r + y1*0.5r + y2*0.5r; // TODO is this good enough an approximation?
+				fix31_t divisor = y0 - y1 + y2 - y1;
+				ufix32_t x = cmc->sensors[i].x + cmc->d_2*(y0 - y2) / divisor; //TODO calculate d/2 offline
+
+				/* TODO this would be correct, but gives bad glitches
+				fix31_t tmp = s2d2*y1;
+				fix31_t _y = tmp - os8*y0 - os8*y2 + tmp;
+				ufix32_t y = -_y*_y / divisor;
+				*/
+
+				ufix32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is good enough an approximation
 
 				// rescale according to threshold
-				y -= cmc->thresh0_f;
-				y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
+				//y -= cmc->thresh0_f;
+				//y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
 
 				cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
 				cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
@@ -488,12 +493,35 @@ cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
 	return 1;
 }
 
+uint8_t 
+cmc_group_del (CMC *cmc, uint16_t tid)
+{
+	CMC_Group *ptr = cmc->groups;
+
+	if (tid == ptr->tid)
+		ptr = _cmc_group_pop (ptr);
+
+	while (ptr && ptr->next)
+	{
+		if (tid == ptr->next->tid)
+		{
+			ptr->next = _cmc_group_pop (ptr->next->next);
+			cmc->n_groups -= 1;
+			return 1;
+		}
+		ptr = ptr->next;
+	}
+
+	return 0;
+}
+
 uint8_t
 cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
 {
 	CMC_Group *ptr = cmc->groups;
 
 	while (ptr)
+	{
 		if (tid == ptr->tid)
 		{
 			ptr->uid = uid;
@@ -502,5 +530,7 @@ cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1)
 			ptr->m = 1.0ur/(x1-x0);
 			return 1;
 		}
+		ptr = ptr->next;
+	}
 	return 0;
 }
