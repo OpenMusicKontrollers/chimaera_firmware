@@ -68,6 +68,7 @@ struct _CMC {
 
 	uint16_t thresh0;
 	uint16_t thresh1;
+	uint16_t thresh2;
 	ufix32_t thresh0_f;
 	ufix32_t _thresh0_f;
 	

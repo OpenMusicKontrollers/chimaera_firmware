@@ -102,17 +102,21 @@ struct _Config {
 	} ping;
 
 	struct _cmc {
-		uint16_t thresh0;
-		uint16_t thresh1;
-		uint8_t max_groups;
-		uint8_t max_blobs;
+		uint16_t thresh0; // everything below is considered noise
+		uint16_t thresh1; // everything above will trigger an ON event
+		uint16_t thresh2; // this is the maximal value reacheable
+		uint8_t max_groups; // the maximal number of groups that can be created
+		uint8_t max_blobs; // the maximal number of concurrent blobs that can be handled
 		uint8_t peak_thresh;
 	} cmc;
 
-	uint16_t rate;
+	uint16_t rate; // the maximal update rate the chimaera should run at
 };
 
 extern Config config;
+
+uint8_t config_load ();
+uint8_t config_save ();
 
 nOSC_Server *config_methods_add (nOSC_Server *serv);
 nOSC_Server *ping_methods_add (nOSC_Server *serv);

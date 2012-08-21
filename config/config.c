@@ -110,6 +110,7 @@ Config config = {
 	.cmc = {
 		.thresh0 = 60,
 		.thresh1 = 80,
+		.thresh2 = 2048,
 		.max_groups = 32,
 		.max_blobs = 8,
 		.peak_thresh = 3,
@@ -125,6 +126,137 @@ _version_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	int32_t id = args[0]->i;
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+uint8_t
+config_load ()
+{
+	uint8_t magic;
+	eeprom_byte_read (I2C1, 0x0000, &magic);
+
+	if (magic == config.magic) // EEPROM and FLASH config versions match
+		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+	else // EEPROM and FLASH config version do not match, overwrite old with new default one
+		eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+
+	return 1;
+}
+
+uint8_t
+config_save ()
+{
+	eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+	return 1;
+}
+
+static uint8_t
+_config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (config_load ())
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "loading of configuration from EEPROM failed");
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (config_save ())
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "saving configuration to EEPROM failed");
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_comm_mac_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	config.comm.mac[0] = args[1]->i;
+	config.comm.mac[0] = args[2]->i;
+	config.comm.mac[0] = args[3]->i;
+	config.comm.mac[0] = args[4]->i;
+	config.comm.mac[0] = args[5]->i;
+	config.comm.mac[0] = args[6]->i;
+
+	udp_mac_set (config.comm.mac);
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_comm_ip_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	config.comm.ip[0] = args[1]->i;
+	config.comm.ip[0] = args[2]->i;
+	config.comm.ip[0] = args[3]->i;
+	config.comm.ip[0] = args[4]->i;
+
+	udp_ip_set (config.comm.ip);
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_comm_gateway_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	config.comm.gateway[0] = args[1]->i;
+	config.comm.gateway[0] = args[2]->i;
+	config.comm.gateway[0] = args[3]->i;
+	config.comm.gateway[0] = args[4]->i;
+
+	udp_gateway_set (config.comm.gateway);
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_comm_subnet_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	config.comm.subnet[0] = args[1]->i;
+	config.comm.subnet[0] = args[2]->i;
+	config.comm.subnet[0] = args[3]->i;
+	config.comm.subnet[0] = args[4]->i;
+
+	udp_subnet_set (config.comm.subnet);
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -355,26 +487,31 @@ config_methods_add (nOSC_Server *serv)
 	// read-only
 	serv = nosc_server_method_add (serv, "/chimaera/version/get", "i", _version_get);
 
-	// config TODO
-	//serv = nosc_server_method_add (serv, "/chimaera/config/get", "i", _config_get);
-	//serv = nosc_server_method_add (serv, "/chimaera/config/save", "i", _save), TODO
+	serv = nosc_server_method_add (serv, "/chimaera/config/load", "i", _config_load);
+	serv = nosc_server_method_add (serv, "/chimaera/config/save", "i", _config_save);
 
-	//TODO comm/mac/set, comm/ip/set, comm/gateway/set, comm/subnet/set
+	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/set", "iiiiiii", _comm_mac_set);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/ip/set", "iiiii", _comm_ip_set);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/gateway/set", "iiiii", _comm_gateway_set);
+	serv = nosc_server_method_add (serv, "/chimaera/comm/subnet/set", "iiiii", _comm_subnet_set);
 
 	/*
 	// enable/disable sockets
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set);
-	//TODO tuio/long_header/enabled/set
+	serv = nosc_server_m-ethod_add (serv, "/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set);
+	serv = nosc_server_m-ethod_add (serv, "/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiiii", _config_socket_set);
+	// rate_set
 
 	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiiii", _sntp_socket_set);
+	// tau_set
 
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set);
@@ -387,16 +524,18 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iT", _ping_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/enabled/set", "iF", _ping_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/ping/socket/set", "iiiiiii", _ping_socket_set);
+	// tau_set
 	*/
 
-	// cmc TODO cmc/diff/set, cmc/thresh0/set, cmc/thresh1/set, cmc/max_groups/set
+	/*
+	serv = nosc_server_method_add (serv, "/chimaera/thresh0", "i*", _thresh0);
+	serv = nosc_server_method_add (serv, "/chimaera/thresh1", "i*", _thresh1);
+	serv = nosc_server_method_add (serv, "/chimaera/thresh2", "i*", _thresh2);
+	serv = nosc_server_method_add (serv, "/chimaera/max_groups", "i*", _max_groups)
+	serv = nosc_server_method_add (serv, "/chimaera/max_blobs", "i*", _max_blobs);
+	*/
 
-	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear);
-	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
-	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
-	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
-
-	// sample rate
+	// set sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set);
 
 	// reset

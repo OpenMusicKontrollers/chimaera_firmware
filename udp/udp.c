@@ -314,16 +314,33 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
 
-	// set MAC address of device
-	_dma_write (SHAR, mac, 6); //TODO make this configurable
+	udp_mac_set (mac);
+	udp_ip_set (ip);
+	udp_gateway_set (gateway);
+	udp_subnet_set (subnet);
+}
 
-	// set IP of device
+void
+udp_mac_set (uint8_t *mac)
+{
+	_dma_write (SHAR, mac, 6);
+}
+
+void
+udp_ip_set (uint8_t *ip)
+{
 	_dma_write (SIPR, ip, 4); //TODO make this configurable
+}
 
-	// set Gateway of device
+void
+udp_gateway_set (uint8_t *gateway)
+{
 	_dma_write (GAR, gateway, 4); //TODO make this configurable
+}
 
-	// set Subnet Mask of device
+void
+udp_subnet_set (uint8_t *subnet)
+{
 	_dma_write (SUBR, subnet, 4); //TODO make this configurable
 }
 

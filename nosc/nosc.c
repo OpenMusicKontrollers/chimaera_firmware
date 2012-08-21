@@ -54,7 +54,22 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 	{
 		// raw matches only of path and format strings
 		if ( !ptr->path || !strcmp (ptr->path, path))
-			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
+		{
+			// only compare up to occurence of '*' TODO test this
+
+			uint16_t match_len = 0;
+			char *wildcard;
+	
+			if (ptr->fmt)
+			{
+				wildcard = strchr (ptr->fmt, '*');
+				if (wildcard)
+					match_len = wildcard - ptr->fmt;
+				else
+					match_len = strlen (ptr->fmt);
+			}
+
+			if ( !ptr->fmt || (match_len && !strncmp (ptr->fmt, fmt, match_len)))
 			{
 				nOSC_Message *tmp = msg;
 
@@ -81,6 +96,7 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 				if (res) // return when handled
 					return;
 			}
+		}
 
 		ptr = ptr->next;
 	}

@@ -432,15 +432,8 @@ setup ()
 	}
 
 	// init eeprom for I2C1
-	uint8_t magic;
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
-	eeprom_byte_read (I2C1, 0x0000, &magic);
-	/*TODO FIXME
-	if (magic == config.magic) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
-	else // EEPROM and FLASH config version do not match, overwrite old with new default one
-		eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
-	*/
+	config_load (); // TODO check return status
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
@@ -465,11 +458,6 @@ setup ()
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
 	ping_enable (config.ping.enabled);
-
-	if (magic == config.magic)
-		debug_str ("read config from EEPROM");
-	else
-		debug_str ("wrote config to EEPROM");
 
 	// set start time to 0
 	t0.all = 0ULL;
@@ -547,7 +535,7 @@ setup ()
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.thresh0, config.cmc.thresh1);
+	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.thresh0, config.cmc.thresh1, config.cmc.thresh2);
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();

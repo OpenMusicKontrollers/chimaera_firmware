@@ -33,7 +33,7 @@
 #define os8 0.35355339059327r // 1 / sqrt(8)
 
 CMC *
-cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
+cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1, uint16_t th2)
 {
 	uint8_t i;
 
@@ -51,6 +51,7 @@ cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1)
 
 	cmc->thresh0 = th0;
 	cmc->thresh1 = th1;
+	cmc->thresh2 = th2; // TODO actually use this
 	cmc->thresh0_f = sqrt (cmc->thresh0 * cmc->_bitdepth);
 	cmc->_thresh0_f = 1.0ur - cmc->thresh0_f;
 
@@ -130,6 +131,7 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 	cmc->J = 0;
 
 	// look at array for blobs
+	// TODO simplify this by just searching for maximums and surrounding zeroes...
 	for (i=1; i<cmc->n_sensors+1; i++) // TODO merge the loop with the upper one ^^^^
 	{
 		if (cmc->sensors[i].v)

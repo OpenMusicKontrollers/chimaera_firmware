@@ -41,7 +41,7 @@ typedef struct _CMC CMC;
 
 typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
 
-CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1);
+CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1, uint16_t th2);
 void cmc_free (CMC *cmc);
 
 uint8_t cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len);
