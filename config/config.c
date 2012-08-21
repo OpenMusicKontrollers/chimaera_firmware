@@ -535,6 +535,11 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/max_blobs", "i*", _max_blobs);
 	*/
 
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
+	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
+
 	// set sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set);
 

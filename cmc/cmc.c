@@ -106,8 +106,7 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 
 	// 11us
 	for (p=0; p<mux_max; p++)
-		//for (i=0; i<adc_len; i++) //FIXME missing sensor unit
-		for (i=0; i<adc_len-1; i++)
+		for (i=0; i<adc_len; i++) //FIXME missing sensor unit
 		{
 			uint8_t pos = order[p][i];
 			int16_t val = raw[p][i] - offset[p][i];

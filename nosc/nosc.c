@@ -69,7 +69,7 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 					match_len = strlen (ptr->fmt);
 			}
 
-			if ( !ptr->fmt || (match_len && !strncmp (ptr->fmt, fmt, match_len)))
+			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
 			{
 				nOSC_Message *tmp = msg;
 

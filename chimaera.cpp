@@ -433,7 +433,7 @@ setup ()
 
 	// init eeprom for I2C1
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
-	config_load (); // TODO check return status
+	//config_load (); // TODO check return status
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
