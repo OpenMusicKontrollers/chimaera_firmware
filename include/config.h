@@ -38,6 +38,7 @@ extern "C" {
 
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
+typedef struct _ADC_Range ADC_Range;
 
 struct _Socket_Config {
 	uint8_t sock;
@@ -113,10 +114,21 @@ struct _Config {
 	uint16_t rate; // the maximal update rate the chimaera should run at
 };
 
+struct _ADC_Range {
+	uint16_t min;
+	uint16_t mean;
+	uint16_t max;
+};
+
 extern Config config;
 
 uint8_t config_load ();
 uint8_t config_save ();
+
+extern ADC_Range range[16][9];
+
+uint8_t range_load ();
+uint8_t range_save ();
 
 nOSC_Server *config_methods_add (nOSC_Server *serv);
 nOSC_Server *ping_methods_add (nOSC_Server *serv);

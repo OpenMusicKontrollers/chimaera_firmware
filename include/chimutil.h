@@ -39,6 +39,11 @@
 extern "C" {
 #endif
 
+#define MUX_LENGTH 4
+#define MUX_MAX 16
+#define ADC_LENGTH 9 // the number of channels to be converted per ADC  
+#define ADC_DUAL_LENGTH 5 // the number of channels to be converted per ADC 
+
 #define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
 
 extern uint8_t buf_o_ptr;

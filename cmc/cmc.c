@@ -99,7 +99,7 @@ cmc_free (CMC *cmc)
 static uint8_t idle = 0; // IDLE_CYCLE of 256
 
 uint8_t
-cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len)
+cmc_process (CMC *cmc, int16_t raw[16][10], ADC_Range range[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len)
 {
 	uint8_t p;
 	uint8_t i, j;
@@ -109,7 +109,7 @@ cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t orde
 		for (i=0; i<adc_len; i++) //FIXME missing sensor unit
 		{
 			uint8_t pos = order[p][i];
-			int16_t val = raw[p][i] - offset[p][i];
+			int16_t val = raw[p][i] - range[p][i].mean; //TODO handle min and max, too
 			uint16_t aval = abs (val);
 			if (aval > cmc->thresh0)
 			{

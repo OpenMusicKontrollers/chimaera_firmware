@@ -37,15 +37,16 @@
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 
-const uint8_t MUX_LENGTH = 4;
-const uint8_t MUX_MAX = 16;
-//uint8_t MUX_Sequence [MUX_LENGTH] = {1, 0, 25, 26}; // digital out pins to switch MUX channels
+/*
+ * include chimaera custom libraries
+ */
+#include <chimutil.h>
+
 uint8_t MUX_Sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 
+extern uint8_t calibrating;
 volatile uint8_t adc_dma_done;
 volatile uint8_t adc_dma_ptr = 0;
-const uint8_t ADC_LENGTH = 9; // the number of channels to be converted per ADC  
-const uint8_t ADC_DUAL_LENGTH = 5; // the number of channels to be converted per ADC 
 int16_t rawDataArray[2][MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
 uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
 uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
@@ -56,15 +57,8 @@ const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
 static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
 static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 static uint8_t ADC_Order [MUX_MAX][ADC_LENGTH];
-uint16_t ADC_Offset [MUX_MAX][ADC_LENGTH];
 
-//const uint8_t PWDN = 17;
 const uint8_t PWDN = 0;
-
-/*
- * include chimaera custom libraries
- */
-#include <chimutil.h>
 
 #define ADC_CR1_DUALMOD_BIT 16
 
@@ -251,14 +245,31 @@ loop ()
 		}
 	}
 
+	if (calibrating)
+	{
+		uint8_t p, i;
+		for (p=0; p<MUX_MAX; p++)
+			for (i=0; i<ADC_LENGTH; i++)
+			{
+				uint16_t val = rawDataArray[adc_dma_ptr][p][i];
+				ADC_Range ptr = range[p][i];
+				ptr.mean += val;
+				ptr.mean /= 2;
+				if (val < ptr.min)
+					ptr.min = val;
+				if (val > ptr.max)
+					ptr.max = val;
+			}
+	}
+
 	// do touch recognition and interpolation
 	//stop_watch_start (&sw_cmc);
-	if (config.tuio.enabled)
+	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		uint8_t job = cmc_process (cmc, rawDataArray[adc_dma_ptr], ADC_Offset, ADC_Order, MUX_MAX, ADC_LENGTH); // touch recognition of current cycle
+		uint8_t job = cmc_process (cmc, rawDataArray[adc_dma_ptr], range, ADC_Order, MUX_MAX, ADC_LENGTH); // touch recognition of current cycle
 
 		//stop_watch_start (&sw_tuio);
 		if (job)
@@ -433,7 +444,7 @@ setup ()
 
 	// init eeprom for I2C1
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
-	//config_load (); // TODO check return status
+	//config_load (); // TODO enable me and check return status
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
@@ -541,11 +552,11 @@ setup ()
 	adc_timer_pause ();
 	adc_timer_reconfigure ();
 
-	// initialize sensor offsets 
-	for (uint8_t p=0; p<MUX_MAX; p++)
-		for (uint8_t i=0; i<ADC_LENGTH; i++)
-			ADC_Offset[p][i] = ADC_HALF_BITDEPTH;
 
+	// load calibrated sensor ranges
+	//range_load (); //TODO enable me and check return status
+
+	/*
 	// calibrate sensor offsets
 	for (uint8_t c=0; c<100; c++)
 	{
@@ -563,6 +574,7 @@ setup ()
 				ADC_Offset[p][i] /= 2;
 			}
 	}
+	*/
 
 	/*
 	for (uint8_t p=0; p<MUX_MAX; p++)

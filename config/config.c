@@ -119,6 +119,9 @@ Config config = {
 	.rate = 1500 // update rate in Hz
 };
 
+ADC_Range range[MUX_MAX][ADC_LENGTH];
+uint8_t calibrating = 0;
+
 static uint8_t
 _version_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
@@ -149,6 +152,39 @@ uint8_t
 config_save ()
 {
 	eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (Config));
+	return 1;
+}
+
+uint8_t
+range_load ()
+{
+	uint8_t magic;
+	eeprom_byte_read (I2C1, 0x3fff, &magic);
+
+	if (magic == 0xff) // EEPROM and FLASH config versions match
+		eeprom_bulk_read (I2C1, 0x4000, (uint8_t *)&range, sizeof (ADC_Range));
+	else // EEPROM and FLASH config version do not match, overwrite old with new default one
+	{
+		uint8_t p, i;
+		for (p=0; p<MUX_MAX; p++)
+			for (i=0; i<ADC_LENGTH; i++)
+			{
+				range[p][i].min = 0; // this is the ideal minimum
+				range[p][i].mean = 0x7ff; // this is the ideal mean
+				range[p][i].max = 0xfff; // this is the ideal maximum
+			}
+		range_save ();
+	}
+
+	return 1;
+}
+
+uint8_t
+range_save ()
+{
+	uint8_t magic = 0xff;
+	eeprom_byte_write (I2C1, 0x3fff, magic);
+	eeprom_bulk_write (I2C1, 0x4000, (uint8_t *)&range, sizeof (ADC_Range));
 	return 1;
 }
 
@@ -481,6 +517,49 @@ _cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 	return 1;
 }
 
+static uint8_t
+_calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// initialize sensor range
+	uint8_t p, i;
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			range[p][i].min = 0x7ff;
+			range[p][i].mean = 0x7ff;
+			range[p][i].max = 0x7ff;
+		}
+
+	// enable calibration
+	calibrating = 1;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_calibration_stop (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// disable calibration
+	calibrating = 0;
+
+	// store new calibration range to EEPROM
+	range_save ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 nOSC_Server *
 config_methods_add (nOSC_Server *serv)
 {
@@ -545,6 +624,10 @@ config_methods_add (nOSC_Server *serv)
 
 	// reset
 	serv = nosc_server_method_add (serv, "/chimaera/reset", "ii", _reset);
+
+	// calibration
+	serv = nosc_server_method_add (serv, "/chimaera/calibration/start", "i", _calibration_start);
+	serv = nosc_server_method_add (serv, "/chimaera/calibration/stop", "i", _calibration_stop);
 
 	return serv;
 }

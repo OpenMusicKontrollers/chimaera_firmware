@@ -28,6 +28,7 @@
 #include <stdlib.h>
 
 #include <nosc.h>
+#include <config.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,7 +45,7 @@ typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
 CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1, uint16_t th2);
 void cmc_free (CMC *cmc);
 
-uint8_t cmc_process (CMC *cmc, int16_t raw[16][10], uint16_t offset[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len);
+uint8_t cmc_process (CMC *cmc, int16_t raw[16][10], ADC_Range range[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len);
 uint16_t cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
 uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
