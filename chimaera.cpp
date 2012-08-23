@@ -247,18 +247,17 @@ loop ()
 
 	if (calibrating)
 	{
-		uint8_t p, i;
-		for (p=0; p<MUX_MAX; p++)
-			for (i=0; i<ADC_LENGTH; i++)
+		for (uint8_t p=0; p<MUX_MAX; p++)
+			for (uint8_t i=0; i<ADC_LENGTH; i++)
 			{
 				uint16_t val = rawDataArray[adc_dma_ptr][p][i];
 				ADC_Range ptr = range[p][i];
 				ptr.mean += val;
 				ptr.mean /= 2;
-				if (val < ptr.min)
-					ptr.min = val;
-				if (val > ptr.max)
-					ptr.max = val;
+				if (val > ptr.south)
+					ptr.south = val;
+				if (val < ptr.north)
+					ptr.north = val;
 			}
 	}
 

@@ -536,7 +536,7 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 			case nOSC_BLOB:
 			{
 				int32_t len = ptr->arg.b.len;
-				if (len % 4) // len must be a multiple of 32bit
+				while (len % 4) // len must be a multiple of 32bit
 					len += 1;
 				memcpy_htonl (buf_ptr, ptr->arg.b.len);
 				buf_ptr += 4;

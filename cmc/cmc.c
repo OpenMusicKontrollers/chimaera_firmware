@@ -158,6 +158,24 @@ cmc_process (CMC *cmc, int16_t raw[16][10], ADC_Range range[16][9], uint8_t orde
 				//fit parabola
 
 				// lookup table
+				/*
+				uint16_t pos0, pos1, pos2;
+				if (cmc->sensors[i].n) // NORTH
+				{
+					m = 1.0r / (range[p][i].north - cmc->thresh1); // TODO do this only once in calibration step
+					pos0 = (cmc->sensors[i-1].v - cmc->thresh1) * m;
+					pos1 = (cmc->sensors[i].v - cmc->thresh1) * m;
+					pos2 = (cmc->sensors[i+1].v - cmc->thresh1) * m;
+				}
+				else // SOUTH
+				{
+					m = 1.0r / (range[p][i].south - cmc->thresh1); // TODO do this only once in calibration step
+					pos0 = (cmc->sensors[i-1].v - cmc->thresh1) * m;
+					pos1 = (cmc->sensors[i].v - cmc->thresh1) * m;
+					pos2 = (cmc->sensors[i+1].v - cmc->thresh1) * m;
+				}
+				*/
+
 				fix31_t y0 = dist[cmc->sensors[i-1].v - cmc->thresh0];
 				fix31_t y1 = dist[cmc->sensors[i].v   - cmc->thresh0];
 				fix31_t y2 = dist[cmc->sensors[i+1].v - cmc->thresh0];
@@ -178,7 +196,7 @@ cmc_process (CMC *cmc, int16_t raw[16][10], ADC_Range range[16][9], uint8_t orde
 				//y /= cmc->_thresh0_f; // TODO division is expensive, solve differently?
 
 				cmc->new_blobs[cmc->J].sid = -1; // not assigned yet
-				cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_SOUTH : CMC_NORTH;
+				cmc->new_blobs[cmc->J].uid = cmc->sensors[i].n ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
 				cmc->new_blobs[cmc->J].group = NULL;
 				cmc->new_blobs[cmc->J].x = x;
 				cmc->new_blobs[cmc->J].p = y;

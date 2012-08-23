@@ -169,9 +169,9 @@ range_load ()
 		for (p=0; p<MUX_MAX; p++)
 			for (i=0; i<ADC_LENGTH; i++)
 			{
-				range[p][i].min = 0; // this is the ideal minimum
+				range[p][i].south = 0x7ff; // this is the ideal south maximum
 				range[p][i].mean = 0x7ff; // this is the ideal mean
-				range[p][i].max = 0xfff; // this is the ideal maximum
+				range[p][i].north = 0x7ff; // this is the ideal north maximum
 			}
 		range_save ();
 	}
@@ -528,9 +528,9 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			range[p][i].min = 0x7ff;
+			range[p][i].south = 0x7ff;
 			range[p][i].mean = 0x7ff;
-			range[p][i].max = 0x7ff;
+			range[p][i].north = 0x7ff;
 		}
 
 	// enable calibration
@@ -547,6 +547,15 @@ _calibration_stop (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
+
+	// calculate maximal SOUTH and NORTH pole values
+	uint8_t p, i;
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			range[p][i].south = range[p][i].south - range[p][i].mean; // maximal SOUTH pole range
+			range[p][i].north = range[p][i].mean - range[p][i].north; // maximal NORTH pole range
+		}
 
 	// disable calibration
 	calibrating = 0;

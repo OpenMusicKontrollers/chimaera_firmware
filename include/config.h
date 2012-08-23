@@ -115,9 +115,9 @@ struct _Config {
 };
 
 struct _ADC_Range {
-	uint16_t min;
+	uint16_t south;
 	uint16_t mean;
-	uint16_t max;
+	uint16_t north;
 };
 
 extern Config config;
