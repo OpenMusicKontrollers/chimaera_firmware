@@ -24,18 +24,24 @@
 #ifndef CMC_PRIVATE_H
 #define CMC_PRIVATE_H
 
+#include <chimaera.h>
 #include <cmc.h>
 #include <tuio2.h>
 #include <armfix.h>
 
-extern ufix32_t dist [];
+#define CMC_NORTH 0x80
+#define CMC_SOUTH 0x100
+#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
+
+extern fix_0_32_t dist [];
 
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
 typedef struct _CMC_Group CMC_Group;
+typedef struct _CMC CMC;
 
 struct _CMC_Sensor {
-	ufix32_t x;
+	fix_0_32_t x;
 	uint16_t v;
 	uint8_t n; // negative?
 };
@@ -44,7 +50,7 @@ struct _CMC_Blob {
 	uint32_t sid;
 	uint16_t uid;
 	CMC_Group *group;
-	ufix32_t x, p;
+	fix_0_32_t x, p;
 	uint8_t above_thresh;
 	uint8_t ignore;
 };
@@ -52,40 +58,28 @@ struct _CMC_Blob {
 struct _CMC_Group {
 	uint16_t tid;
 	uint16_t uid;
-	ufix32_t x0, x1;
-	ufix32_t m;
+	fix_0_32_t x0, x1;
+	fix_0_32_t m;
 	CMC_Group *next;
 };
 
 struct _CMC {
 	uint8_t I, J;
 	uint32_t fid, sid;
-	uint8_t n_sensors, max_blobs;
-	ufix32_t d;
-	ufix32_t d_2;
-	uint16_t bitdepth;
-	ufix32_t _bitdepth; // 1/bitdepth
-
-	uint16_t thresh0;
-	uint16_t thresh1;
-	uint16_t thresh2;
-	ufix32_t thresh0_f;
-	ufix32_t _thresh0_f;
+	fix_0_32_t d;
+	fix_0_32_t d_2;
 	
-	CMC_Sensor *sensors;
-	CMC_Blob *old_blobs;
-	CMC_Blob *new_blobs;
+	CMC_Sensor sensors[SENSOR_N+2];
+	CMC_Blob blobs[2][BLOB_MAX];
 	CMC_Group *groups;
 	uint8_t n_groups;
-
-	fix15_t **matrix;
-
-	Tuio2 *tuio;
+	uint8_t old;
+	uint8_t neu;
 };
 
-CMC_Group *_cmc_group_new ();
+CMC_Group * _cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1);
+CMC_Group * _cmc_group_pop (CMC_Group *group);
+CMC_Group * _cmc_group_new ();
 void _cmc_group_free (CMC_Group *group);
-CMC_Group *_cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1);
-CMC_Group *_cmc_group_pop (CMC_Group *group);
 
 #endif /* CMC_PRIVATE_H */

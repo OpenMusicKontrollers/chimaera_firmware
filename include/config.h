@@ -38,7 +38,6 @@ extern "C" {
 
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
-typedef struct _ADC_Range ADC_Range;
 
 struct _Socket_Config {
 	uint8_t sock;
@@ -96,28 +95,14 @@ struct _Config {
 		Socket_Config socket;
 	} debug;
 
-	struct _ping {
-		uint16_t rate;
-		uint8_t enabled;
-		Socket_Config socket;
-	} ping;
-
 	struct _cmc {
 		uint16_t thresh0; // everything below is considered noise
 		uint16_t thresh1; // everything above will trigger an ON event
 		uint16_t thresh2; // this is the maximal value reacheable
-		uint8_t max_groups; // the maximal number of groups that can be created
-		uint8_t max_blobs; // the maximal number of concurrent blobs that can be handled
 		uint8_t peak_thresh;
 	} cmc;
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
-};
-
-struct _ADC_Range {
-	uint16_t south;
-	uint16_t mean;
-	uint16_t north;
 };
 
 extern Config config;
@@ -125,13 +110,12 @@ extern Config config;
 uint8_t config_load ();
 uint8_t config_save ();
 
-extern ADC_Range range[16][9];
-
 uint8_t range_load ();
 uint8_t range_save ();
+void range_calibrate (int16_t raw[16][10]);
+void range_update ();
 
 nOSC_Server *config_methods_add (nOSC_Server *serv);
-nOSC_Server *ping_methods_add (nOSC_Server *serv);
 
 #ifdef __cplusplus
 }

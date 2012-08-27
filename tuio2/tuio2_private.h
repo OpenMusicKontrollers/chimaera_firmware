@@ -28,6 +28,7 @@
 #include <nosc.h>
 
 typedef struct _Tuio2_Tok Tuio2_Tok;
+typedef struct _Tuio2 Tuio2;
 
 struct _Tuio2_Tok {
 	nOSC_Message *S;

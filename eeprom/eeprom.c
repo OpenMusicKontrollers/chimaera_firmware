@@ -27,7 +27,7 @@
 
 #include <eeprom.h>
 
-#define TIMEOUT 1 // ms
+#define TIMEOUT 10 // ms
 
 static i2c_msg write_msg;
 static uint8_t write_msg_data [_24LC64_ADDR_SIZE + _24LC64_PAGE_SIZE];
@@ -47,8 +47,7 @@ _eeprom_check_res (i2c_dev *dev, int32_t res)
 	if (res != 0)
 	{
 		i2c_disable (dev);
-		i2c_bus_reset (dev);
-		i2c_master_enable (dev, I2C_BUS_RESET);
+		i2c_master_enable (dev, I2C_BUS_RESET); // or 0
 	}
 }
 	
@@ -60,15 +59,13 @@ _eeprom_ack_poll (i2c_dev *dev)
 	while (i2c_master_xfer (dev, &write_msg, 1, TIMEOUT) != 0)
 		;
 	*/
-	delay_us (2500); // 2 ms typical write cycle time for page write
+	delay_us (10e3); // 2 ms typical write cycle time for page write
 }
 
 void
 eeprom_init (i2c_dev *dev, uint8_t slave_addr)
 {
-	i2c_init (dev);
 	i2c_master_enable (dev, 0);
-	i2c_enable_ack (dev);
 
 	write_msg.addr = slave_addr;
 	write_msg.flags = 0; // write
@@ -92,7 +89,6 @@ eeprom_byte_write (i2c_dev *dev, uint16_t addr, uint8_t byte)
 
 	int32_t res;
 	res = i2c_master_xfer (dev, &write_msg, 1, TIMEOUT);
-	debug_int32 (res);
 	_eeprom_check_res (dev, res);
 
 	_eeprom_ack_poll (dev); // wait until written

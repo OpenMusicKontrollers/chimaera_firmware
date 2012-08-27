@@ -21,26 +21,43 @@
  *     distribution.
  */
 
-#ifndef _ARMFIX_H_
-#define _ARMFIX_H_
+#ifndef _CHIMAERA_H_
+#define _CHIMAERA_H_
 
-#include <stdfix.h>
+#include <stdint.h>
+
+#include <netdef.h>
+#include <nosc.h>
+#include <cmc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef sat unsigned fract fix_0_32_t;
-typedef sat fract fix_s_31_t;
+#define MUX_LENGTH 4
+#define MUX_MAX 16
+#define ADC_LENGTH 9 // the number of channels to be converted per ADC  
+#define ADC_DUAL_LENGTH 5 // the number of channels to be converted per ADC 
 
-typedef sat unsigned short fract fix_0_16_t;
-typedef sat fract short fix_s_15_t;
+#define ADC_BITDEPTH 0xfff
+#define ADC_HALF_BITDEPTH 0x7ff
 
-typedef sat unsigned accum fix_16_16_t;
-typedef sat accum fix_s15_16_t;
+#define SENSOR_N (MUX_MAX*ADC_LENGTH)
 
-typedef sat unsigned short accum fix_8_8_t;
-typedef sat accum short fix_s7_8_t;
+#define BLOB_MAX 8
+#define GROUP_MAX 32
+
+#define ADC_CR1_DUALMOD_BIT 16
+
+#define PWDN 0
+
+#define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
+
+extern uint8_t buf_o_ptr;
+extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
+extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer
+
+extern uint8_t calibrating;
 
 #ifdef __cplusplus
 }

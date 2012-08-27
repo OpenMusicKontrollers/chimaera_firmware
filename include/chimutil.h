@@ -21,35 +21,17 @@
  *     distribution.
  */
 
-#ifndef _CHIMAERA_H_
-#define _CHIMAERA_H_
+#ifndef _CHIMUTIL_H_
+#define _CHIMUTIL_H_
 
-#include <stdint.h>
-#include <libmaple/adc.h>
-
-#include <nosc.h>
-#include <cmc.h>
+#include <chimaera.h>
 #include <udp.h>
-#include <config.h>
-#include <sntp.h>
-#include <tube.h>
-#include <eeprom.h>
+
+#include <libmaple/adc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define MUX_LENGTH 4
-#define MUX_MAX 16
-#define ADC_LENGTH 9 // the number of channels to be converted per ADC  
-#define ADC_DUAL_LENGTH 5 // the number of channels to be converted per ADC 
-
-#define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
-
-extern uint8_t buf_o_ptr;
-extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
-extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer
-extern CMC *cmc;
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
@@ -57,8 +39,6 @@ void debug_str (const char *str);
 void debug_int32 (int32_t i);
 void debug_float (float f);
 
-void adc12_attach_interrupt (void (*handler) (void));
-void adc12_detach_interrupt ();
 void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
 
 void adc_timer_pause ();

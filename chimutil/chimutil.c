@@ -22,13 +22,10 @@
  */
 
 #include <libmaple/nvic.h>
+#include <libmaple/dma.h>
 
 #include <chimutil.h>
-
-uint8_t buf_o_ptr = 0;
-uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer //TODO how big?
-uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer //TODO how big?
-CMC *cmc = NULL;
+#include <tube.h>
 
 volatile uint8_t mem2mem_dma_done = 0;
 
@@ -87,29 +84,6 @@ debug_float (float f)
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "if", debug_counter++, f);
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
-}
-
-void (*adc12_irq_handler) (void) = NULL;
-
-static void
-__irq_adc ()
-{
-	if (adc12_irq_handler)
-		adc12_irq_handler ();
-}
-
-void
-adc12_attach_interrupt (void (*handler) (void))
-{
-	adc12_irq_handler = handler;
-	nvic_irq_enable (NVIC_ADC_1_2);
-}
-
-void
-adc12_detach_interrupt ()
-{
-	nvic_irq_disable (NVIC_ADC_1_2);
-	adc12_irq_handler = NULL;
 }
 
 /*
@@ -196,17 +170,6 @@ debug_enable (uint8_t b)
 	{
 		udp_begin (config.debug.socket.sock, config.debug.socket.port[SRC_PORT]);
 		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port[DST_PORT]);
-	}
-}
-
-void 
-ping_enable (uint8_t b)
-{
-	config.ping.enabled = b;
-	if (config.ping.enabled)
-	{
-		udp_begin (config.ping.socket.sock, config.ping.socket.port[SRC_PORT]);
-		udp_set_remote (config.ping.socket.sock, config.ping.socket.ip, config.ping.socket.port[DST_PORT]);
 	}
 }
 

@@ -40,57 +40,46 @@
 /*
  * include chimaera custom libraries
  */
+#include <chimaera.h>
 #include <chimutil.h>
+#include <eeprom.h>
+#include <sntp.h>
+#include <config.h>
+#include <tube.h>
+#include <tuio2.h>
 
-uint8_t MUX_Sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
+uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 
-extern uint8_t calibrating;
-volatile uint8_t adc_dma_done;
-volatile uint8_t adc_dma_ptr = 0;
-int16_t rawDataArray[2][MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
-uint8_t ADC2_Sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
-uint8_t ADC1_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t ADC1_Sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
-uint8_t ADC2_RawSequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-const uint16_t ADC_BITDEPTH = 0xfff; // 12bit
-const uint16_t ADC_HALF_BITDEPTH = 0x7ff; // 11bit
-static uint8_t ADC_Order_MUX [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
-static uint8_t ADC_Order_ADC [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
-static uint8_t ADC_Order [MUX_MAX][ADC_LENGTH];
+uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
+uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
 
-const uint8_t PWDN = 0;
+uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
+uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 
-#define ADC_CR1_DUALMOD_BIT 16
+int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
 
-Stop_Watch sw_cmc = {
-	"cmc"
-};
+uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+uint8_t order [MUX_MAX][ADC_LENGTH];
 
-Stop_Watch sw_tuio = {
-	"tuio"
-};
-
-Stop_Watch sw_send = {
-	"send"
-};
-
-timestamp64u_t t0;
-timestamp64u_t now;
 nOSC_Server *serv = NULL;
-nOSC_Server *ping = NULL;
 
 HardwareSPI spi(2);
 HardwareTimer adc_timer(1);
 HardwareTimer sntp_timer(2);
 HardwareTimer config_timer(3);
-HardwareTimer ping_timer(4);
 
+uint8_t first = 1;
+timestamp64u_t t0;
+timestamp64u_t now;
+
+volatile uint8_t adc_dma_done = 0;
+volatile uint8_t adc_time_up = 1;
+volatile uint8_t adc_raw_ptr = 0;
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t config_should_request = 0;
-volatile uint8_t ping_should_request = 0;
-uint8_t first = 1;
 
 void
 timestamp_set (timestamp64u_t *ptr)
@@ -101,6 +90,13 @@ timestamp_set (timestamp64u_t *ptr)
 	tmp.part.sec = millis() / 1000;
 
 	*ptr = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_uint64 (tmp));
+}
+
+static void
+adc_timer_irq ()
+{
+	adc_time_up = 1;
+	adc_timer.pause ();
 }
 
 static void
@@ -115,39 +111,19 @@ config_timer_irq ()
 	config_should_request = 1;
 }
 
-static void
-ping_timer_irq ()
+extern "C" void
+__irq_adc (void)
 {
-	ping_should_request = 1;
-}
+	digitalWrite (mux_sequence[0], (mux_counter & 0b0001)>>0);
+	digitalWrite (mux_sequence[1], (mux_counter & 0b0010)>>1);
+	digitalWrite (mux_sequence[2], (mux_counter & 0b0100)>>2);
+	digitalWrite (mux_sequence[3], (mux_counter & 0b1000)>>3);
 
-/*
-static void
-adc_eoc_irq (void)
-{
-	//TODO
-}
-*/
-
-static void
-adc_timer_irq_1 ()
-{
-	digitalWrite (MUX_Sequence[0], (mux_counter & 0b0001)>>0);
-	digitalWrite (MUX_Sequence[1], (mux_counter & 0b0010)>>1);
-	digitalWrite (MUX_Sequence[2], (mux_counter & 0b0100)>>2);
-	digitalWrite (MUX_Sequence[3], (mux_counter & 0b1000)>>3);
-}
-
-static void
-adc_timer_irq_2 ()
-{
 	if (mux_counter < MUX_MAX)
 	{
 		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 		mux_counter++;
 	}
-	else
-		adc_timer.pause ();
 }
 
 static void
@@ -156,11 +132,11 @@ adc_dma_irq ()
 	switch (dma_get_irq_cause (DMA1, DMA_CH1))
 	{
 		case DMA_TRANSFER_HALF_COMPLETE:
-			adc_dma_ptr = 0;
+			adc_raw_ptr = 0;
 			adc_dma_done = 1;
 			return;
 		case DMA_TRANSFER_COMPLETE:
-			adc_dma_ptr = 1;
+			adc_raw_ptr = 1;
 			adc_dma_done = 1;
 			return;
 		default:
@@ -173,7 +149,7 @@ adc_dma_run ()
 {
 	adc_dma_done = 0;
 	mux_counter = 0;
-	adc_timer.resume ();
+	__irq_adc ();
 }
 
 inline void
@@ -187,12 +163,6 @@ void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	nosc_server_dispatch (serv, buf, len);
-}
-
-void
-ping_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
-{
-	nosc_server_dispatch (ping, buf, len);
 }
 
 void
@@ -233,6 +203,12 @@ loop ()
 		return;
 	}
 
+	if (config.rate)
+	{
+		adc_time_up = 0;
+		adc_timer.resume ();
+	}
+
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
@@ -240,44 +216,28 @@ loop ()
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			len = cmc_dump_unit (cmc, now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
+			len = cmc_dump_unit (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
 			udp_send (config.dump.socket.sock, buf_o_ptr, len); //TODO nonblocking sending
 		}
 	}
 
 	if (calibrating)
-	{
-		for (uint8_t p=0; p<MUX_MAX; p++)
-			for (uint8_t i=0; i<ADC_LENGTH; i++)
-			{
-				uint16_t val = rawDataArray[adc_dma_ptr][p][i];
-				ADC_Range ptr = range[p][i];
-				ptr.mean += val;
-				ptr.mean /= 2;
-				if (val > ptr.south)
-					ptr.south = val;
-				if (val < ptr.north)
-					ptr.north = val;
-			}
-	}
+		range_calibrate (adc_raw[adc_raw_ptr]);
 
 	// do touch recognition and interpolation
-	//stop_watch_start (&sw_cmc);
 	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
 	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		uint8_t job = cmc_process (cmc, rawDataArray[adc_dma_ptr], range, ADC_Order, MUX_MAX, ADC_LENGTH); // touch recognition of current cycle
+		uint8_t job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
 
-		//stop_watch_start (&sw_tuio);
 		if (job)
 		{
 			timestamp_set (&now);
-			cmc_len = cmc_write_tuio2 (cmc, now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
+			cmc_len = cmc_write_tuio2 (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
 		}
 
-		//stop_watch_start (&sw_send);
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
 
@@ -286,22 +246,12 @@ loop ()
 
 		cmc_job = job;
 	}
-	//stop_watch_stop (&sw_send);
-	//stop_watch_stop (&sw_tuio);
-	//stop_watch_stop (&sw_cmc);
 
 	// run osc config server
 	if (config.config.enabled && config_should_request)
 	{
 		udp_dispatch (config.config.socket.sock, config_cb);
 		config_should_request = 0;
-	}
-
-	// run ping server
-	if (config.ping.enabled && ping_should_request)
-	{
-		udp_dispatch (config.ping.socket.sock, ping_cb);
-		ping_should_request = 0;
 	}
 
 	// run sntp client
@@ -324,6 +274,10 @@ loop ()
 	}
 
 	adc_dma_block ();
+
+	if (config.rate)
+		while (!adc_time_up)
+			;
 }
 
 extern "C" uint32_t _micros ()
@@ -338,19 +292,13 @@ extern "C" void adc_timer_pause ()
 
 extern "C" void adc_timer_reconfigure ()
 {
-  adc_timer.setPeriod (1e6/config.rate/MUX_MAX); // set period based on update rate and mux channels
+  adc_timer.setPeriod (1e6/config.rate); // set period based on update rate and mux channels
 
 	adc_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
 	adc_timer.setCompare (TIMER_CH1, adc_timer.getOverflow ());
-	adc_timer.attachInterrupt (TIMER_CH1, adc_timer_irq_1);
+	adc_timer.attachInterrupt (TIMER_CH1, adc_timer_irq);
 	// prescaler = 1
-	// overflow = 72Mhz / rate / MUX_MAX = 4500 cycles @ 1kHz, 3460 cycles @ 1.3kHz, 3000 cycles @ 1.5kHz, 2250 cycles @ 2kHz
-
-	adc_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH2, 1500);  //TODO = overflow of channel 1 - constant value to switch muxes and let signals settle
-	adc_timer.attachInterrupt (TIMER_CH2, adc_timer_irq_2);
-	// sample time = 72Mhz / 14 MHz * (12.5 + ADC_SAMPLE_RATE) * ADC_DUAL_LENGTH
-	// sample time = 3500 cycles @ 55.5 cycles, 2100 cycles @ 28.5 cycles
+	// overflow = 72Mhz / rate
 
 	adc_timer.refresh ();
 }
@@ -398,26 +346,6 @@ extern "C" void config_timer_resume ()
 	config_timer.resume ();
 }
 
-extern "C" void ping_timer_pause ()
-{
-	ping_timer.pause ();
-}
-
-extern "C" void ping_timer_reconfigure ()
-{
-  ping_timer.setPeriod (1e6/config.ping.rate); // set period based on update rate
-	ping_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	ping_timer.setCompare (TIMER_CH1, ping_timer.getOverflow ());  // Interrupt 1 count after each update
-	ping_timer.attachInterrupt (TIMER_CH1, ping_timer_irq);
-	ping_timer.refresh ();
-}
-
-extern "C" void ping_timer_resume ()
-{
-	ping_timer.resume ();
-}
-
-
 inline void
 setup ()
 {
@@ -432,18 +360,23 @@ setup ()
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
-		pinMode (MUX_Sequence[i], OUTPUT);
+		pinMode (mux_sequence[i], OUTPUT);
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
-		pinMode (ADC1_Sequence[i], INPUT_ANALOG);
-		pinMode (ADC2_Sequence[i], INPUT_ANALOG);
+		pinMode (adc1_sequence[i], INPUT_ANALOG);
+		pinMode (adc2_sequence[i], INPUT_ANALOG);
 	}
 
 	// init eeprom for I2C1
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
-	//config_load (); // TODO enable me and check return status
+
+	// load configuration from eeprom
+	config_load ();
+
+	// load calibrated sensor ranges from eeprom
+	range_load ();
 
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
@@ -467,16 +400,12 @@ setup ()
 	sntp_enable (config.sntp.enabled);
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
-	ping_enable (config.ping.enabled);
 
 	// set start time to 0
 	t0.all = 0ULL;
 
 	// add methods to OSC server
 	serv = config_methods_add (serv); //TODO move to config_enable
-
-	// add method to ping server
-	ping = ping_methods_add (ping); // TODO move to ping_enable
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -510,21 +439,20 @@ setup ()
 	// fill raw sequence array with corresponding ADC channels
 	for (uint8_t i=0; i<ADC_DUAL_LENGTH; i++)
 	{
-		ADC1_RawSequence[i] = PIN_MAP[ADC1_Sequence[i]].adc_channel;
-		ADC2_RawSequence[i] = PIN_MAP[ADC2_Sequence[i]].adc_channel;
+		adc1_raw_sequence[i] = PIN_MAP[adc1_sequence[i]].adc_channel;
+		adc2_raw_sequence[i] = PIN_MAP[adc2_sequence[i]].adc_channel;
 	}
 
 	for (uint8_t p=0; p<MUX_MAX; p++)
 		for (uint8_t i=0; i<ADC_LENGTH; i++)
-			ADC_Order[p][i] = ADC_Order_MUX[p] + ADC_Order_ADC[i]*MUX_MAX;
+			order[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
 
 	// set channels in register
-	set_adc_sequence (ADC1, ADC1_RawSequence, ADC_DUAL_LENGTH);
-	set_adc_sequence (ADC2, ADC2_RawSequence, ADC_DUAL_LENGTH);
+	set_adc_sequence (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
+	set_adc_sequence (ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
 
-	//ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
-	//ADC2->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
-	//adc12_attach_interrupt (adc_eoc_irq);
+	ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
+	nvic_irq_enable (NVIC_ADC_1_2);
 
 	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
   ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
@@ -536,7 +464,7 @@ setup ()
 	adc_calibrate (ADC2);
 
 	// set up ADC DMA tube
-	adc_tube.tube_dst = (void *)rawDataArray;
+	adc_tube.tube_dst = (void *)adc_raw;
 	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_HIGH);    //Optional
@@ -545,41 +473,12 @@ setup ()
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 
 	// set up continuous music controller struct
-	cmc = cmc_new (ADC_LENGTH*MUX_MAX, config.cmc.max_blobs, ADC_HALF_BITDEPTH, config.cmc.thresh0, config.cmc.thresh1, config.cmc.thresh2);
+	cmc_init ();
+	tuio2_init ();
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();
 	adc_timer_reconfigure ();
-
-
-	// load calibrated sensor ranges
-	//range_load (); //TODO enable me and check return status
-
-	/*
-	// calibrate sensor offsets
-	for (uint8_t c=0; c<100; c++)
-	{
-		adc_dma_run ();
-		adc_dma_block ();
-
-		for (uint8_t p=0; p<MUX_MAX; p++)
-			for (uint8_t i=0; i<ADC_LENGTH; i++)
-			{
-				int16_t adc_data;
-				adc_data = (rawDataArray[adc_dma_ptr][p][i] & ADC_BITDEPTH); // ADC lower 12 bit out of 16 bits data register
-
-				// calculate running mean
-				ADC_Offset[p][i] += adc_data;
-				ADC_Offset[p][i] /= 2;
-			}
-	}
-	*/
-
-	/*
-	for (uint8_t p=0; p<MUX_MAX; p++)
-		for (uint8_t i=0; i<ADC_LENGTH; i++)
-			debug_int32 (ADC_Offset[p][i]);
-	*/
 
 	// init sntp_timer
 	if (config.sntp.enabled)
@@ -595,14 +494,6 @@ setup ()
 		config_timer_pause ();
 		config_timer_reconfigure ();
 		config_timer_resume ();
-	}
-
-	// init ping_timer
-	if (config.ping.enabled)
-	{
-		ping_timer_pause ();
-		ping_timer_reconfigure ();
-		ping_timer_resume ();
 	}
 }
 

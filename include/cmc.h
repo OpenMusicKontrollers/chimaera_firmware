@@ -34,28 +34,15 @@
 extern "C" {
 #endif
 
-#define CMC_NORTH 0x80
-#define CMC_SOUTH 0x100
-#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
+void cmc_init ();
+uint8_t cmc_process (int16_t raw[16][10], uint8_t order[16][9]);
+uint16_t cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf);
+uint16_t cmc_dump_unit (timestamp64u_t timestamp, uint8_t *buf, uint8_t unit);
 
-typedef struct _CMC CMC;
-
-typedef void (*CMC_Send_Cb) (void *data, uint8_t *buf, uint16_t len);
-
-CMC *cmc_new (uint8_t ns, uint8_t mb, uint16_t bitdepth, uint16_t th0, uint16_t th1, uint16_t th2);
-void cmc_free (CMC *cmc);
-
-uint8_t cmc_process (CMC *cmc, int16_t raw[16][10], ADC_Range range[16][9], uint8_t order[16][9], uint8_t mux_max, uint8_t adc_len);
-uint16_t cmc_write_tuio2 (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_dump (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_dump_partial (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t s0, uint8_t s1);
-uint16_t cmc_dump_first (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf);
-uint16_t cmc_dump_unit (CMC *cmc, timestamp64u_t timestamp, uint8_t *buf, uint8_t unit);
-
-void cmc_group_clear (CMC *cmc);
-uint8_t cmc_group_add (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_set (CMC *cmc, uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_del (CMC *cmc, uint16_t tid);
+void cmc_group_clear ();
+uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
+uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
+uint8_t cmc_group_del (uint16_t tid);
 
 #ifdef __cplusplus
 }

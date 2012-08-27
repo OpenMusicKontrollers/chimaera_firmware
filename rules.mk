@@ -23,6 +23,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
 BUILDDIRS += $(BUILD_PATH)/$(d)/tube
 BUILDDIRS += $(BUILD_PATH)/$(d)/eeprom
 BUILDDIRS += $(BUILD_PATH)/$(d)/chimutil
+BUILDDIRS += $(BUILD_PATH)/$(d)/chimaera
 
 ### Local flags: these control how the compiler gets called.
 
@@ -67,6 +68,7 @@ cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += tube/tube.c
 cSRCS_$(d) += eeprom/eeprom.c
 cSRCS_$(d) += chimutil/chimutil.c
+cSRCS_$(d) += chimaera/chimaera.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.
@@ -74,7 +76,7 @@ cSRCS_$(d) += chimutil/chimutil.c
 # We can't call our main file main.cpp, or libmaple's build system
 # will get confused and try to build it without our CXXFLAGS. So call
 # it something else. Annoying! Hopefully LeafLabs will fix it soon.
-cppSRCS_$(d) := chimaera.cpp
+cppSRCS_$(d) := firmware.cpp
 
 # sSRCS_$(d) are the assembly sources. We don't have any.
 sSRCS_$(d) :=
