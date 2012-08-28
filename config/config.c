@@ -37,7 +37,7 @@
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
-	.magic = 0x03, // used to compare EEPROM and FLASH config versions
+	.magic = 0x02, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -102,12 +102,12 @@ Config config = {
 
 	.cmc = {
 		.thresh0 = 60,
-		.thresh1 = 80,
+		.thresh1 = 120,
 		.thresh2 = 2048,
 		.peak_thresh = 3,
 	},
 
-	.rate = 1500 // update rate in Hz
+	.rate = 2000 // update rate in Hz
 };
 
 static uint8_t
@@ -131,7 +131,7 @@ config_load ()
 	if (magic == config.magic) // EEPROM and FLASH config versions match
 		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
-		eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
+		config_save ();
 
 	return 1;
 }

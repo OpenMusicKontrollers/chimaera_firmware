@@ -212,6 +212,7 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
+//debug_str ("dump");
 		timestamp_set (&now);
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
@@ -227,6 +228,7 @@ loop ()
 	// do touch recognition and interpolation
 	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
 	{
+//debug_str ("tuio");
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
@@ -250,6 +252,7 @@ loop ()
 	// run osc config server
 	if (config.config.enabled && config_should_request)
 	{
+//debug_str ("config");
 		udp_dispatch (config.config.socket.sock, config_cb);
 		config_should_request = 0;
 	}
@@ -259,11 +262,15 @@ loop ()
 	{
 		// listen for sntp request answer
 		if (sntp_should_listen)
+		{
+//debug_str ("sntp dispatch");
 			udp_dispatch (config.sntp.socket.sock, sntp_cb);
+		}
 
 		// send sntp request
 		if (sntp_should_request)
 		{
+//debug_str ("sntp request");
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
@@ -427,8 +434,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_13_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_13_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_41_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_41_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)

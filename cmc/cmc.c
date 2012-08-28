@@ -146,7 +146,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				fix_s_31_t y2 = dist[p2];
 
 				fix_s_31_t divisor = y0 - y1 + y2 - y1;
-				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor; //TODO calculate d/2 offline
+				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
 
 				/* TODO this would be correct, but gives bad glitches
 				fix_s_31_t tmp = s2d2*y1;
@@ -155,10 +155,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				*/
 
 				fix_0_32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is good enough an approximation
-
-				// rescale according to threshold
-				//y -= config.cmc.thresh0_f;
-				//y /= cmc._thresh0_f; // TODO division is expensive, solve differently?
 
 				cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 				cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it

@@ -12,7 +12,8 @@ print ('fix_0_32_t dist [0x800] __attr_flash = {')
 
 for B in range (0x800):
 	b = B / 0x7ff
-	Vb = (a+1)/a * (1 - 1/sqrt(b*((a+1)^2-1)+1))
+	Vb = 0.07388 + 1.33082*sqrt(b) - 0.41212*b
+
 	print ('\t', Vb, ',')
 
 print ('};')
