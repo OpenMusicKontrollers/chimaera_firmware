@@ -49,6 +49,8 @@
 #include <tuio2.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
+gpio_dev *mux_gpio_dev [MUX_LENGTH];
+uint8_t mux_gpio_bit [MUX_LENGTH];
 
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
@@ -114,10 +116,10 @@ config_timer_irq ()
 extern "C" void
 __irq_adc (void)
 {
-	digitalWrite (mux_sequence[0], (mux_counter & 0b0001)>>0);
-	digitalWrite (mux_sequence[1], (mux_counter & 0b0010)>>1);
-	digitalWrite (mux_sequence[2], (mux_counter & 0b0100)>>2);
-	digitalWrite (mux_sequence[3], (mux_counter & 0b1000)>>3);
+	gpio_write_bit (mux_gpio_dev[0], mux_gpio_bit[0], mux_counter & 0b0001);
+	gpio_write_bit (mux_gpio_dev[1], mux_gpio_bit[1], mux_counter & 0b0010);
+	gpio_write_bit (mux_gpio_dev[2], mux_gpio_bit[2], mux_counter & 0b0100);
+	gpio_write_bit (mux_gpio_dev[3], mux_gpio_bit[3], mux_counter & 0b1000);
 
 	if (mux_counter < MUX_MAX)
 	{
@@ -367,7 +369,12 @@ setup ()
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
-		pinMode (mux_sequence[i], OUTPUT);
+	{
+		uint8_t pin = mux_sequence[i];
+		pinMode (pin, OUTPUT);
+		mux_gpio_dev[i] = PIN_MAP[pin].gpio_device;
+		mux_gpio_bit[i] = PIN_MAP[pin].gpio_bit;
+	}
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)

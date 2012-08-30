@@ -60,7 +60,6 @@ struct _CMC_Group {
 	uint16_t uid;
 	fix_0_32_t x0, x1;
 	fix_0_32_t m;
-	CMC_Group *next;
 };
 
 struct _CMC {
@@ -71,15 +70,10 @@ struct _CMC {
 	
 	CMC_Sensor sensors[SENSOR_N+2];
 	CMC_Blob blobs[2][BLOB_MAX];
-	CMC_Group *groups;
+	CMC_Group groups[GROUP_MAX];
 	uint8_t n_groups;
 	uint8_t old;
 	uint8_t neu;
 };
-
-CMC_Group * _cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1);
-CMC_Group * _cmc_group_pop (CMC_Group *group);
-CMC_Group * _cmc_group_new ();
-void _cmc_group_free (CMC_Group *group);
 
 #endif /* CMC_PRIVATE_H */

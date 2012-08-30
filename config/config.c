@@ -506,22 +506,7 @@ _cmc_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 	if (cmc_group_add (args[1]->i, args[2]->i, args[3]->f, args[4]->f))
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "maximal number of groups reached");
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint8_t
-_cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	if (cmc_group_del (args[1]->i))
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group already existing or maximal number of groups overstept");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -537,6 +522,21 @@ _cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group not found");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (cmc_group_del (args[1]->i))
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -653,6 +653,8 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
 	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
 	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
+	//serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _cmc_group_load); // TODO
+	//serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _cmc_group_save); // TODO
 
 	// set sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set); //TODO use "i*"
