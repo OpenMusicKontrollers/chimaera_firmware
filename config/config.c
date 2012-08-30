@@ -102,9 +102,9 @@ Config config = {
 
 	.cmc = {
 		.thresh0 = 60,
-		.thresh1 = 120,
+		.thresh1 = 160,
 		.thresh2 = 2048,
-		.peak_thresh = 3,
+		.peak_thresh = 5,
 	},
 
 	.rate = 2000 // update rate in Hz
@@ -212,6 +212,23 @@ range_update ()
 			adc_range[p][i].m_north = 2047.0 / (float)adc_range[p][i].north;
 		}
 }
+
+uint8_t
+groups_load ()
+{
+	//TODO implement this after transition to static groups
+
+	return 1;
+}
+
+uint8_t
+groups_save ()
+{
+	//TODO implement this after transition to static groups
+
+	return 1;
+}
+
 
 static uint8_t
 _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)

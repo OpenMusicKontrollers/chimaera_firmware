@@ -467,7 +467,7 @@ udp_send_block (uint8_t sock)
 	do
 	{
 		_dma_read_sock (sock, SnIR, &ir, 1);
-		if (ir & SnIR_TIMEOUT)
+		if (ir & SnIR_TIMEOUT) // ARPto occured, SEND failed
 		{
 			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
 			_dma_write_sock (sock, SnIR, &flag, 1);

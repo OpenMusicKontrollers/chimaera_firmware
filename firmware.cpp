@@ -385,6 +385,9 @@ setup ()
 	// load calibrated sensor ranges from eeprom
 	range_load ();
 
+	// load saved groups
+	groups_load ();
+
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
 
