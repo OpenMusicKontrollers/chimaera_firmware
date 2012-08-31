@@ -58,7 +58,7 @@ cmc_init ()
 	}
 
 	cmc.n_groups = 0;
-	cmc.groups = _cmc_group_new ();
+
 	cmc.old = 0;
 	cmc.neu = 1;
 }
@@ -291,9 +291,11 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 		{
 			CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
 
-			CMC_Group *ptr = cmc.groups;
-			while (ptr)
+			uint8_t g;
+			for (g=0; g<cmc.n_groups; g++)
 			{
+				CMC_Group *ptr = &cmc.groups[g];
+
 				if ( ( (tar->uid & ptr->uid) == tar->uid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
 				{
 					if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
@@ -302,7 +304,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 					tar->group = ptr;
 					break; // match found, do not search further
 				}
-				ptr = ptr->next;
 			}
 		}
 	}
@@ -335,14 +336,18 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 	{
 		CMC_Group *group = cmc.blobs[cmc.old][j].group;
 		fix_0_32_t X = cmc.blobs[cmc.old][j].x;
+		uint16_t tid = 0;
 
 		// resize x to group boundary
-		if (group->tid > 0)
+		if (group)
+		{
 			X = (X - group->x0)*group->m;
+			tid = group->tid;
+		}
 
 		tuio2_tok_set (j,
 			cmc.blobs[cmc.old][j].sid,
-			(cmc.blobs[cmc.old][j].uid<<16) | group->tid,
+			(cmc.blobs[cmc.old][j].uid<<16) | tid,
 			X,
 			cmc.blobs[cmc.old][j].p);
 	}
@@ -367,101 +372,73 @@ cmc_dump_unit (timestamp64u_t timestamp, uint8_t *buf, uint8_t unit)
 	return size;
 }
 
-CMC_Group *
-_cmc_group_push (CMC_Group *group, uint16_t tid, uint16_t uid, float x0, float x1)
-{
-	CMC_Group *new = calloc (1, sizeof (CMC_Group));
-
-	new->next = group;
-	new->tid = tid;
-	new->uid = uid;
-	new->x0 = x0;
-	new->x1 = x1;
-	new->m = 1.0ur/(x1-x0);
-
-	return new;
-}
-
-CMC_Group *
-_cmc_group_pop (CMC_Group *group)
-{
-	CMC_Group *tmp = group->next;
-	free (group);
-	return tmp;
-}
-
-CMC_Group *
-_cmc_group_new ()
-{
-	return _cmc_group_push (NULL, 0, CMC_BOTH, 0.0, 1.0);
-}
-
-void 
-_cmc_group_free (CMC_Group *group)
-{
-	CMC_Group *ptr = group;
-
-	while (ptr)
-		ptr = _cmc_group_pop (ptr);
-}
-
 void 
 cmc_group_clear ()
 {
-	_cmc_group_free (cmc.groups);
-	cmc.groups = _cmc_group_new ();
-	cmc.n_groups = 1;
+	cmc.n_groups = 0;
 }
 
-uint8_t 
+uint8_t
 cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1)
 {
-	if (cmc.n_groups >= GROUP_MAX)
-		return 0;
+	CMC_Group *grp = &cmc.groups[cmc.n_groups];
 
-	cmc.groups = _cmc_group_push (cmc.groups, tid, uid, x0, x1);
-	cmc.n_groups += 1;
+	grp->tid = tid; //TODO check whether this id already exists
+	grp->uid = uid;
+	grp->x0 = x0;
+	grp->x1 = x1;
+	grp->m = 1.0ur/(x1-x0);
+
+	cmc.n_groups++;
+
+	return 1;
+}
+
+uint8_t
+cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1)
+{
+	uint8_t i;
+	for (i=0; i<cmc.n_groups; i++)
+	{
+		CMC_Group *grp = &cmc.groups[i];
+
+		if (grp->tid == tid)
+		{
+			grp->uid = uid;
+			grp->x0 = x0;
+			grp->x1 = x1;
+			grp->m = 1.0ur/(x1-x0);
+
+			break;
+		}
+	}
+
 	return 1;
 }
 
 uint8_t 
 cmc_group_del (uint16_t tid)
 {
-	CMC_Group *ptr = cmc.groups;
-
-	if (tid == ptr->tid)
-		ptr = _cmc_group_pop (ptr);
-
-	while (ptr && ptr->next)
+	uint8_t i, j;
+	for (i=j=0; i<cmc.n_groups; i++,j++)
 	{
-		if (tid == ptr->next->tid)
+		CMC_Group *grp = &cmc.groups[i];
+
+		if (grp->tid == tid)
+			j++; // overwrite it
+
+		if (i != j)
 		{
-			ptr->next = _cmc_group_pop (ptr->next->next);
-			cmc.n_groups -= 1;
-			return 1;
+			CMC_Group *grp2 = &cmc.groups[j];
+			grp->tid = grp2->tid;
+			grp->uid = grp2->uid;
+			grp->x0 = grp2->x0;
+			grp->x1 = grp2->x1;
+			grp->m = grp2->m;
 		}
-		ptr = ptr->next;
 	}
 
-	return 0;
-}
+	cmc.n_groups -= j-i;
 
-uint8_t
-cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1)
-{
-	CMC_Group *ptr = cmc.groups;
-
-	while (ptr)
-	{
-		if (tid == ptr->tid)
-		{
-			ptr->uid = uid;
-			ptr->x0 = x0;
-			ptr->x1 = x1;
-			ptr->m = 1.0ur/(x1-x0);
-			return 1;
-		}
-		ptr = ptr->next;
-	}
-	return 0;
+	return 1;
 }
