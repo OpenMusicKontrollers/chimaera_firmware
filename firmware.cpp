@@ -392,9 +392,6 @@ setup ()
 	// load calibrated sensor ranges from eeprom
 	range_load ();
 
-	// load saved groups
-	groups_load ();
-
 	// init DMA, which is uses for SPI and ADC
 	dma_init (DMA1);
 
@@ -492,6 +489,9 @@ setup ()
 	// set up continuous music controller struct
 	cmc_init ();
 	tuio2_init ();
+
+	// load saved groups
+	groups_load ();
 
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();

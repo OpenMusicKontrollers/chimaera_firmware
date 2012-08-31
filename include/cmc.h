@@ -44,6 +44,9 @@ uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
 uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
 uint8_t cmc_group_del (uint16_t tid);
 
+uint8_t *cmc_group_buf_get (uint8_t *size);
+uint8_t *cmc_group_buf_set (uint8_t size);
+
 #ifdef __cplusplus
 }
 #endif

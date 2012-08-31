@@ -58,6 +58,7 @@ cmc_init ()
 	}
 
 	cmc.n_groups = 0;
+	cmc_group_add (0, CMC_BOTH, 0.0, 1.0);
 
 	cmc.old = 0;
 	cmc.neu = 1;
@@ -339,7 +340,7 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 		uint16_t tid = 0;
 
 		// resize x to group boundary
-		if (group)
+		if (group->tid != 0)
 		{
 			X = (X - group->x0)*group->m;
 			tid = group->tid;
@@ -376,12 +377,26 @@ void
 cmc_group_clear ()
 {
 	cmc.n_groups = 0;
+	cmc_group_add (0, CMC_BOTH, 0.0, 1.0);
 }
 
 uint8_t
 cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1)
 {
-	CMC_Group *grp = &cmc.groups[cmc.n_groups];
+	uint8_t i;
+	for (i=cmc.n_groups; i>0; i--)
+	{
+		CMC_Group *grp = &cmc.groups[i-1];
+		CMC_Group *grp2 = &cmc.groups[i];
+
+		grp2->tid = grp->tid;
+		grp2->uid = grp->uid;
+		grp2->x0 = grp->x0;
+		grp2->x1 = grp->x1;
+		grp2->m = grp->m;
+	}
+
+	CMC_Group *grp = &cmc.groups[0];
 
 	grp->tid = tid; //TODO check whether this id already exists
 	grp->uid = uid;
@@ -441,4 +456,18 @@ cmc_group_del (uint16_t tid)
 	cmc.n_groups -= j-i;
 
 	return 1;
+}
+
+uint8_t *
+cmc_group_buf_get (uint8_t *size)
+{
+	*size = cmc.n_groups * sizeof (CMC_Group);
+	return (uint8_t *)cmc.groups;
+}
+
+uint8_t *
+cmc_group_buf_set (uint8_t size)
+{
+	cmc.n_groups = size / sizeof (CMC_Group);
+	return (uint8_t *)cmc.groups;
 }

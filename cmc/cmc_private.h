@@ -59,7 +59,7 @@ struct _CMC_Group {
 	uint16_t tid;
 	uint16_t uid;
 	fix_0_32_t x0, x1;
-	fix_0_32_t m;
+	fix_16_16_t m;
 };
 
 struct _CMC {
