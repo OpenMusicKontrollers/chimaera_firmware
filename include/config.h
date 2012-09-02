@@ -115,6 +115,9 @@ uint8_t range_save ();
 void range_calibrate (int16_t raw[16][10]);
 void range_update ();
 
+uint8_t groups_load ();
+uint8_t groups_save ();
+
 nOSC_Server *config_methods_add (nOSC_Server *serv);
 
 #ifdef __cplusplus

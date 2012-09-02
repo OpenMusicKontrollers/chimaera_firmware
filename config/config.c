@@ -29,6 +29,7 @@
 #include <chimutil.h>
 #include <udp.h>
 #include <eeprom.h>
+#include <cmc.h>
 
 #define GLOB_BROADCAST {255, 255, 255, 255}
 #define LAN_BROADCAST {192, 168, 1, 255}
@@ -102,9 +103,9 @@ Config config = {
 
 	.cmc = {
 		.thresh0 = 60,
-		.thresh1 = 120,
+		.thresh1 = 160,
 		.thresh2 = 2048,
-		.peak_thresh = 3,
+		.peak_thresh = 5,
 	},
 
 	.rate = 2000 // update rate in Hz
@@ -212,6 +213,38 @@ range_update ()
 			adc_range[p][i].m_north = 2047.0 / (float)adc_range[p][i].north;
 		}
 }
+
+uint8_t
+groups_load ()
+{
+	uint8_t size;
+	uint8_t *buf;
+
+	eeprom_byte_read (I2C1, 0x800, &size);
+	if (size)
+	{
+		buf = cmc_group_buf_set (size);
+		eeprom_bulk_read (I2C1, 0x820, buf, size);
+	}
+	else
+		groups_save ();
+
+	return 1;
+}
+
+uint8_t
+groups_save ()
+{
+	uint8_t size;
+	uint8_t *buf;
+
+	buf = cmc_group_buf_get (&size);
+	eeprom_byte_write (I2C1, 0x0800, size);
+	eeprom_bulk_write (I2C1, 0x0820, buf, size);
+
+	return 1;
+}
+
 
 static uint8_t
 _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
@@ -543,6 +576,36 @@ _cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
+_cmc_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (groups_load ())
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_cmc_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (groups_save ())
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
@@ -653,8 +716,8 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
 	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
 	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
-	//serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _cmc_group_load); // TODO
-	//serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _cmc_group_save); // TODO
+	serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _cmc_group_load);
+	serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _cmc_group_save);
 
 	// set sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set); //TODO use "i*"

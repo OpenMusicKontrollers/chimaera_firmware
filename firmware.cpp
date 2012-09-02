@@ -490,6 +490,9 @@ setup ()
 	cmc_init ();
 	tuio2_init ();
 
+	// load saved groups
+	groups_load ();
+
 	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();
 	adc_timer_reconfigure ();
