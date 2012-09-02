@@ -103,6 +103,7 @@ struct _Config {
 	} cmc;
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
+	uint8_t pacemaker;
 };
 
 extern Config config;

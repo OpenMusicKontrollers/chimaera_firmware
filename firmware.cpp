@@ -212,7 +212,6 @@ loop ()
 	}
 
 	// TODO implement warm-up
-	// TODO implement pace-maker
 
 	if (calibrating)
 		range_calibrate (adc_raw[adc_raw_ptr]);

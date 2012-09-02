@@ -325,15 +325,15 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 
 	// handler idle counters
 	uint8_t idle = 0;
-	if (idle_bit < 0xb)
+	if (idle_bit < config.pacemaker)
 	{
-		idle = idle_word & (1 << idle_bit);
+		idle = idle_word == (1 << idle_bit);
 		if (idle)
 			idle_bit++;
 	}
 	else // handle pacemaker
 	{
-		idle = idle_word & (1 << idle_bit);
+		idle = idle_word == (1 << idle_bit);
 		if (idle)
 			idle_word = 0;
 	}

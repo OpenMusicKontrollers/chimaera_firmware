@@ -38,7 +38,7 @@
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
-	.magic = 0x02, // used to compare EEPROM and FLASH config versions
+	.magic = 0x01, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -108,7 +108,8 @@ Config config = {
 		.peak_thresh = 5,
 	},
 
-	.rate = 2000 // update rate in Hz
+	.rate = 2000, // update rate in Hz
+	.pacemaker = 0x0b // pacemaker rate 2^11=2048
 };
 
 static uint8_t
