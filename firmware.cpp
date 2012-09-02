@@ -211,18 +211,8 @@ loop ()
 		adc_timer.resume ();
 	}
 
-	// dump raw sensor data
-	if (config.dump.enabled)
-	{
-//debug_str ("dump");
-		timestamp_set (&now);
-
-		for (uint8_t u=0; u<ADC_LENGTH; u++)
-		{
-			len = cmc_dump_unit (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
-			udp_send (config.dump.socket.sock, buf_o_ptr, len); //TODO nonblocking sending
-		}
-	}
+	// TODO implement warm-up
+	// TODO implement pace-maker
 
 	if (calibrating)
 		range_calibrate (adc_raw[adc_raw_ptr]);
@@ -231,6 +221,7 @@ loop ()
 	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
 	{
 //debug_str ("tuio");
+		/*
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
@@ -249,6 +240,36 @@ loop ()
 			buf_o_ptr = !buf_o_ptr;
 
 		cmc_job = job;
+		*/
+
+		//FIXME synchronous for debugging
+		//debug_str ("cmc_process in");
+		cmc_job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
+		//debug_str ("cmc_process out");
+
+		if (cmc_job)
+		{
+			timestamp_set (&now);
+			//debug_str ("cmc_write_tuio2 in");
+			cmc_len = cmc_write_tuio2 (now, &buf_o[!buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
+			//debug_str ("cmc_write_tuio2 out");
+			//debug_str ("udp_send in");
+			udp_send (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
+			//debug_str ("udp_send out");
+		}
+	}
+
+	// dump raw sensor data
+	if (config.dump.enabled)
+	{
+//debug_str ("dump");
+		timestamp_set (&now);
+
+		for (uint8_t u=0; u<ADC_LENGTH; u++)
+		{
+			len = cmc_dump_unit (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
+			udp_send (config.dump.socket.sock, buf_o_ptr, len); //TODO nonblocking sending
+		}
 	}
 
 	// run osc config server

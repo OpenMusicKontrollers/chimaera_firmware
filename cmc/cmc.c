@@ -67,9 +67,11 @@ cmc_init ()
 uint8_t
 cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 {
+//debug_str ("cmc process");
 	uint8_t p;
 	uint8_t i, j;
 
+//debug_str ("ADC read");
 	// 11us
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++) //FIXME missing sensor unit
@@ -92,7 +94,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 	fix_0_16_t m_thresh1 = (float)0x7fff / (0x7ff - config.cmc.thresh1); //TODO check value
 
 	// 80us
-
 	uint8_t changed = 1; //TODO actually check for changes
 
 	/*
@@ -100,6 +101,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 	 */
 	cmc.J = 0;
 
+//debug_str ("blob detection");
 	// look at array for blobs
 	// TODO simplify this by just searching for maximums and surrounding zeroes...
 	for (i=1; i<SENSOR_N+1; i++) // TODO merge the loop with the upper one ^^^^
@@ -173,6 +175,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 		}
 	}
 
+//debug_str ("blob relation");
 	/*
 	 * relate new to old blobs
 	 */
@@ -265,6 +268,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				}
 		}
 
+//debug_str ("blob ignoring");
 		// overwrite blobs that are to be ignored
 		uint8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
@@ -287,6 +291,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 		}
 		cmc.J = newJ;
 
+//debug_str ("group relation");
 		// relate blobs to groups
 		for (j=0; j<cmc.J; j++)
 		{
@@ -314,6 +319,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 		idle++; // automatic overflow
 	}
 
+//debug_str ("buffer switching");
 	// switch blob buffers
 	cmc.old = !cmc.old;
 	cmc.neu = !cmc.neu;

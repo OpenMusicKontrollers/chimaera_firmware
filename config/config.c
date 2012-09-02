@@ -517,7 +517,7 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_cmc_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -531,7 +531,7 @@ _cmc_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **ar
 }
 
 static uint8_t
-_cmc_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -546,7 +546,7 @@ _cmc_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
-_cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -561,7 +561,7 @@ _cmc_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
-_cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -576,7 +576,7 @@ _cmc_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
-_cmc_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -591,7 +591,7 @@ _cmc_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **arg
 }
 
 static uint8_t
-_cmc_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -677,13 +677,12 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/comm/gateway/set", "iiiii", _comm_gateway_set);
 	serv = nosc_server_method_add (serv, "/chimaera/comm/subnet/set", "iiiii", _comm_subnet_set);
 
-	/*
 	// enable/disable sockets
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set);
-	serv = nosc_server_m-ethod_add (serv, "/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set);
-	serv = nosc_server_m-ethod_add (serv, "/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set);
+	//serv = nosc_server_method_add (serv, "/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set);
+	//serv = nosc_server_method_add (serv, "/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set);
 
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set);
@@ -702,22 +701,20 @@ config_methods_add (nOSC_Server *serv)
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set);
 	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiiii", _debug_socket_set);
-	*/
 
 	/*
 	serv = nosc_server_method_add (serv, "/chimaera/thresh0", "i*", _thresh0);
 	serv = nosc_server_method_add (serv, "/chimaera/thresh1", "i*", _thresh1);
 	serv = nosc_server_method_add (serv, "/chimaera/thresh2", "i*", _thresh2);
-	serv = nosc_server_method_add (serv, "/chimaera/max_groups", "i*", _max_groups)
-	serv = nosc_server_method_add (serv, "/chimaera/max_blobs", "i*", _max_blobs);
 	*/
 
-	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _cmc_group_clear);
-	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _cmc_group_add);
-	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _cmc_group_set);
-	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _cmc_group_del);
-	serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _cmc_group_load);
-	serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _cmc_group_save);
+	// manipulating groups
+	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _group_clear);
+	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _group_add);
+	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _group_set);
+	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _group_del);
+	serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _group_load);
+	serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _group_save);
 
 	// set sample rate
 	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set); //TODO use "i*"
