@@ -34,7 +34,8 @@
 #define s2d2 0.70710678118655r // sqrt(2) / 2
 #define os8 0.35355339059327r // 1 / sqrt(8)
 
-uint8_t idle = 0; // IDLE_CYCLE of 256
+static uint16_t idle_word = 0;
+static uint8_t idle_bit = 0;
 CMC cmc;
 
 void
@@ -177,6 +178,9 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 	 */
 	if (cmc.I || cmc.J)
 	{
+		idle_word = 0;
+		idle_bit = 0;
+
 		if (cmc.I == cmc.J) // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
 		{
 			for (j=0; j<cmc.J; j++)
@@ -310,7 +314,22 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 	else // cmc.I == cmc.J == 0
 	{
 		changed = 0;
-		idle++; // automatic overflow
+		idle_word++;
+	}
+
+	// handler idle counters
+	uint8_t idle = 0;
+	if (idle_bit < 0xb)
+	{
+		idle = idle_word & (1 << idle_bit);
+		if (idle)
+			idle_bit++;
+	}
+	else // handle pacemaker
+	{
+		idle = idle_word & (1 << idle_bit);
+		if (idle)
+			idle_word = 0;
 	}
 
 	// switch blob buffers
@@ -319,10 +338,11 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 	cmc.I = cmc.J;
 
 	// only increase frame count when there were changes or idle overflowed
-	if (changed || !idle)
+	uint8_t res = changed || idle;
+	if (res)
 		++(cmc.fid);
 
-	return changed || !idle;
+	return res;
 }
 
 uint16_t
