@@ -69,16 +69,17 @@ uint8_t
 cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 {
 //debug_str ("cmc process");
+debug_int32 (cmc.fid);
 	uint8_t p;
 	uint8_t i, j;
 
 //debug_str ("ADC read");
 	// 11us
 	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++) //FIXME missing sensor unit
+		for (i=0; i<ADC_LENGTH; i++)
 		{
 			uint8_t pos = order[p][i];
-			int16_t val = raw[p][i] - adc_range[p][i].mean; //TODO handle min and max, too
+			int16_t val = raw[p][i] - adc_range[p][i].mean;
 			uint16_t aval = abs (val);
 			if (aval > config.cmc.thresh0)
 			{
@@ -175,6 +176,8 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			}
 		}
 	}
+
+debug_int32 (cmc.J - cmc.I);
 
 //debug_str ("blob relation");
 	/*
@@ -294,6 +297,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				newJ++;
 		}
 		cmc.J = newJ;
+debug_int32 (cmc.J - cmc.I);
 
 //debug_str ("group relation");
 		// relate blobs to groups
