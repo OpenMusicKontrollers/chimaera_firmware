@@ -28,9 +28,9 @@ while (1)
 				y[,id] <- dat3[[i]][2:17]
 			}
 
-			print (max (y))
+			#print (max (y))
 
-			plot (c(y), type ='h', ylim=c(-0x7ff,0x7ff), xlab='sensor number', ylab='sensor value')
+			plot (c(y), type ='h', ylim=c(-0x7ff, 0x7ff), xlab='sensor number', ylab='sensor value')
 		}
 	}
 }

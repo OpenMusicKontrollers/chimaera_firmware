@@ -132,22 +132,32 @@ tuio_enable (uint8_t b)
 void 
 config_enable (uint8_t b)
 {
+	config_timer_pause ();
+	config_timer_reconfigure ();
+
 	config.config.enabled = b;
 	if (config.config.enabled)
 	{
 		udp_begin (config.config.socket.sock, config.config.socket.port[SRC_PORT]);
 		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port[DST_PORT]);
+
+		config_timer_resume ();
 	}
 }
 
 void 
 sntp_enable (uint8_t b)
 {
+	sntp_timer_pause ();
+	sntp_timer_reconfigure ();
+
 	config.sntp.enabled = b;
 	if (config.sntp.enabled)
 	{
 		udp_begin (config.sntp.socket.sock, config.sntp.socket.port[SRC_PORT]);
 		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port[DST_PORT]);
+
+		sntp_timer_resume ();
 	}
 }
 

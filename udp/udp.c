@@ -62,11 +62,25 @@ inline void resetSS ()
 
 static uint16_t Sn_Tx_WR[8];
 
-volatile uint8_t spi_dma_done;
+volatile uint8_t spi_dma_done = 0;
+volatile uint8_t spi_dma_rx_err = 0;
+volatile uint8_t spi_dma_tx_err = 0;
 
 static void
 _spi_dma_irq (void)
 {
+	uint8_t isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
+	dma_clear_isr_bits (DMA1, DMA_CH4);
+
+	if (isr_rx & 0x8)
+		spi_dma_rx_err = 1;
+
+	uint8_t isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+	dma_clear_isr_bits (DMA1, DMA_CH5);
+
+	if (isr_tx & 0x8)
+		spi_dma_tx_err = 1;
+
 	spi_dma_done = 1;
 }
 
@@ -109,14 +123,6 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	_spi_dma_run (buf - buf_o[tmp_buf_o_ptr]);
 	_spi_dma_block ();
 
-	// wait for SPI TXE==1
-	while ( !(SPI2->regs->SR & SPI_SR_TXE) )
-		;
-
-	// wait for SPI BSY==0
-	while ( (SPI2->regs->SR & SPI_SR_BSY) )
-		;
-
 	resetSS ();
 }
 
@@ -158,15 +164,6 @@ void
 _dma_write_nonblocking_out ()
 {
 	_spi_dma_block ();
-
-	// wait for SPI TXE==1
-	while ( !(SPI2->regs->SR & SPI_SR_TXE) )
-		;
-
-	// wait for SPI BSY==0
-	while ( (SPI2->regs->SR & SPI_SR_BSY) )
-		;
-
 	resetSS ();
 }
 
@@ -268,14 +265,14 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
+	//dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
 	dma_attach_interrupt (DMA1, DMA_CH4, _spi_dma_irq);
 
 	// set up dma for SPI2TX
 	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
 	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
+	//dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
 
 	// init udp
 	uint8_t sock;
@@ -392,23 +389,35 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		udp_send_block (sock);
 }
 
+uint16_t
+udp_ptr_get_1 (uint8_t sock)
+{
+	return Sn_Tx_WR[sock];
+}
+
+uint16_t
+udp_ptr_get_2 (uint8_t sock)
+{
+	uint16_t ptr;
+	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
+	return ptr;
+}
+
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
 	if (len > (CHIMAERA_BUFSIZE - 2*UDP_SEND_OFFSET) ) // return when buffer exceeds given size
 		return 0;
 
-	// switch DMA memory source to right buffer
-	tmp_buf_o_ptr = buf_ptr;
-	tmp_buf_i_ptr = INPUT_BUF_SEND;
+	// switch DMA memory source to right buffer, input buffer is on SEND by default
+	if (tmp_buf_o_ptr != buf_ptr)
+	{
+		tmp_buf_o_ptr = buf_ptr;
 
-	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-	int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-
-	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
-	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
+		int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+		ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	}
 
 	uint8_t *buf = buf_o[buf_ptr];
 
@@ -488,24 +497,28 @@ udp_available (uint8_t sock)
 
 //TODO write a nonblocking version for receiving, too
 void
-udp_receive (uint8_t sock, uint16_t len)
+udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
 	if (len > (CHIMAERA_BUFSIZE - 4) ) // return when buffer exceedes given size
 		return;
 
-	//tmp_buf_o_ptr = buf_ptr; //TODO should we set this?
+	if (tmp_buf_o_ptr != buf_ptr)
+	{
+		tmp_buf_o_ptr = buf_ptr;
+
+		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
+		int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+		ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	}
+
 	tmp_buf_i_ptr = INPUT_BUF_RECV;
 
-	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-	int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-
 	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
-	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
 	uint16_t ptr;
-	_dma_read_sock_16 (sock, SnRX_RD, &ptr);
+	_dma_read_sock_16 (sock, SnRX_RD, &ptr); // TODO store this offline
 
 	uint16_t size = 0;
 	uint16_t offset = ptr & RMASK[sock];
@@ -529,6 +542,13 @@ udp_receive (uint8_t sock, uint16_t len)
 	if (size)
 		memcpy (buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size, buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size + SPI_CMD_SIZE, size);
 
+	// switch back to RECV buffer
+	tmp_buf_i_ptr = INPUT_BUF_RECV;
+
+	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
+	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+
 	ptr += len;
 	_dma_write_sock_16 (sock, SnRX_RD, ptr);
 
@@ -538,13 +558,13 @@ udp_receive (uint8_t sock, uint16_t len)
 }
 
 void 
-udp_dispatch (uint8_t sock, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
 	uint16_t len;
 
 	if ( (len = udp_available (sock)) )
 	{
-		udp_receive (sock, len);
+		udp_receive (sock, ptr, len);
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len;

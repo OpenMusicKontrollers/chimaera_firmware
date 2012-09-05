@@ -145,6 +145,12 @@ config_save ()
 	return 1;
 }
 
+inline uint16_t
+range_mean (uint8_t mux, uint8_t adc)
+{
+	return adc_range[mux][adc].mean;
+}
+
 uint8_t
 range_load ()
 {

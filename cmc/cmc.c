@@ -69,7 +69,7 @@ uint8_t
 cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 {
 //debug_str ("cmc process");
-debug_int32 (cmc.fid);
+//debug_int32 (cmc.fid);
 	uint8_t p;
 	uint8_t i, j;
 
@@ -177,7 +177,7 @@ debug_int32 (cmc.fid);
 		}
 	}
 
-debug_int32 (cmc.J - cmc.I);
+//debug_int32 (cmc.J - cmc.I);
 
 //debug_str ("blob relation");
 	/*
@@ -297,7 +297,7 @@ debug_int32 (cmc.J - cmc.I);
 				newJ++;
 		}
 		cmc.J = newJ;
-debug_int32 (cmc.J - cmc.I);
+//debug_int32 (cmc.J - cmc.I);
 
 //debug_str ("group relation");
 		// relate blobs to groups
@@ -383,23 +383,6 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 			cmc.blobs[cmc.old][j].p);
 	}
 	size = tuio2_serialize (buf, cmc.I);
-	return size;
-}
-
-uint16_t 
-cmc_dump_unit (timestamp64u_t timestamp, uint8_t *buf, uint8_t unit)
-{
-	uint8_t i;
-	uint16_t size;
-
-	nOSC_Message *msg = NULL;
-	msg = nosc_message_add_timestamp (msg, timestamp);
-	msg = nosc_message_add_int32 (msg, unit);
-	for (i=unit*0x10; i<(unit+1)*0x10; i++)
-		msg = nosc_message_add_int32 (msg, cmc.sensors[i+1].n ? -cmc.sensors[i+1].v : cmc.sensors[i+1].v);
-	size = nosc_message_serialize (msg, "/cmc/dump_unit", buf);
-	nosc_message_free (msg);
-
 	return size;
 }
 

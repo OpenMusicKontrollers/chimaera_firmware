@@ -111,6 +111,7 @@ extern Config config;
 uint8_t config_load ();
 uint8_t config_save ();
 
+uint16_t range_mean (uint8_t mux, uint8_t adc);
 uint8_t range_load ();
 uint8_t range_save ();
 void range_calibrate (int16_t raw[16][10]);

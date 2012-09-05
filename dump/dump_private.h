@@ -21,33 +21,18 @@
  *     distribution.
  */
 
-#ifndef _CMC_H_
-#define _CMC_H_
+#ifndef DUMP_PRIVATE_H
+#define DUMP_PRIVATE_H
 
-#include <stdint.h>
-#include <stdlib.h>
-
+#include <dump.h>
 #include <nosc.h>
-#include <config.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef struct _Dump Dump;
 
-void cmc_init ();
-uint8_t cmc_process (int16_t raw[16][10], uint8_t order[16][9]);
-uint16_t cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf);
+struct _Dump {
+	nOSC_Message *time;
+	nOSC_Message *adc;
+	nOSC_Message *sensor[MUX_MAX];
+};
 
-void cmc_group_clear ();
-uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_del (uint16_t tid);
-
-uint8_t *cmc_group_buf_get (uint8_t *size);
-uint8_t *cmc_group_buf_set (uint8_t size);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+#endif /* DUMP_PRIVATE_H */

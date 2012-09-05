@@ -47,6 +47,7 @@
 #include <config.h>
 #include <tube.h>
 #include <tuio2.h>
+#include <dump.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 gpio_dev *mux_gpio_dev [MUX_LENGTH];
@@ -58,7 +59,7 @@ uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins
 uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 
-int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2]; // the dma temporary data array.
+int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__ ((aligned (4)));; // the dma temporary data array.
 
 uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
@@ -76,8 +77,9 @@ timestamp64u_t t0;
 timestamp64u_t now;
 
 volatile uint8_t adc_dma_done = 0;
+volatile uint8_t adc_dma_err = 0;
 volatile uint8_t adc_time_up = 1;
-volatile uint8_t adc_raw_ptr = 0;
+volatile uint8_t adc_raw_ptr = 1;
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
@@ -123,27 +125,21 @@ __irq_adc (void)
 
 	if (mux_counter < MUX_MAX)
 	{
-		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 		mux_counter++;
+		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
 	}
 }
 
 static void
 adc_dma_irq ()
 {
-	switch (dma_get_irq_cause (DMA1, DMA_CH1))
-	{
-		case DMA_TRANSFER_HALF_COMPLETE:
-			adc_raw_ptr = 0;
-			adc_dma_done = 1;
-			return;
-		case DMA_TRANSFER_COMPLETE:
-			adc_raw_ptr = 1;
-			adc_dma_done = 1;
-			return;
-		default:
-			break;
-	};
+	uint8_t isr = dma_get_isr_bits (DMA1, DMA_CH1);
+	dma_clear_isr_bits (DMA1, DMA_CH1);
+
+	if (isr & 0x8)
+		adc_dma_err = 1;
+
+	adc_dma_done = 1;
 }
 
 inline void
@@ -159,15 +155,16 @@ adc_dma_block ()
 {
 	while (!adc_dma_done)
 		;
+	adc_raw_ptr ^= 1; // toggle
 }
 
-void
+static void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	nosc_server_dispatch (serv, buf, len);
 }
 
-void
+static void
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	timestamp64u_t *transmit;
@@ -193,9 +190,30 @@ uint8_t cmc_job = 0;
 uint16_t cmc_len = 0;
 uint16_t len = 0;
 
+extern uint8_t spi_dma_rx_err;
+extern uint8_t spi_dma_tx_err;
+
 inline void
 loop ()
 {
+	if (adc_dma_err)
+	{
+		debug_str ("adc_dma_err");
+		//adc_dma_err = 0;
+	}
+
+	if (spi_dma_rx_err)
+	{
+		debug_str ("spi_dma_rx_err");
+		//spi_dma_rx_err = 0;
+	}
+
+	if (spi_dma_tx_err)
+	{
+		debug_str ("spi_dma_tx_err");
+		//spi_dma_tx_err = 0;
+	}
+
 	adc_dma_run ();
 
 	if (first) // in the first round there is no data
@@ -216,11 +234,26 @@ loop ()
 	if (calibrating)
 		range_calibrate (adc_raw[adc_raw_ptr]);
 
+	// dump raw sensor data
+	if (config.dump.enabled)
+	{
+		timestamp_set (&now);
+
+		for (uint8_t u=0; u<ADC_LENGTH; u++)
+		{
+			dump_frm_set (now, adc_order[u]); 
+
+			for (uint8_t v=0; v<MUX_MAX; v++)
+				dump_tok_set (mux_order[v], adc_raw[adc_raw_ptr][v][u] - range_mean(v, u)); //TODO get rid of range_mean function
+
+			len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]);
+			udp_send (config.dump.socket.sock, buf_o_ptr, len);
+		}
+	}
+
 	// do touch recognition and interpolation
 	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
 	{
-//debug_str ("tuio");
-		/*
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
@@ -236,46 +269,27 @@ loop ()
 			udp_send_block (config.tuio.socket.sock);
 
 		if (job) // switch output buffer
-			buf_o_ptr = !buf_o_ptr;
+			buf_o_ptr ^= 1;
 
 		cmc_job = job;
-		*/
 
 		//FIXME synchronous for debugging
-		//debug_str ("cmc_process in");
+		/*
 		cmc_job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
-		//debug_str ("cmc_process out");
 
 		if (cmc_job)
 		{
 			timestamp_set (&now);
-			//debug_str ("cmc_write_tuio2 in");
 			cmc_len = cmc_write_tuio2 (now, &buf_o[!buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
-			//debug_str ("cmc_write_tuio2 out");
-			//debug_str ("udp_send in");
 			udp_send (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
-			//debug_str ("udp_send out");
 		}
-	}
-
-	// dump raw sensor data
-	if (config.dump.enabled)
-	{
-//debug_str ("dump");
-		timestamp_set (&now);
-
-		for (uint8_t u=0; u<ADC_LENGTH; u++)
-		{
-			len = cmc_dump_unit (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET], u); //TODO make this faster
-			udp_send (config.dump.socket.sock, buf_o_ptr, len); //TODO nonblocking sending
-		}
+		*/
 	}
 
 	// run osc config server
 	if (config.config.enabled && config_should_request)
 	{
-//debug_str ("config");
-		udp_dispatch (config.config.socket.sock, config_cb);
+		udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
 		config_should_request = 0;
 	}
 
@@ -285,14 +299,12 @@ loop ()
 		// listen for sntp request answer
 		if (sntp_should_listen)
 		{
-//debug_str ("sntp dispatch");
-			udp_dispatch (config.sntp.socket.sock, sntp_cb);
+			udp_dispatch (config.sntp.socket.sock, buf_o_ptr, sntp_cb);
 		}
 
 		// send sntp request
 		if (sntp_should_request)
 		{
-//debug_str ("sntp request");
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
@@ -416,6 +428,7 @@ setup ()
 	dma_init (DMA1);
 
 	// set up SPI for usage with wiz820io
+  //spi.begin (SPI_18MHZ, MSBFIRST, 0); 
   spi.begin (SPI_18MHZ, MSBFIRST, 0); 
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
 
@@ -461,8 +474,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_41_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_41_5);
+	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
 
 	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
 	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
@@ -501,7 +514,7 @@ setup ()
 	adc_tube.tube_dst = (void *)adc_raw;
 	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_HIGH);    //Optional
+	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_MEDIUM);    //Optional
 	dma_set_num_transfers (DMA1, DMA_CH1, ADC_DUAL_LENGTH*MUX_MAX*2);
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
@@ -509,29 +522,13 @@ setup ()
 	// set up continuous music controller struct
 	cmc_init ();
 	tuio2_init ();
+	dump_init ();
 
 	// load saved groups
 	groups_load ();
 
-	// init adc_timer (but do not start it yet)
 	adc_timer_pause ();
 	adc_timer_reconfigure ();
-
-	// init sntp_timer
-	if (config.sntp.enabled)
-	{
-		sntp_timer_pause ();
-		sntp_timer_reconfigure ();
-		sntp_timer_resume ();
-	}
-
-	// init config_timer
-	if (config.config.enabled)
-	{
-		config_timer_pause ();
-		config_timer_reconfigure ();
-		config_timer_resume ();
-	}
 }
 
 __attribute__ ((constructor)) void

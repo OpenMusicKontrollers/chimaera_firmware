@@ -21,33 +21,45 @@
  *     distribution.
  */
 
-#ifndef _CMC_H_
-#define _CMC_H_
+#include <chimaera.h>
 
-#include <stdint.h>
-#include <stdlib.h>
+#include "dump_private.h"
+#include "../nosc/nosc_private.h"
 
-#include <nosc.h>
-#include <config.h>
+Dump dump;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void
+dump_init ()
+{
+	uint8_t i;
 
-void cmc_init ();
-uint8_t cmc_process (int16_t raw[16][10], uint8_t order[16][9]);
-uint16_t cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf);
+	dump.time = nosc_message_add_timestamp (NULL, nOSC_IMMEDIATE);
+	dump.adc = nosc_message_add_int32 (dump.time, 0);
 
-void cmc_group_clear ();
-uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_del (uint16_t tid);
-
-uint8_t *cmc_group_buf_get (uint8_t *size);
-uint8_t *cmc_group_buf_set (uint8_t size);
-
-#ifdef __cplusplus
+	nOSC_Message *ptr = dump.adc;
+	for (i=0; i<MUX_MAX; i++)
+	{
+		dump.sensor[i] = nosc_message_add_int32 (ptr, 0);
+		ptr = dump.sensor[i];
+	}
 }
-#endif
 
-#endif
+uint16_t
+dump_serialize (uint8_t *buf)
+{
+	return nosc_message_serialize (dump.time, "/dump", buf);
+}
+
+void 
+dump_frm_set (timestamp64u_t timestamp, uint8_t adc)
+{
+	dump.time->arg.t = timestamp;
+	dump.adc->arg.i = adc;
+}
+
+void 
+dump_tok_set (uint8_t sensor, int16_t value)
+{
+	dump.sensor[sensor]->arg.i = value;
+}
+
