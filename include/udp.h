@@ -56,6 +56,7 @@ void udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t 
 
 uint16_t udp_ptr_get_1 (uint8_t sock);
 uint16_t udp_ptr_get_2 (uint8_t sock);
+uint16_t udp_free_get (uint8_t sock);
 
 #ifdef __cplusplus
 }

@@ -53,6 +53,10 @@ void config_timer_pause ();
 void config_timer_reconfigure ();
 void config_timer_resume ();
 
+void timeout_timer_reconfigure ();
+void timeout_timer_start ();
+void timeout_timer_stop ();
+
 void ping_timer_pause ();
 void ping_timer_reconfigure ();
 void ping_timer_resume ();

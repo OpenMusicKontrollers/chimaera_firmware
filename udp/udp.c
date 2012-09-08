@@ -62,33 +62,9 @@ inline void resetSS ()
 
 static uint16_t Sn_Tx_WR[8];
 
-volatile uint8_t spi_dma_done = 0;
-volatile uint8_t spi_dma_rx_err = 0;
-volatile uint8_t spi_dma_tx_err = 0;
-
-static void
-_spi_dma_irq (void)
-{
-	uint8_t isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
-	dma_clear_isr_bits (DMA1, DMA_CH4);
-
-	if (isr_rx & 0x8)
-		spi_dma_rx_err = 1;
-
-	uint8_t isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
-	dma_clear_isr_bits (DMA1, DMA_CH5);
-
-	if (isr_tx & 0x8)
-		spi_dma_tx_err = 1;
-
-	spi_dma_done = 1;
-}
-
 inline void
 _spi_dma_run (uint16_t len)
 {
-	spi_dma_done = 0;
-
 	dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
 	dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
 
@@ -96,14 +72,40 @@ _spi_dma_run (uint16_t len)
 	dma_enable (DMA1, DMA_CH5); // Tx
 }
 
-inline void
+inline uint8_t
 _spi_dma_block ()
 {
-	while (!spi_dma_done)
-		;
+	uint8_t ret = 1;
+	uint8_t isr_rx;
+	uint8_t isr_tx;
+	uint8_t spi_sr;
+	do
+	{
+		isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
+		isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+		spi_sr = SPI2_BASE->SR;
+
+		// check for errors in DMA and SPI status registers
+
+		if (isr_rx & 0x8) // RX DMA transfer error
+			ret = 0;
+
+		if (isr_tx & 0x8) // TX DMA transfer error
+			ret = 0;
+
+		if (spi_sr & SPI_SR_OVR) // SPI overrun error
+			ret = 0;
+
+		if (spi_sr & SPI_SR_MODF) // SPI mode fault
+			ret = 0;
+	} while (!(isr_rx & 0x2) && ret); // RX DMA transfer complete
+
+	dma_clear_isr_bits (DMA1, DMA_CH4);
 
 	dma_disable (DMA1, DMA_CH5); // Tx
 	dma_disable (DMA1, DMA_CH4); // Rx
+
+	return ret;
 }
 
 void
@@ -119,9 +121,11 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	memcpy (buf, dat, len);
 	buf += len;
 
+	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buf - buf_o[tmp_buf_o_ptr]);
-	_spi_dma_block ();
+	_spi_dma_run (buflen);
+	while (!_spi_dma_block ())
+		_spi_dma_run (buflen);
 
 	resetSS ();
 }
@@ -153,17 +157,21 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 	return buf;
 }
 
+static uint16_t nonblocklen;
+
 void
 _dma_write_nonblocking_in (uint8_t *buf)
 {
+	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buf - buf_o[tmp_buf_o_ptr]);
+	_spi_dma_run (nonblocklen);
 }
 
 void
 _dma_write_nonblocking_out ()
 {
-	_spi_dma_block ();
+	while (!_spi_dma_block ())
+		_spi_dma_run (nonblocklen);
 	resetSS ();
 }
 
@@ -180,9 +188,11 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 	memset (buf, 0x00, len);
 	buf += len;
 
+	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buf-buf_o[tmp_buf_o_ptr]);
-	_spi_dma_block ();
+	_spi_dma_run (buflen);
+	while (!_spi_dma_block ())
+		_spi_dma_run (buflen);
 	resetSS ();
 
 	memcpy (dat, &buf_i[tmp_buf_i_ptr][SPI_CMD_SIZE], len);
@@ -266,13 +276,15 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	//dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
-	dma_attach_interrupt (DMA1, DMA_CH4, _spi_dma_irq);
+	//dma_attach_interrupt (DMA1, DMA_CH4, _spi_dma_irq);
+	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
 
 	// set up dma for SPI2TX
 	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
 	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	//dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
+	//nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
 
 	// init udp
 	uint8_t sock;
@@ -403,6 +415,14 @@ udp_ptr_get_2 (uint8_t sock)
 	return ptr;
 }
 
+uint16_t
+udp_free_get (uint8_t sock)
+{
+	uint16_t free;
+	_dma_read_sock_16 (sock, SnTX_FSR, &free);
+	return free;
+}
+
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
@@ -485,6 +505,15 @@ udp_send_block (uint8_t sock)
 
 	flag = SnIR_SEND_OK;
 	_dma_write_sock (sock, SnIR, &flag, 1);
+
+	// update write pointer
+	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+
+	// wait until everything is sent to be ready for next data
+	uint16_t free;
+	do
+		_dma_read_sock_16 (sock, SnTX_FSR, &free);
+	while (free != SSIZE[sock]);
 }
 
 uint16_t
@@ -543,7 +572,7 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		memcpy (buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size, buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size + SPI_CMD_SIZE, size);
 
 	// switch back to RECV buffer
-	tmp_buf_i_ptr = INPUT_BUF_RECV;
+	tmp_buf_i_ptr = INPUT_BUF_SEND;
 
 	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
@@ -572,11 +601,15 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 		{
 			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
 
-			uint8_t *ip = buf_in_ptr;
+			uint8_t ip [4];
+			ip[0] = buf_in_ptr[0];
+			ip[1] = buf_in_ptr[1];
+			ip[2] = buf_in_ptr[2];
+			ip[3] = buf_in_ptr[3];
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
 			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
-			cb (ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
+			cb ((uint8_t *)&ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
 
 			remaining -= UDP_HDR_SIZE + size;
 		}

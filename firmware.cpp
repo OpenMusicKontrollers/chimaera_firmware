@@ -161,12 +161,28 @@ adc_dma_block ()
 static void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	uint8_t i;
+	for (i=0; i<4; i++)
+		if ( (ip[0] & config.comm.subnet[0]) != (config.comm.ip[0] & config.comm.subnet[0]) )
+		{
+			debug_str ("sender IP not part of subnet");
+			return; // IP not part of same subnet as chimaera -> ignore message
+		}
+
 	nosc_server_dispatch (serv, buf, len);
 }
 
 static void
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	uint8_t i;
+	for (i=0; i<4; i++)
+		if ( (ip[0] & config.comm.subnet[0]) != (config.comm.ip[0] & config.comm.subnet[0]) )
+		{
+			debug_str ("sender IP not part of subnet");
+			return; // IP not part of same subnet as chimaera -> ignore message
+		}
+
 	timestamp64u_t *transmit;
 	timestamp64u_t roundtrip_delay;
 	timestamp64s_t clock_offset;
@@ -190,9 +206,6 @@ uint8_t cmc_job = 0;
 uint16_t cmc_len = 0;
 uint16_t len = 0;
 
-extern uint8_t spi_dma_rx_err;
-extern uint8_t spi_dma_tx_err;
-
 inline void
 loop ()
 {
@@ -200,18 +213,6 @@ loop ()
 	{
 		debug_str ("adc_dma_err");
 		//adc_dma_err = 0;
-	}
-
-	if (spi_dma_rx_err)
-	{
-		debug_str ("spi_dma_rx_err");
-		//spi_dma_rx_err = 0;
-	}
-
-	if (spi_dma_tx_err)
-	{
-		debug_str ("spi_dma_tx_err");
-		//spi_dma_tx_err = 0;
 	}
 
 	adc_dma_run ();
@@ -229,8 +230,6 @@ loop ()
 		adc_timer.resume ();
 	}
 
-	// TODO implement warm-up
-
 	if (calibrating)
 		range_calibrate (adc_raw[adc_raw_ptr]);
 
@@ -247,7 +246,7 @@ loop ()
 				dump_tok_set (mux_order[v], adc_raw[adc_raw_ptr][v][u] - range_mean(v, u)); //TODO get rid of range_mean function
 
 			len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]);
-			udp_send (config.dump.socket.sock, buf_o_ptr, len);
+			udp_send (config.dump.socket.sock, buf_o_ptr, len); //FIXME
 		}
 	}
 
@@ -272,18 +271,6 @@ loop ()
 			buf_o_ptr ^= 1;
 
 		cmc_job = job;
-
-		//FIXME synchronous for debugging
-		/*
-		cmc_job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
-
-		if (cmc_job)
-		{
-			timestamp_set (&now);
-			cmc_len = cmc_write_tuio2 (now, &buf_o[!buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
-			udp_send (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
-		}
-		*/
 	}
 
 	// run osc config server
@@ -342,6 +329,8 @@ extern "C" void adc_timer_reconfigure ()
 	// overflow = 72Mhz / rate
 
 	adc_timer.refresh ();
+
+	nvic_irq_set_priority (NVIC_TIMER1_CC, ADC_TIMER_PRIORITY);
 }
 
 extern "C" void adc_timer_resume ()
@@ -361,6 +350,8 @@ extern "C" void sntp_timer_reconfigure ()
 	sntp_timer.setCompare (TIMER_CH1, sntp_timer.getOverflow ());  // Interrupt 1 count after each update
 	sntp_timer.attachInterrupt (TIMER_CH1, sntp_timer_irq);
 	sntp_timer.refresh ();
+
+	nvic_irq_set_priority (NVIC_TIMER2, SNTP_TIMER_PRIORITY);
 }
 
 extern "C" void sntp_timer_resume ()
@@ -380,6 +371,8 @@ extern "C" void config_timer_reconfigure ()
 	config_timer.setCompare (TIMER_CH1, config_timer.getOverflow ());  // Interrupt 1 count after each update
 	config_timer.attachInterrupt (TIMER_CH1, config_timer_irq);
 	config_timer.refresh ();
+
+	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
 }
 
 extern "C" void config_timer_resume ()
@@ -518,6 +511,7 @@ setup ()
 	dma_set_num_transfers (DMA1, DMA_CH1, ADC_DUAL_LENGTH*MUX_MAX*2);
 	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
+	nvic_irq_set_priority (NVIC_DMA_CH1, ADC_DMA_PRIORITY);
 
 	// set up continuous music controller struct
 	cmc_init ();

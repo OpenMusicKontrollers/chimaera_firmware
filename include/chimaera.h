@@ -53,6 +53,14 @@ extern "C" {
 
 #define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
 
+#define ADC_DMA_PRIORITY 0x2
+#define SPI_RX_DMA_PRIORITY 0x3
+#define SPI_TX_DMA_PRIORITY 0x4
+#define ADC_TIMER_PRIORITY 0x5
+#define SNTP_TIMER_PRIORITY 0x6
+#define CONFIG_TIMER_PRIORITY 0x7
+#define TIMEOUT_TIMER_PRIORITY 0x8
+
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer
