@@ -95,6 +95,12 @@ struct _Config {
 		Socket_Config socket;
 	} debug;
 
+	struct _zeroconf {
+		uint8_t enabled;
+		uint8_t har [6];
+		Socket_Config socket;
+	} zeroconf;
+
 	struct _cmc {
 		uint16_t thresh0; // everything below is considered noise
 		uint16_t thresh1; // everything above will trigger an ON event

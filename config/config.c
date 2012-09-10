@@ -38,7 +38,7 @@
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
-	.magic = 0x01, // used to compare EEPROM and FLASH config versions
+	.magic = 0x03, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -98,6 +98,16 @@ Config config = {
 			.sock = 4,
 			.port = {6666, 6666},
 			.ip = LAN_BROADCAST
+		}
+	},
+
+	.zeroconf = {
+		.enabled = 1,
+		.har = {0x01, 0x00, 0x5e, 0x00, 0x00, 0xfb}, // hardware address for mDNS multicast
+		.socket = {
+			.sock = 5,
+			.port = {5353, 5353}, // mDNS multicast port
+			.ip = {224, 0, 0, 251} // mDNS multicast group
 		}
 	},
 

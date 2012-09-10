@@ -21,39 +21,16 @@
  *     distribution.
  */
 
-#ifndef _UDP_H_
-#define _UDP_H_
+#ifndef _ZEROCONF_H_
+#define _ZEROCONF_H_
 
 #include <stdint.h>
-
-#include <libmaple/gpio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define UDP_HDR_SIZE 8
-#define UDP_SEND_OFFSET 4
-
-#define UDP_RESET 7 // Reset BIT
-#define UDP_MAX_SOCK_NUM 8
-
-void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[UDP_MAX_SOCK_NUM], uint8_t rx_mem[UDP_MAX_SOCK_NUM]);
-
-void udp_mac_set (uint8_t *mac);
-void udp_ip_set (uint8_t *ip);
-void udp_gateway_set (uint8_t *gateway);
-void udp_subnet_set (uint8_t *subnet);
-
-void udp_begin (uint8_t sock, uint16_t port, uint8_t multicast);
-void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
-void udp_set_remote_har (uint8_t sock, uint8_t *har);
-void udp_send (uint8_t sock, uint8_t ptr, uint16_t len);
-uint8_t udp_send_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
-void udp_send_block (uint8_t sock);
-uint16_t udp_available (uint8_t sock);
-void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
-void udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)); 
+void zeroconf_dispatch (uint8_t *buf, uint16_t len);
 
 #ifdef __cplusplus
 }

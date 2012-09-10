@@ -354,7 +354,7 @@ udp_subnet_set (uint8_t *subnet)
 }
 
 void
-udp_begin (uint8_t sock, uint16_t port)
+udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 {
 	uint8_t flag;
 
@@ -368,7 +368,10 @@ udp_begin (uint8_t sock, uint16_t port)
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
 	// set socket mode to UDP
-	flag = SnMR_UDP;
+	if (multicast)
+		flag = SnMR_UDP | SnMR_MULTI;
+	else
+		flag = SnMR_UDP;
 	_dma_write_sock (sock, SnMR, &flag, 1);
 
 	// set outgoing port
@@ -394,33 +397,18 @@ udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 	_dma_write_sock_16 (sock, SnDPORT, port);
 }
 
+void 
+udp_set_remote_har (uint8_t sock, uint8_t *har)
+{
+	// remote hardware address, e.g. needed for UDP multicast
+	_dma_write_sock (sock, SnDHAR, har, 6);
+}
+
 void
 udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
 	if (udp_send_nonblocking (sock, buf_ptr, len))
 		udp_send_block (sock);
-}
-
-uint16_t
-udp_ptr_get_1 (uint8_t sock)
-{
-	return Sn_Tx_WR[sock];
-}
-
-uint16_t
-udp_ptr_get_2 (uint8_t sock)
-{
-	uint16_t ptr;
-	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
-	return ptr;
-}
-
-uint16_t
-udp_free_get (uint8_t sock)
-{
-	uint16_t free;
-	_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	return free;
 }
 
 uint8_t 

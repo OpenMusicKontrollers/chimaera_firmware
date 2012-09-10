@@ -66,7 +66,7 @@ void config_enable (uint8_t b);
 void sntp_enable (uint8_t b);
 void dump_enable (uint8_t b);
 void debug_enable (uint8_t b);
-void ping_enable (uint8_t b);
+void zeroconf_enable (uint8_t b);
 
 typedef struct _Stop_Watch Stop_Watch;
 

@@ -48,6 +48,7 @@
 #include <tube.h>
 #include <tuio2.h>
 #include <dump.h>
+#include <zeroconf.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 gpio_dev *mux_gpio_dev [MUX_LENGTH];
@@ -83,7 +84,8 @@ volatile uint8_t adc_raw_ptr = 1;
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
-volatile uint8_t config_should_request = 0;
+volatile uint8_t zeroconf_should_listen = 0;
+volatile uint8_t config_should_listen = 0;
 
 void
 timestamp_set (timestamp64u_t *ptr)
@@ -112,7 +114,13 @@ sntp_timer_irq ()
 static void
 config_timer_irq ()
 {
-	config_should_request = 1;
+	config_should_listen = 1;
+}
+
+static void
+zeroconf_timer_irq ()
+{
+	zeroconf_should_listen = 1;
 }
 
 extern "C" void
@@ -201,6 +209,12 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	sntp_should_listen = 0;
 }
 
+static void
+zeroconf_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	zeroconf_dispatch (buf, len);
+}
+
 uint8_t send_status = 0;
 uint8_t cmc_job = 0;
 uint16_t cmc_len = 0;
@@ -274,10 +288,10 @@ loop ()
 	}
 
 	// run osc config server
-	if (config.config.enabled && config_should_request)
+	if (config.config.enabled && config_should_listen)
 	{
 		udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
-		config_should_request = 0;
+		config_should_listen = 0;
 	}
 
 	// run sntp client
@@ -299,6 +313,13 @@ loop ()
 			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
+	}
+
+	// run ZEROCONF server
+	if (config.zeroconf.enabled && zeroconf_should_listen)
+	{
+		udp_dispatch (config.zeroconf.socket.sock, buf_o_ptr, zeroconf_cb);
+		zeroconf_should_listen = 0;
 	}
 
 	adc_dma_block ();
@@ -346,6 +367,7 @@ extern "C" void sntp_timer_pause ()
 extern "C" void sntp_timer_reconfigure ()
 {
   sntp_timer.setPeriod (1e6 * config.sntp.tau);
+
 	sntp_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
 	sntp_timer.setCompare (TIMER_CH1, sntp_timer.getOverflow ());  // Interrupt 1 count after each update
 	sntp_timer.attachInterrupt (TIMER_CH1, sntp_timer_irq);
@@ -367,9 +389,15 @@ extern "C" void config_timer_pause ()
 extern "C" void config_timer_reconfigure ()
 {
   config_timer.setPeriod (1e6/config.config.rate); // set period based on update rate
+
 	config_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
 	config_timer.setCompare (TIMER_CH1, config_timer.getOverflow ());  // Interrupt 1 count after each update
 	config_timer.attachInterrupt (TIMER_CH1, config_timer_irq);
+
+	config_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
+	config_timer.setCompare (TIMER_CH2, config_timer.getOverflow ());
+	config_timer.attachInterrupt (TIMER_CH2, zeroconf_timer_irq);
+
 	config_timer.refresh ();
 
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
@@ -440,6 +468,7 @@ setup ()
 	sntp_enable (config.sntp.enabled);
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
+	zeroconf_enable (config.zeroconf.enabled);
 
 	// set start time to 0
 	t0.all = 0ULL;
