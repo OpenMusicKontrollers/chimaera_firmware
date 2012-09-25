@@ -43,13 +43,6 @@ struct _nOSC_Message {
 	nOSC_Message *prev, *next;
 };
 
-struct _nOSC_Server {
-	char *path;
-	char *fmt;
-	nOSC_Method_Cb cb;
-	nOSC_Server *next;
-};
-
 /*
  * Internal functions
  */

@@ -41,7 +41,7 @@ extern "C" {
 typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Bundle nOSC_Bundle;
 typedef struct _nOSC_Message nOSC_Message;
-typedef struct _nOSC_Server nOSC_Server;
+typedef struct _nOSC_Method nOSC_Method;
 typedef union _nOSC_Arg nOSC_Arg;
 
 struct _nOSC_Blob {
@@ -67,8 +67,7 @@ typedef enum _nOSC_Type {
 	nOSC_MIDI = 'm'
 } nOSC_Type;
 
-union _nOSC_Arg
-{
+union _nOSC_Arg {
 	int32_t i;
 	float f;
 	char *s;
@@ -83,6 +82,12 @@ union _nOSC_Arg
 
 typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **argb);
 
+struct _nOSC_Method {
+	char *path;
+	char *fmt;
+	nOSC_Method_Cb cb;
+};
+
 /*
  * Constants
  */
@@ -90,14 +95,10 @@ typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t ar
 #define nOSC_IMMEDIATE ((timestamp64u_t)1ULL)
 
 /*
- * Server functions
+ * Method functions
  */
 
-nOSC_Server *nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb);
-
-void nosc_server_dispatch (nOSC_Server *serv, uint8_t *buf, uint16_t size);
-
-void nosc_server_free (nOSC_Server *serv);
+void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size);
 
 /*
  * Bundle functions

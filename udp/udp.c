@@ -474,6 +474,29 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	return 1;
 }
 
+void
+udp_probe (uint8_t sock)
+{
+	// send data
+	uint8_t flag;
+	flag = SnCR_SEND;
+	_dma_write_sock (sock, SnCR, &flag, 1);
+
+	uint8_t ir;
+	do
+	{
+		_dma_read_sock (sock, SnIR, &ir, 1);
+		if (ir & SnIR_TIMEOUT) // ARPto occured, SEND failed
+		{
+			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
+			_dma_write_sock (sock, SnIR, &flag, 1);
+		}
+	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
+
+	flag = SnIR_SEND_OK;
+	_dma_write_sock (sock, SnIR, &flag, 1);
+}
+
 void 
 udp_send_block (uint8_t sock)
 {

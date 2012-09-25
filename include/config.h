@@ -114,6 +114,8 @@ struct _Config {
 
 extern Config config;
 
+extern nOSC_Method config_methods [];
+
 uint8_t config_load ();
 uint8_t config_save ();
 
@@ -125,8 +127,6 @@ void range_update ();
 
 uint8_t groups_load ();
 uint8_t groups_save ();
-
-nOSC_Server *config_methods_add (nOSC_Server *serv);
 
 #ifdef __cplusplus
 }

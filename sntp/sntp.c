@@ -74,7 +74,7 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay,
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
-	uint64_t delay = (t4-t1) - (t3-t2);
+	uint64_t delay = (t4-t1) - (t3-t2); // = network time latency sending+receiving
 	*roundtrip_delay = uint64_to_timestamp (delay);
 
 	int64_t offset = ((int64_t)(t2-t1) - (int64_t)(t4-t3)) / 2;

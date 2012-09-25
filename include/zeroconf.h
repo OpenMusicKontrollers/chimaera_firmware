@@ -30,6 +30,7 @@
 extern "C" {
 #endif
 
+void zeroconf_IPv4LL_random (uint8_t *ip);
 void zeroconf_dispatch (uint8_t *buf, uint16_t len);
 
 #ifdef __cplusplus

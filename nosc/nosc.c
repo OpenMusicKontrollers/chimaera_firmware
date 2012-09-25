@@ -30,27 +30,14 @@
 //TODO get rid of calloc and strdup and use configurable static buffers for it
 
 /*
- * Server
+ * Method
  */
 
-nOSC_Server * 
-nosc_server_method_add (nOSC_Server *serv, const char *path, const char *fmt, nOSC_Method_Cb cb)
-{
-	nOSC_Server *new = calloc (1, sizeof (nOSC_Server));
-	if (path)
-		new->path = strdup (path);
-	if (fmt)
-		new->fmt = strdup (fmt);
-	new->cb = cb;
-	new->next = serv;
-	return new;
-}
-
 void
-_nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path, char *fmt)
+_nosc_method_message_dispatch (nOSC_Method *meth, nOSC_Message *msg, char *path, char *fmt)
 {
-	nOSC_Server *ptr = serv;
-	while (ptr)
+	nOSC_Method *ptr = meth;
+	while (ptr->cb)
 	{
 		// raw matches only of path and format strings
 		if ( !ptr->path || !strcmp (ptr->path, path))
@@ -98,12 +85,12 @@ _nosc_server_message_dispatch (nOSC_Server *serv, nOSC_Message *msg, char *path,
 			}
 		}
 
-		ptr = ptr->next;
+		ptr++;
 	}
 }
 
 void
-nosc_server_dispatch (nOSC_Server *serv, uint8_t *buf, uint16_t size)
+nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size)
 {
 	nOSC_Bundle *bund;
 	nOSC_Message *msg;
@@ -117,7 +104,7 @@ nosc_server_dispatch (nOSC_Server *serv, uint8_t *buf, uint16_t size)
 
 		while (ptr)
 		{
-			_nosc_server_message_dispatch (serv, ptr->msg, ptr->path, ptr->fmt);
+			_nosc_method_message_dispatch (meth, ptr->msg, ptr->path, ptr->fmt);
 			ptr = ptr->prev;
 		}
 
@@ -126,24 +113,8 @@ nosc_server_dispatch (nOSC_Server *serv, uint8_t *buf, uint16_t size)
 	else if (buf[0] == '/') // check whether we are a message
 	{
 		msg = _nosc_message_deserialize (buf, size, &path, &fmt);
-		_nosc_server_message_dispatch (serv, msg, path, fmt);
+		_nosc_method_message_dispatch (meth, msg, path, fmt);
 		nosc_message_free (msg);
-	}
-}
-
-void 
-nosc_server_free (nOSC_Server *serv)
-{
-	nOSC_Server *ptr = serv;
-	while (ptr)
-	{
-		nOSC_Server *tmp = ptr;
-		ptr = ptr->next;
-		if (tmp->path)
-			free (tmp->path);
-		if (tmp->fmt)
-			free (tmp->fmt);
-		free (tmp);
 	}
 }
 

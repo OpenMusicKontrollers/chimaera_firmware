@@ -66,8 +66,6 @@ uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
 
-nOSC_Server *serv = NULL;
-
 HardwareSPI spi(2);
 HardwareTimer adc_timer(1);
 HardwareTimer sntp_timer(2);
@@ -177,7 +175,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	nosc_server_dispatch (serv, buf, len);
+	nosc_method_dispatch (config_methods, buf, len);
 }
 
 static void
@@ -197,6 +195,18 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 
 	timestamp_set (&now);
 	transmit = sntp_dispatch (buf, now, &roundtrip_delay, &clock_offset);
+
+	/* for debug purposes
+	size_t size;
+	float f_delay;
+	float f_offset;
+	f_delay = (float)roundtrip_delay.part.frac / 0xffffffff;
+	f_offset = (float)clock_offset.part.frac / 0xffffffff;
+	if (clock_offset.part.sec < 0)
+		f_offset -= 1;
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/sntp", "ff", f_delay, f_offset);
+	udp_send (config.debug.socket.sock, buf_o_ptr, size);
+	*/
 
 	if (t0.all == 0ULL)
 	{
@@ -442,6 +452,9 @@ setup ()
 	// load configuration from eeprom
 	config_load ();
 
+	// initialize random number generator based on mac address (used for IPv4LL)
+	srand (config.comm.mac[0] * config.comm.mac[1] + config.comm.mac[2] - config.comm.mac[3]);
+
 	// load calibrated sensor ranges from eeprom
 	range_load ();
 
@@ -470,11 +483,28 @@ setup ()
 	debug_enable (config.debug.enabled);
 	zeroconf_enable (config.zeroconf.enabled);
 
+	/*
+	// IPv4LL
+	udp_probe (config.debug.socket.sock);
+	uint8_t nil_ip [4] = {0, 0, 0, 0};
+	uint8_t src_ip [4];
+	udp_begin (config.zeroconf.socket.sock, 10000, 0);
+	while (1)
+	{
+		debug_str ("IPv4LL probe");
+		zeroconf_IPv4LL_random (src_ip);
+		udp_ip_set (nil_ip);
+		udp_gateway_set (src_ip);
+		udp_set_remote (config.zeroconf.socket.sock, src_ip, 10000);
+		udp_probe (config.zeroconf.socket.sock);
+
+		for (uint8_t a=0; a<1e3; a++)
+			delay_us (1e3);
+	}
+	*/
+
 	// set start time to 0
 	t0.all = 0ULL;
-
-	// add methods to OSC server
-	serv = config_methods_add (serv); //TODO move to config_enable
 
 	// set up ADCs
 	adc_disable (ADC1);

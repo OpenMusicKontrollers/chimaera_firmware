@@ -29,6 +29,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+void 
+zeroconf_IPv4LL_random (uint8_t *ip)
+{
+	ip[0] = 169;
+	ip[1] = 254;
+	ip[2] = 1 + rand () / (RAND_MAX / 253);
+	ip[3] = rand () / (RAND_MAX / 255);
+}
+
 static void
 dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 {

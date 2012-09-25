@@ -680,70 +680,60 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 	return 1;
 }
 
-nOSC_Server *
-config_methods_add (nOSC_Server *serv)
-{
-	// read-only
-	serv = nosc_server_method_add (serv, "/chimaera/version/get", "i", _version_get);
+nOSC_Method config_methods [] = {
+	{"/chimaera/version/get", "i", _version_get},
 
-	serv = nosc_server_method_add (serv, "/chimaera/config/load", "i", _config_load);
-	serv = nosc_server_method_add (serv, "/chimaera/config/save", "i", _config_save);
+	{"/chimaera/config/load", "i", _config_load},
+	{"/chimaera/config/save", "i", _config_save},
 
-	serv = nosc_server_method_add (serv, "/chimaera/comm/mac/set", "iiiiiii", _comm_mac_set);
-	serv = nosc_server_method_add (serv, "/chimaera/comm/ip/set", "iiiii", _comm_ip_set);
-	serv = nosc_server_method_add (serv, "/chimaera/comm/gateway/set", "iiiii", _comm_gateway_set);
-	serv = nosc_server_method_add (serv, "/chimaera/comm/subnet/set", "iiiii", _comm_subnet_set);
+	{"/chimaera/comm/mac/set", "iiiiiii", _comm_mac_set},
+	{"/chimaera/comm/ip/set", "iiiii", _comm_ip_set},
+	{"/chimaera/comm/gateway/set", "iiiii", _comm_gateway_set},
+	{"/chimaera/comm/subnet/set", "iiiii", _comm_subnet_set},
 
-	// enable/disable sockets
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set);
-	//serv = nosc_server_method_add (serv, "/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set);
-	//serv = nosc_server_method_add (serv, "/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set);
+	{"/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set},
+	{"/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set},
+	{"/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set},
+	//{"/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set},
+	//{"/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set},
 
-	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iT", _config_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/config/enabled/set", "iF", _config_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/config/socket/set", "iiiiiii", _config_socket_set);
-	// rate_set
+	{"/chimaera/config/enabled/set", "iT", _config_enabled_set},
+	{"/chimaera/config/enabled/set", "iF", _config_enabled_set},
+	{"/chimaera/config/socket/set", "iiiiiii", _config_socket_set},
+	//{"/chimaera/config/rate/set", "iiiiiii", _config_rate_set},
 
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/sntp/socket/set", "iiiiiii", _sntp_socket_set);
-	// tau_set
+	{"/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set},
+	{"/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set},
+	{"/chimaera/sntp/socket/set", "iiiiiii", _sntp_socket_set},
+	//{"/chimaera/sntp/tau/set", "iiiiiii", _sntp_tau_set},
 
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iT", _dump_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/enabled/set", "iF", _dump_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/dump/socket/set", "iiiiiii", _dump_socket_set);
+	{"/chimaera/dump/enabled/set", "iT", _dump_enabled_set},
+	{"/chimaera/dump/enabled/set", "iF", _dump_enabled_set},
+	{"/chimaera/dump/socket/set", "iiiiiii", _dump_socket_set},
 
-	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iT", _debug_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/debug/enabled/set", "iF", _debug_enabled_set);
-	serv = nosc_server_method_add (serv, "/chimaera/debug/socket/set", "iiiiiii", _debug_socket_set);
+	{"/chimaera/debug/enabled/set", "iT", _debug_enabled_set},
+	{"/chimaera/debug/enabled/set", "iF", _debug_enabled_set},
+	{"/chimaera/debug/socket/set", "iiiiiii", _debug_socket_set},
 
-	/*
-	serv = nosc_server_method_add (serv, "/chimaera/thresh0", "i*", _thresh0);
-	serv = nosc_server_method_add (serv, "/chimaera/thresh1", "i*", _thresh1);
-	serv = nosc_server_method_add (serv, "/chimaera/thresh2", "i*", _thresh2);
-	*/
+	//{"/chimaera/thresh0", "i*", _thresh0},
+	//{"/chimaera/thresh1", "i*", _thresh1},
+	//{"/chimaera/thresh2", "i*", _thresh2},
 
-	// manipulating groups
-	serv = nosc_server_method_add (serv, "/chimaera/group/clear", "i", _group_clear);
-	serv = nosc_server_method_add (serv, "/chimaera/group/add", "iiiff", _group_add);
-	serv = nosc_server_method_add (serv, "/chimaera/group/set", "iiiff", _group_set);
-	serv = nosc_server_method_add (serv, "/chimaera/group/del", "ii", _group_del);
-	serv = nosc_server_method_add (serv, "/chimaera/group/load", "i", _group_load);
-	serv = nosc_server_method_add (serv, "/chimaera/group/save", "i", _group_save);
+	{"/chimaera/group/clear", "i", _group_clear},
+	{"/chimaera/group/add", "iiiff", _group_add},
+	{"/chimaera/group/set", "iiiff", _group_set},
+	{"/chimaera/group/del", "ii", _group_del},
+	{"/chimaera/group/load", "i", _group_load},
+	{"/chimaera/group/save", "i", _group_save},
 
-	// set sample rate
-	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "ii", _rate_set); //TODO use "i*"
-	serv = nosc_server_method_add (serv, "/chimaera/rate/set", "iI", _rate_set);
+	{"/chimaera/rate/set", "ii", _rate_set}, //TODO use "i*"
+	{"/chimaera/rate/set", "iI", _rate_set},
 
-	// reset
-	serv = nosc_server_method_add (serv, "/chimaera/reset", "ii", _reset);
+	{"/chimaera/reset", "ii", _reset},
 
-	// calibration
-	serv = nosc_server_method_add (serv, "/chimaera/calibration/start", "i", _calibration_start);
-	serv = nosc_server_method_add (serv, "/chimaera/calibration/stop", "i", _calibration_stop);
-	serv = nosc_server_method_add (serv, "/chimaera/calibration/save", "i", _calibration_save);
+	{"/chimaera/calibration/start", "i", _calibration_start},
+	{"/chimaera/calibration/stop", "i", _calibration_stop},
+	{"/chimaera/calibration/save", "i", _calibration_save},
 
-	return serv;
-}
+	{NULL, NULL, NULL}
+};
