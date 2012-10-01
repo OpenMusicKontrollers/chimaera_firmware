@@ -512,7 +512,7 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 				memcpy_htonl (buf_ptr, ptr->arg.b.len);
 				buf_ptr += 4;
 				memcpy (buf_ptr, ptr->arg.b.dat, ptr->arg.b.len);
-				//TODO do we need to zero the ramining bytes up to len?
+				//TODO do we need to zero the ramaining bytes up to len?
 				buf_ptr += len;
 				break;
 			}

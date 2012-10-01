@@ -169,7 +169,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	uint8_t i;
 	for (i=0; i<4; i++)
-		if ( (ip[0] & config.comm.subnet[0]) != (config.comm.ip[0] & config.comm.subnet[0]) )
+		if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
 		{
 			debug_str ("sender IP not part of subnet");
 			return; // IP not part of same subnet as chimaera -> ignore message
@@ -183,7 +183,7 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	uint8_t i;
 	for (i=0; i<4; i++)
-		if ( (ip[0] & config.comm.subnet[0]) != (config.comm.ip[0] & config.comm.subnet[0]) )
+		if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
 		{
 			debug_str ("sender IP not part of subnet");
 			return; // IP not part of same subnet as chimaera -> ignore message

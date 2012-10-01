@@ -735,5 +735,5 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/calibration/stop", "i", _calibration_stop},
 	{"/chimaera/calibration/save", "i", _calibration_save},
 
-	{NULL, NULL, NULL}
+	{NULL, NULL, NULL} // terminator
 };
