@@ -458,11 +458,10 @@ setup ()
 	// load calibrated sensor ranges from eeprom
 	range_load ();
 
-	// init DMA, which is uses for SPI and ADC
+	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
 
 	// set up SPI for usage with wiz820io
-  //spi.begin (SPI_18MHZ, MSBFIRST, 0); 
   spi.begin (SPI_18MHZ, MSBFIRST, 0); 
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
 

@@ -57,10 +57,6 @@ void timeout_timer_reconfigure ();
 void timeout_timer_start ();
 void timeout_timer_stop ();
 
-void ping_timer_pause ();
-void ping_timer_reconfigure ();
-void ping_timer_resume ();
-
 void tuio_enable (uint8_t b);
 void config_enable (uint8_t b);
 void sntp_enable (uint8_t b);

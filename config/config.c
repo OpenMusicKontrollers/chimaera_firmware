@@ -24,6 +24,7 @@
 #include "config_private.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #include <chimaera.h>
 #include <chimutil.h>
@@ -121,18 +122,6 @@ Config config = {
 	.rate = 2000, // update rate in Hz
 	.pacemaker = 0x0b // pacemaker rate 2^11=2048
 };
-
-static uint8_t
-_version_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	uint16_t size;
-	int32_t id = args[0]->i;
-
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
 
 uint8_t
 config_load ()
@@ -262,6 +251,77 @@ groups_save ()
 	return 1;
 }
 
+_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
+	}
+	else
+	{
+		uint8_t arg = args[1]->i;
+		if ( (arg >= min) && (arg < max) )
+		{
+			*val = arg;
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+		{
+			char buf[64];
+			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+		}
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+_check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
+	}
+	else
+	{
+		uint16_t arg = args[1]->i;
+		if ( (arg >= min) && (arg < max) )
+		{
+			*val = arg;
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+		{
+			char buf[64];
+			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+		}
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
 
 static uint8_t
 _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
@@ -296,78 +356,150 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_comm_mac_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	config.comm.mac[0] = args[1]->i;
-	config.comm.mac[0] = args[2]->i;
-	config.comm.mac[0] = args[3]->i;
-	config.comm.mac[0] = args[4]->i;
-	config.comm.mac[0] = args[5]->i;
-	config.comm.mac[0] = args[6]->i;
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
+			config.comm.mac[0], config.comm.mac[1], config.comm.mac[2], config.comm.mac[3], config.comm.mac[4], config.comm.mac[5]);
+	}
+	else
+	{
+		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) && (args[5]->i < 0x100) && (args[6]->i < 0x100) )
+		{
+			config.comm.mac[0] = args[1]->i;
+			config.comm.mac[1] = args[2]->i;
+			config.comm.mac[2] = args[3]->i;
+			config.comm.mac[3] = args[4]->i;
+			config.comm.mac[4] = args[5]->i;
+			config.comm.mac[5] = args[6]->i;
 
-	udp_mac_set (config.comm.mac);
+			udp_mac_set (config.comm.mac);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in MAC must be < 0x100");
+	}
+
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_comm_ip_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	config.comm.ip[0] = args[1]->i;
-	config.comm.ip[0] = args[2]->i;
-	config.comm.ip[0] = args[3]->i;
-	config.comm.ip[0] = args[4]->i;
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+			config.comm.ip[0], config.comm.ip[1], config.comm.ip[2], config.comm.ip[3]);
+	}
+	else
+	{
+		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		{
+			config.comm.ip[0] = args[1]->i;
+			config.comm.ip[1] = args[2]->i;
+			config.comm.ip[2] = args[3]->i;
+			config.comm.ip[3] = args[4]->i;
 
-	udp_ip_set (config.comm.ip);
+			udp_ip_set (config.comm.ip);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+	}
+
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_comm_gateway_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	config.comm.gateway[0] = args[1]->i;
-	config.comm.gateway[0] = args[2]->i;
-	config.comm.gateway[0] = args[3]->i;
-	config.comm.gateway[0] = args[4]->i;
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+			config.comm.gateway[0], config.comm.gateway[1], config.comm.gateway[2], config.comm.gateway[3]);
+	}
+	else
+	{
+		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		{
+			config.comm.gateway[0] = args[1]->i;
+			config.comm.gateway[1] = args[2]->i;
+			config.comm.gateway[2] = args[3]->i;
+			config.comm.gateway[3] = args[4]->i;
 
-	udp_gateway_set (config.comm.gateway);
+			udp_gateway_set (config.comm.gateway);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+	}
+
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
 
 static uint8_t
-_comm_subnet_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	config.comm.subnet[0] = args[1]->i;
-	config.comm.subnet[0] = args[2]->i;
-	config.comm.subnet[0] = args[3]->i;
-	config.comm.subnet[0] = args[4]->i;
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+			config.comm.subnet[0], config.comm.subnet[1], config.comm.subnet[2], config.comm.subnet[3]);
+	}
+	else
+	{
+		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		{
+			config.comm.subnet[0] = args[1]->i;
+			config.comm.subnet[1] = args[2]->i;
+			config.comm.subnet[2] = args[3]->i;
+			config.comm.subnet[3] = args[4]->i;
 
-	udp_subnet_set (config.comm.subnet);
+			udp_subnet_set (config.comm.subnet);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (b)
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+	else
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -378,6 +510,7 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
+
 	if (fmt[1] == nOSC_TRUE)
 	{
 		cb (1);
@@ -388,8 +521,6 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 		cb (0);
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
-	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong type: boolean expected at position [2]");
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -397,56 +528,79 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 } 
 
 static uint8_t
-_tuio_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (tuio_enable, path, fmt, argc, args);
+	if (argc == 1) // query
+		return _enabled_get (config.tuio.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (tuio_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (config_enable, path, fmt, argc, args);
+	if (argc == 1) // query
+		return _enabled_get (config.config.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (config_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (sntp_enable, path, fmt, argc, args);
+	if (argc == 1) // query
+		return _enabled_get (config.sntp.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (sntp_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (dump_enable, path, fmt, argc, args);
+	if (argc == 1) // query
+		return _enabled_get (config.dump.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (dump_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_enabled_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _enabled_set (debug_enable, path, fmt, argc, args);
+	if (argc == 1) // query
+		return _enabled_get (config.debug.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (debug_enable, path, fmt, argc, args);
 }
 
 static uint8_t
-_socket_set (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x10) && (args[4]->i < 0x10) && (args[5]->i < 0x10) && (args[6]->i < 0x10) )
+	if (argc == 1) // query
 	{
-		socket->port[0] = args[1]->i;
-		socket->port[1] = args[2]->i;
-		socket->ip[0] = args[3]->i;
-		socket->ip[1] = args[4]->i;
-		socket->ip[2] = args[5]->i;
-		socket->ip[3] = args[6]->i;
-
-		cb (flag);
-
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
+			socket->port[0], socket->port[1], socket->ip[0], socket->ip[1], socket->ip[2], socket->ip[3]);
 	}
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x100 and numbers in IP must be < 0x10");
+	{
+		if ( (args[1]->i < 0x10000) && (args[2]->i < 0x10000) && (args[3]->i < 0x100) && (args[4]->i < 0x100) && (args[5]->i < 0x100) && (args[6]->i < 0x100) )
+		{
+			socket->port[0] = args[1]->i;
+			socket->port[1] = args[2]->i;
+			socket->ip[0] = args[3]->i;
+			socket->ip[1] = args[4]->i;
+			socket->ip[2] = args[5]->i;
+			socket->ip[3] = args[6]->i;
+
+			cb (flag);
+
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100");
+	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -454,61 +608,116 @@ _socket_set (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const 
 }
 
 static uint8_t
-_tuio_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.tuio.socket, tuio_enable, config.tuio.enabled, path, fmt, argc, args);
+	return _socket (&config.tuio.socket, tuio_enable, config.tuio.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.config.socket, config_enable, config.config.enabled, path, fmt, argc, args);
+	return _socket (&config.config.socket, config_enable, config.config.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.sntp.socket, sntp_enable, config.sntp.enabled, path, fmt, argc, args);
+	return _socket (&config.sntp.socket, sntp_enable, config.sntp.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.dump.socket, dump_enable, config.dump.enabled, path, fmt, argc, args);
+	return _socket (&config.dump.socket, dump_enable, config.dump.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_socket_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _socket_set (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
+	return _socket (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_rate_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range16 (&config.config.rate, 1, 10, path, fmt, argc, args);
+}
+
+static uint8_t
+_sntp_tau (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range8 (&config.sntp.tau, 1, 10, path, fmt, argc, args);
+}
+
+static uint8_t
+_tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
 
-	switch (fmt[1])
+	if (argc == 1) // query
 	{
-		case nOSC_INT32:
-			config.rate = args[1]->i;
-			break;
-		case nOSC_INFTY:
-			config.rate = 0;
-			break;
-	}
-
-	if (config.rate)
-	{
-		adc_timer_pause ();
-		adc_timer_reconfigure ();
-		adc_timer_resume ();
+		if (config.tuio.long_header)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 	}
 	else
-		adc_timer_pause ();
+	{
+		switch (fmt[1])
+		{
+			case nOSC_TRUE:
+				tuio2_frm_long_set ("chimaera", config.comm.ip, config.tuio.socket.port[1], 144, 1);
+				break;
+			case nOSC_FALSE:
+				tuio2_frm_long_unset ();
+				break;
+		}
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (argc == 1) // query
+	{
+		if (config.rate)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, config.rate);
+		else // infinity
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
+	}
+	else
+	{
+		switch (fmt[1])
+		{
+			case nOSC_INT32:
+				config.rate = args[1]->i;
+				break;
+			case nOSC_INFTY:
+				config.rate = 0;
+				break;
+		}
+
+		if (config.rate)
+		{
+			adc_timer_pause ();
+			adc_timer_reconfigure ();
+			adc_timer_resume ();
+		}
+		else
+			adc_timer_pause ();
+
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -519,9 +728,15 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
+	int32_t sec;
 
-	int32_t sec = args[1]->i;
-	if (sec < 1)
+	if (argc > 1)
+	{
+		sec = args[1]->i;
+		if (sec < 1)
+			sec = 1;
+	}
+	else
 		sec = 1;
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -531,6 +746,30 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	nvic_sys_reset ();
 
 	return 1;
+}
+
+static uint8_t
+_thresh0 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range16 (&config.cmc.thresh0, 0, 2048, path, fmt, argc, args);
+}
+
+static uint8_t
+_thresh1 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range16 (&config.cmc.thresh1, 0, 2048, path, fmt, argc, args);
+}
+
+static uint8_t
+_thresh2 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range16 (&config.cmc.thresh2, 0, 2048, path, fmt, argc, args);
+}
+
+static uint8_t
+_peak_thresh (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	return _check_range8 (&config.cmc.peak_thresh, 3, 9, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -681,43 +920,71 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 }
 
 nOSC_Method config_methods [] = {
-	{"/chimaera/version/get", "i", _version_get},
+	{"/chimaera/version", "i", _version},
 
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
 
-	{"/chimaera/comm/mac/set", "iiiiiii", _comm_mac_set},
-	{"/chimaera/comm/ip/set", "iiiii", _comm_ip_set},
-	{"/chimaera/comm/gateway/set", "iiiii", _comm_gateway_set},
-	{"/chimaera/comm/subnet/set", "iiiii", _comm_subnet_set},
+	{"/chimaera/comm/mac", "i", _comm_mac},
+	{"/chimaera/comm/mac", "iiiiiii", _comm_mac},
+	{"/chimaera/comm/ip", "i", _comm_ip},
+	{"/chimaera/comm/ip", "iiiii", _comm_ip},
+	{"/chimaera/comm/gateway", "i", _comm_gateway},
+	{"/chimaera/comm/gateway", "iiiii", _comm_gateway},
+	{"/chimaera/comm/subnet", "i", _comm_subnet},
+	{"/chimaera/comm/subnet", "iiiii", _comm_subnet},
 
-	{"/chimaera/tuio/enabled/set", "iT", _tuio_enabled_set},
-	{"/chimaera/tuio/enabled/set", "iF", _tuio_enabled_set},
-	{"/chimaera/tuio/socket/set", "iiiiiii", _tuio_socket_set},
-	//{"/chimaera/tuio/long_header/set", "iT", _tuio_long_header_set},
-	//{"/chimaera/tuio/long_header/set", "iF", _tuio_long_header_set},
+	{"/chimaera/tuio/enabled", "i", _tuio_enabled},
+	{"/chimaera/tuio/enabled", "iT", _tuio_enabled},
+	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
+	{"/chimaera/tuio/socket", "i", _tuio_socket},
+	{"/chimaera/tuio/socket", "iiiiiii", _tuio_socket},
+	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
+	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
+	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
 
-	{"/chimaera/config/enabled/set", "iT", _config_enabled_set},
-	{"/chimaera/config/enabled/set", "iF", _config_enabled_set},
-	{"/chimaera/config/socket/set", "iiiiiii", _config_socket_set},
-	//{"/chimaera/config/rate/set", "iiiiiii", _config_rate_set},
+	{"/chimaera/config/enabled", "i", _config_enabled},
+	{"/chimaera/config/enabled", "iT", _config_enabled},
+	{"/chimaera/config/enabled", "iF", _config_enabled},
+	{"/chimaera/config/socket", "i", _config_socket},
+	{"/chimaera/config/socket", "iiiiiii", _config_socket},
+	{"/chimaera/config/rate", "i", _config_rate},
+	{"/chimaera/config/rate", "ii", _config_rate},
 
-	{"/chimaera/sntp/enabled/set", "iT", _sntp_enabled_set},
-	{"/chimaera/sntp/enabled/set", "iF", _sntp_enabled_set},
-	{"/chimaera/sntp/socket/set", "iiiiiii", _sntp_socket_set},
-	//{"/chimaera/sntp/tau/set", "iiiiiii", _sntp_tau_set},
+	{"/chimaera/sntp/enabled", "i", _sntp_enabled},
+	{"/chimaera/sntp/enabled", "iT", _sntp_enabled},
+	{"/chimaera/sntp/enabled", "iF", _sntp_enabled},
+	{"/chimaera/sntp/socket", "i", _sntp_socket},
+	{"/chimaera/sntp/socket", "iiiiiii", _sntp_socket},
+	{"/chimaera/sntp/tau", "i", _sntp_tau},
+	{"/chimaera/sntp/tau", "ii", _sntp_tau},
 
-	{"/chimaera/dump/enabled/set", "iT", _dump_enabled_set},
-	{"/chimaera/dump/enabled/set", "iF", _dump_enabled_set},
-	{"/chimaera/dump/socket/set", "iiiiiii", _dump_socket_set},
+	{"/chimaera/dump/enabled", "i", _dump_enabled},
+	{"/chimaera/dump/enabled", "iT", _dump_enabled},
+	{"/chimaera/dump/enabled", "iF", _dump_enabled},
+	{"/chimaera/dump/socket", "i", _dump_socket},
+	{"/chimaera/dump/socket", "iiiiiii", _dump_socket},
 
-	{"/chimaera/debug/enabled/set", "iT", _debug_enabled_set},
-	{"/chimaera/debug/enabled/set", "iF", _debug_enabled_set},
-	{"/chimaera/debug/socket/set", "iiiiiii", _debug_socket_set},
+	{"/chimaera/debug/enabled", "i", _debug_enabled},
+	{"/chimaera/debug/enabled", "iT", _debug_enabled},
+	{"/chimaera/debug/enabled", "iF", _debug_enabled},
+	{"/chimaera/debug/socket", "i", _debug_socket},
+	{"/chimaera/debug/socket", "iiiiiii", _debug_socket},
 
-	//{"/chimaera/thresh0", "i*", _thresh0},
-	//{"/chimaera/thresh1", "i*", _thresh1},
-	//{"/chimaera/thresh2", "i*", _thresh2},
+	//TODO
+	//{"/chimaera/zeroconf/enabled", "i", _zeroconf_enabled},
+	//{"/chimaera/zeroconf/enabled", "iT", _zeroconf_enabled},
+	//{"/chimaera/zeroconf/enabled", "iF", _zeroconf_enabled},
+
+	{"/chimaera/thresh0", "i", _thresh0},
+	{"/chimaera/thresh0", "ii", _thresh0},
+	{"/chimaera/thresh1", "i", _thresh1},
+	{"/chimaera/thresh1", "ii", _thresh1},
+	{"/chimaera/thresh2", "i", _thresh2},
+	{"/chimaera/thresh2", "ii", _thresh2},
+
+	{"/chimaera/peak_thresh", "i", _peak_thresh},
+	{"/chimaera/peak_thresh", "ii", _peak_thresh},
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/add", "iiiff", _group_add},
@@ -726,9 +993,11 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 
-	{"/chimaera/rate/set", "ii", _rate_set}, //TODO use "i*"
-	{"/chimaera/rate/set", "iI", _rate_set},
+	{"/chimaera/rate", "i", _rate},
+	{"/chimaera/rate", "ii", _rate},
+	{"/chimaera/rate", "iI", _rate},
 
+	{"/chimaera/reset", "i", _reset},
 	{"/chimaera/reset", "ii", _reset},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
