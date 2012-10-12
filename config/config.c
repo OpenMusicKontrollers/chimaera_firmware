@@ -39,7 +39,7 @@
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
-	.magic = 0x03, // used to compare EEPROM and FLASH config versions
+	.magic = 0x04, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -62,6 +62,7 @@ Config config = {
 			.ip = LAN_BROADCAST
 		},
 		.long_header = 0,
+		.offset = nOSC_IMMEDIATE
 	},
 
 	.config = {
@@ -682,6 +683,27 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 }
 
 static uint8_t
+_tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", config.tuio.offset);
+	}
+	else
+	{
+		config.tuio.offset = args[1]->t;
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
@@ -942,6 +964,8 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
+	{"/chimaera/tuio/offset", "i", _tuio_offset},
+	{"/chimaera/tuio/offset", "it", _tuio_offset},
 
 	{"/chimaera/config/enabled", "i", _config_enabled},
 	{"/chimaera/config/enabled", "iT", _config_enabled},

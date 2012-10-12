@@ -382,7 +382,16 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 			X,
 			cmc.blobs[cmc.old][j].p);
 	}
-	size = tuio2_serialize (buf, cmc.I);
+
+	timestamp64u_t offset = nOSC_IMMEDIATE;
+	if (config.tuio.offset.all != nOSC_IMMEDIATE.all)
+	{
+		offset.part.sec += config.tuio.offset.part.sec;
+		if (offset.part.frac + config.tuio.offset.part.frac < offset.part.frac) // overflow
+			offset.part.sec += 1;
+		offset.part.frac += config.tuio.offset.part.frac;
+	}
+	size = tuio2_serialize (buf, cmc.I, offset);
 	return size;
 }
 

@@ -74,7 +74,7 @@ tuio2_init ()
 }
 
 uint16_t
-tuio2_serialize (uint8_t *buf, uint8_t end)
+tuio2_serialize (uint8_t *buf, uint8_t end, timestamp64u_t offset)
 {
 	// unlink at end pos
 	if (end < tuio.len)
@@ -94,7 +94,7 @@ tuio2_serialize (uint8_t *buf, uint8_t end)
 	}
 
 	// serialize
-	uint16_t size = nosc_bundle_serialize (tuio.bndl[tuio.len+1], nOSC_IMMEDIATE, buf);
+	uint16_t size = nosc_bundle_serialize (tuio.bndl[tuio.len+1], offset, buf);
 
 	// relink at end pos
 	if (end < tuio.len)

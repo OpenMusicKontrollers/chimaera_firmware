@@ -34,7 +34,7 @@ extern "C" {
 
 void tuio2_init ();
 
-uint16_t tuio2_serialize (uint8_t *buf, uint8_t end);
+uint16_t tuio2_serialize (uint8_t *buf, uint8_t end, timestamp64u_t offset);
 
 void tuio2_frm_set (uint32_t id, timestamp64u_t timestamp);
 void tuio2_frm_long_set (const char *app, uint8_t *addr, uint16_t inst, uint16_t w, uint16_t h);
