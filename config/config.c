@@ -730,12 +730,12 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 
 		if (config.rate)
 		{
-			adc_timer_pause ();
+			timer_pause (adc_timer);
 			adc_timer_reconfigure ();
-			adc_timer_resume ();
+			timer_resume (adc_timer);
 		}
 		else
-			adc_timer_pause ();
+			timer_pause (adc_timer);
 
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}

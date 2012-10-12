@@ -29,6 +29,10 @@
 
 volatile uint8_t mem2mem_dma_done = 0;
 
+timer_dev *adc_timer;
+timer_dev *sntp_timer;
+timer_dev *config_timer;
+
 void
 _mem2mem_dma_irq (void)
 {
@@ -132,7 +136,7 @@ tuio_enable (uint8_t b)
 void 
 config_enable (uint8_t b)
 {
-	config_timer_pause ();
+	timer_pause (config_timer);
 	config_timer_reconfigure ();
 
 	config.config.enabled = b;
@@ -141,14 +145,14 @@ config_enable (uint8_t b)
 		udp_begin (config.config.socket.sock, config.config.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port[DST_PORT]);
 
-		config_timer_resume ();
+		timer_resume (config_timer);
 	}
 }
 
 void 
 sntp_enable (uint8_t b)
 {
-	sntp_timer_pause ();
+	timer_pause (sntp_timer);
 	sntp_timer_reconfigure ();
 
 	config.sntp.enabled = b;
@@ -157,7 +161,7 @@ sntp_enable (uint8_t b)
 		udp_begin (config.sntp.socket.sock, config.sntp.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port[DST_PORT]);
 
-		sntp_timer_resume ();
+		timer_resume (sntp_timer);
 	}
 }
 

@@ -67,9 +67,6 @@ uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
 
 HardwareSPI spi(2);
-HardwareTimer adc_timer(1);
-HardwareTimer sntp_timer(2);
-HardwareTimer config_timer(3);
 
 uint8_t first = 1;
 timestamp64u_t t0;
@@ -100,7 +97,7 @@ static void
 adc_timer_irq ()
 {
 	adc_time_up = 1;
-	adc_timer.pause ();
+	timer_pause (adc_timer);
 }
 
 static void
@@ -251,7 +248,7 @@ loop ()
 	if (config.rate)
 	{
 		adc_time_up = 0;
-		adc_timer.resume ();
+		timer_resume (adc_timer);
 	}
 
 	if (calibrating)
@@ -339,83 +336,67 @@ loop ()
 			;
 }
 
-extern "C" uint32_t _micros ()
+extern "C" uint32_t
+_micros ()
 {
 	return micros ();
 }
 
-extern "C" void adc_timer_pause ()
+extern "C" void
+adc_timer_reconfigure ()
 {
-	adc_timer.pause ();
-}
+	uint16_t prescaler = 0x0001;
+	uint16_t reload = 72e6 / config.rate;
+	uint16_t compare = reload;
 
-extern "C" void adc_timer_reconfigure ()
-{
-  adc_timer.setPeriod (1e6/config.rate); // set period based on update rate and mux channels
-
-	adc_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	adc_timer.setCompare (TIMER_CH1, adc_timer.getOverflow ());
-	adc_timer.attachInterrupt (TIMER_CH1, adc_timer_irq);
-	// prescaler = 1
-	// overflow = 72Mhz / rate
-
-	adc_timer.refresh ();
+	timer_set_prescaler (adc_timer, prescaler);
+	timer_set_reload (adc_timer, reload);
+	timer_set_mode (adc_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (adc_timer, TIMER_CH1, compare);
+	timer_attach_interrupt (adc_timer, TIMER_CH1, adc_timer_irq);
+	timer_generate_update (adc_timer);
 
 	nvic_irq_set_priority (NVIC_TIMER1_CC, ADC_TIMER_PRIORITY);
 }
 
-extern "C" void adc_timer_resume ()
+extern "C" void 
+sntp_timer_reconfigure ()
 {
-	adc_timer.resume ();
-}
+	uint16_t prescaler = config.sntp.tau;
+	uint16_t reload = 0xffff;
+	uint16_t compare = reload;
 
-extern "C" void sntp_timer_pause ()
-{
-	sntp_timer.pause ();
-}
-
-extern "C" void sntp_timer_reconfigure ()
-{
-  sntp_timer.setPeriod (1e6 * config.sntp.tau);
-
-	sntp_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	sntp_timer.setCompare (TIMER_CH1, sntp_timer.getOverflow ());  // Interrupt 1 count after each update
-	sntp_timer.attachInterrupt (TIMER_CH1, sntp_timer_irq);
-	sntp_timer.refresh ();
+	timer_set_prescaler (sntp_timer, prescaler);
+	timer_set_reload (sntp_timer, reload);
+	timer_set_mode (sntp_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (sntp_timer, TIMER_CH1, compare);
+	timer_attach_interrupt (sntp_timer, TIMER_CH1, sntp_timer_irq);
+	timer_generate_update (sntp_timer);
 
 	nvic_irq_set_priority (NVIC_TIMER2, SNTP_TIMER_PRIORITY);
 }
 
-extern "C" void sntp_timer_resume ()
+extern "C" void
+config_timer_reconfigure ()
 {
-	sntp_timer.resume ();
-}
+	uint16_t prescaler = 0x0001;
+	uint16_t reload = 72e6 / config.config.rate;
+	uint16_t compare = reload;
 
-extern "C" void config_timer_pause ()
-{
-	config_timer.pause ();
-}
+	timer_set_prescaler (config_timer, prescaler);
+	timer_set_reload (config_timer, reload);
 
-extern "C" void config_timer_reconfigure ()
-{
-  config_timer.setPeriod (1e6/config.config.rate); // set period based on update rate
+	timer_set_mode (config_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (config_timer, TIMER_CH1, compare);
+	timer_attach_interrupt (config_timer, TIMER_CH1, config_timer_irq);
 
-	config_timer.setMode (TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	config_timer.setCompare (TIMER_CH1, config_timer.getOverflow ());  // Interrupt 1 count after each update
-	config_timer.attachInterrupt (TIMER_CH1, config_timer_irq);
+	timer_set_mode (config_timer, TIMER_CH2, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (config_timer, TIMER_CH2, compare);
+	timer_attach_interrupt (config_timer, TIMER_CH2, zeroconf_timer_irq);
 
-	config_timer.setMode (TIMER_CH2, TIMER_OUTPUT_COMPARE);
-	config_timer.setCompare (TIMER_CH2, config_timer.getOverflow ());
-	config_timer.attachInterrupt (TIMER_CH2, zeroconf_timer_irq);
-
-	config_timer.refresh ();
+	timer_generate_update (config_timer);
 
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
-}
-
-extern "C" void config_timer_resume ()
-{
-	config_timer.resume ();
 }
 
 inline void
@@ -579,7 +560,15 @@ setup ()
 	// load saved groups
 	groups_load ();
 
-	adc_timer_pause ();
+	adc_timer = TIMER1;
+	sntp_timer = TIMER2;
+	config_timer = TIMER3;
+
+	timer_init (adc_timer);
+	timer_init (sntp_timer);
+	timer_init (config_timer);
+
+	timer_pause (adc_timer);
 	adc_timer_reconfigure ();
 }
 

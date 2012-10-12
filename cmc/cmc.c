@@ -45,8 +45,8 @@ cmc_init ()
 
 	cmc.I = 0;
 	cmc.J = 0;
-	cmc.fid = 0;
-	cmc.sid = 0;
+	cmc.fid = 0; //TODO where do we start counting, at 0 or 1?
+	cmc.sid = 0; //TODO where to we start counting, at 0 or 1?
 
 	cmc.d = 1.0ur / (SENSOR_N-1);
 	cmc.d_2 = cmc.d / 2;

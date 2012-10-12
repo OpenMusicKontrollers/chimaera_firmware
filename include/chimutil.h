@@ -28,10 +28,15 @@
 #include <udp.h>
 
 #include <libmaple/adc.h>
+#include <libmaple/timer.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern timer_dev *adc_timer;
+extern timer_dev *sntp_timer;
+extern timer_dev *config_timer;
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
