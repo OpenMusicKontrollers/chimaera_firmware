@@ -92,7 +92,7 @@ struct _nOSC_Method {
  * Constants
  */
 
-#define nOSC_IMMEDIATE ((timestamp64u_t)1ULL)
+#define nOSC_IMMEDIATE ((timestamp64u_t){.part={.sec=0UL, .frac=1UL}})
 
 /*
  * Method functions

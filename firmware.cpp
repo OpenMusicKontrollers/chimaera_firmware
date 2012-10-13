@@ -345,8 +345,8 @@ _micros ()
 extern "C" void
 adc_timer_reconfigure ()
 {
-	uint16_t prescaler = 0x0001;
-	uint16_t reload = 72e6 / config.rate;
+	uint16_t prescaler = 1e3;
+	uint16_t reload = 72e3 / config.rate;
 	uint16_t compare = reload;
 
 	timer_set_prescaler (adc_timer, prescaler);
@@ -362,8 +362,8 @@ adc_timer_reconfigure ()
 extern "C" void 
 sntp_timer_reconfigure ()
 {
-	uint16_t prescaler = config.sntp.tau;
-	uint16_t reload = 0xffff;
+	uint16_t prescaler = 0xffff; 
+	uint16_t reload = 72e6 / 0xffff * config.sntp.tau;
 	uint16_t compare = reload;
 
 	timer_set_prescaler (sntp_timer, prescaler);
@@ -379,8 +379,8 @@ sntp_timer_reconfigure ()
 extern "C" void
 config_timer_reconfigure ()
 {
-	uint16_t prescaler = 0x0001;
-	uint16_t reload = 72e6 / config.config.rate;
+	uint16_t prescaler = 72e6 / 0xffff;
+	uint16_t reload = 0xffff / config.config.rate;
 	uint16_t compare = reload;
 
 	timer_set_prescaler (config_timer, prescaler);
@@ -454,6 +454,18 @@ setup ()
 	uint8_t rx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
+
+	// initialize timers
+	adc_timer = TIMER1;
+	sntp_timer = TIMER2;
+	config_timer = TIMER3;
+
+	timer_init (adc_timer);
+	timer_init (sntp_timer);
+	timer_init (config_timer);
+
+	timer_pause (adc_timer);
+	adc_timer_reconfigure ();
 
 	// initialize sockets
 	tuio_enable (config.tuio.enabled);
@@ -559,17 +571,6 @@ setup ()
 
 	// load saved groups
 	groups_load ();
-
-	adc_timer = TIMER1;
-	sntp_timer = TIMER2;
-	config_timer = TIMER3;
-
-	timer_init (adc_timer);
-	timer_init (sntp_timer);
-	timer_init (config_timer);
-
-	timer_pause (adc_timer);
-	adc_timer_reconfigure ();
 }
 
 __attribute__ ((constructor)) void

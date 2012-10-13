@@ -222,7 +222,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				buf_ptr += 8;
 				break;
 			case nOSC_TIMESTAMP:
-				msg = nosc_message_add_timestamp (msg, (timestamp64u_t){memcpy_ntohll (buf_ptr)});
+				msg = nosc_message_add_timestamp (msg, (timestamp64u_t){memcpy_ntohll (buf_ptr)}); //FIXME check this
 				buf_ptr += 8;
 				break;
 
@@ -584,6 +584,9 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 			{
 				timestamp64u_t tt;
 				tt.all = va_arg (args, uint64_t);
+				uint32_t tmp = tt.part.sec;
+				tt.part.sec = tt.part.frac;
+				tt.part.frac = tmp;
 				msg = nosc_message_add_timestamp (msg, tt);
         break;
 			}
