@@ -383,13 +383,8 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 	}
 
 	timestamp64u_t offset = nOSC_IMMEDIATE;
-	if (config.tuio.offset.all != nOSC_IMMEDIATE.all)
-	{
-		offset.part.sec += config.tuio.offset.part.sec;
-		if (offset.part.frac + config.tuio.offset.part.frac < offset.part.frac) // overflow
-			offset.part.sec += 1;
-		offset.part.frac += config.tuio.offset.part.frac;
-	}
+	if (config.tuio.offset != nOSC_IMMEDIATE)
+		time_add (timestamp, config.tuio.offset, &offset);
 	size = tuio2_serialize (buf, cmc.I, offset);
 	return size;
 }

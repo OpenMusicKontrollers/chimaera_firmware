@@ -81,6 +81,8 @@ uint32_t _micros ();
 void stop_watch_start (Stop_Watch *sw);
 void stop_watch_stop (Stop_Watch *sw);
 
+void time_add (timestamp64u_t ta, timestamp64u_t tb, timestamp64u_t *tc);
+
 #ifdef __cplusplus
 }
 #endif

@@ -30,54 +30,8 @@
 extern "C" {
 #endif
 
-typedef union _timestamp64u_t timestamp64u_t;
-typedef union _timestamp64s_t timestamp64s_t;
-
-union _timestamp64u_t {
-	uint64_t all;
-	struct {
-		uint32_t sec;
-		uint32_t frac;
-	} part;
-};
-
-union _timestamp64s_t {
-	int64_t all;
-	struct {
-		int32_t sec;
-		uint32_t frac;
-	} part;
-};
-
-#define timestamp_to_int64(t) \
-({ \
-		timestamp64s_t __t = (t); \
-		((int64_t)(__t).part.sec<<32) + (__t).part.frac; \
-})
-
-#define timestamp_to_uint64(t) \
-({ \
-		timestamp64u_t __t = (t); \
-		((uint64_t)(__t).part.sec<<32) + (__t).part.frac; \
-})
-
-#define int64_to_timestamp(x) \
-({ \
-		int64_t __x = (x); \
-    timestamp64s_t __t; \
-		__t.part.sec = (__x)>>32; \
-		__t.part.frac = (__x)&0xffffffff; \
-		__t; \
-})
-
-#define uint64_to_timestamp(x) \
-({ \
-		uint64_t __x = (x); \
-    timestamp64u_t __t; \
-		__t.part.sec = (__x)>>32; \
-		__t.part.frac = (__x)&0xffffffff; \
-		__t; \
-})
+typedef uint64_t timestamp64u_t;
+typedef int64_t timestamp64s_t;
 
 /*
  * Endian stuff

@@ -37,8 +37,7 @@ sntp_request (uint8_t *buf, timestamp64u_t now)
 	sntp_t *request = (sntp_t *) buf;
 
 	request->li_vn_mode = (0x0<<6) + (0x4<<3) + 0x3;
-	request->transmit_timestamp.part.sec = htonl (now.part.sec);
-	request->transmit_timestamp.part.frac = htonl (now.part.frac);
+	request->transmit_timestamp = htonll (now);
 	
 	return len;
 }
@@ -48,23 +47,14 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay,
 {
 	sntp_t *answer = (sntp_t *) buf;
 
-	timestamp64u_t *T1 = &answer->originate_timestamp;
-	timestamp64u_t *T2 = &answer->receive_timestamp;
-	timestamp64u_t *T3 = &answer->transmit_timestamp;
+	fix_32_32_t *t1 = &answer->originate_timestamp;
+	fix_32_32_t *t2 = &answer->receive_timestamp;
+	fix_32_32_t *t3 = &answer->transmit_timestamp;
+	fix_32_32_t *t4 = (fix_32_32_t *)&T4;
 
-	T1->part.sec = htonl (T1->part.sec);
-	T1->part.frac = htonl (T1->part.frac);
-
-	T2->part.sec = htonl (T2->part.sec);
-	T2->part.frac = htonl (T2->part.frac);
-
-	T3->part.sec = htonl (T3->part.sec);
-	T3->part.frac = htonl (T3->part.frac);
-
-	uint64_t t1 = timestamp_to_uint64 (*T1);
-	uint64_t t2 = timestamp_to_uint64 (*T2);
-	uint64_t t3 = timestamp_to_uint64 (*T3);
-	uint64_t t4 = timestamp_to_uint64 (T4);
+	*t1 = htonll (*t1);
+	*t2 = htonll (*t2);
+	*t3 = htonll (*t3);
 
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
@@ -74,11 +64,11 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay,
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
-	uint64_t delay = (t4-t1) - (t3-t2); // = network time latency sending+receiving
-	*roundtrip_delay = uint64_to_timestamp (delay);
+	fix_32_32_t delay = (*t4 - *t1) - (*t3 - *t2);
+	memcpy (roundtrip_delay, &delay, 8);
 
-	int64_t offset = ((int64_t)(t2-t1) - (int64_t)(t4-t3)) / 2;
-	*clock_offset = int64_to_timestamp (offset);
+	fix_s31_32_t offset = (fix_s31_32_t)(*t2 - *t1) - (fix_s31_32_t)(*t4 - *t3);
+	memcpy (clock_offset, &offset, 8);
 
-	return T3;
+	return (timestamp64u_t *)t3;
 }

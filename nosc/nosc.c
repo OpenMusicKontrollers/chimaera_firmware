@@ -283,7 +283,7 @@ nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf
 	memcpy (buf_ptr, bundle, 8);
 	buf_ptr += 8;
 
-	memcpy_htonll (buf_ptr, timestamp.all);
+	memcpy_htonll (buf_ptr, timestamp);
 	buf_ptr += 8;
 
 	// get first bundle
@@ -581,15 +581,8 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 				msg = nosc_message_add_double (msg, va_arg (args, double));
         break;
 			case nOSC_TIMESTAMP:
-			{
-				timestamp64u_t tt;
-				tt.all = va_arg (args, uint64_t);
-				uint32_t tmp = tt.part.sec;
-				tt.part.sec = tt.part.frac;
-				tt.part.frac = tmp;
-				msg = nosc_message_add_timestamp (msg, tt);
+				msg = nosc_message_add_timestamp (msg, va_arg (args, timestamp64u_t));
         break;
-			}
 			case nOSC_MIDI:
 				msg = nosc_message_add_midi (msg, va_arg (args, uint8_t *));
         break;

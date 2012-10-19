@@ -85,12 +85,12 @@ volatile uint8_t config_should_listen = 0;
 void
 timestamp_set (timestamp64u_t *ptr)
 {
-	timestamp64u_t tmp;
+	uint32_t sec = millis() / 1000;
+	uint32_t frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
 
-	tmp.part.frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
-	tmp.part.sec = millis() / 1000;
+	*ptr = ((timestamp64u_t)sec << 32) | frac;
 
-	*ptr = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_uint64 (tmp));
+	time_add (*ptr, t0, ptr);
 }
 
 static void
@@ -205,13 +205,10 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 	*/
 
-	if (t0.all == 0ULL)
-	{
-		t0.part.sec = transmit->part.sec;
-		t0.part.frac = transmit->part.frac;
-	}
+	if (t0 == 0ULL)
+		t0 = *transmit;
 	else
-		t0 = uint64_to_timestamp (timestamp_to_uint64 (t0) + timestamp_to_int64 (clock_offset));
+		time_add (t0, clock_offset, &t0);
 
 	sntp_should_listen = 0;
 }
@@ -496,7 +493,7 @@ setup ()
 	*/
 
 	// set start time to 0
-	t0.all = 0ULL;
+	t0 = 0ULL;
 
 	// set up ADCs
 	adc_disable (ADC1);

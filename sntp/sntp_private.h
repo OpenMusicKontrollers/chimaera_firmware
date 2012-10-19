@@ -27,26 +27,9 @@
 #include <stdint.h>
 
 #include <sntp.h>
+#include <armfix.h>
 
-typedef union _timestamp32s_t timestamp32s_t;
-typedef union _timestamp32u_t timestamp32u_t;
 typedef struct _sntp_t sntp_t;
-
-union _timestamp32s_t {
-	uint32_t all;
-	struct {
-		uint16_t sec;
-		uint16_t frac;
-	} part;
-};
-
-union _timestamp32u_t {
-	uint32_t all;
-	struct {
-		int16_t sec;
-		uint16_t frac;
-	} part;
-};
 
 struct _sntp_t {
 	uint8_t li_vn_mode;
@@ -54,14 +37,14 @@ struct _sntp_t {
 	int8_t poll;
 	int8_t precision;
 
-	timestamp32s_t root_delay;
-	timestamp32u_t root_dispersion;
+	fix_s15_16_t root_delay;
+	fix_16_16_t root_dispersion;
 	char reference_identifier[4];
 
-	timestamp64u_t reference_timestamp;
-	timestamp64u_t originate_timestamp;
-	timestamp64u_t receive_timestamp;
-	timestamp64u_t transmit_timestamp;
+	fix_32_32_t reference_timestamp;
+	fix_32_32_t originate_timestamp;
+	fix_32_32_t receive_timestamp;
+	fix_32_32_t transmit_timestamp;
 };
 
 #endif

@@ -24,8 +24,11 @@
 #include <libmaple/nvic.h>
 #include <libmaple/dma.h>
 
+#include <string.h>
+
 #include <chimutil.h>
 #include <tube.h>
+#include <armfix.h>
 
 volatile uint8_t mem2mem_dma_done = 0;
 
@@ -221,4 +224,12 @@ stop_watch_stop (Stop_Watch *sw)
 		sw->micros = 0;
 		sw->counter = 0;
 	}
+}
+
+void
+time_add (timestamp64u_t ta, timestamp64u_t tb, timestamp64u_t *tc)
+{
+	fix_32_32_t *TA = (fix_32_32_t *)&ta;
+	fix_32_32_t *TB = (fix_32_32_t *)&tb;
+	*tc = *TA + *TB;
 }
