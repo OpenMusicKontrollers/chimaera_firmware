@@ -61,6 +61,8 @@ extern "C" {
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
+#define MAGIC 0x01
+
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer

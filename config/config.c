@@ -39,7 +39,7 @@
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
-	.magic = 0x04, // used to compare EEPROM and FLASH config versions
+	.magic = MAGIC, // used to compare EEPROM and FLASH config versions
 
 	.version = {
 		.major = 0,
@@ -114,9 +114,8 @@ Config config = {
 	},
 
 	.cmc = {
-		.thresh0 = 60,
-		.thresh1 = 160,
-		.thresh2 = 2048,
+		.thresh0 = 0.025,
+		.thresh1 = 0.075,
 		.peak_thresh = 5,
 	},
 
@@ -157,7 +156,7 @@ range_load ()
 	uint8_t magic;
 	eeprom_byte_read (I2C1, 0x1000, &magic);
 
-	if (magic == 0xab) // EEPROM and FLASH config versions match
+	if (magic == config.magic) // EEPROM and FLASH config versions match
 		eeprom_bulk_read (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
@@ -179,7 +178,7 @@ range_load ()
 uint8_t
 range_save ()
 {
-	uint8_t magic = 0xab;
+	uint8_t magic = config.magic;
 	eeprom_byte_write (I2C1, 0x1000, magic);
 	eeprom_bulk_write (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
 
@@ -218,6 +217,9 @@ range_update ()
 
 			adc_range[p][i].m_south = 2047.0 / (float)adc_range[p][i].south;
 			adc_range[p][i].m_north = 2047.0 / (float)adc_range[p][i].north;
+
+			adc_range[p][i].thresh0[0] = config.cmc.thresh0 * adc_range[p][i].south;
+			adc_range[p][i].thresh0[1] = config.cmc.thresh0 * adc_range[p][i].north;
 		}
 }
 
@@ -227,6 +229,7 @@ groups_load ()
 	uint8_t size;
 	uint8_t *buf;
 
+	//TODO use config.magic
 	eeprom_byte_read (I2C1, 0x800, &size);
 	if (size)
 	{
@@ -294,6 +297,36 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 	else
 	{
 		uint16_t arg = args[1]->i;
+		if ( (arg >= min) && (arg < max) )
+		{
+			*val = arg;
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+		{
+			char buf[64];
+			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+		}
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, *val);
+	}
+	else
+	{
+		float arg = args[1]->f;
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
@@ -773,19 +806,14 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 static uint8_t
 _thresh0 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _check_range16 (&config.cmc.thresh0, 0, 2048, path, fmt, argc, args);
+	return _check_rangefloat (&config.cmc.thresh0, 0.0, 1.0, path, fmt, argc, args);
+	//FIXME range_update or new calibration
 }
 
 static uint8_t
 _thresh1 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _check_range16 (&config.cmc.thresh1, 0, 2048, path, fmt, argc, args);
-}
-
-static uint8_t
-_thresh2 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	return _check_range16 (&config.cmc.thresh2, 0, 2048, path, fmt, argc, args);
+	return _check_rangefloat (&config.cmc.thresh1, 0.0, 1.0, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -1004,8 +1032,6 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/thresh0", "ii", _thresh0},
 	{"/chimaera/thresh1", "i", _thresh1},
 	{"/chimaera/thresh1", "ii", _thresh1},
-	{"/chimaera/thresh2", "i", _thresh2},
-	{"/chimaera/thresh2", "ii", _thresh2},
 
 	{"/chimaera/peak_thresh", "i", _peak_thresh},
 	{"/chimaera/peak_thresh", "ii", _peak_thresh},

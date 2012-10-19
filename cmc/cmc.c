@@ -81,9 +81,10 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			uint8_t pos = order[p][i];
 			int16_t val = raw[p][i] - adc_range[p][i].mean;
 			uint16_t aval = abs (val);
-			if (aval > config.cmc.thresh0)
+			uint8_t pole = val < 0; // SOUTH=0, NORTH=1
+			if (aval > adc_range[p][i].thresh0[pole])
 			{
-				cmc.sensors[pos+1].n = val < 0;
+				cmc.sensors[pos+1].n = pole;
 				if (cmc.sensors[pos+1].n) // north pole
 					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_north; //FIXME check for overflow
 				else // south pole
@@ -93,7 +94,8 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				cmc.sensors[pos+1].v = 0;
 		}
 
-	fix_0_16_t m_thresh1 = (float)0x7fff / (0x7ff - config.cmc.thresh1); //TODO check value
+	uint16_t f_thresh1 = 0x7ff * config.cmc.thresh1;
+	fix_0_16_t m_thresh1 = 1.0uhr / (1.0uhr - config.cmc.thresh1); //FIXME calculate this only once
 
 	// 80us
 	uint8_t changed = 1; //TODO actually check for changes
@@ -134,15 +136,15 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 
 				int16_t p0, p1, p2;
 				
-				p0 = cmc.sensors[i-1].v - config.cmc.thresh1;
+				p0 = cmc.sensors[i-1].v - f_thresh1;
 				if (p0 < 0) p0 = 0;
 				else p0 *= m_thresh1;
 				
-				p1 = cmc.sensors[i].v - config.cmc.thresh1;
+				p1 = cmc.sensors[i].v - f_thresh1;
 				if (p1 < 0) p1 = 0;
 				else p1 *= m_thresh1;
 				
-				p2 = cmc.sensors[i+1].v - config.cmc.thresh1;
+				p2 = cmc.sensors[i+1].v - f_thresh1;
 				if (p2 < 0) p2 = 0;
 				else p2 *= m_thresh1;
 
@@ -166,7 +168,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				cmc.blobs[cmc.neu][cmc.J].group = NULL;
 				cmc.blobs[cmc.neu][cmc.J].x = x;
 				cmc.blobs[cmc.neu][cmc.J].p = y;
-				cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.sensors[i].v > config.cmc.thresh1 ? 1 : 0;
+				cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.sensors[i].v > f_thresh1 ? 1 : 0;
 				cmc.blobs[cmc.neu][cmc.J].ignore = 0;
 
 				cmc.J++;

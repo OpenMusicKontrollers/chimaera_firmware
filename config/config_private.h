@@ -10,6 +10,8 @@ struct _ADC_Range {
 	uint16_t north;
 	fix_8_8_t m_south;
 	fix_8_8_t m_north;
+
+	uint16_t thresh0 [2];
 };
 
 extern ADC_Range adc_range[MUX_MAX][ADC_LENGTH];
