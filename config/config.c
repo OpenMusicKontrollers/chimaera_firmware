@@ -36,6 +36,8 @@
 #define LAN_BROADCAST {192, 168, 1, 255}
 #define LAN_HOST {192, 168, 1, 10}
 
+uint16_t f_thresh1;
+fix_0_16_t m_thresh1;
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
 
 Config config = {
@@ -114,14 +116,21 @@ Config config = {
 	},
 
 	.cmc = {
-		.thresh0 = 0.025,
-		.thresh1 = 0.075,
+		.thresh0 = 0.03,
+		.thresh1 = 0.08,
 		.peak_thresh = 5,
 	},
 
 	.rate = 2000, // update rate in Hz
 	.pacemaker = 0x0b // pacemaker rate 2^11=2048
 };
+
+static void
+_thresh1_update ()
+{
+	f_thresh1 = 0x7ff * config.cmc.thresh1;
+	m_thresh1 = 1.0uhr / (1.0uhr - config.cmc.thresh1);
+}
 
 uint8_t
 config_load ()
@@ -133,6 +142,8 @@ config_load ()
 		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
+
+	_thresh1_update ();
 
 	return 1;
 }
@@ -807,13 +818,16 @@ static uint8_t
 _thresh0 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	return _check_rangefloat (&config.cmc.thresh0, 0.0, 1.0, path, fmt, argc, args);
-	//FIXME range_update or new calibration
+	//FIXME run range_update or new calibration
 }
 
 static uint8_t
 _thresh1 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
-	return _check_rangefloat (&config.cmc.thresh1, 0.0, 1.0, path, fmt, argc, args);
+	uint8_t res;
+	res = _check_rangefloat (&config.cmc.thresh1, 0.0, 1.0, path, fmt, argc, args);
+	_thresh1_update ();
+	return res;
 }
 
 static uint8_t
@@ -1029,9 +1043,9 @@ nOSC_Method config_methods [] = {
 	//{"/chimaera/zeroconf/enabled", "iF", _zeroconf_enabled},
 
 	{"/chimaera/thresh0", "i", _thresh0},
-	{"/chimaera/thresh0", "ii", _thresh0},
+	{"/chimaera/thresh0", "if", _thresh0},
 	{"/chimaera/thresh1", "i", _thresh1},
-	{"/chimaera/thresh1", "ii", _thresh1},
+	{"/chimaera/thresh1", "if", _thresh1},
 
 	{"/chimaera/peak_thresh", "i", _peak_thresh},
 	{"/chimaera/peak_thresh", "ii", _peak_thresh},

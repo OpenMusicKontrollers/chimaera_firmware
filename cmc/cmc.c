@@ -94,9 +94,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				cmc.sensors[pos+1].v = 0;
 		}
 
-	uint16_t f_thresh1 = 0x7ff * config.cmc.thresh1;
-	fix_0_16_t m_thresh1 = 1.0uhr / (1.0uhr - config.cmc.thresh1); //FIXME calculate this only once
-
 	// 80us
 	uint8_t changed = 1; //TODO actually check for changes
 
