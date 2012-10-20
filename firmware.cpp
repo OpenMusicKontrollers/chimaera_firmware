@@ -69,8 +69,6 @@ uint8_t order [MUX_MAX][ADC_LENGTH];
 HardwareSPI spi(2);
 
 uint8_t first = 1;
-timestamp64u_t t0;
-timestamp64u_t now;
 
 volatile uint8_t adc_dma_done = 0;
 volatile uint8_t adc_dma_err = 0;
@@ -81,17 +79,6 @@ volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t zeroconf_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
-
-void
-timestamp_set (timestamp64u_t *ptr)
-{
-	uint32_t sec = millis() / 1000;
-	uint32_t frac = (micros() % 1000000) * 4295; // only count up to millis // 1us = 1us/1e6*2^32 =~ 4295
-
-	*ptr = ((timestamp64u_t)sec << 32) | frac;
-
-	time_add (*ptr, t0, ptr);
-}
 
 static void
 adc_timer_irq ()
@@ -186,29 +173,8 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	timestamp64u_t *transmit;
-	timestamp64u_t roundtrip_delay;
-	timestamp64s_t clock_offset;
-
-	timestamp_set (&now);
-	transmit = sntp_dispatch (buf, now, &roundtrip_delay, &clock_offset);
-
-	/* for debug purposes
-	size_t size;
-	float f_delay;
-	float f_offset;
-	f_delay = (float)roundtrip_delay.part.frac / 0xffffffff;
-	f_offset = (float)clock_offset.part.frac / 0xffffffff;
-	if (clock_offset.part.sec < 0)
-		f_offset -= 1;
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/sntp", "ff", f_delay, f_offset);
-	udp_send (config.debug.socket.sock, buf_o_ptr, size);
-	*/
-
-	if (t0 == 0ULL)
-		t0 = *transmit;
-	else
-		time_add (t0, clock_offset, &t0);
+	sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
+	sntp_dispatch (buf);
 
 	sntp_should_listen = 0;
 }
@@ -254,11 +220,11 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
-		timestamp_set (&now);
+		sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			dump_frm_set (now, adc_order[u]); 
+			dump_frm_set (adc_order[u]); 
 
 			for (uint8_t v=0; v<MUX_MAX; v++)
 				dump_tok_set (mux_order[v], adc_raw[adc_raw_ptr][v][u] - range_mean(v, u)); //TODO get rid of range_mean function
@@ -278,8 +244,8 @@ loop ()
 
 		if (job)
 		{
-			timestamp_set (&now);
-			cmc_len = cmc_write_tuio2 (now, &buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
+			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
+			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
 		}
 
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
@@ -313,8 +279,8 @@ loop ()
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
-			timestamp_set (&now);
-			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
+			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
+			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
 	}
@@ -333,7 +299,7 @@ loop ()
 			;
 }
 
-extern "C" uint32_t
+extern "C" inline uint32_t
 _micros ()
 {
 	return micros ();
@@ -491,9 +457,6 @@ setup ()
 			delay_us (1e3);
 	}
 	*/
-
-	// set start time to 0
-	t0 = 0ULL;
 
 	// set up ADCs
 	adc_disable (ADC1);

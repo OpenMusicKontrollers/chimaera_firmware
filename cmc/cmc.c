@@ -23,6 +23,7 @@
 
 #include "cmc_private.h"
 #include "../config/config_private.h"
+#include "../sntp/sntp_private.h"
 
 #include <math.h>
 #include <string.h>
@@ -356,12 +357,12 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 }
 
 uint16_t
-cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
+cmc_write_tuio2 (uint8_t *buf)
 {
 	uint8_t j;
 	uint16_t size;
 
-	tuio2_frm_set (cmc.fid, timestamp);
+	tuio2_frm_set (cmc.fid, now);
 	for (j=0; j<cmc.I; j++)
 	{
 		CMC_Group *group = cmc.blobs[cmc.old][j].group;
@@ -384,7 +385,11 @@ cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf)
 
 	timestamp64u_t offset = nOSC_IMMEDIATE;
 	if (config.tuio.offset != nOSC_IMMEDIATE)
-		time_add (timestamp, config.tuio.offset, &offset);
+	{
+		fix_32_32_t *_offset = (fix_32_32_t *)&offset;
+		fix_32_32_t *_config = (fix_32_32_t *)&config.tuio.offset;
+		*_offset = now + *_config;
+	}
 	size = tuio2_serialize (buf, cmc.I, offset);
 	return size;
 }

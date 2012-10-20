@@ -27,8 +27,11 @@
 
 #include "sntp_private.h"
 
+fix_32_32_t t0 = 0.0ullk;
+fix_32_32_t now = 0.0ullk;
+
 uint16_t 
-sntp_request (uint8_t *buf, timestamp64u_t now)
+sntp_request (uint8_t *buf)
 {
 	uint16_t len = sizeof (sntp_t);
 
@@ -42,19 +45,15 @@ sntp_request (uint8_t *buf, timestamp64u_t now)
 	return len;
 }
 
-timestamp64u_t *
-sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay, timestamp64s_t *clock_offset)
+void
+sntp_dispatch (uint8_t *buf)
 {
 	sntp_t *answer = (sntp_t *) buf;
 
-	fix_32_32_t *t1 = &answer->originate_timestamp;
-	fix_32_32_t *t2 = &answer->receive_timestamp;
-	fix_32_32_t *t3 = &answer->transmit_timestamp;
-	fix_32_32_t *t4 = (fix_32_32_t *)&T4;
-
-	*t1 = htonll (*t1);
-	*t2 = htonll (*t2);
-	*t3 = htonll (*t3);
+	fix_32_32_t t1 = htonll (answer->originate_timestamp);
+	fix_32_32_t t2 = htonll (answer->receive_timestamp);
+	fix_32_32_t t3 = htonll (answer->transmit_timestamp);
+	fix_32_32_t t4 = now;
 
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
@@ -64,11 +63,18 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t T4, timestamp64u_t *roundtrip_delay,
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
-	fix_32_32_t delay = (*t4 - *t1) - (*t3 - *t2);
-	memcpy (roundtrip_delay, &delay, 8);
+	fix_32_32_t roundtrip_delay = (t4 - t1) - (t3 - t2);
+	fix_s31_32_t clock_offset = (fix_s31_32_t)(t2 - t1) - (fix_s31_32_t)(t4 - t3);
 
-	fix_s31_32_t offset = (fix_s31_32_t)(*t2 - *t1) - (fix_s31_32_t)(*t4 - *t3);
-	memcpy (clock_offset, &offset, 8);
+	if (t0 == 0.0ullk)
+		t0 = t3;
+	else
+		t0 += clock_offset;
+}
 
-	return (timestamp64u_t *)t3;
+void
+sntp_timestamp_refresh (uint32_t millis, uint32_t micros)
+{
+	fix_32_32_t uptime = millis + micros*1e-6ullk;
+	now = t0 + uptime;
 }

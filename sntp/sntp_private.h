@@ -47,4 +47,7 @@ struct _sntp_t {
 	fix_32_32_t transmit_timestamp;
 };
 
+extern fix_32_32_t t0;
+extern fix_32_32_t now;
+
 #endif

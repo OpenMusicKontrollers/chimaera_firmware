@@ -36,7 +36,7 @@ extern "C" {
 
 void cmc_init ();
 uint8_t cmc_process (int16_t raw[16][10], uint8_t order[16][9]);
-uint16_t cmc_write_tuio2 (timestamp64u_t timestamp, uint8_t *buf);
+uint16_t cmc_write_tuio2 (uint8_t *buf);
 
 void cmc_group_clear ();
 uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);

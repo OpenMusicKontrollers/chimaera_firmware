@@ -25,6 +25,7 @@
 
 #include "dump_private.h"
 #include "../nosc/nosc_private.h"
+#include "../sntp/sntp_private.h"
 
 Dump dump;
 
@@ -51,9 +52,9 @@ dump_serialize (uint8_t *buf)
 }
 
 void 
-dump_frm_set (timestamp64u_t timestamp, uint8_t adc)
+dump_frm_set (uint8_t adc)
 {
-	dump.time->arg.t = timestamp;
+	dump.time->arg.t = now;
 	dump.adc->arg.i = adc;
 }
 
