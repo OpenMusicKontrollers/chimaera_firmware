@@ -21,32 +21,77 @@
  *     distribution.
  */
 
-#ifndef _SNTP_PRIVATE_H_
-#define _SNTP_PRIVATE_H_
-
-#include <stdint.h>
-
-#include <sntp.h>
 #include <armfix.h>
 
-typedef struct _sntp_t sntp_t;
+typedef union _uswapy uswapy;
+typedef union _sswapy sswapy;
 
-struct _sntp_t {
-	uint8_t li_vn_mode;
-	uint8_t stratum;
-	int8_t poll;
-	int8_t precision;
-
-	timestamp32s_t root_delay;
-	timestamp32u_t root_dispersion;
-	char reference_identifier[4];
-
-	timestamp64u_t reference_timestamp;
-	timestamp64u_t originate_timestamp;
-	timestamp64u_t receive_timestamp;
-	timestamp64u_t transmit_timestamp;
+union _uswapy {
+	timestamp64u_t timestamp;
+	fix_32_32_t fixtime;
+	struct {
+		uint32_t left;
+		uint32_t right;
+	} part;
 };
 
-extern fix_32_32_t t0;
+union _sswapy {
+	timestamp64s_t timestamp;
+	fix_s31_32_t fixtime;
+	struct {
+		uint32_t left;
+		uint32_t right;
+	} part;
+};
 
-#endif
+fix_32_32_t
+utime2fix (timestamp64u_t x)
+{
+	uswapy s1, s2;
+
+	s1.timestamp = x;
+
+	s2.part.left = s1.part.right;
+	s2.part.right = s1.part.left;
+
+	return s2.fixtime;
+}
+
+fix_s31_32_t
+stime2fix (timestamp64s_t x)
+{
+	sswapy s1, s2;
+
+	s1.timestamp = x;
+
+	s2.part.left = s1.part.right;
+	s2.part.right = s1.part.left;
+
+	return s2.fixtime;
+}
+
+timestamp64u_t
+ufix2time (fix_32_32_t x)
+{
+	uswapy s1, s2;
+
+	s1.fixtime = x;
+
+	s2.part.left = s1.part.right;
+	s2.part.right = s1.part.left;
+
+	return s2.timestamp;
+}
+
+timestamp64s_t
+sfix2time (fix_s31_32_t x)
+{
+	sswapy s1, s2;
+
+	s1.fixtime = x;
+
+	s2.part.left = s1.part.right;
+	s2.part.right = s1.part.left;
+
+	return s2.timestamp;
+}

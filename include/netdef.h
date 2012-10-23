@@ -30,8 +30,42 @@
 extern "C" {
 #endif
 
-typedef uint64_t timestamp64u_t;
-typedef int64_t timestamp64s_t;
+typedef union _timestamp32u_t timestamp32u_t;
+typedef union _timestamp32s_t timestamp32s_t;
+typedef union _timestamp64u_t timestamp64u_t;
+typedef union _timestamp64s_t timestamp64s_t;
+
+union _timestamp32u_t {
+	uint32_t all;
+	struct {
+		uint16_t sec;
+		uint16_t frac;
+	} part;
+};
+
+union _timestamp32s_t {
+	int32_t all;
+	struct {
+		int16_t sec;
+		uint16_t frac;
+	} part;
+};
+
+union _timestamp64u_t {
+	uint64_t all;
+	struct {
+		uint32_t sec;
+		uint32_t frac;
+	} part;
+};
+
+union _timestamp64s_t {
+	int64_t all;
+	struct {
+		int32_t sec;
+		uint32_t frac;
+	} part;
+};
 
 /*
  * Endian stuff
@@ -96,6 +130,20 @@ typedef int64_t timestamp64s_t;
 	((uint64_t)__dst[5] << 16) | \
 	((uint64_t)__dst[6] << 8) | \
 	((uint64_t)__dst[7]) )); \
+})
+
+#define memcpy_ntotll(dst) \
+({ \
+	uint8_t *__dst = (dst); \
+	((uint64_t)( \
+	((uint64_t)__dst[4] << 24) | \
+	((uint64_t)__dst[5] << 16) | \
+	((uint64_t)__dst[6] << 8) | \
+	((uint64_t)__dst[7]) | \
+	((uint64_t)__dst[0] << 56) | \
+	((uint64_t)__dst[1] << 48) | \
+	((uint64_t)__dst[2] << 40) | \
+	((uint64_t)__dst[3] << 32) )); \
 })
 
 #define hton(x) \

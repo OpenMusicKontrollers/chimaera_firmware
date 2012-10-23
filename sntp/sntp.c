@@ -27,11 +27,10 @@
 
 #include "sntp_private.h"
 
-fix_32_32_t t0 = 0.0ullk;
-fix_32_32_t now = 0.0ullk;
+fix_32_32_t t0 = 0.0ULLK;
 
 uint16_t 
-sntp_request (uint8_t *buf)
+sntp_request (uint8_t *buf, timestamp64u_t t3)
 {
 	uint16_t len = sizeof (sntp_t);
 
@@ -40,20 +39,32 @@ sntp_request (uint8_t *buf)
 	sntp_t *request = (sntp_t *) buf;
 
 	request->li_vn_mode = (0x0<<6) + (0x4<<3) + 0x3;
-	request->transmit_timestamp = htonll (now);
+	request->transmit_timestamp.part.sec = htonl (t3.part.sec);
+	request->transmit_timestamp.part.frac = htonl (t3.part.frac);
 	
 	return len;
 }
 
 void
-sntp_dispatch (uint8_t *buf)
+sntp_dispatch (uint8_t *buf, timestamp64u_t t4)
 {
 	sntp_t *answer = (sntp_t *) buf;
 
-	fix_32_32_t t1 = htonll (answer->originate_timestamp);
-	fix_32_32_t t2 = htonll (answer->receive_timestamp);
-	fix_32_32_t t3 = htonll (answer->transmit_timestamp);
-	fix_32_32_t t4 = now;
+	timestamp64u_t t1, t2, t3;
+
+	t1.part.sec = htonl (answer->originate_timestamp.part.sec);
+	t1.part.frac = htonl (answer->originate_timestamp.part.frac);
+
+	t2.part.sec = htonl (answer->receive_timestamp.part.sec);
+	t2.part.frac = htonl (answer->receive_timestamp.part.frac);
+
+	t3.part.sec = htonl (answer->transmit_timestamp.part.sec);
+	t3.part.frac = htonl (answer->transmit_timestamp.part.frac);
+
+	fix_32_32_t T1 = utime2fix (t1);
+	fix_32_32_t T2 = utime2fix (t2);
+	fix_32_32_t T3 = utime2fix (t3);
+	fix_32_32_t T4 = utime2fix (t4);
 
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
@@ -63,18 +74,19 @@ sntp_dispatch (uint8_t *buf)
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
-	fix_32_32_t roundtrip_delay = (t4 - t1) - (t3 - t2);
-	fix_s31_32_t clock_offset = (fix_s31_32_t)(t2 - t1) - (fix_s31_32_t)(t4 - t3);
+	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.tuio.offset with this value
+	fix_s31_32_t clock_offset = (fix_s31_32_t)(T2 - T1) - (fix_s31_32_t)(T4 - T3);
 
-	if (t0 == 0.0ullk)
-		t0 = t3;
+	if (t0 == 0.0ULLK)
+		t0 = T3;
 	else
 		t0 += clock_offset;
 }
 
 void
-sntp_timestamp_refresh (uint32_t millis, uint32_t micros)
+sntp_timestamp_refresh (uint32_t millis, uint32_t micros, timestamp64u_t *now)
 {
-	fix_32_32_t uptime = millis + micros*1e-6ullk;
-	now = t0 + uptime;
+	fix_32_32_t uptime = millis + micros*0.000001ULLK;
+	fix_32_32_t _now = t0 + uptime;
+	*now = ufix2time (_now);
 }

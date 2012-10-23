@@ -80,6 +80,8 @@ volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t zeroconf_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
+timestamp64u_t now;
+
 static void
 adc_timer_irq ()
 {
@@ -173,8 +175,8 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
-	sntp_dispatch (buf);
+	sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+	sntp_dispatch (buf, now);
 
 	sntp_should_listen = 0;
 }
@@ -220,11 +222,11 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
-		sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
+		sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
-			dump_frm_set (adc_order[u]); 
+			dump_frm_set (adc_order[u], now); 
 
 			for (uint8_t v=0; v<MUX_MAX; v++)
 				dump_tok_set (mux_order[v], adc_raw[adc_raw_ptr][v][u] - range_mean(v, u)); //TODO get rid of range_mean function
@@ -244,8 +246,8 @@ loop ()
 
 		if (job)
 		{
-			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
-			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]); // serialization to tuio2 of current cycle blobs
+			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
 		}
 
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
@@ -279,8 +281,8 @@ loop ()
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
-			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000);
-			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]);
+			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
 	}

@@ -94,6 +94,16 @@ debug_float (float f)
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
+void
+debug_timestamp (timestamp64u_t t)
+{
+	if (!config.debug.enabled)
+		return;
+	uint16_t size;
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "it", debug_counter++, t);
+	udp_send (config.debug.socket.sock, buf_o_ptr, size);
+}
+
 /*
  * This function converts the array into one number by multiplying each 5-bits
  * channel numbers by multiplications of 2^5

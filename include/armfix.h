@@ -26,27 +26,35 @@
 
 #include <stdfix.h>
 
+#include <netdef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef sat unsigned fract fix_0_64_t;
-typedef sat fract fix_s_63_t;
+typedef sat unsigned long long fract fix_0_64_t;
+typedef sat fract long long fix_s_63_t;
 
-typedef sat unsigned fract fix_0_32_t;
-typedef sat fract fix_s_31_t;
+typedef sat unsigned long fract fix_0_32_t;
+typedef sat fract long fix_s_31_t;
 
 typedef sat unsigned short fract fix_0_16_t;
 typedef sat fract short fix_s_15_t;
 
-typedef sat unsigned accum fix_32_32_t;
-typedef sat accum fix_s31_32_t;
+typedef sat unsigned long long accum fix_32_32_t;
+typedef sat accum long long fix_s31_32_t;
 
-typedef sat unsigned accum fix_16_16_t;
-typedef sat accum fix_s15_16_t;
+typedef sat unsigned long accum fix_16_16_t;
+typedef sat accum long fix_s15_16_t;
 
 typedef sat unsigned short accum fix_8_8_t;
 typedef sat accum short fix_s7_8_t;
+
+fix_32_32_t utime2fix (timestamp64u_t x);
+fix_s31_32_t stime2fix (timestamp64s_t x);
+
+timestamp64u_t ufix2time (fix_32_32_t x);
+timestamp64s_t sfix2time (fix_s31_32_t x);
 
 #ifdef __cplusplus
 }

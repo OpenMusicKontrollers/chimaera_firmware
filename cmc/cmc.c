@@ -357,7 +357,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 }
 
 uint16_t
-cmc_write_tuio2 (uint8_t *buf)
+cmc_write_tuio2 (uint8_t *buf, timestamp64u_t now)
 {
 	uint8_t j;
 	uint16_t size;
@@ -384,11 +384,12 @@ cmc_write_tuio2 (uint8_t *buf)
 	}
 
 	timestamp64u_t offset = nOSC_IMMEDIATE;
-	if (config.tuio.offset != nOSC_IMMEDIATE)
+	if (config.tuio.offset.all != nOSC_IMMEDIATE.all)
 	{
-		fix_32_32_t *_offset = (fix_32_32_t *)&offset;
-		fix_32_32_t *_config = (fix_32_32_t *)&config.tuio.offset;
-		*_offset = now + *_config;
+		fix_32_32_t _now = utime2fix (now);
+		fix_32_32_t _config = utime2fix (config.tuio.offset);
+		fix_32_32_t _offset = _now + _config;
+		offset = ufix2time (_offset);
 	}
 	size = tuio2_serialize (buf, cmc.I, offset);
 	return size;
