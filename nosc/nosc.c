@@ -283,8 +283,12 @@ nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf
 	memcpy (buf_ptr, bundle, 8);
 	buf_ptr += 8;
 
-	memcpy_htonll (buf_ptr, timestamp.all);
-	buf_ptr += 8;
+	//memcpy_htonll (buf_ptr, timestamp.all);
+	//buf_ptr += 8;
+	memcpy_htonl (buf_ptr, timestamp.part.sec); //FIXME why do we have to handle this differently from the OSC 't' type?
+	buf_ptr += 4;
+	memcpy_htonl (buf_ptr, timestamp.part.frac);
+	buf_ptr += 4;
 
 	// get first bundle
 	nOSC_Bundle *first = bund;

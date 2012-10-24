@@ -23,6 +23,8 @@
 
 #include <string.h>
 
+#include <libmaple/systick.h>
+
 #include <chimutil.h>
 
 #include "sntp_private.h"
@@ -84,9 +86,9 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t t4)
 }
 
 void
-sntp_timestamp_refresh (uint32_t millis, uint32_t micros, timestamp64u_t *now)
+sntp_timestamp_refresh (timestamp64u_t *now)
 {
-	fix_32_32_t uptime = millis + micros*0.000001ULLK;
+	fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
 	fix_32_32_t _now = t0 + uptime;
 	*now = ufix2time (_now);
 }

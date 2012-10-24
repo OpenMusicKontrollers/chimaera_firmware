@@ -387,7 +387,7 @@ cmc_write_tuio2 (uint8_t *buf, timestamp64u_t now)
 	if (config.tuio.offset.all != nOSC_IMMEDIATE.all)
 	{
 		fix_32_32_t _now = utime2fix (now);
-		fix_32_32_t _config = utime2fix (config.tuio.offset);
+		fix_32_32_t _config = utime2fix (config.tuio.offset); //TODO convert this only once
 		fix_32_32_t _offset = _now + _config;
 		offset = ufix2time (_offset);
 	}

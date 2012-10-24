@@ -175,7 +175,7 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+	sntp_timestamp_refresh (&now);
 	sntp_dispatch (buf, now);
 
 	sntp_should_listen = 0;
@@ -222,7 +222,7 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
-		sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+		sntp_timestamp_refresh (&now);
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 		{
@@ -246,7 +246,7 @@ loop ()
 
 		if (job)
 		{
-			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+			sntp_timestamp_refresh (&now);
 			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
 		}
 
@@ -281,7 +281,7 @@ loop ()
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
-			sntp_timestamp_refresh (millis() / 1000, micros() % 1000000, &now);
+			sntp_timestamp_refresh (&now);
 			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
@@ -375,6 +375,10 @@ setup ()
 	// enable wiz820io module
 	pinMode (PWDN, OUTPUT);
 	digitalWrite (PWDN, 0); // enable wiz820io
+
+	// systick 
+	systick_disable ();
+	systick_init ((SYSTICK_RELOAD_VAL + 1)/10 - 1); // systick every 100us = every 7200 cycles on a maple mini @72MHz
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)

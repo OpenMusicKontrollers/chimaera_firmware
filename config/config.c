@@ -116,7 +116,7 @@ Config config = {
 	},
 
 	.cmc = {
-		.thresh0 = 0.03,
+		.thresh0 = 0.04,
 		.thresh1 = 0.08,
 		.peak_thresh = 5,
 	},
