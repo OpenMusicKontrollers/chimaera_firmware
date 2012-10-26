@@ -195,10 +195,10 @@ uint16_t len = 0;
 inline void
 loop ()
 {
-	if (adc_dma_err)
+	if (config.rate)
 	{
-		debug_str ("adc_dma_err");
-		//adc_dma_err = 0;
+		adc_time_up = 0;
+		timer_resume (adc_timer);
 	}
 
 	adc_dma_run ();
@@ -208,12 +208,6 @@ loop ()
 		adc_dma_block ();
 		first = 0;
 		return;
-	}
-
-	if (config.rate)
-	{
-		adc_time_up = 0;
-		timer_resume (adc_timer);
 	}
 
 	if (calibrating)
@@ -310,8 +304,8 @@ _micros ()
 extern "C" void
 adc_timer_reconfigure ()
 {
-	uint16_t prescaler = 1e3;
-	uint16_t reload = 72e3 / config.rate;
+	uint16_t prescaler = 0;
+	uint16_t reload = 72e6 / config.rate;
 	uint16_t compare = reload;
 
 	timer_set_prescaler (adc_timer, prescaler);
