@@ -30,153 +30,29 @@
 extern "C" {
 #endif
 
-typedef union _timestamp32u_t timestamp32u_t;
-typedef union _timestamp32s_t timestamp32s_t;
-typedef union _timestamp64u_t timestamp64u_t;
-typedef union _timestamp64s_t timestamp64s_t;
-
-union _timestamp32u_t {
-	uint32_t all;
-	struct {
-		uint16_t sec;
-		uint16_t frac;
-	} part;
-};
-
-union _timestamp32s_t {
-	int32_t all;
-	struct {
-		int16_t sec;
-		uint16_t frac;
-	} part;
-};
-
-union _timestamp64u_t {
-	uint64_t all;
-	struct {
-		uint32_t sec;
-		uint32_t frac;
-	} part;
-};
-
-union _timestamp64s_t {
-	int64_t all;
-	struct {
-		int32_t sec;
-		uint32_t frac;
-	} part;
-};
-
 /*
  * Endian stuff
  */
 
-#define memcpy_hton(dst,x) \
-({ \
-	uint8_t *__dst = (dst); \
-	__dst[0] = ((uint16_t)x & 0xff00U) >> 8; \
-	__dst[1] = ((uint16_t)x & 0x00ffU); \
-})
+#define swap16(x)	((uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
+#define swap32		__builtin_bswap32
+#define swap64		__builtin_bswap64
 
-#define memcpy_htonl(dst,x) \
-({ \
-	uint8_t *__dst = (dst); \
-	__dst[0] = ((uint32_t)x & 0xff000000UL) >> 24; \
-	__dst[1] = ((uint32_t)x & 0x00ff0000UL) >> 16; \
-	__dst[2] = ((uint32_t)x & 0x0000ff00UL) >> 8; \
-	__dst[3] = ((uint32_t)x & 0x000000ffUL); \
-})
+#define hton		swap16
+#define htonl		swap32
+#define htonll	swap64
 
-#define memcpy_htonll(dst,x) \
-({ \
-	uint8_t *__dst = (dst); \
-	__dst[0] = ((uint64_t)x & 0xff00000000000000ULL) >> 56; \
-	__dst[1] = ((uint64_t)x & 0x00ff000000000000ULL) >> 48; \
-	__dst[2] = ((uint64_t)x & 0x0000ff0000000000ULL) >> 40; \
-	__dst[3] = ((uint64_t)x & 0x000000ff00000000ULL) >> 32; \
-	__dst[4] = ((uint64_t)x & 0x00000000ff000000ULL) >> 24; \
-	__dst[5] = ((uint64_t)x & 0x0000000000ff0000ULL) >> 16; \
-	__dst[6] = ((uint64_t)x & 0x000000000000ff00ULL) >> 8; \
-	__dst[7] = ((uint64_t)x & 0x00000000000000ffULL); \
-})
+#define ntoh		swap16
+#define ntohl		swap32
+#define ntohll	swap64
 
-#define memcpy_ntoh(dst) \
-({ \
-	uint8_t *__dst = (dst); \
-	((uint16_t)( \
-	((uint16_t)__dst[0] << 8) | \
-	((uint16_t)__dst[1]) )); \
-})
+#define ref_hton(dst,x)		(*((uint16_t *)(dst)) = hton(x))
+#define ref_htonl(dst,x)	(*((uint32_t *)(dst)) = htonl(x))
+#define ref_htonll(dst,x)	(*((uint64_t *)(dst)) = htonll(x))
 
-#define memcpy_ntohl(dst) \
-({ \
-	uint8_t *__dst = (dst); \
-	((uint32_t)( \
-	((uint32_t)__dst[0] << 24) | \
-	((uint32_t)__dst[1] << 16) | \
-	((uint32_t)__dst[2] << 8) | \
-	((uint32_t)__dst[3]) )); \
-})
-
-#define memcpy_ntohll(dst) \
-({ \
-	uint8_t *__dst = (dst); \
-	((uint64_t)( \
-	((uint64_t)__dst[0] << 56) | \
-	((uint64_t)__dst[1] << 48) | \
-	((uint64_t)__dst[2] << 40) | \
-	((uint64_t)__dst[3] << 32) | \
-	((uint64_t)__dst[4] << 24) | \
-	((uint64_t)__dst[5] << 16) | \
-	((uint64_t)__dst[6] << 8) | \
-	((uint64_t)__dst[7]) )); \
-})
-
-#define memcpy_ntotll(dst) \
-({ \
-	uint8_t *__dst = (dst); \
-	((uint64_t)( \
-	((uint64_t)__dst[4] << 24) | \
-	((uint64_t)__dst[5] << 16) | \
-	((uint64_t)__dst[6] << 8) | \
-	((uint64_t)__dst[7]) | \
-	((uint64_t)__dst[0] << 56) | \
-	((uint64_t)__dst[1] << 48) | \
-	((uint64_t)__dst[2] << 40) | \
-	((uint64_t)__dst[3] << 32) )); \
-})
-
-#define hton(x) \
-({ \
-    uint16_t __x = (x); \
-    ((uint16_t)( \
-	(((uint16_t)(__x) & (uint16_t)0x00ffU) << 8) | \
-	(((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) )); \
-})
-
-#define htonl(x) \
-({ \
-    uint32_t __x = (x); \
-    ((uint32_t)( \
-	(((uint32_t)(__x) & (uint32_t)0x000000ffUL) << 24) | \
-	(((uint32_t)(__x) & (uint32_t)0x0000ff00UL) <<  8) | \
-	(((uint32_t)(__x) & (uint32_t)0x00ff0000UL) >>  8) | \
-	(((uint32_t)(__x) & (uint32_t)0xff000000UL) >> 24) )); \
-})
-
-#define htonll(x) \
-({ \
-    uint64_t __x = (x); \
-    ((uint64_t)( \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00000000000000ffULL) << 56) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x000000000000ff00ULL) << 40) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x0000000000ff0000ULL) << 24) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00000000ff000000ULL) <<  8) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x000000ff00000000ULL) >>  8) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x0000ff0000000000ULL) >> 24) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00ff000000000000ULL) >> 40) | \
-	(uint64_t)(((uint64_t)(__x) & (uint64_t)0xff00000000000000ULL) >> 56) )); \
-})
+#define ref_ntoh(ptr)		(ntoh(*((uint16_t *)(ptr))))
+#define ref_ntohl(ptr)	(ntohl(*((uint32_t *)(ptr))))
+#define ref_ntohll(ptr)	(ntohll(*((uint64_t *)(ptr))))
 
 #ifdef __cplusplus
 }

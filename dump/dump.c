@@ -52,7 +52,7 @@ dump_serialize (uint8_t *buf)
 }
 
 void 
-dump_frm_set (uint8_t adc, timestamp64u_t now)
+dump_frm_set (uint8_t adc, uint64_t now)
 {
 	dump.time->arg.t = now;
 	dump.adc->arg.i = adc;

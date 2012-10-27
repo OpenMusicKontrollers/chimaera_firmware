@@ -50,11 +50,11 @@ typedef sat accum long fix_s15_16_t;
 typedef sat unsigned short accum fix_8_8_t;
 typedef sat accum short fix_s7_8_t;
 
-fix_32_32_t utime2fix (timestamp64u_t x);
-fix_s31_32_t stime2fix (timestamp64s_t x);
+fix_32_32_t utime2fix (uint64_t x);
+fix_s31_32_t stime2fix (int64_t x);
 
-timestamp64u_t ufix2time (fix_32_32_t x);
-timestamp64s_t sfix2time (fix_s31_32_t x);
+uint64_t ufix2time (fix_32_32_t x);
+int64_t sfix2time (fix_s31_32_t x);
 
 #ifdef __cplusplus
 }

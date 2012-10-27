@@ -75,7 +75,7 @@ union _nOSC_Arg {
 
 	double d;
 	int64_t h;
-	timestamp64u_t t;
+	uint64_t t;
 
 	uint8_t m[4];
 };
@@ -92,7 +92,7 @@ struct _nOSC_Method {
  * Constants
  */
 
-#define nOSC_IMMEDIATE ((timestamp64u_t){.part={.sec=0UL, .frac=1UL}})
+#define nOSC_IMMEDIATE 1ULL
 
 /*
  * Method functions
@@ -106,7 +106,7 @@ void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size);
 
 nOSC_Bundle *nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path);
 
-uint16_t nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf);
+uint16_t nosc_bundle_serialize (nOSC_Bundle *bund, uint64_t timestamp, uint8_t *buf);
 
 void nosc_bundle_free (nOSC_Bundle *bund);
 
@@ -126,7 +126,7 @@ nOSC_Message *nosc_message_add_infty (nOSC_Message *msg);
 
 nOSC_Message *nosc_message_add_double (nOSC_Message *msg, double d);
 nOSC_Message *nosc_message_add_int64 (nOSC_Message *msg, int64_t h);
-nOSC_Message *nosc_message_add_timestamp (nOSC_Message *msg, timestamp64u_t t);
+nOSC_Message *nosc_message_add_timestamp (nOSC_Message *msg, uint64_t t);
 
 nOSC_Message *nosc_message_add_midi (nOSC_Message *msg, uint8_t m [4]);
 

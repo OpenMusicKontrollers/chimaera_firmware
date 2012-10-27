@@ -193,6 +193,17 @@ range_save ()
 	eeprom_byte_write (I2C1, 0x1000, magic);
 	eeprom_bulk_write (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
 
+	// debug
+	// FIXME make a function out of this
+	uint8_t p, i;
+	char buf[64];
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			sprintf (buf, "%i %i %i %i %i", p, i, adc_range[p][i].south, adc_range[p][i].mean, adc_range[p][i].north);
+			debug_str (buf);
+		}
+
 	return 1;
 }
 

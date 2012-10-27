@@ -71,7 +71,7 @@ struct _Config {
 		uint8_t enabled;
 		Socket_Config socket;
 		uint8_t long_header;
-		timestamp64u_t offset;
+		uint64_t offset;
 	} tuio;
 
 	struct _config {

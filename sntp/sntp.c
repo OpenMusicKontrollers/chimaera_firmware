@@ -32,7 +32,7 @@
 fix_32_32_t t0 = 0.0ULLK;
 
 uint16_t 
-sntp_request (uint8_t *buf, timestamp64u_t t3)
+sntp_request (uint8_t *buf, uint64_t t3)
 {
 	uint16_t len = sizeof (sntp_t);
 
@@ -40,32 +40,35 @@ sntp_request (uint8_t *buf, timestamp64u_t t3)
 
 	sntp_t *request = (sntp_t *) buf;
 
+	timestamp64_t T3;
+	T3.stamp = t3;
+
 	request->li_vn_mode = (0x0<<6) + (0x4<<3) + 0x3;
-	request->transmit_timestamp.part.sec = htonl (t3.part.sec);
-	request->transmit_timestamp.part.frac = htonl (t3.part.frac);
+	request->transmit_timestamp.ntp.sec = htonl (T3.osc.sec);
+	request->transmit_timestamp.ntp.frac = htonl (T3.osc.frac);
 	
 	return len;
 }
 
 void
-sntp_dispatch (uint8_t *buf, timestamp64u_t t4)
+sntp_dispatch (uint8_t *buf, uint64_t t4)
 {
 	sntp_t *answer = (sntp_t *) buf;
 
-	timestamp64u_t t1, t2, t3;
+	timestamp64_t t1, t2, t3;
 
-	t1.part.sec = htonl (answer->originate_timestamp.part.sec);
-	t1.part.frac = htonl (answer->originate_timestamp.part.frac);
+	t1.osc.sec = ntohl (answer->originate_timestamp.ntp.sec);
+	t1.osc.frac = ntohl (answer->originate_timestamp.ntp.frac);
 
-	t2.part.sec = htonl (answer->receive_timestamp.part.sec);
-	t2.part.frac = htonl (answer->receive_timestamp.part.frac);
+	t2.osc.sec = ntohl (answer->receive_timestamp.ntp.sec);
+	t2.osc.frac = ntohl (answer->receive_timestamp.ntp.frac);
 
-	t3.part.sec = htonl (answer->transmit_timestamp.part.sec);
-	t3.part.frac = htonl (answer->transmit_timestamp.part.frac);
+	t3.osc.sec = ntohl (answer->transmit_timestamp.ntp.sec);
+	t3.osc.frac = ntohl (answer->transmit_timestamp.ntp.frac);
 
-	fix_32_32_t T1 = utime2fix (t1);
-	fix_32_32_t T2 = utime2fix (t2);
-	fix_32_32_t T3 = utime2fix (t3);
+	fix_32_32_t T1 = t1.fix;
+	fix_32_32_t T2 = t2.fix;
+	fix_32_32_t T3 = t3.fix;
 	fix_32_32_t T4 = utime2fix (t4);
 
 	//Originate Timestamp     T1   time request sent by client
@@ -86,7 +89,7 @@ sntp_dispatch (uint8_t *buf, timestamp64u_t t4)
 }
 
 void
-sntp_timestamp_refresh (timestamp64u_t *now)
+sntp_timestamp_refresh (uint64_t *now)
 {
 	fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
 	fix_32_32_t _now = t0 + uptime;

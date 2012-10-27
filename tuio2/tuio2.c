@@ -74,7 +74,7 @@ tuio2_init ()
 }
 
 uint16_t
-tuio2_serialize (uint8_t *buf, uint8_t end, timestamp64u_t offset)
+tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 {
 	// unlink at end pos
 	if (end < tuio.len)
@@ -117,7 +117,7 @@ tuio2_serialize (uint8_t *buf, uint8_t end, timestamp64u_t offset)
 }
 
 void 
-tuio2_frm_set (uint32_t id, timestamp64u_t timestamp)
+tuio2_frm_set (uint32_t id, uint64_t timestamp)
 {
 	tuio.frm_id->arg.i = id;
 	tuio.frm_timestamp->arg.t = timestamp;

@@ -32,11 +32,11 @@
 extern "C" {
 #endif
 
-void sntp_timestamp_refresh (timestamp64u_t *now);
+void sntp_timestamp_refresh (uint64_t *now);
 
-uint16_t sntp_request (uint8_t *buf, timestamp64u_t t3);
+uint16_t sntp_request (uint8_t *buf, uint64_t t3);
 
-void sntp_dispatch (uint8_t *buf, timestamp64u_t t4);
+void sntp_dispatch (uint8_t *buf, uint64_t t4);
 
 #ifdef __cplusplus
 }

@@ -80,7 +80,7 @@ volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t zeroconf_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
-timestamp64u_t now;
+uint64_t now;
 
 static void
 adc_timer_irq ()

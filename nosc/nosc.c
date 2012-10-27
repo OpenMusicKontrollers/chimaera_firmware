@@ -175,12 +175,12 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 		switch (*type)
 		{
 			case nOSC_INT32:
-				msg = nosc_message_add_int32 (msg, memcpy_ntohl (buf_ptr));
+				msg = nosc_message_add_int32 (msg, ref_ntohl (buf_ptr));
 				buf_ptr += 4;
 				break;
 			case nOSC_FLOAT:
 				msg = nosc_message_add_float (msg, 0.0);
-				msg->arg.i = memcpy_ntohl (buf_ptr);
+				msg->arg.i = ref_ntohl (buf_ptr);
 				buf_ptr += 4;
 				break;
 			case nOSC_STRING:
@@ -192,7 +192,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				break;
 			case nOSC_BLOB:
 			{
-				int32_t len = memcpy_ntohl (buf_ptr);
+				int32_t len = ref_ntohl (buf_ptr);
 				buf_ptr += 4;
 				msg = nosc_message_add_blob (msg, buf_ptr, len);
 				buf_ptr += len;
@@ -214,15 +214,15 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 
 			case nOSC_DOUBLE:
 				msg = nosc_message_add_double (msg, 0.0);
-				msg->arg.h = memcpy_ntohll (buf_ptr);;
+				msg->arg.h = ref_ntohll (buf_ptr);;
 				buf_ptr += 8;
 				break;
 			case nOSC_INT64:
-				msg = nosc_message_add_int64 (msg, memcpy_ntohll (buf_ptr));
+				msg = nosc_message_add_int64 (msg, ref_ntohll (buf_ptr));
 				buf_ptr += 8;
 				break;
 			case nOSC_TIMESTAMP:
-				msg = nosc_message_add_timestamp (msg, (timestamp64u_t)memcpy_ntohll (buf_ptr));
+				msg = nosc_message_add_timestamp (msg, ref_ntohll (buf_ptr));
 				buf_ptr += 8;
 				break;
 
@@ -276,19 +276,15 @@ nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path)
 static const char *bundle = "#bundle";
 
 uint16_t
-nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf)
+nosc_bundle_serialize (nOSC_Bundle *bund, uint64_t timestamp, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
 	memcpy (buf_ptr, bundle, 8);
 	buf_ptr += 8;
 
-	//memcpy_htonll (buf_ptr, timestamp.all);
-	//buf_ptr += 8;
-	memcpy_htonl (buf_ptr, timestamp.part.sec); //FIXME why do we have to handle this differently from the OSC 't' type?
-	buf_ptr += 4;
-	memcpy_htonl (buf_ptr, timestamp.part.frac);
-	buf_ptr += 4;
+	ref_htonll (buf_ptr, timestamp);
+	buf_ptr += 8;
 
 	// get first bundle
 	nOSC_Bundle *first = bund;
@@ -302,7 +298,7 @@ nosc_bundle_serialize (nOSC_Bundle *bund, timestamp64u_t timestamp, uint8_t *buf
 		int32_t i;
 
 		msg_size = nosc_message_serialize (ptr->msg, ptr->path, buf_ptr+4);
-		memcpy_htonl (buf_ptr, msg_size);
+		ref_htonl (buf_ptr, msg_size);
 		buf_ptr += msg_size + 4;
 
 		ptr = ptr->next;
@@ -423,7 +419,7 @@ nosc_message_add_int64 (nOSC_Message *msg, int64_t h)
 }
 
 nOSC_Message * 
-nosc_message_add_timestamp (nOSC_Message *msg, timestamp64u_t t)
+nosc_message_add_timestamp (nOSC_Message *msg, uint64_t t)
 {
 	nOSC_Message *new = _msg_add (msg, nOSC_TIMESTAMP);
 	new->arg.t = t;
@@ -484,16 +480,14 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 		{
 			case nOSC_INT32:
 			case nOSC_FLOAT:
-				memcpy_htonl (buf_ptr, ptr->arg.i);
+				ref_htonl (buf_ptr, ptr->arg.i);
 				buf_ptr += 4;
 				break;
 
 			case nOSC_MIDI:
-			{
 				memcpy (buf_ptr, ptr->arg.m, 4);
 				buf_ptr += 4;
 				break;
-			}
 
 			case nOSC_STRING:
 			{
@@ -513,7 +507,7 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 				int32_t len = ptr->arg.b.len;
 				while (len % 4) // len must be a multiple of 32bit
 					len += 1;
-				memcpy_htonl (buf_ptr, ptr->arg.b.len);
+				ref_htonl (buf_ptr, len);
 				buf_ptr += 4;
 				memcpy (buf_ptr, ptr->arg.b.dat, ptr->arg.b.len);
 				//TODO do we need to zero the ramaining bytes up to len?
@@ -530,7 +524,7 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 			case nOSC_DOUBLE:
 			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
-				memcpy_htonll (buf_ptr, ptr->arg.h);
+				ref_htonll (buf_ptr, ptr->arg.h);
 				buf_ptr += 8;
 				break;
 		}
@@ -585,7 +579,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 				msg = nosc_message_add_double (msg, va_arg (args, double));
         break;
 			case nOSC_TIMESTAMP:
-				msg = nosc_message_add_timestamp (msg, (timestamp64u_t)va_arg (args, uint64_t));
+				msg = nosc_message_add_timestamp (msg, va_arg (args, uint64_t));
         break;
 			case nOSC_MIDI:
 				msg = nosc_message_add_midi (msg, va_arg (args, uint8_t *));

@@ -95,7 +95,7 @@ debug_float (float f)
 }
 
 void
-debug_timestamp (timestamp64u_t t)
+debug_timestamp (uint64_t t)
 {
 	if (!config.debug.enabled)
 		return;

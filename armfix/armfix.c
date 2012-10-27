@@ -27,71 +27,43 @@ typedef union _uswapy uswapy;
 typedef union _sswapy sswapy;
 
 union _uswapy {
-	timestamp64u_t timestamp;
+	uint64_t timestamp;
 	fix_32_32_t fixtime;
-	struct {
-		uint32_t left;
-		uint32_t right;
-	} part;
 };
 
 union _sswapy {
-	timestamp64s_t timestamp;
+	int64_t timestamp;
 	fix_s31_32_t fixtime;
-	struct {
-		uint32_t left;
-		uint32_t right;
-	} part;
 };
 
 fix_32_32_t
-utime2fix (timestamp64u_t x)
+utime2fix (uint64_t x)
 {
-	uswapy s1, s2;
-
+	uswapy s1;
 	s1.timestamp = x;
-
-	s2.part.left = s1.part.right;
-	s2.part.right = s1.part.left;
-
-	return s2.fixtime;
+	return s1.fixtime;
 }
 
 fix_s31_32_t
-stime2fix (timestamp64s_t x)
+stime2fix (int64_t x)
 {
-	sswapy s1, s2;
-
+	sswapy s1;
 	s1.timestamp = x;
-
-	s2.part.left = s1.part.right;
-	s2.part.right = s1.part.left;
-
-	return s2.fixtime;
+	return s1.fixtime;
 }
 
-timestamp64u_t
+uint64_t
 ufix2time (fix_32_32_t x)
 {
-	uswapy s1, s2;
-
+	uswapy s1;
 	s1.fixtime = x;
-
-	s2.part.left = s1.part.right;
-	s2.part.right = s1.part.left;
-
-	return s2.timestamp;
+	return s1.timestamp;
 }
 
-timestamp64s_t
+int64_t
 sfix2time (fix_s31_32_t x)
 {
-	sswapy s1, s2;
-
+	sswapy s1;
 	s1.fixtime = x;
-
-	s2.part.left = s1.part.right;
-	s2.part.right = s1.part.left;
-
-	return s2.timestamp;
+	return s1.timestamp;
 }
