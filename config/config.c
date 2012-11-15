@@ -994,6 +994,21 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 	return 1;
 }
 
+static uint8_t
+_calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// load calibration range from EEPROM
+	range_load ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 nOSC_Method config_methods [] = {
 	{"/chimaera/version", "i", _version},
 
@@ -1078,6 +1093,7 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/stop", "i", _calibration_stop},
 	{"/chimaera/calibration/save", "i", _calibration_save},
+	{"/chimaera/calibration/load", "i", _calibration_load},
 
 	{NULL, NULL, NULL} // terminator
 };
