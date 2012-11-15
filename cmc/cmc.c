@@ -113,6 +113,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			uint8_t I;
 			uint8_t peak = 1;
 
+			//FIXME this is REALLY inefficient, improve it with some fast sweeping algo
 			for (I=1; I<config.cmc.peak_thresh; I++)
 			{
 				if ( (i >= I) && (cmc.sensors[i].v <= cmc.sensors[i-I].v) )
@@ -159,7 +160,9 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				fix_0_32_t y = -_y*_y / divisor;
 				*/
 
-				fix_0_32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is good enough an approximation
+				//fix_0_32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is not good enough an approximation
+
+				fix_0_32_t y = y1; // this is better, simpler and fasten than any interpolation (just KISS)
 
 				cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 				cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
