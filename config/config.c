@@ -193,15 +193,30 @@ range_save ()
 	eeprom_byte_write (I2C1, 0x1000, magic);
 	eeprom_bulk_write (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
 
-	// debug
-	// FIXME make a function out of this
+	return 1;
+}
+
+uint8_t
+range_print ()
+{
 	uint8_t p, i;
-	char buf[64];
+	char buf[96];
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			sprintf (buf, "%i %i %i %i %i", p, i, adc_range[p][i].south, adc_range[p][i].mean, adc_range[p][i].north);
+			/*
+			sprintf (buf, "%i %i %i %i %i %f %f", p, i,
+				adc_range[p][i].south, adc_range[p][i].mean, adc_range[p][i].north,
+				adc_range[p][i].m_south, adc_range[p][i].m_north);
 			debug_str (buf);
+			*/
+			debug_int32 (p);
+			debug_int32 (i);
+			debug_int32 (adc_range[p][i].south);
+			debug_int32 (adc_range[p][i].mean);
+			debug_int32 (adc_range[p][i].north);
+			debug_float (adc_range[p][i].m_south);
+			debug_float (adc_range[p][i].m_north);
 		}
 
 	return 1;
@@ -1009,6 +1024,21 @@ _calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 	return 1;
 }
 
+static uint8_t
+_calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// print calibration in RAM
+	range_print ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 nOSC_Method config_methods [] = {
 	{"/chimaera/version", "i", _version},
 
@@ -1094,6 +1124,7 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/calibration/stop", "i", _calibration_stop},
 	{"/chimaera/calibration/save", "i", _calibration_save},
 	{"/chimaera/calibration/load", "i", _calibration_load},
+	{"/chimaera/calibration/print", "i", _calibration_print},
 
 	{NULL, NULL, NULL} // terminator
 };

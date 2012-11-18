@@ -46,8 +46,8 @@ cmc_init ()
 
 	cmc.I = 0;
 	cmc.J = 0;
-	cmc.fid = 0; //TODO where do we start counting, at 0 or 1?
-	cmc.sid = 0; //TODO where to we start counting, at 0 or 1?
+	cmc.fid = 1; // we start counting at 1, 0 marks an 'out of order' frame
+	cmc.sid = 0; // we start counting at 0
 
 	cmc.d = 1.0ur / (SENSOR_N-1);
 	cmc.d_2 = cmc.d / 2;
@@ -87,9 +87,13 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			{
 				cmc.sensors[pos+1].n = pole;
 				if (cmc.sensors[pos+1].n) // north pole
-					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_north; //FIXME check for overflow
+					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_north;
 				else // south pole
-					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_south; //FIXME check for overflow
+					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_south;
+
+				// check for overflow
+				if (cmc.sensors[pos+1].v > ADC_HALF_BITDEPTH-1)
+					cmc.sensors[pos+1].v = ADC_HALF_BITDEPTH-1;
 			}
 			else
 				cmc.sensors[pos+1].v = 0;
@@ -151,18 +155,41 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				fix_s_31_t y1 = dist[p1];
 				fix_s_31_t y2 = dist[p2];
 
-				fix_s_31_t divisor = y0 - y1 + y2 - y1;
+				// parabolic interpolation
+				//fix_s_31_t divisor = y0 - y1 + y2 - y1;
+				fix_s15_16_t divisor = y0 - 2*y1 + y2;
 				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
 
-				/* TODO this would be correct, but gives bad glitches
-				fix_s_31_t tmp = s2d2*y1;
-				fix_s_31_t _y = tmp - os8*y0 - os8*y2 + tmp;
-				fix_0_32_t y = -_y*_y / divisor;
-				*/
+				// TODO this would be correct, but gives bad glitches
+				//fix_s_31_t tmp = s2d2*y1;
+				//fix_s_31_t _y = tmp - os8*y0 - os8*y2 + tmp;
+				//fix_0_32_t y = -_y*_y / divisor;
 
 				//fix_0_32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is not good enough an approximation
 
-				fix_0_32_t y = y1; // this is better, simpler and fasten than any interpolation (just KISS)
+				fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
+
+				//position correction based on x, x1 and y1
+				//fix_0_32_t dx = x - cmc.sensors[i].x;
+				//fix_0_32_t y = sqrt (y1*y1 + dx*dx);
+
+				// circular interpolation
+				/*
+				fix_s_31_t ya = y0 > y2 ? y0 : y2;
+				fix_s_31_t yb = y1;
+
+				fix_s_31_t ya2 = ya*ya;
+				fix_s_31_t yb2 = yb*yb;
+
+				fix_0_32_t x =cmc.sensors[i].x + cmc.d_2 + (ya2 -yb2)/(2*cmc.d);
+				fix_0_32_t y = y1;
+				*/
+
+				// linear interpolation
+				/*
+				fix_s31_32_t frac = (fix_s31_32_t)y2 / (y0 + y2);
+				fix_s_31_t x = cmc.sensors[i].x + cmc.d*(frac - 0.5llk);
+				*/
 
 				cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 				cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
