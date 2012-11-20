@@ -63,6 +63,7 @@ ASFLAGS_$(d) :=
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
 cSRCS_$(d) += cmc/cmc_dist.c
+cSRCS_$(d) += cmc/cmc_lookup.c
 cSRCS_$(d) += udp/udp.c
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c

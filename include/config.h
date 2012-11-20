@@ -103,8 +103,6 @@ struct _Config {
 	} zeroconf;
 
 	struct _cmc {
-		float thresh0; // everything below is considered noise
-		float thresh1; // everything above will trigger an ON event
 		uint8_t peak_thresh;
 	} cmc;
 

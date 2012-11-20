@@ -45,7 +45,7 @@ extern "C" {
 #define SENSOR_N (MUX_MAX*ADC_LENGTH)
 
 #define BLOB_MAX 8
-#define GROUP_MAX 32
+#define GROUP_MAX 16
 
 #define ADC_CR1_DUALMOD_BIT 16
 

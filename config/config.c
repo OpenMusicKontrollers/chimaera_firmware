@@ -22,9 +22,11 @@
  */
 
 #include "config_private.h"
+#include "../cmc/cmc_private.h"
 
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #include <chimaera.h>
 #include <chimutil.h>
@@ -36,9 +38,49 @@
 #define LAN_BROADCAST {192, 168, 1, 255}
 #define LAN_HOST {192, 168, 1, 10}
 
-uint16_t f_thresh1;
-fix_0_16_t m_thresh1;
 ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
+float Y1 = 0.5;
+
+static uint16_t
+By (fix_s7_8_t A, fix_s7_8_t B, fix_s7_8_t C)
+{
+	float a = A;
+	float b = B;
+	float c = C;
+	float y = 0.0;
+	return ADC_HALF_BITDEPTH * (a*a - 2.0*b*c + 2.0*b*y - a*sqrt(a*a - 4.0*b*c + 4.0*b*y)) / (2.0*b*b);
+}
+
+static void
+curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, fix_s7_8_t *C)
+{
+	float B0 = lookup[b0];
+	float B1 = lookup[b1];
+	float B2 = lookup[b2];
+
+	float sqrtB0 = lookup_sqrt[b0];
+	float sqrtB1 = lookup_sqrt[b1];
+	float sqrtB2 = lookup_sqrt[b2];
+
+	*A = (B1 + B0*(-1.0 + Y1) - B2*Y1) / (B0*(sqrtB1 - sqrtB2) + B1*sqrtB2 - sqrtB1*B2 + sqrtB0*(-B1 + B2));
+  *B = (1.0/(sqrtB0 - sqrtB2) + Y1/(-sqrtB0 + sqrtB1)) / (sqrtB1 - sqrtB2);
+  *C = (B0*(sqrtB1 - sqrtB2*Y1) + sqrtB0*(-B1 + B2*Y1)) / ((sqrtB0 - sqrtB1)*(sqrtB0 - sqrtB2)*(sqrtB1 - sqrtB2));
+
+	debug_str ("curvefit");
+	debug_float (Y1);
+	debug_int32 (b0);
+	debug_int32 (b1);
+	debug_int32 (b2);
+	debug_float (B0);
+	debug_float (B1);
+	debug_float (B2);
+	debug_float (sqrtB0);
+	debug_float (sqrtB1);
+	debug_float (sqrtB2);
+	debug_float (*A);
+	debug_float (*B);
+	debug_float (*C);
+}
 
 Config config = {
 	.magic = MAGIC, // used to compare EEPROM and FLASH config versions
@@ -116,21 +158,12 @@ Config config = {
 	},
 
 	.cmc = {
-		.thresh0 = 0.04,
-		.thresh1 = 0.08,
 		.peak_thresh = 5,
 	},
 
 	.rate = 2000, // update rate in Hz
 	.pacemaker = 0x0b // pacemaker rate 2^11=2048
 };
-
-static void
-_thresh1_update ()
-{
-	f_thresh1 = 0x7ff * config.cmc.thresh1;
-	m_thresh1 = 1.0uhr / (1.0uhr - config.cmc.thresh1);
-}
 
 uint8_t
 config_load ()
@@ -142,8 +175,6 @@ config_load ()
 		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
-
-	_thresh1_update ();
 
 	return 1;
 }
@@ -175,11 +206,21 @@ range_load ()
 		for (p=0; p<MUX_MAX; p++)
 			for (i=0; i<ADC_LENGTH; i++)
 			{
-				adc_range[p][i].south = 0xfff; // this is the ideal south maximum
 				adc_range[p][i].mean = 0x7ff; // this is the ideal mean
-				adc_range[p][i].north = 0x000; // this is the ideal north maximum
+
+				adc_range[p][i].A[POLE_SOUTH].fix = 1.0hk;
+				adc_range[p][i].A[POLE_NORTH].fix = 1.0hk;
+
+				adc_range[p][i].B[POLE_SOUTH].fix = 0.0hk;
+				adc_range[p][i].B[POLE_NORTH].fix = 0.0hk;
+
+				adc_range[p][i].C[POLE_SOUTH].fix = 0.0hk;
+				adc_range[p][i].C[POLE_NORTH].fix = 0.0hk;
+
+				adc_range[p][i].thresh[POLE_SOUTH] = 0;
+				adc_range[p][i].thresh[POLE_NORTH] = 0;
 			}
-		range_update ();
+
 		range_save ();
 	}
 
@@ -200,23 +241,25 @@ uint8_t
 range_print ()
 {
 	uint8_t p, i;
-	char buf[96];
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			/*
-			sprintf (buf, "%i %i %i %i %i %f %f", p, i,
-				adc_range[p][i].south, adc_range[p][i].mean, adc_range[p][i].north,
-				adc_range[p][i].m_south, adc_range[p][i].m_north);
-			debug_str (buf);
-			*/
 			debug_int32 (p);
 			debug_int32 (i);
-			debug_int32 (adc_range[p][i].south);
+
 			debug_int32 (adc_range[p][i].mean);
-			debug_int32 (adc_range[p][i].north);
-			debug_float (adc_range[p][i].m_south);
-			debug_float (adc_range[p][i].m_north);
+
+			debug_float (adc_range[p][i].A[POLE_SOUTH].fix);
+			debug_float (adc_range[p][i].A[POLE_NORTH].fix);
+
+			debug_float (adc_range[p][i].B[POLE_SOUTH].fix);
+			debug_float (adc_range[p][i].B[POLE_NORTH].fix);
+
+			debug_float (adc_range[p][i].C[POLE_SOUTH].fix);
+			debug_float (adc_range[p][i].C[POLE_NORTH].fix);
+
+			debug_int32 (adc_range[p][i].thresh[POLE_SOUTH]);
+			debug_int32 (adc_range[p][i].thresh[POLE_NORTH]);
 		}
 
 	return 1;
@@ -232,11 +275,76 @@ range_calibrate (int16_t raw[16][10])
 			adc_range[p][i].mean += raw[p][i];
 			adc_range[p][i].mean /= 2;
 
-			if (raw[p][i] > adc_range[p][i].south)
-				adc_range[p][i].south = raw[p][i];
+			if (raw[p][i] > adc_range[p][i].thresh[POLE_SOUTH])
+				adc_range[p][i].thresh[POLE_SOUTH] = raw[p][i];
 
-			if (raw[p][i] < adc_range[p][i].north)
-				adc_range[p][i].north = raw[p][i];
+			if (raw[p][i] < adc_range[p][i].thresh[POLE_NORTH])
+				adc_range[p][i].thresh[POLE_NORTH] = raw[p][i];
+		}
+}
+
+void
+range_update_quiescent ()
+{
+	uint8_t p, i;
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			// reset thresh to quiescent value
+			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
+			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
+		}
+}
+
+void
+range_update_b0 ()
+{
+	uint8_t p, i;
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			adc_range[p][i].A[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
+			adc_range[p][i].A[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+
+			// reset thresh to quiescent value
+			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
+			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
+		}
+}
+
+void
+range_update_b1 ()
+{
+	uint8_t p, i;
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			adc_range[p][i].B[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
+			adc_range[p][i].B[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+
+			// reset thresh to quiescent value
+			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
+			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
+		}
+}
+
+void
+range_update_b2 ()
+{
+	uint8_t p, i;
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			adc_range[p][i].C[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
+			adc_range[p][i].C[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+
+			// reset thresh to quiescent value
+			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
+			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
 		}
 }
 
@@ -249,14 +357,19 @@ range_update ()
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			adc_range[p][i].south = adc_range[p][i].south - adc_range[p][i].mean; // maximal SOUTH pole range
-			adc_range[p][i].north = adc_range[p][i].mean - adc_range[p][i].north; // maximal NORTH pole range
+			ADC_Union *b0 = adc_range[p][i].A;
+			ADC_Union *b1 = adc_range[p][i].B;
+			ADC_Union *b2 = adc_range[p][i].C;
 
-			adc_range[p][i].m_south = 2047.0 / (float)adc_range[p][i].south;
-			adc_range[p][i].m_north = 2047.0 / (float)adc_range[p][i].north;
+			ADC_Union *A = adc_range[p][i].A;
+			ADC_Union *B = adc_range[p][i].B;
+			ADC_Union *C = adc_range[p][i].C;
 
-			adc_range[p][i].thresh0[0] = config.cmc.thresh0 * adc_range[p][i].south;
-			adc_range[p][i].thresh0[1] = config.cmc.thresh0 * adc_range[p][i].north;
+			curvefit (b0[POLE_SOUTH].uint, b1[POLE_SOUTH].uint, b2[POLE_SOUTH].uint, &A[POLE_SOUTH].fix, &B[POLE_SOUTH].fix, &C[POLE_SOUTH].fix);
+			curvefit (b0[POLE_NORTH].uint, b1[POLE_NORTH].uint, b2[POLE_NORTH].uint, &A[POLE_NORTH].fix, &B[POLE_NORTH].fix, &C[POLE_NORTH].fix);
+
+			adc_range[p][i].thresh[POLE_SOUTH] = By (A[POLE_SOUTH].fix, B[POLE_SOUTH].fix, C[POLE_SOUTH].fix);
+			adc_range[p][i].thresh[POLE_NORTH] = By (A[POLE_NORTH].fix, B[POLE_NORTH].fix, C[POLE_NORTH].fix);
 		}
 }
 
@@ -841,22 +954,6 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_thresh0 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	return _check_rangefloat (&config.cmc.thresh0, 0.0, 1.0, path, fmt, argc, args);
-	//FIXME run range_update or new calibration
-}
-
-static uint8_t
-_thresh1 (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	uint8_t res;
-	res = _check_rangefloat (&config.cmc.thresh1, 0.0, 1.0, path, fmt, argc, args);
-	_thresh1_update ();
-	return res;
-}
-
-static uint8_t
 _peak_thresh (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	return _check_range8 (&config.cmc.peak_thresh, 3, 9, path, fmt, argc, args);
@@ -962,9 +1059,10 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			adc_range[p][i].south = 0x7ff;
-			adc_range[p][i].mean = 0x7ff;
-			adc_range[p][i].north = 0x7ff;
+			adc_range[p][i].mean = ADC_HALF_BITDEPTH;
+
+			adc_range[p][i].thresh[POLE_SOUTH] = ADC_HALF_BITDEPTH;
+			adc_range[p][i].thresh[POLE_NORTH] = ADC_HALF_BITDEPTH;
 		}
 
 	// enable calibration
@@ -977,7 +1075,55 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 }
 
 static uint8_t
-_calibration_stop (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// update new range
+	range_update_quiescent ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+
+static uint8_t
+_calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	// update new range
+	range_update_b0 ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	Y1 = args[1]->f;
+
+	// update new range
+	range_update_b1 ();
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	uint16_t size;
 	int32_t id = args[0]->i;
@@ -986,6 +1132,7 @@ _calibration_stop (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 	calibrating = 0;
 
 	// update new range
+	range_update_b2 ();
 	range_update ();
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -1098,11 +1245,6 @@ nOSC_Method config_methods [] = {
 	//{"/chimaera/zeroconf/enabled", "iT", _zeroconf_enabled},
 	//{"/chimaera/zeroconf/enabled", "iF", _zeroconf_enabled},
 
-	{"/chimaera/thresh0", "i", _thresh0},
-	{"/chimaera/thresh0", "if", _thresh0},
-	{"/chimaera/thresh1", "i", _thresh1},
-	{"/chimaera/thresh1", "if", _thresh1},
-
 	{"/chimaera/peak_thresh", "i", _peak_thresh},
 	{"/chimaera/peak_thresh", "ii", _peak_thresh},
 
@@ -1121,7 +1263,10 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/reset", "ii", _reset},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
-	{"/chimaera/calibration/stop", "i", _calibration_stop},
+	{"/chimaera/calibration/zero", "i", _calibration_zero},
+	{"/chimaera/calibration/min", "i", _calibration_min},
+	{"/chimaera/calibration/mid", "if", _calibration_mid},
+	{"/chimaera/calibration/max", "i", _calibration_max},
 	{"/chimaera/calibration/save", "i", _calibration_save},
 	{"/chimaera/calibration/load", "i", _calibration_load},
 	{"/chimaera/calibration/print", "i", _calibration_print},

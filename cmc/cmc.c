@@ -82,18 +82,14 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			uint8_t pos = order[p][i];
 			int16_t val = raw[p][i] - adc_range[p][i].mean;
 			uint16_t aval = abs (val);
-			uint8_t pole = val < 0; // SOUTH=0, NORTH=1
-			if (aval > adc_range[p][i].thresh0[pole])
+			uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
+			if (aval > adc_range[p][i].thresh[pole] / 2) // thresh0 == thresh1 / 4
 			{
 				cmc.sensors[pos+1].n = pole;
-				if (cmc.sensors[pos+1].n) // north pole
-					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_north;
-				else // south pole
-					cmc.sensors[pos+1].v = aval*adc_range[p][i].m_south;
-
-				// check for overflow
-				if (cmc.sensors[pos+1].v > ADC_HALF_BITDEPTH-1)
-					cmc.sensors[pos+1].v = ADC_HALF_BITDEPTH-1;
+				cmc.sensors[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
+				cmc.sensors[pos+1].v =  (fix_s15_16_t)adc_range[p][i].A[pole].fix * (fix_s15_16_t)lookup_sqrt[aval]  //FIXME move this down
+															+ (fix_s15_16_t)adc_range[p][i].B[pole].fix * (fix_s15_16_t)lookup[aval]
+															+ (fix_s15_16_t)adc_range[p][i].C[pole].fix;
 			}
 			else
 				cmc.sensors[pos+1].v = 0;
@@ -137,72 +133,32 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			{
 				//fit parabola
 
-				int16_t p0, p1, p2;
-				
-				p0 = cmc.sensors[i-1].v - f_thresh1;
-				if (p0 < 0) p0 = 0;
-				else p0 *= m_thresh1;
-				
-				p1 = cmc.sensors[i].v - f_thresh1;
-				if (p1 < 0) p1 = 0;
-				else p1 *= m_thresh1;
-				
-				p2 = cmc.sensors[i+1].v - f_thresh1;
-				if (p2 < 0) p2 = 0;
-				else p2 *= m_thresh1;
-
-				fix_s_31_t y0 = dist[p0];
-				fix_s_31_t y1 = dist[p1];
-				fix_s_31_t y2 = dist[p2];
+				fix_s_15_t y0 = cmc.sensors[i-1].v;
+				fix_s_15_t y1 = cmc.sensors[i].v;
+				fix_s_15_t y2 = cmc.sensors[i+1].v;
 
 				// parabolic interpolation
 				//fix_s_31_t divisor = y0 - y1 + y2 - y1;
 				fix_s15_16_t divisor = y0 - 2*y1 + y2;
 				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
 
-				// TODO this would be correct, but gives bad glitches
-				//fix_s_31_t tmp = s2d2*y1;
-				//fix_s_31_t _y = tmp - os8*y0 - os8*y2 + tmp;
-				//fix_0_32_t y = -_y*_y / divisor;
-
-				//fix_0_32_t y = y0*0.33r + y1*0.66r + y2*0.33r; // TODO this is not good enough an approximation
-
 				fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
 
-				//position correction based on x, x1 and y1
-				//fix_0_32_t dx = x - cmc.sensors[i].x;
-				//fix_0_32_t y = sqrt (y1*y1 + dx*dx);
+				if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
+				{
+					cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
+					cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+					cmc.blobs[cmc.neu][cmc.J].group = NULL;
+					cmc.blobs[cmc.neu][cmc.J].x = x;
+					cmc.blobs[cmc.neu][cmc.J].p = y;
+					cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.sensors[i].a;
+					cmc.blobs[cmc.neu][cmc.J].ignore = 0;
 
-				// circular interpolation
-				/*
-				fix_s_31_t ya = y0 > y2 ? y0 : y2;
-				fix_s_31_t yb = y1;
+					cmc.J++;
 
-				fix_s_31_t ya2 = ya*ya;
-				fix_s_31_t yb2 = yb*yb;
-
-				fix_0_32_t x =cmc.sensors[i].x + cmc.d_2 + (ya2 -yb2)/(2*cmc.d);
-				fix_0_32_t y = y1;
-				*/
-
-				// linear interpolation
-				/*
-				fix_s31_32_t frac = (fix_s31_32_t)y2 / (y0 + y2);
-				fix_s_31_t x = cmc.sensors[i].x + cmc.d*(frac - 0.5llk);
-				*/
-
-				cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-				cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
-				cmc.blobs[cmc.neu][cmc.J].group = NULL;
-				cmc.blobs[cmc.neu][cmc.J].x = x;
-				cmc.blobs[cmc.neu][cmc.J].p = y;
-				cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.sensors[i].v > f_thresh1 ? 1 : 0;
-				cmc.blobs[cmc.neu][cmc.J].ignore = 0;
-
-				cmc.J++;
-
-				if (cmc.J >= BLOB_MAX) // make sure to not exceed maximal number of blobs
-					break;
+					if (cmc.J >= BLOB_MAX) // make sure to not exceed maximal number of blobs
+						break;
+				}
 			}
 		}
 	}
@@ -408,7 +364,7 @@ cmc_write_tuio2 (uint8_t *buf, uint64_t now)
 
 		tuio2_tok_set (j,
 			cmc.blobs[cmc.old][j].sid,
-			(cmc.blobs[cmc.old][j].uid<<16) | tid,
+			((uint32_t)cmc.blobs[cmc.old][j].uid<<16) | tid,
 			X,
 			cmc.blobs[cmc.old][j].p);
 	}

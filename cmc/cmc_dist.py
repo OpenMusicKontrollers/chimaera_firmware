@@ -8,7 +8,7 @@ a = 1
 print ('#include <libmaple/libmaple_types.h>\n')
 print ('#include "cmc_private.h"\n')
 
-print ('fix_0_32_t dist [0x800] __attr_flash = {')
+print ('fix_0_16_t dist [0x800] __attr_flash = {')
 
 for B in range (0x800):
 	b = B / 0x7ff
