@@ -1,2 +1,3 @@
 build/
 cmc/cmc_dist.c
+cmc/cmc_lookup.c
