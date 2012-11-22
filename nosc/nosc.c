@@ -348,6 +348,13 @@ nosc_message_add_int32 (nOSC_Message *msg, int32_t i)
 	return new;
 }
 
+void
+nosc_message_set_int32 (nOSC_Message *msg, int32_t i)
+{
+	msg->type = nOSC_INT32;
+	msg->arg.i = i;
+}
+
 nOSC_Message *
 nosc_message_add_float (nOSC_Message *msg, float f)
 {

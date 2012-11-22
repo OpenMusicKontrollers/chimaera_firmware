@@ -45,7 +45,7 @@ extern "C" {
 #define SENSOR_N (MUX_MAX*ADC_LENGTH)
 
 #define BLOB_MAX 8
-#define GROUP_MAX 16
+#define GROUP_MAX 8
 
 #define ADC_CR1_DUALMOD_BIT 16
 
@@ -61,7 +61,7 @@ extern "C" {
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define MAGIC 0x02
+#define MAGIC 0x11
 
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer

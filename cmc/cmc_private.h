@@ -36,9 +36,8 @@
 #define POLE_NORTH 1
 #define POLE_SOUTH 0
 
-extern fix_0_16_t dist [];
-extern fix_0_16_t lookup [];
-extern fix_0_16_t lookup_sqrt [];
+extern fix_0_32_t lookup [];
+extern fix_0_32_t lookup_sqrt [];
 
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Blob CMC_Blob;
@@ -64,8 +63,8 @@ struct _CMC_Blob {
 struct _CMC_Group {
 	uint16_t tid;
 	uint16_t uid;
-	fix_0_16_t x0, x1;
-	fix_0_16_t m;
+	fix_0_32_t x0, x1;
+	fix_0_32_t m;
 };
 
 struct _CMC {

@@ -49,7 +49,7 @@ cmc_init ()
 	cmc.fid = 1; // we start counting at 1, 0 marks an 'out of order' frame
 	cmc.sid = 0; // we start counting at 0
 
-	cmc.d = 1.0ur / (SENSOR_N-1);
+	cmc.d = 1.0ulr / (SENSOR_N-1);
 	cmc.d_2 = cmc.d / 2;
 
 	for (i=0; i<SENSOR_N+2; i++)
@@ -87,9 +87,9 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			{
 				cmc.sensors[pos+1].n = pole;
 				cmc.sensors[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
-				cmc.sensors[pos+1].v =  (fix_s15_16_t)adc_range[p][i].A[pole].fix * (fix_s15_16_t)lookup_sqrt[aval]  //FIXME move this down
-															+ (fix_s15_16_t)adc_range[p][i].B[pole].fix * (fix_s15_16_t)lookup[aval]
-															+ (fix_s15_16_t)adc_range[p][i].C[pole].fix;
+				cmc.sensors[pos+1].v =  adc_range[p][i].A[pole].fix * lookup_sqrt[aval]  //FIXME move this down
+															+ adc_range[p][i].B[pole].fix * lookup[aval]
+															+ adc_range[p][i].C[pole].fix;
 			}
 			else
 				cmc.sensors[pos+1].v = 0;
@@ -133,13 +133,13 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			{
 				//fit parabola
 
-				fix_s_15_t y0 = cmc.sensors[i-1].v;
-				fix_s_15_t y1 = cmc.sensors[i].v;
-				fix_s_15_t y2 = cmc.sensors[i+1].v;
+				fix_s_31_t y0 = cmc.sensors[i-1].v;
+				fix_s_31_t y1 = cmc.sensors[i].v;
+				fix_s_31_t y2 = cmc.sensors[i+1].v;
 
 				// parabolic interpolation
 				//fix_s_31_t divisor = y0 - y1 + y2 - y1;
-				fix_s15_16_t divisor = y0 - 2*y1 + y2;
+				fix_s31_32_t divisor = y0 - 2*y1 + y2;
 				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
 
 				fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)

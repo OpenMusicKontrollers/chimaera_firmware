@@ -29,6 +29,10 @@
 
 Tuio2 tuio;
 
+nOSC_Bundle *_bndl [BLOB_MAX+2];
+Tuio2_Tok _tok [BLOB_MAX];
+nOSC_Message *_alv [BLOB_MAX];
+
 void
 tuio2_init ()
 {
@@ -37,7 +41,8 @@ tuio2_init ()
 	tuio.len = BLOB_MAX;
 
 	// bndl
-	tuio.bndl = calloc (tuio.len+2, sizeof (nOSC_Bundle *)); // frm + len*tok + alv
+	//tuio.bndl = calloc (tuio.len+2, sizeof (nOSC_Bundle *)); // frm + len*tok + alv
+	tuio.bndl = _bndl;
 
 	// frm
 	tuio.frm_id = nosc_message_add_int32 (NULL, 0);
@@ -52,7 +57,8 @@ tuio2_init ()
 		tuio.frm_timestamp->next = NULL;
 
 	// tok
-	tuio.tok = calloc (tuio.len, sizeof (Tuio2_Tok));
+	//tuio.tok = calloc (tuio.len, sizeof (Tuio2_Tok));
+	tuio.tok = _tok;
 	for (i=0; i<tuio.len; i++)
 	{
 		Tuio2_Tok *tok = &tuio.tok[i];
@@ -64,7 +70,8 @@ tuio2_init ()
 	}
 	
 	// alv
-	tuio.alv = calloc (tuio.len, sizeof (nOSC_Message *));
+	//tuio.alv = calloc (tuio.len, sizeof (nOSC_Message *));
+	tuio.alv = _alv;
 	for (i=0; i<tuio.len; i++)
 	{
 		nOSC_Message *prev = i>0 ? tuio.alv[i-1] : NULL;

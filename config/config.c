@@ -822,6 +822,42 @@ _debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
+_host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+	{
+		uint8_t ip [4] = {
+			args[1]->i,
+			args[2]->i,
+			args[3]->i,
+			args[4]->i
+		};
+
+		memcpy (config.tuio.socket.ip, ip, 4);
+		memcpy (config.config.socket.ip, ip, 4);
+		memcpy (config.sntp.socket.ip, ip, 4);
+		memcpy (config.dump.socket.ip, ip, 4);
+		memcpy (config.debug.socket.ip, ip, 4);
+
+		tuio_enable (config.tuio.enabled);
+		config_enable (config.config.enabled);
+		sntp_enable (config.sntp.enabled);
+		dump_enable (config.dump.enabled);
+		debug_enable (config.debug.enabled);
+	}
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+
+	return 1;
+}
+
+static uint8_t
 _config_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 {
 	return _check_range16 (&config.config.rate, 1, 10, path, fmt, argc, args);
@@ -1186,6 +1222,38 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 	return 1;
 }
 
+static uint8_t
+_test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+{
+	uint16_t size;
+	int32_t id = args[0]->i;
+
+	debug_int32 (sizeof (sat unsigned short fract));				// size = 1
+	debug_int32 (sizeof (sat unsigned fract));							// size = 2
+	debug_int32 (sizeof (sat unsigned long fract));					// size = 4
+	debug_int32 (sizeof (sat unsigned long long fract));		// size = 8
+
+	debug_int32 (sizeof (sat short fract));									// size = 1
+	debug_int32 (sizeof (sat fract));												// size = 2
+	debug_int32 (sizeof (sat long fract));									// size = 4
+	debug_int32 (sizeof (sat long long fract));							// size = 8
+
+	debug_int32 (sizeof (sat unsigned short accum));				// size = 2
+	debug_int32 (sizeof (sat unsigned accum));							// size = 4
+	debug_int32 (sizeof (sat unsigned long accum));					// size = 8
+	debug_int32 (sizeof (sat unsigned long long accum));		// size = 8
+
+	debug_int32 (sizeof (sat short accum));									// size = 2
+	debug_int32 (sizeof (sat accum));												// size = 4
+	debug_int32 (sizeof (sat long accum));									// size = 8
+	debug_int32 (sizeof (sat long long accum));							// size = 8
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 nOSC_Method config_methods [] = {
 	{"/chimaera/version", "i", _version},
 
@@ -1240,6 +1308,8 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/debug/socket", "i", _debug_socket},
 	{"/chimaera/debug/socket", "iiiiiii", _debug_socket},
 
+	{"/chimaera/host/socket", "iiiii", _host_socket},
+
 	//TODO
 	//{"/chimaera/zeroconf/enabled", "i", _zeroconf_enabled},
 	//{"/chimaera/zeroconf/enabled", "iT", _zeroconf_enabled},
@@ -1270,6 +1340,9 @@ nOSC_Method config_methods [] = {
 	{"/chimaera/calibration/save", "i", _calibration_save},
 	{"/chimaera/calibration/load", "i", _calibration_load},
 	{"/chimaera/calibration/print", "i", _calibration_print},
+
+	//TODO remove
+	{"/chimaera/test", "i", _test},
 
 	{NULL, NULL, NULL} // terminator
 };
