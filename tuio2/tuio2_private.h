@@ -31,26 +31,20 @@ typedef struct _Tuio2_Tok Tuio2_Tok;
 typedef struct _Tuio2 Tuio2;
 
 struct _Tuio2_Tok {
-	nOSC_Message *S;
-	nOSC_Message *T;
-	nOSC_Message *x;
-	nOSC_Message *z;
+	nOSC_Message S;
+	nOSC_Message T;
+	nOSC_Message x;
+	nOSC_Message z;
 };
 
 struct _Tuio2 {
 	uint8_t len;
 
-	nOSC_Bundle **bndl;
+	nOSC_Message *bndl [BLOB_MAX + 3];
 
-	nOSC_Message *frm_id;
-	nOSC_Message *frm_timestamp;
-	nOSC_Message *frm_app;
-	nOSC_Message *frm_addr;
-	nOSC_Message *frm_inst;
-	nOSC_Message *frm_dim;
-
-	Tuio2_Tok *tok;
-	nOSC_Message **alv;
+	nOSC_Message frm;
+	Tuio2_Tok tok[BLOB_MAX];
+	nOSC_Message alv;
 };
 
 #endif /* TUIO2_PRIVATE_H */
