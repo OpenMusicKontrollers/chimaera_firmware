@@ -66,6 +66,16 @@ cmc_init ()
 	cmc.neu = 1;
 }
 
+float
+cmc_sensor (uint8_t order[16][9], uint8_t p, uint8_t i)
+{
+	uint8_t pos = order[p][i];
+	if (cmc.sensors[pos+1].n)
+		return -(float)cmc.sensors[pos+1].v;
+	else
+		return (float)cmc.sensors[pos+1].v;
+}
+
 uint8_t
 cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 {
@@ -83,7 +93,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			int16_t val = raw[p][i] - adc_range[p][i].mean;
 			uint16_t aval = abs (val);
 			uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
-			if (aval > adc_range[p][i].thresh[pole] / 2) // thresh0 == thresh1 / 4
+			if (aval > adc_range[p][i].thresh[pole] / 4) // thresh0 == thresh1 / 4
 			{
 				cmc.sensors[pos+1].n = pole;
 				cmc.sensors[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
@@ -143,6 +153,9 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
 
 				fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
+
+				//fix_s31_32_t dividend = -0.125r*y0*y0 + y0*y1 - 2*y1*y1 + 0.25r*y0*y2 + y1*y2 - 0.125r*y2*y2;
+				//fix_0_32_t y = dividend / divisor;
 
 				if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
 				{

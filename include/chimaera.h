@@ -47,6 +47,8 @@ extern "C" {
 #define BLOB_MAX 8
 #define GROUP_MAX 8
 
+#define OSC_ARGS_MAX 8
+
 #define ADC_CR1_DUALMOD_BIT 16
 
 #define PWDN 0

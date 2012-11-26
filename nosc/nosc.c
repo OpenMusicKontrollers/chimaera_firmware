@@ -27,64 +27,70 @@
 
 #include "nosc_private.h"
 
-//TODO get rid of calloc and strdup and use configurable static buffers for it
+/*
+ * static variabled
+ */
+
+nOSC_Message dispatch_msg = {
+	.path = "/dispatch",
+	.args = { //FIXME make this configurable with OSC_ARGS_MAX
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end
+	}
+};
+
+nOSC_Message vararg_msg = {
+	.path = "/vararg",
+	.args = { //FIXME make this configurable with OSC_ARGS_MAX
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end,
+		nosc_end
+	}
+};
+
+static const char *bundle = "#bundle";
 
 /*
  * Method
  */
-
 void
-_nosc_method_message_dispatch (nOSC_Method *meth, nOSC_Message *msg, char *path, char *fmt)
+_nosc_method_message_dispatch (nOSC_Method *meth)
 {
+	nOSC_Message *msg = &dispatch_msg;
 	nOSC_Method *ptr = meth;
 	while (ptr->cb)
 	{
 		// raw matches only of path and format strings
-		if ( !ptr->path || !strcmp (ptr->path, path))
+		if ( !ptr->path || !strcmp (ptr->path, msg->path))
 		{
-			// only compare up to occurence of '*' TODO test this
-
-			uint16_t match_len = 0;
-			char *wildcard;
-	
-			if (ptr->fmt)
-			{
-				wildcard = strchr (ptr->fmt, '*');
-				if (wildcard)
-					match_len = wildcard - ptr->fmt;
-				else
-					match_len = strlen (ptr->fmt);
-			}
+			char fmt [32]; //FIXME how big an array!
+			nOSC_Arg *arg;
+			int i;
+			for (i=0; (arg = &msg->args[i])->type != nOSC_END; i++)
+				fmt[i] = arg->type;
+			fmt[i] = '\0';
 
 			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
 			{
-				nOSC_Message *tmp = msg;
-
-				uint8_t argc = 1;
-				while (tmp && tmp->prev)
-				{
-					tmp = tmp->prev;
-					argc++;
-				}
-
-				nOSC_Arg **argv = calloc (argc, sizeof (nOSC_Arg *));
-
-				uint8_t i = 0;
-				while (tmp)
-				{
-					argv[i++] = &tmp->arg;
-					tmp = tmp->next;
-				}
-
-				uint8_t res = ptr->cb (path, fmt, argc, argv);
-
-				free (argv);
+				uint8_t res = ptr->cb (ptr->path, ptr->fmt, i, msg->args);
 
 				if (res) // return when handled
 					return;
 			}
 		}
-
 		ptr++;
 	}
 }
@@ -92,191 +98,111 @@ _nosc_method_message_dispatch (nOSC_Method *meth, nOSC_Message *msg, char *path,
 void
 nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size)
 {
-	nOSC_Bundle *bund;
 	nOSC_Message *msg;
-	char *path;
-	char *fmt;
 
 	if (buf[0] == '#') // check whether we are a bundle
 	{
-		bund = _nosc_bundle_deserialize (buf, size);
-		nOSC_Bundle *ptr = bund;
+		int32_t msg_size;
+		nOSC_Message *msg;
 
-		while (ptr)
+		uint8_t *buf_ptr = buf;
+
+		buf_ptr += 8; // skip "#bundle"
+		buf_ptr += 8; // XXX timestamp is ignored fo now and messages dispatched immediately, we have too little memory to store arbitrary amounts of messages for later dispatching
+
+		while (buf_ptr-buf < size)
 		{
-			_nosc_method_message_dispatch (meth, ptr->msg, ptr->path, ptr->fmt);
-			ptr = ptr->prev;
-		}
+			msg_size = (int32_t) *buf_ptr;
+			buf_ptr += 4;
 
-		nosc_bundle_free (bund);
+			_nosc_message_deserialize (buf_ptr, msg_size);
+			_nosc_method_message_dispatch (meth);
+			buf_ptr += msg_size;
+		}
 	}
 	else if (buf[0] == '/') // check whether we are a message
 	{
-		msg = _nosc_message_deserialize (buf, size, &path, &fmt);
-		_nosc_method_message_dispatch (meth, msg, path, fmt);
-		nosc_message_free (msg);
+		_nosc_message_deserialize (buf, size);
+		_nosc_method_message_dispatch (meth);
 	}
 }
 
-nOSC_Bundle *
-_nosc_bundle_deserialize (uint8_t *buf, uint16_t size)
+void
+_nosc_message_deserialize (uint8_t *buf, uint16_t size)
 {
-	int32_t msg_size;
-	nOSC_Bundle *bund = NULL;
-	nOSC_Message *msg;
-	char *path;
-	char *fmt;
-
-	uint8_t *buf_ptr = buf;
-
-	buf_ptr += 8; // skip "#bundle"
-	buf_ptr += 8; // XXX timestamp is ignored fo now and messages dispatched immediately, we have too little memory to store arbitrary amounts of messages for later dispatching
-
-	while (buf_ptr-buf < size)
-	{
-		msg_size = (int32_t) *buf_ptr;
-		buf_ptr += 4;
-
-		msg = _nosc_message_deserialize (buf_ptr, msg_size, &path, &fmt);
-		buf_ptr += msg_size;
-		bund = nosc_bundle_add_message (bund, msg, path);
-	}
-
-	return bund;
-}
-
-nOSC_Message *
-_nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
-{
-	nOSC_Message *msg = NULL;
+	nOSC_Message *msg = &dispatch_msg;
 
 	uint8_t *buf_ptr = buf;
 	uint8_t len;
 
 	// find path
-	*path = buf_ptr;
-	len = strlen (*path)+1;
+	msg->path = buf_ptr;
+	len = strlen (msg->path)+1;
 	if (len%4)
 		len += 4 - len%4;
 	buf_ptr += len;
 
 	// find format
-	*fmt = buf_ptr;
-	len = strlen (*fmt)+1;
+	char *fmt = buf_ptr;
+	len = strlen (fmt)+1;
 	if (len%4)
 		len += 4 - len%4;
 	buf_ptr += len;
 	
-	(*fmt)++; // skip ','
+	fmt++; // skip ','
 
-	uint8_t *type = *fmt;
+	char *type = fmt;
+	uint8_t pos;
 	while (*type != '\0')
 	{
+		pos = type - fmt;
 		switch (*type)
 		{
 			case nOSC_INT32:
-				msg = nosc_message_add_int32 (msg, ref_ntohl (buf_ptr));
+				nosc_message_set_int32 (msg, pos, ref_ntohl (buf_ptr));
 				buf_ptr += 4;
 				break;
 			case nOSC_FLOAT:
-				msg = nosc_message_add_float (msg, 0.0);
-				msg->arg.i = ref_ntohl (buf_ptr);
+				nosc_message_set_float (msg, pos, 0.0);
+				msg->args[pos].val.i = ref_ntohl (buf_ptr);
 				buf_ptr += 4;
 				break;
 			case nOSC_STRING:
-				msg = nosc_message_add_string (msg, buf_ptr);
+				nosc_message_set_string (msg, pos, buf_ptr);
 				len = strlen (buf_ptr)+1;
 				if (len%4)
 					len += 4 - len%4;
 				buf_ptr += len;
 				break;
-			case nOSC_BLOB:
-			{
-				int32_t len = ref_ntohl (buf_ptr);
-				buf_ptr += 4;
-				msg = nosc_message_add_blob (msg, buf_ptr, len);
-				buf_ptr += len;
-				break;
-			}
 
 			case nOSC_TRUE:
-				msg = nosc_message_add_true (msg);
+				nosc_message_set_true (msg, pos);
 				break;
 			case nOSC_FALSE:
-				msg = nosc_message_add_false (msg);
+				nosc_message_set_false (msg, pos);
 				break;
 			case nOSC_NIL:
-				msg = nosc_message_add_nil (msg);
+				nosc_message_set_nil (msg, pos);
 				break;
 			case nOSC_INFTY:
-				msg = nosc_message_add_infty (msg);
+				nosc_message_set_infty (msg, pos);
 				break;
 
-			case nOSC_DOUBLE:
-				msg = nosc_message_add_double (msg, 0.0);
-				msg->arg.h = ref_ntohll (buf_ptr);;
-				buf_ptr += 8;
-				break;
-			case nOSC_INT64:
-				msg = nosc_message_add_int64 (msg, ref_ntohll (buf_ptr));
-				buf_ptr += 8;
-				break;
 			case nOSC_TIMESTAMP:
-				msg = nosc_message_add_timestamp (msg, ref_ntohll (buf_ptr));
+				nosc_message_add_timestamp (msg, pos, ref_ntohll (buf_ptr));
 				buf_ptr += 8;
-				break;
-
-			case nOSC_MIDI:
-				msg = nosc_message_add_midi (msg, buf_ptr);
-				buf_ptr += 4;
 				break;
 		}
 		type++;
 	}
-
-	return msg;
 }
 
 /*
  * Bundle
  */
 
-nOSC_Bundle *
-nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path)
-{
-	nOSC_Bundle *new = calloc (1, sizeof (nOSC_Bundle));
-	new->msg = msg;
-	new->path = strdup (path);
-	new->prev = bund;
-	if (bund) 
-		bund->next = new;
-
-	// create format string
-
-	// get first element
-	nOSC_Message *first = msg;
-	while (first && first->prev)
-		first = first->prev;
-
-	// write format
-	char fmt [64]; //TODO what size to use?
-	char *fmt_ptr = fmt;
-	nOSC_Message *ptr = first;
-	while (ptr)
-	{
-		*fmt_ptr++ = ptr->type;
-		ptr = ptr->next;
-	}
-	*fmt_ptr++ = '\0';
-	new->fmt = strdup (fmt);
-
-	return new;
-}
-
-static const char *bundle = "#bundle";
-
 uint16_t
-nosc_bundle_serialize (nOSC_Bundle *bund, uint64_t timestamp, uint8_t *buf)
+nosc_bundle_serialize (nOSC_Message **bund, uint64_t timestamp, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -286,192 +212,106 @@ nosc_bundle_serialize (nOSC_Bundle *bund, uint64_t timestamp, uint8_t *buf)
 	ref_htonll (buf_ptr, timestamp);
 	buf_ptr += 8;
 
-	// get first bundle
-	nOSC_Bundle *first = bund;
-	while (first && first->prev)
-		first = first->prev;
-
-	nOSC_Bundle *ptr = first;
-	while (ptr)
+	nOSC_Message *msg;
+	for (msg=bund[0]; msg!=NULL; msg++)
 	{
 		uint16_t msg_size;
 		int32_t i;
 
-		msg_size = nosc_message_serialize (ptr->msg, ptr->path, buf_ptr+4);
+		msg_size = nosc_message_serialize (msg, buf_ptr+4);
 		ref_htonl (buf_ptr, msg_size);
 		buf_ptr += msg_size + 4;
-
-		ptr = ptr->next;
 	}
 
 	return buf_ptr - buf;
-}
-
-void 
-nosc_bundle_free (nOSC_Bundle *bund)
-{
-	nOSC_Bundle *ptr = bund;
-	while (ptr)
-	{
-		nOSC_Bundle *tmp = ptr;
-		ptr = ptr->prev;
-		nosc_message_free (tmp->msg);
-		if (tmp->path)
-			free (tmp->path);
-		if (tmp->fmt)
-			free (tmp->fmt);
-		free (tmp);
-	}
 }
 
 /*
  * Message
  */
 
-static nOSC_Message *
-_msg_add (nOSC_Message *msg, nOSC_Type type)
+void
+nosc_message_set_int32 (nOSC_Message *msg, uint8_t pos, int32_t i)
 {
-	nOSC_Message *new = calloc (1, sizeof (nOSC_Message));
-	new->type = type;
-	new->prev = msg;
-	if (msg) 
-		msg->next = new;
-
-	return new;
-}
-
-nOSC_Message *
-nosc_message_add_int32 (nOSC_Message *msg, int32_t i)
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_INT32);
-	new->arg.i = i;
-	return new;
+	msg->args[pos].type = nOSC_INT32;
+	msg->args[pos].val.i = i;
 }
 
 void
-nosc_message_set_int32 (nOSC_Message *msg, int32_t i)
+nosc_message_set_float (nOSC_Message *msg, uint8_t pos, float f)
 {
-	msg->type = nOSC_INT32;
-	msg->arg.i = i;
+	msg->args[pos].type = nOSC_FLOAT;
+	msg->args[pos].val.f = f;
 }
 
-nOSC_Message *
-nosc_message_add_float (nOSC_Message *msg, float f)
+void
+nosc_message_set_string (nOSC_Message *msg, uint8_t pos, char *s)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_FLOAT);
-	new->arg.f = f;
-	return new;
+	msg->args[pos].type = nOSC_STRING;
+	msg->args[pos].val.s = s;
 }
 
-nOSC_Message * 
-nosc_message_add_string (nOSC_Message *msg, const char *s)
+void
+nosc_message_set_true (nOSC_Message *msg, uint8_t pos)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_STRING);
-	new->arg.s = strdup (s);
-	return new;
+	msg->args[pos].type = nOSC_TRUE;
 }
 
-nOSC_Message * 
-nosc_message_add_blob (nOSC_Message *msg, uint8_t *dat, int32_t len)
+void
+nosc_message_set_false (nOSC_Message *msg, uint8_t pos)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_BLOB);
-	new->arg.b.len = len;
-	new->arg.b.dat = dat;
-	//TODO caution, data is not copied, but only referenced, so should not be changed until sent
-	return new;
+	msg->args[pos].type = nOSC_FALSE;
 }
 
-nOSC_Message * 
-nosc_message_add_true (nOSC_Message *msg)
+void
+nosc_message_set_nil (nOSC_Message *msg, uint8_t pos)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_TRUE);
-	return new;
+	msg->args[pos].type = nOSC_NIL;
 }
 
-nOSC_Message * 
-nosc_message_add_false (nOSC_Message *msg)
+void
+nosc_message_set_infty (nOSC_Message *msg, uint8_t pos)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_FALSE);
-	return new;
+	msg->args[pos].type = nOSC_INFTY;
 }
 
-nOSC_Message * 
-nosc_message_add_nil (nOSC_Message *msg)
+void
+nosc_message_set_timestamp (nOSC_Message *msg, uint8_t pos, uint64_t t)
 {
-	nOSC_Message *new = _msg_add (msg, nOSC_NIL);
-	return new;
+	msg->args[pos].type = nOSC_TIMESTAMP;
+	msg->args[pos].val.t = t;
 }
 
-nOSC_Message * 
-nosc_message_add_infty (nOSC_Message *msg)
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_INFTY);
-	return new;
-}
-
-nOSC_Message * 
-nosc_message_add_double (nOSC_Message *msg, double d)
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_DOUBLE);
-	new->arg.d = d;
-	return new;
-}
-
-nOSC_Message * 
-nosc_message_add_int64 (nOSC_Message *msg, int64_t h)
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_INT64);
-	new->arg.h = h;
-	return new;
-}
-
-nOSC_Message * 
-nosc_message_add_timestamp (nOSC_Message *msg, uint64_t t)
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_TIMESTAMP);
-	new->arg.t = t;
-	return new;
-}
-
-nOSC_Message * 
-nosc_message_add_midi (nOSC_Message *msg, uint8_t m [4])
-{
-	nOSC_Message *new = _msg_add (msg, nOSC_MIDI);
-	memcpy (new->arg.m, m, 4);
-	return new;
-}
+/*
+ * (de)serialization
+ */
 
 uint16_t
-nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
+nosc_message_serialize (nOSC_Message *msg, uint8_t *buf)
 {
 	uint8_t i;
+	nOSC_Arg *arg;
 	uint16_t len;
 
 	// resetting buf_ptr to start of buf
 	uint8_t *buf_ptr = buf;
 
-	// get first element
-	nOSC_Message *first = msg;
-	while (first && first->prev)
-		first = first->prev;
-
 	// write path
-	len = strlen (path) + 1;
-	memcpy (buf_ptr, path, len);
+	len = strlen (msg->path) + 1;
+	memcpy (buf_ptr, msg->path, len);
 	buf_ptr += len;
 	if (len%4)
 		for (i=len%4; i<4; i++)
 			*buf_ptr++ = '\0';
 
 	// write format
-	nOSC_Message *ptr = first;
 	*buf_ptr++ = ',';
 	len = 1;
-	while (ptr)
+	i = 0;
+	for (i=0; (arg = &msg->args[i])->type != nOSC_END; i++)
 	{
-		*buf_ptr++ = ptr->type;
+		*buf_ptr++ = arg->type;
 		len++;
-		ptr = ptr->next;
 	}
 	*buf_ptr++ = '\0';
 	len++;
@@ -480,26 +320,19 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 			*buf_ptr++ = '\0';
 
 	// write arguments
-	ptr = first;
-	while (ptr)
-	{
-		switch (ptr->type)
+	for (i=0; (arg = &msg->args[i])->type != nOSC_END; i++)
+		switch (arg->type)
 		{
 			case nOSC_INT32:
 			case nOSC_FLOAT:
-				ref_htonl (buf_ptr, ptr->arg.i);
-				buf_ptr += 4;
-				break;
-
-			case nOSC_MIDI:
-				memcpy (buf_ptr, ptr->arg.m, 4);
+				ref_htonl (buf_ptr, arg->val.i);
 				buf_ptr += 4;
 				break;
 
 			case nOSC_STRING:
 			{
 				uint8_t i;
-				char *s = ptr->arg.s;
+				char *s = arg->val.s;
 				uint16_t len = strlen (s) + 1;
 				memcpy (buf_ptr, s, len);
 				buf_ptr += len;
@@ -509,116 +342,69 @@ nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf)
 				break;
 			}
 
-			case nOSC_BLOB:
-			{
-				int32_t len = ptr->arg.b.len;
-				while (len % 4) // len must be a multiple of 32bit
-					len += 1;
-				ref_htonl (buf_ptr, len);
-				buf_ptr += 4;
-				memcpy (buf_ptr, ptr->arg.b.dat, ptr->arg.b.len);
-				//TODO do we need to zero the ramaining bytes up to len?
-				buf_ptr += len;
-				break;
-			}
-
 			case nOSC_TRUE:
 			case nOSC_FALSE:
 			case nOSC_NIL:
 			case nOSC_INFTY:
 				break;
 
-			case nOSC_DOUBLE:
-			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
-				ref_htonll (buf_ptr, ptr->arg.h);
+				ref_htonll (buf_ptr, arg->val.h);
 				buf_ptr += 8;
 				break;
 		}
-		ptr = ptr->next;
-	}
 
 	return buf_ptr - buf;
 }
 
 uint16_t
-nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...)
+nosc_message_vararg_serialize (uint8_t *buf, char *path, char *fmt, ...)
 {
-	nOSC_Message *msg = NULL;
+	nOSC_Message *msg = &vararg_msg;
+	msg->path = path;
 
   va_list args;
   va_start (args, fmt);
 
   const char *p;
+	uint8_t pos;
   for (p = fmt; *p != '\0'; p++)
+	{
+		pos = p - fmt;
 		switch (*p)
 		{
 			case nOSC_INT32:
-				msg = nosc_message_add_int32 (msg, va_arg (args, int32_t));
+				nosc_message_set_int32 (msg, pos, va_arg (args, int32_t));
         break;
 			case nOSC_FLOAT:
-				msg = nosc_message_add_float (msg, (float) va_arg (args, double));
+				 nosc_message_set_float (msg, pos, (float) va_arg (args, double));
         break;
 			case nOSC_STRING:
-				msg = nosc_message_add_string (msg, va_arg (args, char *));
-        break;
-			case nOSC_BLOB:
-				msg = nosc_message_add_blob (msg, va_arg (args, uint8_t *), va_arg (args, int32_t));
+				nosc_message_set_string (msg, pos, va_arg (args, char *));
         break;
 
 			case nOSC_TRUE:
-				msg = nosc_message_add_true (msg);
+				nosc_message_set_true (msg, pos);
         break;
 			case nOSC_FALSE:
-				msg = nosc_message_add_false (msg);
+				nosc_message_set_false (msg, pos);
         break;
 			case nOSC_NIL:
-				msg = nosc_message_add_nil (msg);
+				nosc_message_set_nil (msg, pos);
         break;
 			case nOSC_INFTY:
-				msg = nosc_message_add_infty (msg);
+				nosc_message_set_infty (msg, pos);
         break;
 
-			case nOSC_INT64:
-				msg = nosc_message_add_int64 (msg, va_arg (args, int64_t));
-        break;
-			case nOSC_DOUBLE:
-				msg = nosc_message_add_double (msg, va_arg (args, double));
-        break;
 			case nOSC_TIMESTAMP:
-				msg = nosc_message_add_timestamp (msg, va_arg (args, uint64_t));
-        break;
-			case nOSC_MIDI:
-				msg = nosc_message_add_midi (msg, va_arg (args, uint8_t *));
+				nosc_message_set_timestamp (msg, pos, va_arg (args, uint64_t));
         break;
 		}
+	}
   va_end (args);
 
 
-	uint16_t size = nosc_message_serialize (msg, path, buf);
-	nosc_message_free (msg);
+	uint16_t size = nosc_message_serialize (msg, buf);
 
 	return size;
-}
-
-void
-nosc_message_free (nOSC_Message *msg)
-{
-	nOSC_Message *ptr = msg;
-	while (ptr)
-	{
-		nOSC_Message *tmp = ptr;
-		ptr = ptr->prev;
-
-		switch (tmp->type)
-		{
-			case nOSC_STRING:
-				free (tmp->arg.s);
-				break;
-			default:
-				break;
-		}
-
-		free (tmp);
-	}
 }

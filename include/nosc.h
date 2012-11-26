@@ -38,18 +38,13 @@ extern "C" {
  * Definitions
  */
 
-typedef struct _nOSC_Blob nOSC_Blob;
-typedef struct _nOSC_Bundle nOSC_Bundle;
+typedef enum _nOSC_Type nOSC_Type;
+typedef struct _nOSC_Arg nOSC_Arg;
 typedef struct _nOSC_Message nOSC_Message;
+typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *argv);
 typedef struct _nOSC_Method nOSC_Method;
-typedef union _nOSC_Arg nOSC_Arg;
 
-struct _nOSC_Blob {
-	int32_t len;
-	uint8_t *dat;
-};
-
-typedef enum _nOSC_Type {
+enum _nOSC_Type {
 	nOSC_INT32 = 'i',
 	nOSC_FLOAT = 'f',
 	nOSC_STRING = 's',
@@ -64,23 +59,44 @@ typedef enum _nOSC_Type {
 	nOSC_INT64 = 'h',
 	nOSC_TIMESTAMP = 't',
 
-	nOSC_MIDI = 'm'
-} nOSC_Type;
+	nOSC_MIDI = 'm',
 
-union _nOSC_Arg {
-	int32_t i;
-	float f;
-	char *s;
-	nOSC_Blob b;
-
-	double d;
-	int64_t h;
-	uint64_t t;
-
-	uint8_t m[4];
+	nOSC_END = '\0'
 };
 
-typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **argb);
+struct _nOSC_Arg {
+	nOSC_Type type;
+
+	union {
+		int32_t i;
+		float f;
+		char *s;
+	
+		double d;
+		int64_t h;
+		uint64_t t;
+
+		uint8_t m[4];
+	} val;
+};
+
+#define nosc_int32(x) {nOSC_INT32, {.i=(x)}}
+#define nosc_float(x) {nOSC_FLOAT, {.f=(x)}}
+#define nosc_string(x) {nOSC_STRING, {.s=(x)}}
+
+#define nosc_true {nOSC_TRUE}
+#define nosc_false {nOSC_FALSE}
+#define nosc_nil {nOSC_NIL}
+#define nosc_infty {nOSC_INFTY}
+
+#define nosc_timestamp(x) {nOSC_TIMESTAMP, {.t=(x)}}
+
+#define nosc_end {nOSC_END}
+
+struct _nOSC_Message {
+	char *path;
+	nOSC_Arg args [];
+};
 
 struct _nOSC_Method {
 	char *path;
@@ -104,36 +120,25 @@ void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size);
  * Bundle functions
  */
 
-nOSC_Bundle *nosc_bundle_add_message (nOSC_Bundle *bund, nOSC_Message *msg, const char *path);
-
-uint16_t nosc_bundle_serialize (nOSC_Bundle *bund, uint64_t timestamp, uint8_t *buf);
-
-void nosc_bundle_free (nOSC_Bundle *bund);
+uint16_t nosc_bundle_serialize (nOSC_Message **bund, uint64_t timestamp, uint8_t *buf);
 
 /*
  * Message functions
  */
 
-nOSC_Message *nosc_message_add_int32 (nOSC_Message *msg, int32_t i);
-nOSC_Message *nosc_message_add_float (nOSC_Message *msg, float f);
-nOSC_Message *nosc_message_add_string (nOSC_Message *msg, const char *s);
-nOSC_Message *nosc_message_add_blob (nOSC_Message *msg, uint8_t *dat, int32_t len);
+void nosc_message_set_int32 (nOSC_Message *msg, uint8_t pos, int32_t i);
+void nosc_message_set_float (nOSC_Message *msg, uint8_t pos, float f);
+void nosc_message_set_string (nOSC_Message *msg, uint8_t pos, char *s);
 
-nOSC_Message *nosc_message_add_true (nOSC_Message *msg);
-nOSC_Message *nosc_message_add_false (nOSC_Message *msg);
-nOSC_Message *nosc_message_add_nil (nOSC_Message *msg);
-nOSC_Message *nosc_message_add_infty (nOSC_Message *msg);
+void nosc_message_set_true (nOSC_Message *msg, uint8_t pos);
+void nosc_message_set_false (nOSC_Message *msg, uint8_t pos);
+void nosc_message_set_nil (nOSC_Message *msg, uint8_t pos);
+void nosc_message_set_infty (nOSC_Message *msg, uint8_t pos);
 
-nOSC_Message *nosc_message_add_double (nOSC_Message *msg, double d);
-nOSC_Message *nosc_message_add_int64 (nOSC_Message *msg, int64_t h);
-nOSC_Message *nosc_message_add_timestamp (nOSC_Message *msg, uint64_t t);
+void nosc_message_set_timestamp (nOSC_Message *msg, uint8_t pos, uint64_t t);
 
-nOSC_Message *nosc_message_add_midi (nOSC_Message *msg, uint8_t m [4]);
-
-uint16_t nosc_message_serialize (nOSC_Message *msg, const char *path, uint8_t *buf);
-uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);
-
-void nosc_message_free (nOSC_Message *msg);
+uint16_t nosc_message_serialize (nOSC_Message *msg, uint8_t *buf);
+uint16_t nosc_message_vararg_serialize (uint8_t *buf, char *path, char *fmt, ...);
 
 #ifdef __cplusplus
 }

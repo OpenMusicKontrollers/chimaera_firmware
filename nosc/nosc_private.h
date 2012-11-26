@@ -30,24 +30,10 @@
  * Structs 
  */
 
-struct _nOSC_Bundle {
-	nOSC_Message *msg;
-	char *path;
-	char *fmt;
-	nOSC_Bundle *prev, *next;
-};
-
-struct _nOSC_Message {
-	nOSC_Arg arg;
-	nOSC_Type type;
-	nOSC_Message *prev, *next;
-};
-
 /*
  * Internal functions
  */
 
-nOSC_Bundle *_nosc_bundle_deserialize (uint8_t *buf, uint16_t size);
-nOSC_Message *_nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char**fmt);
+void _nosc_message_deserialize (uint8_t *buf, uint16_t size);
 
 #endif // NOSC_PRIVATE_H
