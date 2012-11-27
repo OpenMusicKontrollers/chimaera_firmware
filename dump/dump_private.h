@@ -27,12 +27,10 @@
 #include <dump.h>
 #include <nosc.h>
 
-typedef struct _Dump Dump;
+#define DUMP_TIME 0
+#define DUMP_ADC 1
+#define DUMP_SENSOR 2
 
-struct _Dump {
-	nOSC_Message *time;
-	nOSC_Message *adc;
-	nOSC_Message *sensor[MUX_MAX];
-};
+typedef nOSC_Arg Dump [MUX_MAX + 2 + 1];
 
 #endif /* DUMP_PRIVATE_H */

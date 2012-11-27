@@ -405,10 +405,10 @@ groups_save ()
 	return 1;
 }
 
-_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -416,7 +416,7 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 	}
 	else
 	{
-		uint8_t arg = args[1]->i;
+		uint8_t arg = args[1].val.i;
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
@@ -435,10 +435,10 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 	return 1;
 }
 
-_check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -446,7 +446,7 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 	}
 	else
 	{
-		uint16_t arg = args[1]->i;
+		uint16_t arg = args[1].val.i;
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
@@ -465,10 +465,10 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 	return 1;
 }
 
-_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -476,7 +476,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 	}
 	else
 	{
-		float arg = args[1]->f;
+		float arg = args[1].val.f;
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
@@ -496,10 +496,10 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 }
 
 static uint8_t
-_version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -508,10 +508,10 @@ _version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (config_load ())
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -524,10 +524,10 @@ _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (config_save ())
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -540,10 +540,10 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -552,14 +552,14 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	}
 	else
 	{
-		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) && (args[5]->i < 0x100) && (args[6]->i < 0x100) )
+		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) && (args[5].val.i < 0x100) && (args[6].val.i < 0x100) )
 		{
-			config.comm.mac[0] = args[1]->i;
-			config.comm.mac[1] = args[2]->i;
-			config.comm.mac[2] = args[3]->i;
-			config.comm.mac[3] = args[4]->i;
-			config.comm.mac[4] = args[5]->i;
-			config.comm.mac[5] = args[6]->i;
+			config.comm.mac[0] = args[1].val.i;
+			config.comm.mac[1] = args[2].val.i;
+			config.comm.mac[2] = args[3].val.i;
+			config.comm.mac[3] = args[4].val.i;
+			config.comm.mac[4] = args[5].val.i;
+			config.comm.mac[5] = args[6].val.i;
 
 			udp_mac_set (config.comm.mac);
 
@@ -575,10 +575,10 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -587,12 +587,12 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	}
 	else
 	{
-		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
 		{
-			config.comm.ip[0] = args[1]->i;
-			config.comm.ip[1] = args[2]->i;
-			config.comm.ip[2] = args[3]->i;
-			config.comm.ip[3] = args[4]->i;
+			config.comm.ip[0] = args[1].val.i;
+			config.comm.ip[1] = args[2].val.i;
+			config.comm.ip[2] = args[3].val.i;
+			config.comm.ip[3] = args[4].val.i;
 
 			udp_ip_set (config.comm.ip);
 
@@ -608,10 +608,10 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -620,12 +620,12 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	}
 	else
 	{
-		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
 		{
-			config.comm.gateway[0] = args[1]->i;
-			config.comm.gateway[1] = args[2]->i;
-			config.comm.gateway[2] = args[3]->i;
-			config.comm.gateway[3] = args[4]->i;
+			config.comm.gateway[0] = args[1].val.i;
+			config.comm.gateway[1] = args[2].val.i;
+			config.comm.gateway[2] = args[3].val.i;
+			config.comm.gateway[3] = args[4].val.i;
 
 			udp_gateway_set (config.comm.gateway);
 
@@ -641,10 +641,10 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -653,12 +653,12 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	}
 	else
 	{
-		if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
 		{
-			config.comm.subnet[0] = args[1]->i;
-			config.comm.subnet[1] = args[2]->i;
-			config.comm.subnet[2] = args[3]->i;
-			config.comm.subnet[3] = args[4]->i;
+			config.comm.subnet[0] = args[1].val.i;
+			config.comm.subnet[1] = args[2].val.i;
+			config.comm.subnet[2] = args[3].val.i;
+			config.comm.subnet[3] = args[4].val.i;
 
 			udp_subnet_set (config.comm.subnet);
 
@@ -674,10 +674,10 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (b)
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
@@ -690,10 +690,10 @@ _enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_A
 }
 
 static uint8_t
-_enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (fmt[1] == nOSC_TRUE)
 	{
@@ -712,7 +712,7 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 } 
 
 static uint8_t
-_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
 		return _enabled_get (config.tuio.enabled, path, fmt, argc, args);
@@ -721,7 +721,7 @@ _tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
 		return _enabled_get (config.config.enabled, path, fmt, argc, args);
@@ -730,7 +730,7 @@ _config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **arg
 }
 
 static uint8_t
-_sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
 		return _enabled_get (config.sntp.enabled, path, fmt, argc, args);
@@ -739,7 +739,7 @@ _sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
 		return _enabled_get (config.dump.enabled, path, fmt, argc, args);
@@ -748,7 +748,7 @@ _dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
 		return _enabled_get (config.debug.enabled, path, fmt, argc, args);
@@ -757,10 +757,10 @@ _debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args
 }
 
 static uint8_t
-_socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -769,14 +769,14 @@ _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char
 	}
 	else
 	{
-		if ( (args[1]->i < 0x10000) && (args[2]->i < 0x10000) && (args[3]->i < 0x100) && (args[4]->i < 0x100) && (args[5]->i < 0x100) && (args[6]->i < 0x100) )
+		if ( (args[1].val.i < 0x10000) && (args[2].val.i < 0x10000) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) && (args[5].val.i < 0x100) && (args[6].val.i < 0x100) )
 		{
-			socket->port[0] = args[1]->i;
-			socket->port[1] = args[2]->i;
-			socket->ip[0] = args[3]->i;
-			socket->ip[1] = args[4]->i;
-			socket->ip[2] = args[5]->i;
-			socket->ip[3] = args[6]->i;
+			socket->port[0] = args[1].val.i;
+			socket->port[1] = args[2].val.i;
+			socket->ip[0] = args[3].val.i;
+			socket->ip[1] = args[4].val.i;
+			socket->ip[2] = args[5].val.i;
+			socket->ip[3] = args[6].val.i;
 
 			cb (flag);
 
@@ -792,48 +792,48 @@ _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char
 }
 
 static uint8_t
-_tuio_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.tuio.socket, tuio_enable, config.tuio.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.config.socket, config_enable, config.config.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.sntp.socket, sntp_enable, config.sntp.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_dump_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.dump.socket, dump_enable, config.dump.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
-	if ( (args[1]->i < 0x100) && (args[2]->i < 0x100) && (args[3]->i < 0x100) && (args[4]->i < 0x100) )
+	if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
 	{
 		uint8_t ip [4] = {
-			args[1]->i,
-			args[2]->i,
-			args[3]->i,
-			args[4]->i
+			args[1].val.i,
+			args[2].val.i,
+			args[3].val.i,
+			args[4].val.i
 		};
 
 		memcpy (config.tuio.socket.ip, ip, 4);
@@ -858,54 +858,22 @@ _host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_config_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_config_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range16 (&config.config.rate, 1, 10, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_tau (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_sntp_tau (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.sntp.tau, 1, 10, path, fmt, argc, args);
 }
 
 static uint8_t
-_tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
-
-	if (argc == 1) // query
-	{
-		if (config.tuio.long_header)
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
-		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
-	}
-	else
-	{
-		switch (fmt[1])
-		{
-			case nOSC_TRUE:
-				tuio2_frm_long_set ("chimaera", config.comm.ip, config.tuio.socket.port[1], 144, 1);
-				break;
-			case nOSC_FALSE:
-				tuio2_frm_long_unset ();
-				break;
-		}
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint8_t
-_tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
-{
-	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -913,7 +881,7 @@ _tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	}
 	else
 	{
-		config.tuio.offset = args[1]->t;
+		config.tuio.offset = args[1].val.t;
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
@@ -923,10 +891,10 @@ _tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
@@ -940,7 +908,7 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 		switch (fmt[1])
 		{
 			case nOSC_INT32:
-				config.rate = args[1]->i;
+				config.rate = args[1].val.i;
 				break;
 			case nOSC_INFTY:
 				config.rate = 0;
@@ -965,15 +933,15 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 	int32_t sec;
 
 	if (argc > 1)
 	{
-		sec = args[1]->i;
+		sec = args[1].val.i;
 		if (sec < 1)
 			sec = 1;
 	}
@@ -990,16 +958,16 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_peak_thresh (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_peak_thresh (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.cmc.peak_thresh, 3, 9, path, fmt, argc, args);
 }
 
 static uint8_t
-_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	cmc_group_clear ();
 
@@ -1010,12 +978,12 @@ _group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
-	if (cmc_group_add (args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+	if (cmc_group_add (args[1].val.i, args[2].val.i, args[3].val.f, args[4].val.f))
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group already existing or maximal number of groups overstept");
@@ -1025,12 +993,12 @@ _group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
-	if (cmc_group_set (args[1]->i, args[2]->i, args[3]->f, args[4]->f))
+	if (cmc_group_set (args[1].val.i, args[2].val.i, args[3].val.f, args[4].val.f))
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group not found");
@@ -1040,12 +1008,12 @@ _group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
-	if (cmc_group_del (args[1]->i))
+	if (cmc_group_del (args[1].val.i))
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
@@ -1055,10 +1023,10 @@ _group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (groups_load ())
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -1070,10 +1038,10 @@ _group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	if (groups_save ())
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
@@ -1085,10 +1053,10 @@ _group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 }
 
 static uint8_t
-_calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// initialize sensor range
 	uint8_t p, i;
@@ -1111,10 +1079,10 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 }
 
 static uint8_t
-_calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// update new range
 	range_update_quiescent ();
@@ -1127,10 +1095,10 @@ _calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 
 
 static uint8_t
-_calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// update new range
 	range_update_b0 ();
@@ -1142,12 +1110,12 @@ _calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **ar
 }
 
 static uint8_t
-_calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
-	Y1 = args[1]->f;
+	Y1 = args[1].val.f;
 
 	// update new range
 	range_update_b1 ();
@@ -1159,10 +1127,10 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **ar
 }
 
 static uint8_t
-_calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// disable calibration
 	calibrating = 0;
@@ -1178,10 +1146,10 @@ _calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **ar
 }
 
 static uint8_t
-_calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// store new calibration range to EEPROM
 	range_save ();
@@ -1193,10 +1161,10 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 }
 
 static uint8_t
-_calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// load calibration range from EEPROM
 	range_load ();
@@ -1208,10 +1176,10 @@ _calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **a
 }
 
 static uint8_t
-_calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	// print calibration in RAM
 	range_print ();
@@ -1223,10 +1191,10 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **
 }
 
 static uint8_t
-_test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
+_test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0]->i;
+	int32_t id = args[0].val.i;
 
 	debug_int32 (sizeof (sat unsigned short fract));				// size = 1
 	debug_int32 (sizeof (sat unsigned fract));							// size = 2
@@ -1254,7 +1222,7 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	return 1;
 }
 
-nOSC_Server config_serv = {
+nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
 
 	{"/chimaera/config/load", "i", _config_load},
@@ -1274,9 +1242,6 @@ nOSC_Server config_serv = {
 	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
 	{"/chimaera/tuio/socket", "i", _tuio_socket},
 	{"/chimaera/tuio/socket", "iiiiiii", _tuio_socket},
-	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
-	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
-	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
 	{"/chimaera/tuio/offset", "i", _tuio_offset},
 	{"/chimaera/tuio/offset", "it", _tuio_offset},
 

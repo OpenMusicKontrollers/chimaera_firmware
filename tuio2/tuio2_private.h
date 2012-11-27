@@ -27,20 +27,15 @@
 #include <tuio2.h>
 #include <nosc.h>
 
-typedef struct _Tuio2_Tok Tuio2_Tok;
+typedef nOSC_Arg Tuio2_Tok [4 + 1];
 typedef struct _Tuio2 Tuio2;
 
-struct _Tuio2_Tok {
-	char *path;
-	nOSC_Arg args [4 + 1];
-};
-
 struct _Tuio2 {
-	nOSC_Message *bndl [BLOB_MAX + 3];
-	nOSC_Message *frm;
-
+	nOSC_Arg frm [2+1];
 	Tuio2_Tok tok [BLOB_MAX];
-	nOSC_Message alv [BLOB_MAX + 1];
+	nOSC_Arg alv [BLOB_MAX + 1];
+
+	nOSC_Item bndl [BLOB_MAX + 2 + 1];
 };
 
 #endif /* TUIO2_PRIVATE_H */

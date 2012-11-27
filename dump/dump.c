@@ -34,33 +34,30 @@ dump_init ()
 {
 	uint8_t i;
 
-	dump.time = nosc_message_add_timestamp (NULL, nOSC_IMMEDIATE);
-	dump.adc = nosc_message_add_int32 (dump.time, 0);
+	nosc_message_set_timestamp (dump, DUMP_TIME, nOSC_IMMEDIATE);
+	nosc_message_set_int32 (dump, DUMP_ADC, 0);
 
-	nOSC_Message *ptr = dump.adc;
 	for (i=0; i<MUX_MAX; i++)
-	{
-		dump.sensor[i] = nosc_message_add_int32 (ptr, 0);
-		ptr = dump.sensor[i];
-	}
+		nosc_message_set_int32 (dump, DUMP_SENSOR + i, 0);
+
+	dump[MUX_MAX + 1] = nosc_end;
 }
 
 uint16_t
 dump_serialize (uint8_t *buf)
 {
-	return nosc_message_serialize (dump.time, "/dump", buf);
+	return nosc_message_serialize (dump, "/dump", buf);
 }
 
 void 
 dump_frm_set (uint8_t adc, uint64_t now)
 {
-	dump.time->arg.t = now;
-	dump.adc->arg.i = adc;
+	dump[DUMP_TIME].val.t = now;
+	dump[DUMP_ADC].val.i = adc;
 }
 
 void 
 dump_tok_set (uint8_t sensor, int16_t value)
 {
-	dump.sensor[sensor]->arg.i = value;
+	dump[DUMP_SENSOR + sensor].val.i = value;
 }
-

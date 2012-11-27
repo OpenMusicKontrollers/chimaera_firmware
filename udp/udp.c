@@ -431,10 +431,10 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 
 	// wait until there is enough space left in buffer
 	/* XXX we don't need this as we always send stuff immediately and do not accumulate data in the buffer
-	uint16_t free;
+	uint16_t frei;
 	do
-		_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	while (len > free);
+		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
+	while (len > frei);
 	*/
 
 	// move data to chip
@@ -521,10 +521,10 @@ udp_send_block (uint8_t sock)
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 
 	// wait until everything is sent to be ready for next data
-	uint16_t free;
+	uint16_t frei;
 	do
-		_dma_read_sock_16 (sock, SnTX_FSR, &free);
-	while (free != SSIZE[sock]);
+		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
+	while (frei != SSIZE[sock]);
 }
 
 uint16_t

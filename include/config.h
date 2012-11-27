@@ -112,7 +112,7 @@ struct _Config {
 
 extern Config config;
 
-extern nOSC_Server config_serv;
+extern nOSC_Method config_serv [];
 
 uint8_t config_load ();
 uint8_t config_save ();

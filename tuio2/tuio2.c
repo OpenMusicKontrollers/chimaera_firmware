@@ -24,92 +24,103 @@
 #include <chimaera.h>
 
 #include "tuio2_private.h"
-#include "../nosc/nosc_private.h"
 #include "config.h"
 
 Tuio2 tuio;
+char *frm_str = "/frm";
+char *tok_str = "/_STxz";
+char *alv_str = "/alv";
 
 void
 tuio2_init ()
 {
 	uint8_t i;
 
-	tuio.bndl[0] = tuio.frm;
+	// initialize bundle
+	tuio.bndl[0].path =  frm_str;
+	tuio.bndl[0].msg = tuio.frm;
 
-	// frm
-	tuio.frm_id = nosc_message_add_int32 (NULL, 0);
-	tuio.frm_timestamp = nosc_message_add_timestamp (tuio.frm_id, nOSC_IMMEDIATE);
-	tuio.frm_app = nosc_message_add_string (tuio.frm_timestamp, "chimaera");
-	tuio.frm_addr = nosc_message_add_int32 (tuio.frm_app, 0);
-	tuio.frm_inst = nosc_message_add_int32 (tuio.frm_addr, 0);
-	tuio.frm_dim = nosc_message_add_int32 (tuio.frm_inst, 0);
-	tuio.bndl[0] = nosc_bundle_add_message (NULL, tuio.frm_timestamp, "/tuio2/frm");
-
-	if (!config.tuio.long_header)
-		tuio.frm_timestamp->next = NULL;
-
-	// tok
-	//tuio.tok = calloc (tuio.len, sizeof (Tuio2_Tok));
-	tuio.tok = _tok;
-	for (i=0; i<tuio.len; i++)
+	for (i=0; i<BLOB_MAX; i++)
 	{
-		Tuio2_Tok *tok = &tuio.tok[i];
-		tok->S = nosc_message_add_int32 (NULL, 0);
-		tok->T = nosc_message_add_int32 (tok->S, 0);
-		tok->x = nosc_message_add_float (tok->T, 0.0);
-		tok->z = nosc_message_add_float (tok->x, 0.0);
-		tuio.bndl[i+1] = nosc_bundle_add_message (tuio.bndl[i], tok->z, "/tuio2/_STxz");
+		tuio.bndl[i + 1].path = tok_str;
+		tuio.bndl[i + 1].msg = tuio.tok[i];
 	}
-	
-	// alv
-	//tuio.alv = calloc (tuio.len, sizeof (nOSC_Message *));
-	tuio.alv = _alv;
-	for (i=0; i<tuio.len; i++)
+
+	tuio.bndl[BLOB_MAX + 1].path = alv_str;
+	tuio.bndl[BLOB_MAX + 1].msg = tuio.alv;
+
+	tuio.bndl[BLOB_MAX + 2].path = NULL;
+	tuio.bndl[BLOB_MAX + 2].msg = NULL;
+
+	// initialize frame
+	nosc_message_set_int32 (tuio.frm, 0, 0);
+	nosc_message_set_timestamp (tuio.frm, 1, nOSC_IMMEDIATE);
+	nosc_message_set_end (tuio.frm, 2);
+
+	// initialize tok
+	for (i=0; i<BLOB_MAX; i++)
 	{
-		nOSC_Message *prev = i>0 ? tuio.alv[i-1] : NULL;
-		tuio.alv[i] = nosc_message_add_int32 (prev, 0);
+		nOSC_Message msg = tuio.tok[i];
+
+		nosc_message_set_int32 (msg, 0, 0);
+		nosc_message_set_int32 (msg, 1, 0);
+		nosc_message_set_float (msg, 2, 0.0);
+		nosc_message_set_float (msg, 3, 0.0);
+		nosc_message_set_end (msg, 4);
 	}
-	tuio.bndl[tuio.len+1] = nosc_bundle_add_message (tuio.bndl[tuio.len], tuio.alv[tuio.len-1], "/tuio2/alv");
+
+	// initialize alv
+	for (i=0; i<BLOB_MAX; i++)
+		nosc_message_set_int32 (tuio.alv, i, 0);
+	nosc_message_set_end (tuio.alv, BLOB_MAX);
 }
 
 uint16_t
 tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 {
 	// unlink at end pos
-	if (end < tuio.len)
+	if (end < BLOB_MAX)
 	{
 		// unlink alv message
 		if (end > 0)
-			tuio.alv[end-1]->next = NULL;
+			nosc_message_set_end (tuio.alv, end);
 		else
 		{
-			tuio.alv[0]->type = nOSC_NIL;
-			tuio.alv[0]->next = NULL;
+			nosc_message_set_nil (tuio.alv, 0);
+			nosc_message_set_end (tuio.alv, 1);
 		}
 
 		// unlink bundle
-		tuio.bndl[end]->next = tuio.bndl[tuio.len+1];
-		tuio.bndl[tuio.len+1]->prev = tuio.bndl[end];
+		tuio.bndl[end+1].path = tuio.bndl[BLOB_MAX+1].path; // alv
+		tuio.bndl[end+1].msg = tuio.bndl[BLOB_MAX+1].msg; // alv
+
+		tuio.bndl[end+2].path = NULL;
+		tuio.bndl[end+2].msg = NULL;
 	}
 
 	// serialize
-	uint16_t size = nosc_bundle_serialize (tuio.bndl[tuio.len+1], offset, buf);
+	uint16_t size = nosc_bundle_serialize (tuio.bndl, offset, buf);
 
 	// relink at end pos
-	if (end < tuio.len)
+	if (end < BLOB_MAX)
 	{
 		// relink alv message
 		if (end > 0)
-			tuio.alv[end-1]->next = tuio.alv[end];
+			nosc_message_set_int32 (tuio.alv, end, 0);
 		else
 		{
-			tuio.alv[0]->type = nOSC_INT32;
-			tuio.alv[0]->next = tuio.alv[1];
+			nosc_message_set_int32 (tuio.alv, 0, 0);
+			nosc_message_set_int32 (tuio.alv, 1, 0);
 		}
 
-		// relink bundle
-		tuio.bndl[end]->next = tuio.bndl[end+1];
-		tuio.bndl[tuio.len+1]->prev = tuio.bndl[tuio.len];
+		tuio.bndl[end+1].path = tok_str;
+		tuio.bndl[end+1].msg = tuio.tok[end];
+
+		if (end < BLOB_MAX-1)
+		{
+			tuio.bndl[end+2].path = tok_str;
+			tuio.bndl[end+2].msg = tuio.tok[end+1];
+		}
 	}
 
 	return size;
@@ -118,40 +129,19 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 void 
 tuio2_frm_set (uint32_t id, uint64_t timestamp)
 {
-	tuio.frm_id->arg.i = id;
-	tuio.frm_timestamp->arg.t = timestamp;
-}
-
-void 
-tuio2_frm_long_set (const char *app, uint8_t *addr, uint16_t inst, uint16_t w, uint16_t h)
-{
-	uint32_t _addr = (addr[0]<<24) + (addr[1]<<16) + (addr[2]<<8) + addr[3];
-	uint32_t _dim = (w<<16) + h;
-
-	tuio.frm_app->arg.s = (char *) app;
-	tuio.frm_addr->arg.i = _addr;
-	tuio.frm_inst->arg.i = inst;
-	tuio.frm_dim->arg.i = _dim;
-
-	tuio.frm_timestamp->next = tuio.frm_app;
-	config.tuio.long_header = 1;
-}
-
-void
-tuio2_frm_long_unset ()
-{
-	tuio.frm_timestamp->next = NULL;
-	config.tuio.long_header = 0;
+	tuio.frm[0].val.i = id;
+	tuio.frm[1].val.t = timestamp;
 }
 
 void 
 tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z)
 {
-	Tuio2_Tok *tok = &tuio.tok[pos];
-	tok->S->arg.i = S;
-	tok->T->arg.i = T;
-	tok->x->arg.f = x;
-	tok->z->arg.f = z;
+	nOSC_Message msg = tuio.tok[pos];
 
-	tuio.alv[pos]->arg.i = S;
+	msg[0].val.i = S;
+	msg[1].val.i = T;
+	msg[2].val.f = x;
+	msg[3].val.f = z;
+
+	nosc_message_set_int32 (tuio.alv, pos, S);
 }

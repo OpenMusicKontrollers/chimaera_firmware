@@ -29,6 +29,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+DNS_Query _q;
+DNS_Answer _a;
+
 void 
 zeroconf_IPv4LL_random (uint8_t *ip)
 {
@@ -90,8 +93,8 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 
 			debug_str ("this is our name");
 
-			DNS_Query *q = (DNS_Query *) calloc (1, sizeof (DNS_Query));
-			DNS_Answer *a = (DNS_Answer *) calloc (1, sizeof (DNS_Answer));
+			DNS_Query *q = &_q;
+			DNS_Answer *a = &_a;
 
 			q->ID = hton (query->ID);
 			q->FLAGS = hton ( (1 << QR_BIT) | (1 << AA_BIT) );
@@ -118,9 +121,6 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 
 			memcpy (ptr, config.comm.ip, 4);
 			ptr += 4;
-
-			free (a);
-			free (q);
 
 			udp_send (config.zeroconf.socket.sock, buf_o_ptr, ptr-ref);
 
