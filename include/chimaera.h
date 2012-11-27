@@ -30,6 +30,11 @@
 #include <nosc.h>
 #include <cmc.h>
 
+// ugly hack to have access to PIN_MAP from plain C
+#include <wirish/wirish_types.h>
+extern const stm32_pin_info PIN_MAP [];
+#include <board/board.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
