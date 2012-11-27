@@ -26,14 +26,6 @@
 
 #include <nosc.h>
 
-/*
- * Structs 
- */
-
-/*
- * Internal functions
- */
-
-void _nosc_message_deserialize (uint8_t *buf, uint16_t size);
+void _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt);
 
 #endif // NOSC_PRIVATE_H

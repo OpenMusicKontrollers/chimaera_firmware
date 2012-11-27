@@ -1254,7 +1254,7 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg **args)
 	return 1;
 }
 
-nOSC_Method config_methods [] = {
+nOSC_Server config_serv = {
 	{"/chimaera/version", "i", _version},
 
 	{"/chimaera/config/load", "i", _config_load},

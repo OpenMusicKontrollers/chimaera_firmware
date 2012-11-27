@@ -29,20 +29,12 @@
 
 Tuio2 tuio;
 
-nOSC_Bundle *_bndl [BLOB_MAX+2];
-Tuio2_Tok _tok [BLOB_MAX];
-nOSC_Message *_alv [BLOB_MAX];
-
 void
 tuio2_init ()
 {
 	uint8_t i;
 
-	tuio.len = BLOB_MAX;
-
-	// bndl
-	//tuio.bndl = calloc (tuio.len+2, sizeof (nOSC_Bundle *)); // frm + len*tok + alv
-	tuio.bndl = _bndl;
+	tuio.bndl[0] = tuio.frm;
 
 	// frm
 	tuio.frm_id = nosc_message_add_int32 (NULL, 0);

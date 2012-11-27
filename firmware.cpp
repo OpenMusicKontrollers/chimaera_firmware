@@ -161,7 +161,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	nosc_method_dispatch (config_methods, buf, len);
+	nosc_method_dispatch (config_serv, buf, len);
 }
 
 static void
