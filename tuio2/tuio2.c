@@ -27,9 +27,9 @@
 #include "config.h"
 
 Tuio2 tuio;
-char *frm_str = "/frm";
-char *tok_str = "/_STxz";
-char *alv_str = "/alv";
+char *frm_str = "/tuio2/frm";
+char *tok_str = "/tuio2/_STxz";
+char *alv_str = "/tuio2/alv";
 
 void
 tuio2_init ()

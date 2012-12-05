@@ -78,7 +78,7 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size)
 
 		while (buf_ptr-buf < size)
 		{
-			msg_size = (int32_t) *buf_ptr;
+			msg_size = ref_ntohl (buf_ptr);
 			buf_ptr += 4;
 
 			_nosc_message_deserialize (buf_ptr, msg_size, &path, &fmt);
@@ -113,9 +113,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	len = strlen (*fmt)+1;
 	if (len%4)
 		len += 4 - len%4;
+	*fmt = buf_ptr + 1; // skip ','
 	buf_ptr += len;
-	
-	fmt++; // skip ','
 
 	char *type;
 	uint8_t pos;
@@ -180,7 +179,7 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 	nOSC_Item *itm;
 	for (itm=bund; itm->path!=NULL; itm++)
 	{
-		uint16_t msg_size;
+		int32_t msg_size;
 		int32_t i;
 
 		msg_size = nosc_message_serialize (itm->msg, itm->path, buf_ptr+4);
@@ -271,6 +270,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 	len = strlen (path) + 1;
 	memcpy (buf_ptr, path, len);
 	buf_ptr += len;
+	//TODO use memset
 	if (len%4)
 		for (i=len%4; i<4; i++)
 			*buf_ptr++ = '\0';
@@ -282,6 +282,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 		*buf_ptr++ = arg->type;
 	*buf_ptr++ = '\0';
 	len = buf_ptr - fmt;
+	//TODO use memset
 	if (len%4)
 		for (i=len%4; i<4; i++)
 			*buf_ptr++ = '\0';
@@ -367,6 +368,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 	}
   va_end (args);
 
+	nosc_message_set_end (msg, pos+1);
 
 	uint16_t size = nosc_message_serialize (msg, path, buf);
 
