@@ -216,6 +216,7 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
+		/*
 		uint16_t size;
 		int16_t one = adc_raw[adc_raw_ptr][0][4] - range_mean(0, 4);
 		int16_t two = adc_raw[adc_raw_ptr][1][4] - range_mean(1, 4);
@@ -227,8 +228,8 @@ loop ()
 
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/sensor", "iiifff", one, two, three, f_one, f_two, f_three);
 		udp_send (config.debug.socket.sock, buf_o_ptr, size);
+		*/
 
-		/*
 		sntp_timestamp_refresh (&now);
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
@@ -241,7 +242,6 @@ loop ()
 			len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET]);
 			udp_send (config.dump.socket.sock, buf_o_ptr, len); //FIXME
 		}
-		*/
 	}
 
 	// do touch recognition and interpolation
