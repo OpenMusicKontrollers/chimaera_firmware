@@ -388,7 +388,7 @@ cmc_write_tuio2 (uint8_t *buf, uint64_t now)
 	{
 		timestamp64_t _now, _config, _offset;
 
-		_now.stamp = now;
+		_now.stamstamp = now;
 		_config.stamp = config.tuio.offset;
 		_offset.fix = _now.fix + _config.fix;
 		offset = _offset.stamp;
