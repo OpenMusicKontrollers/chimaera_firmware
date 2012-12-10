@@ -338,19 +338,19 @@ udp_mac_set (uint8_t *mac)
 void
 udp_ip_set (uint8_t *ip)
 {
-	_dma_write (SIPR, ip, 4); //TODO make this configurable
+	_dma_write (SIPR, ip, 4);
 }
 
 void
 udp_gateway_set (uint8_t *gateway)
 {
-	_dma_write (GAR, gateway, 4); //TODO make this configurable
+	_dma_write (GAR, gateway, 4);
 }
 
 void
 udp_subnet_set (uint8_t *subnet)
 {
-	_dma_write (SUBR, subnet, 4); //TODO make this configurable
+	_dma_write (SUBR, subnet, 4);
 }
 
 void
@@ -517,6 +517,7 @@ udp_send_block (uint8_t sock)
 	flag = SnIR_SEND_OK;
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
+	//FIXME remove stuff below
 	// update write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 

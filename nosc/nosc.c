@@ -194,59 +194,59 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
  * Message
  */
 
-void
+inline void
 nosc_message_set_int32 (nOSC_Message msg, uint8_t pos, int32_t i)
 {
 	msg[pos].type = nOSC_INT32;
 	msg[pos].val.i = i;
 }
 
-void
+inline void
 nosc_message_set_float (nOSC_Message msg, uint8_t pos, float f)
 {
 	msg[pos].type = nOSC_FLOAT;
 	msg[pos].val.f = f;
 }
 
-void
+inline void
 nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s)
 {
 	msg[pos].type = nOSC_STRING;
 	msg[pos].val.s = s;
 }
 
-void
+inline void
 nosc_message_set_true (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_TRUE;
 }
 
-void
+inline void
 nosc_message_set_false (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_FALSE;
 }
 
-void
+inline void
 nosc_message_set_nil (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_NIL;
 }
 
-void
+inline void
 nosc_message_set_infty (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_INFTY;
 }
 
-void
+inline void
 nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t)
 {
 	msg[pos].type = nOSC_TIMESTAMP;
 	msg[pos].val.t = t;
 }
 
-void
+inline void
 nosc_message_set_end (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_END;

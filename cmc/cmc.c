@@ -31,6 +31,7 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
+#include <../sntp/sntp_private.h>
 
 #define s2d2 0.70710678118655r // sqrt(2) / 2
 #define os8 0.35355339059327r // 1 / sqrt(8)
@@ -46,7 +47,7 @@ cmc_init ()
 
 	cmc.I = 0;
 	cmc.J = 0;
-	cmc.fid = 1; // we start counting at 1, 0 marks an 'out of order' frame
+	cmc.fid = 0; // we start counting at 1, 0 marks an 'out of order' frame
 	cmc.sid = 0; // we start counting at 0
 
 	cmc.d = 1.0ulr / (SENSOR_N-1);
@@ -385,10 +386,19 @@ cmc_write_tuio2 (uint8_t *buf, uint64_t now)
 	uint64_t offset = nOSC_IMMEDIATE;
 	if (config.tuio.offset != nOSC_IMMEDIATE)
 	{
+		timestamp64_t _now, _config, _offset;
+
+		_now.stamp = now;
+		_config.stamp = config.tuio.offset;
+		_offset.fix = _now.fix + _config.fix;
+		offset = _offset.stamp;
+
+		/*
 		fix_32_32_t _now = utime2fix (now);
 		fix_32_32_t _config = utime2fix (config.tuio.offset); //TODO convert this only once
 		fix_32_32_t _offset = _now + _config;
 		offset = ufix2time (_offset);
+		*/
 	}
 	size = tuio2_serialize (buf, cmc.I, offset);
 	return size;
@@ -443,7 +453,7 @@ cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1)
 			grp->uid = uid;
 			grp->x0 = x0;
 			grp->x1 = x1;
-			grp->m = 1.0ur/(x1-x0);
+			grp->m = 1.0uk/(x1-x0);
 
 			break;
 		}

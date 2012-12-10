@@ -28,6 +28,7 @@
 #include "../sntp/sntp_private.h"
 
 Dump dump;
+const char *dump_path = "/dump";
 
 void
 dump_init ()
@@ -40,13 +41,13 @@ dump_init ()
 	for (i=0; i<MUX_MAX; i++)
 		nosc_message_set_int32 (dump, DUMP_SENSOR + i, 0);
 
-	dump[MUX_MAX + 1] = nosc_end;
+	nosc_message_set_end (dump, DUMP_SENSOR + MUX_MAX);
 }
 
 uint16_t
 dump_serialize (uint8_t *buf)
 {
-	return nosc_message_serialize (dump, "/dump", buf);
+	return nosc_message_serialize (dump, dump_path, buf);
 }
 
 void 

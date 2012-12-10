@@ -53,9 +53,9 @@ sntp_request (uint8_t *buf, uint64_t t3)
 void
 sntp_dispatch (uint8_t *buf, uint64_t t4)
 {
-	sntp_t *answer = (sntp_t *) buf;
+	sntp_t *answer = (sntp_t *)buf;
 
-	timestamp64_t t1, t2, t3;
+	timestamp64_t t1, t2, t3, _t4;
 
 	t1.osc.sec = ntohl (answer->originate_timestamp.ntp.sec);
 	t1.osc.frac = ntohl (answer->originate_timestamp.ntp.frac);
@@ -66,10 +66,13 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	t3.osc.sec = ntohl (answer->transmit_timestamp.ntp.sec);
 	t3.osc.frac = ntohl (answer->transmit_timestamp.ntp.frac);
 
+	_t4.stamp = t4;
+
 	fix_32_32_t T1 = t1.fix;
 	fix_32_32_t T2 = t2.fix;
 	fix_32_32_t T3 = t3.fix;
-	fix_32_32_t T4 = utime2fix (t4);
+	//fix_32_32_t T4 = utime2fix (t4);
+	fix_32_32_t T4 = _t4.fix;
 
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
@@ -91,7 +94,13 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 void
 sntp_timestamp_refresh (uint64_t *now)
 {
-	fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
-	fix_32_32_t _now = t0 + uptime;
-	*now = ufix2time (_now);
+	timestamp64_t uptime, _now;
+
+	uptime.fix = systick_uptime () * 0.0001ULLK; // that many 100us
+	_now.fix = t0 + uptime.fix;
+	*now = _now.stamp;
+
+	//fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
+	//fix_32_32_t _now = t0 + uptime;
+	//*now = ufix2time (_now);
 }

@@ -52,12 +52,6 @@ typedef sat accum											fix_s15_16_t;	// size: 4
 typedef sat long accum								fix_s31_32_t;	// size: 8
 //typedef sat long long accum						fix_s31_32_t; // size: 8
 
-fix_32_32_t utime2fix (uint64_t x);
-fix_s31_32_t stime2fix (int64_t x);
-
-uint64_t ufix2time (fix_32_32_t x);
-int64_t sfix2time (fix_s31_32_t x);
-
 #ifdef __cplusplus
 }
 #endif
