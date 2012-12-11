@@ -85,10 +85,7 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 		if (end > 0)
 			nosc_message_set_end (tuio.alv, end);
 		else
-		{
-			nosc_message_set_nil (tuio.alv, 0);
-			nosc_message_set_end (tuio.alv, 1);
-		}
+			nosc_message_set_end (tuio.alv, 0);
 
 		// unlink bundle
 		tuio.bndl[end+1].path = tuio.bndl[BLOB_MAX+1].path; // alv
@@ -108,10 +105,7 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 		if (end > 0)
 			nosc_message_set_int32 (tuio.alv, end, 0);
 		else
-		{
 			nosc_message_set_int32 (tuio.alv, 0, 0);
-			nosc_message_set_int32 (tuio.alv, 1, 0);
-		}
 
 		tuio.bndl[end+1].path = tok_str;
 		tuio.bndl[end+1].msg = tuio.tok[end];
