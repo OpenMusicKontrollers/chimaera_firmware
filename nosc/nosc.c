@@ -99,7 +99,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	nOSC_Message msg = dispatch_msg;
 
 	uint8_t *buf_ptr = buf;
-	uint8_t len;
+	uint8_t len, rem;
 
 	// find path
 	*path = buf_ptr;
@@ -139,6 +139,16 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 					len += 4 - len%4;
 				buf_ptr += len;
 				break;
+			case nOSC_BLOB:
+			{
+				int32_t size = ref_ntohl (buf_ptr);
+				buf_ptr += 4;
+				nosc_message_set_blob (msg, pos, size, buf_ptr);
+				buf_ptr += size;
+				if (rem=size%4) // add zero pad offset
+					buf_ptr += 4-rem;
+				break;
+			}
 
 			case nOSC_TRUE:
 				nosc_message_set_true (msg, pos);
@@ -153,6 +163,14 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				nosc_message_set_infty (msg, pos);
 				break;
 
+			case nOSC_DOUBLE:
+				nosc_message_set_double (msg, pos, ref_ntohll (buf_ptr));
+				buf_ptr += 8;
+				break;
+			case nOSC_INT64:
+				nosc_message_set_int64 (msg, pos, ref_ntohll (buf_ptr));
+				buf_ptr += 8;
+				break;
 			case nOSC_TIMESTAMP:
 				nosc_message_set_timestamp (msg, pos, ref_ntohll (buf_ptr));
 				buf_ptr += 8;
@@ -216,6 +234,14 @@ nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s)
 }
 
 inline void
+nosc_message_set_blob (nOSC_Message msg, uint8_t pos, int32_t size, uint8_t *data)
+{
+	msg[pos].type = nOSC_BLOB;
+	msg[pos].val.b.size = size;
+	msg[pos].val.b.data = data;
+}
+
+inline void
 nosc_message_set_true (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_TRUE;
@@ -240,6 +266,20 @@ nosc_message_set_infty (nOSC_Message msg, uint8_t pos)
 }
 
 inline void
+nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d)
+{
+	msg[pos].type = nOSC_DOUBLE;
+	msg[pos].val.d = d;
+}
+
+inline void
+nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h)
+{
+	msg[pos].type = nOSC_INT64;
+	msg[pos].val.h = h;
+}
+
+inline void
 nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t)
 {
 	msg[pos].type = nOSC_TIMESTAMP;
@@ -259,7 +299,7 @@ nosc_message_set_end (nOSC_Message msg, uint8_t pos)
 uint16_t
 nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 {
-	uint8_t i;
+	uint8_t i, rem;
 	uint16_t len;
 	nOSC_Arg *arg;
 
@@ -270,10 +310,11 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 	len = strlen (path) + 1;
 	memcpy (buf_ptr, path, len);
 	buf_ptr += len;
-	//TODO use memset
-	if (len%4)
-		for (i=len%4; i<4; i++)
-			*buf_ptr++ = '\0';
+	if (rem=len%4)
+	{
+		memset (buf_ptr, '\0', 4-rem);
+		buf_ptr += 4-rem;
+	}
 
 	// write format
 	uint8_t *fmt = buf_ptr;
@@ -282,10 +323,11 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 		*buf_ptr++ = arg->type;
 	*buf_ptr++ = '\0';
 	len = buf_ptr - fmt;
-	//TODO use memset
-	if (len%4)
-		for (i=len%4; i<4; i++)
-			*buf_ptr++ = '\0';
+	if (rem=len%4)
+	{
+		memset (buf_ptr, '\0', 4-rem);
+		buf_ptr += 4-rem;
+	}
 
 	// write arguments
 	for (arg=msg; arg->type!=nOSC_END; arg++)
@@ -302,8 +344,22 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				memcpy (buf_ptr, arg->val.s, len);
 				buf_ptr += len;
 				if (len%4)
-					for (i=len%4; i<4; i++)
-						*buf_ptr++ = '\0';
+				{
+					memset (buf_ptr, '\0', 4-rem);
+					buf_ptr += 4-rem;
+				}
+				break;
+
+			case nOSC_BLOB:
+				ref_htonl (buf_ptr, arg->val.b.size);
+				buf_ptr += 4;
+				memcpy (buf_ptr, arg->val.b.data, arg->val.b.size);
+				buf_ptr += arg->val.b.size;
+				if (rem=arg->val.b.size%4)
+				{
+					memset (buf_ptr, '\0', 4-rem);
+					buf_ptr += 4-rem;
+				}
 				break;
 
 			case nOSC_TRUE:
@@ -312,6 +368,8 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 			case nOSC_INFTY:
 				break;
 
+			case nOSC_DOUBLE:
+			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
 				ref_htonll (buf_ptr, arg->val.h);
 				buf_ptr += 8;
@@ -326,8 +384,6 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 {
 	nOSC_Message msg = vararg_msg;
 
-	//FIXME number of arguments <= OSC_ARGS_MAX
-
   va_list args;
   va_start (args, fmt);
 
@@ -336,6 +392,10 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
   for (p = fmt; *p != '\0'; p++)
 	{
 		pos = p - fmt;
+
+		if (pos >= OSC_ARGS_MAX) // ignore arguments exceeding OSC_ARGS_MAX
+			break;
+
 		switch (*p)
 		{
 			case nOSC_INT32:
@@ -347,6 +407,9 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 			case nOSC_STRING:
 				nosc_message_set_string (msg, pos, va_arg (args, char *));
         break;
+			case nOSC_BLOB:
+				nosc_message_set_blob (msg, pos, va_arg (args, int32_t), va_arg (args, uint8_t *));
+				break;
 
 			case nOSC_TRUE:
 				nosc_message_set_true (msg, pos);
@@ -361,6 +424,12 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 				nosc_message_set_infty (msg, pos);
         break;
 
+			case nOSC_DOUBLE:
+				nosc_message_set_double (msg, pos, va_arg (args, double));
+				break;
+			case nOSC_INT64:
+				nosc_message_set_int64 (msg, pos, va_arg (args, int64_t));
+				break;
 			case nOSC_TIMESTAMP:
 				nosc_message_set_timestamp (msg, pos, va_arg (args, uint64_t));
         break;

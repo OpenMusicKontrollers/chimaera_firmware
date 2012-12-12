@@ -27,10 +27,8 @@
 #include <dump.h>
 #include <nosc.h>
 
-#define DUMP_TIME 0
-#define DUMP_ADC 1
-#define DUMP_SENSOR 2
-
-typedef nOSC_Arg Dump [MUX_MAX + 2 + 1];
+#define DUMP_FRAME 0
+#define DUMP_TIME 1
+#define DUMP_BLOB 2
 
 #endif /* DUMP_PRIVATE_H */

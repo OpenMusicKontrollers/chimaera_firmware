@@ -42,6 +42,7 @@ typedef struct _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
 typedef struct _nOSC_Item nOSC_Item;
 typedef nOSC_Item *nOSC_Bundle;
+typedef struct _nOSC_Blob nOSC_Blob;
 
 typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args);
 typedef struct _nOSC_Method nOSC_Method;
@@ -66,6 +67,11 @@ typedef enum _nOSC_Type {
 	nOSC_END = '\0'
 } nOSC_Type;
 
+struct _nOSC_Blob {
+	int32_t size;
+	uint8_t *data;
+};
+
 struct _nOSC_Arg {
 	nOSC_Type type;
 
@@ -73,6 +79,7 @@ struct _nOSC_Arg {
 		int32_t i;
 		float f;
 		char *s;
+		nOSC_Blob b;
 	
 		double d;
 		int64_t h;
@@ -85,12 +92,15 @@ struct _nOSC_Arg {
 #define nosc_int32(x)			(nOSC_Arg){nOSC_INT32, {.i=(x)}}
 #define nosc_float(x)			(nOSC_Arg){nOSC_FLOAT, {.f=(x)}}
 #define nosc_string(x)		(nOSC_Arg){nOSC_STRING, {.s=(x)}}
+#define nosc_blob(s,x)		(nOSC_Arg){nOSC_BLOB, {.b={.size=(s), .data=(x)}}}
 
 #define nosc_true					(nOSC_Arg){nOSC_TRUE}
 #define nosc_false				(nOSC_Arg){nOSC_FALSE}
 #define nosc_nil					(nOSC_Arg){nOSC_NIL}
 #define nosc_infty				(nOSC_Arg){nOSC_INFTY}
 
+#define nosc_double(x)		(nOSC_Arg){nOSC_DOUBLE, {.d=(x)}}
+#define nosc_int64(x)			(nOSC_Arg){nOSC_INT64, {.h=(x)}}
 #define nosc_timestamp(x)	(nOSC_Arg){nOSC_TIMESTAMP, {.t=(x)}}
 
 #define nosc_end					(nOSC_Arg){nOSC_END}
@@ -131,12 +141,15 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *b
 void nosc_message_set_int32 (nOSC_Message msg, uint8_t pos, int32_t i);
 void nosc_message_set_float (nOSC_Message msg, uint8_t pos, float f);
 void nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s);
+void nosc_message_set_blob (nOSC_Message msg, uint8_t pos, int32_t size, uint8_t *data);
 
 void nosc_message_set_true (nOSC_Message msg, uint8_t pos);
 void nosc_message_set_false (nOSC_Message msg, uint8_t pos);
 void nosc_message_set_nil (nOSC_Message msg, uint8_t pos);
 void nosc_message_set_infty (nOSC_Message msg, uint8_t pos);
 
+void nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d);
+void nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h);
 void nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t);
 
 void nosc_message_set_end (nOSC_Message msg, uint8_t pos);

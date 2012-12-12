@@ -27,38 +27,36 @@
 #include "../nosc/nosc_private.h"
 #include "../sntp/sntp_private.h"
 
-Dump dump;
-const char *dump_path = "/dump";
+int16_t dump_array [SENSOR_N]; //TODO can we use some other array teomporarily to save memory? those are 288bytes
+uint32_t frame = 0;
+ 
+nOSC_Arg dump_msg [] = {
+	nosc_int32 (0), // frame number
+	nosc_timestamp (nOSC_IMMEDIATE), // timestamp of sensor array sweep
+	nosc_blob (sizeof (dump_array), (uint8_t *)dump_array), // 16-bit sensor data (network endianess)
+	nosc_end
+};
 
-void
-dump_init ()
+nOSC_Item dump_bndl [] = {
+	{"/dump", dump_msg},
+	{NULL, NULL}
+};
+
+inline uint16_t
+dump_serialize (uint8_t *buf, uint64_t offset)
 {
-	uint8_t i;
-
-	nosc_message_set_timestamp (dump, DUMP_TIME, nOSC_IMMEDIATE);
-	nosc_message_set_int32 (dump, DUMP_ADC, 0);
-
-	for (i=0; i<MUX_MAX; i++)
-		nosc_message_set_int32 (dump, DUMP_SENSOR + i, 0);
-
-	nosc_message_set_end (dump, DUMP_SENSOR + MUX_MAX);
+	return nosc_bundle_serialize (dump_bndl, offset, buf);
 }
 
-uint16_t
-dump_serialize (uint8_t *buf)
+inline void 
+dump_timestamp_set (uint64_t now)
 {
-	return nosc_message_serialize (dump, dump_path, buf);
+	dump_msg[DUMP_FRAME].val.i = ++frame;
+	dump_msg[DUMP_TIME].val.t = now;
 }
 
-void 
-dump_frm_set (uint8_t adc, uint64_t now)
-{
-	dump[DUMP_TIME].val.t = now;
-	dump[DUMP_ADC].val.i = adc;
-}
-
-void 
+inline void 
 dump_tok_set (uint8_t sensor, int16_t value)
 {
-	dump[DUMP_SENSOR + sensor].val.i = value;
+	dump_array[sensor] = hton (value); // convert to network byte order
 }

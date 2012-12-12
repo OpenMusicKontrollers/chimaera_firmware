@@ -32,11 +32,9 @@
 extern "C" {
 #endif
 
-void dump_init ();
+uint16_t dump_serialize (uint8_t *buf, uint64_t offset);
 
-uint16_t dump_serialize (uint8_t *buf);
-
-void dump_frm_set (uint8_t adc, uint64_t now);
+void dump_timestamp_set (uint64_t now);
 void dump_tok_set (uint8_t sensor, int16_t value);
 
 #ifdef __cplusplus
