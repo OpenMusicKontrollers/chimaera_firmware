@@ -416,7 +416,7 @@ setup ()
 	srand (config.comm.mac[0] * config.comm.mac[1] + config.comm.mac[2] - config.comm.mac[3]);
 
 	// load calibrated sensor ranges from eeprom
-	range_load ();
+	range_load (config.calibration);
 
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);

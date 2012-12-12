@@ -48,7 +48,6 @@ extern "C" {
 #define ADC_HALF_BITDEPTH 0x7ff
 
 #define SENSOR_N (MUX_MAX*ADC_LENGTH)
-
 #define BLOB_MAX 8
 #define GROUP_MAX 16
 
@@ -68,7 +67,14 @@ extern "C" {
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define MAGIC 0x11
+#define MAGIC 0x0a
+
+#define EEPROM_CONFIG_OFFSET 0x0000
+#define EEPROM_GROUP_OFFSET_DATA 0x00e0
+#define EEPROM_GROUP_OFFSET_SIZE EEPROM_GROUP_OFFSET_DATA-0x1
+#define EEPROM_RANGE_OFFSET 0x01a0
+#define EEPROM_RANGE_SIZE 0x0a20 // sizeof(ADC_Range)*144
+#define EEPROM_RANGE_MAX 2 // we have palce for three slots: 0, 1 and 2
 
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer

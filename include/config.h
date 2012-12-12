@@ -108,6 +108,7 @@ struct _Config {
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
 	uint8_t pacemaker;
+	uint8_t calibration;
 };
 
 extern Config config;
@@ -118,8 +119,8 @@ uint8_t config_load ();
 uint8_t config_save ();
 
 uint16_t range_mean (uint8_t mux, uint8_t adc);
-uint8_t range_load ();
-uint8_t range_save ();
+uint8_t range_load (uint8_t pos);
+uint8_t range_save (uint8_t pos);
 void range_calibrate (int16_t raw[16][10]);
 void range_update ();
 

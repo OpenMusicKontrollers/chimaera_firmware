@@ -21,3 +21,5 @@ struct _ADC_Range {
 };
 
 extern ADC_Range adc_range[MUX_MAX][ADC_LENGTH];
+
+static uint8_t magic_match ();

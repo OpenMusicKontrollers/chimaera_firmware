@@ -162,17 +162,24 @@ Config config = {
 	},
 
 	.rate = 2000, // update rate in Hz
-	.pacemaker = 0x0b // pacemaker rate 2^11=2048
+	.pacemaker = 0x0b, // pacemaker rate 2^11=2048
+	.calibration = 0, // use slot 0 as standard calibration
 };
+
+static uint8_t
+magic_match ()
+{
+	uint8_t magic;
+	eeprom_byte_read (I2C1, EEPROM_CONFIG_OFFSET, &magic);
+
+	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
+}
 
 uint8_t
 config_load ()
 {
-	uint8_t magic;
-	eeprom_byte_read (I2C1, 0x0000, &magic);
-
-	if (magic == config.magic) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
+	if (magic_match ())
+		eeprom_bulk_read (I2C1, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
 
@@ -182,7 +189,7 @@ config_load ()
 uint8_t
 config_save ()
 {
-	eeprom_bulk_write (I2C1, 0x0000, (uint8_t *)&config, sizeof (config));
+	eeprom_bulk_write (I2C1, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	return 1;
 }
 
@@ -193,13 +200,10 @@ range_mean (uint8_t mux, uint8_t adc)
 }
 
 uint8_t
-range_load ()
+range_load (uint8_t pos)
 {
-	uint8_t magic;
-	eeprom_byte_read (I2C1, 0x1000, &magic);
-
-	if (magic == config.magic) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
+	if (magic_match ()) // EEPROM and FLASH config versions match
+		eeprom_bulk_read (I2C1, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
 		uint8_t p, i;
@@ -221,18 +225,16 @@ range_load ()
 				adc_range[p][i].thresh[POLE_NORTH] = 0;
 			}
 
-		range_save ();
+		range_save (pos);
 	}
 
 	return 1;
 }
 
 uint8_t
-range_save ()
+range_save (uint8_t pos)
 {
-	uint8_t magic = config.magic;
-	eeprom_byte_write (I2C1, 0x1000, magic);
-	eeprom_bulk_write (I2C1, 0x1020, (uint8_t *)&adc_range, sizeof (adc_range));
+	eeprom_bulk_write (I2C1, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
 
 	return 1;
 }
@@ -379,12 +381,14 @@ groups_load ()
 	uint8_t size;
 	uint8_t *buf;
 
-	//TODO use config.magic
-	eeprom_byte_read (I2C1, 0x800, &size);
-	if (size)
+	if (magic_match ())
 	{
-		buf = cmc_group_buf_set (size);
-		eeprom_bulk_read (I2C1, 0x820, buf, size);
+		eeprom_byte_read (I2C1, EEPROM_GROUP_OFFSET_SIZE, &size);
+		if (size)
+		{
+			buf = cmc_group_buf_set (size);
+			eeprom_bulk_read (I2C1, EEPROM_GROUP_OFFSET_DATA, buf, size);
+		}
 	}
 	else
 		groups_save ();
@@ -399,8 +403,8 @@ groups_save ()
 	uint8_t *buf;
 
 	buf = cmc_group_buf_get (&size);
-	eeprom_byte_write (I2C1, 0x0800, size);
-	eeprom_bulk_write (I2C1, 0x0820, buf, size);
+	eeprom_byte_write (I2C1, EEPROM_GROUP_OFFSET_SIZE, size);
+	eeprom_bulk_write (I2C1, EEPROM_GROUP_OFFSET_DATA, buf, size);
 
 	return 1;
 }
@@ -1150,9 +1154,16 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
+	uint8_t pos = config.calibration; // use default calibration
+
+	if (argc == 2)
+		pos = args[1].val.i; // use given calibration
+
+	if (pos > EEPROM_RANGE_MAX)
+		pos = EEPROM_RANGE_MAX;
 
 	// store new calibration range to EEPROM
-	range_save ();
+	range_save (pos);
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1165,9 +1176,16 @@ _calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
+	uint8_t pos = config.calibration; // use default calibration
+
+	if (argc == 2)
+		pos = args[1].val.i; // use given calibration
+
+	if (pos > EEPROM_RANGE_MAX)
+		pos = EEPROM_RANGE_MAX;
 
 	// load calibration range from EEPROM
-	range_load ();
+	range_load (pos);
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1302,9 +1320,11 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/min", "i", _calibration_min},
 	{"/chimaera/calibration/mid", "if", _calibration_mid},
 	{"/chimaera/calibration/max", "i", _calibration_max},
-	{"/chimaera/calibration/save", "i", _calibration_save},
-	{"/chimaera/calibration/load", "i", _calibration_load},
 	{"/chimaera/calibration/print", "i", _calibration_print},
+	{"/chimaera/calibration/save", "i", _calibration_save},
+	{"/chimaera/calibration/save", "ii", _calibration_save},
+	{"/chimaera/calibration/load", "i", _calibration_load},
+	{"/chimaera/calibration/load", "ii", _calibration_load},
 
 	//TODO remove
 	{"/chimaera/test", "i", _test},

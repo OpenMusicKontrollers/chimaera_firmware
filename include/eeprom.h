@@ -43,7 +43,7 @@ extern "C" {
 #define _24LC64_PAGE_SIZE 0x20
 #define _24LC64_STORAGE 0x2000
 
-// TODO return success of failure flags
+// TODO return success or failure flags
 void eeprom_init (i2c_dev *dev, uint8_t slave_addr);
 
 void eeprom_byte_write (i2c_dev *dev, uint16_t addr, uint8_t byte);
