@@ -34,7 +34,13 @@ extern "C" {
  * Endian stuff
  */
 
-#define swap16(x)	((uint16_t) ((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
+#define swap16(x) \
+({ \
+    uint16_t __x = (x); \
+    ((uint16_t)( \
+	(((uint16_t)(__x) & (uint16_t)0x00ffU) << 8) | \
+	(((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) )); \
+})
 #define swap32		__builtin_bswap32
 #define swap64		__builtin_bswap64
 

@@ -99,7 +99,7 @@ Config config = {
 	},
 	
 	.tuio = {
-		.enabled = 1, // enabled by default
+		.enabled = 0, // enabled by default
 		.socket = {
 			.sock = 0,
 			.port = {3333, 3333},

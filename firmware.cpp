@@ -236,7 +236,7 @@ loop ()
 
 		for (uint8_t u=0; u<ADC_LENGTH; u++)
 			for (uint8_t v=0; v<MUX_MAX; v++)
-				dump_tok_set (mux_order[v], adc_raw[adc_raw_ptr][v][u] - range_mean(v, u)); //TODO get rid of range_mean function
+				dump_tok_set (order[v][u], adc_raw[adc_raw_ptr][v][u] - (int16_t)range_mean(v, u)); //TODO get rid of range_mean function
 
 		len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], nOSC_IMMEDIATE); //FIXME fill in offset here
 		udp_send (config.dump.socket.sock, buf_o_ptr, len);
