@@ -38,6 +38,11 @@
 #define PATR	 0x001C
 #define PTIMER 0x0028
 #define PMAGIC 0x0029
+#define IR2    0x0034
+#define PHYSR  0x0035
+
+#define PHYSR_LINK  (1 << 5)
+#define PHYSR_PWDN  (1 << 3)
 
 #define SnMR_CLOSE  0x00
 #define SnMR_TCP    0x01
