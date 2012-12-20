@@ -432,6 +432,10 @@ setup ()
 	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
 
+	// wait for link up before proceeding
+	while (!udp_link_up ())
+		;
+
 	// initialize timers
 	adc_timer = TIMER1;
 	sntp_timer = TIMER2;

@@ -329,6 +329,14 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	udp_subnet_set (subnet);
 }
 
+uint8_t
+udp_link_up ()
+{
+	uint8_t physr;
+	_dma_read (PHYSR, &physr, 1);
+	return ( (physr & PHYSR_LINK) == PHYSR_LINK);
+}
+
 void
 udp_mac_set (uint8_t *mac)
 {
