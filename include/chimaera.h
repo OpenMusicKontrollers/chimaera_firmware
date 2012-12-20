@@ -55,7 +55,8 @@ extern "C" {
 
 #define ADC_CR1_DUALMOD_BIT 16
 
-#define PWDN 0
+#define UDP_PWDN 0
+#define UDP_INT 27
 
 #define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
 

@@ -239,6 +239,7 @@ loop ()
 				dump_tok_set (order[v][u], adc_raw[adc_raw_ptr][v][u] - (int16_t)range_mean(v, u)); //TODO get rid of range_mean function
 
 		len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], nOSC_IMMEDIATE); //FIXME fill in offset here
+		//FIXME  DMAise it if TUIO not active
 		udp_send (config.dump.socket.sock, buf_o_ptr, len);
 	}
 
@@ -370,6 +371,12 @@ config_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
 }
 
+static void
+udp_irq (void)
+{
+	//TODO
+}
+
 inline void
 setup ()
 {
@@ -381,8 +388,12 @@ setup ()
   pinMode (BOARD_LED_PIN, OUTPUT);
 
 	// enable wiz820io module
-	pinMode (PWDN, OUTPUT);
-	digitalWrite (PWDN, 0); // enable wiz820io
+	pinMode (UDP_PWDN, OUTPUT);
+	digitalWrite (UDP_PWDN, 0); // enable wiz820io
+
+	//TODO
+	//pinMode (UDP_INT, INPUT);
+	//attachInterrupt (UDP_INT, udp_irq, FALLING);
 
 	// systick 
 	systick_disable ();
