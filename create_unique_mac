@@ -1,0 +1,17 @@
+#!/bin/bash
+
+MAC1=$(((0x`openssl rand -hex 1` | 0x02) & 0xfe)) # ensure locally administered unicast address (2nd least significant bit == 1, least significant bit == 0)
+MAC2=$((0x`openssl rand -hex 1`))
+MAC3=$((0x`openssl rand -hex 1`))
+MAC4=$((0x`openssl rand -hex 1`))
+MAC5=$((0x`openssl rand -hex 1`))
+MAC6=$((0x`openssl rand -hex 1`))
+
+echo $MAC1:$MAC2:$MAC3:$MAC4:$MAC5:$MAC6
+
+#oscdump 4444 &
+oscsend chimaera 4444 /chimaera/comm/mac i 13
+oscsend chimaera 4444 /chimaera/comm/mac iiiiiii 14 $MAC1 $MAC2 $MAC3 $MAC4 $MAC5 $MAC6
+oscsend chimaera 4444 /chimaera/comm/mac i 15
+oscsend chimaera 4444 /chimaera/config/save i 16
+#killall -9 oscdump
