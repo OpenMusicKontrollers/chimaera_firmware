@@ -188,6 +188,12 @@ zeroconf_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	zeroconf_dispatch (buf, len);
 }
 
+static void
+dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	dhcpc_dispatch (buf, len);
+}
+
 uint8_t send_status = 0;
 uint8_t cmc_job = 0;
 uint16_t cmc_len = 0;
@@ -484,20 +490,51 @@ setup ()
 	zeroconf_enable (config.zeroconf.enabled);
 	dhcpc_enable (config.dhcpc.enabled);
 
-	// dhcp discover
+	// dhcp discover TODO move this to dhcpc_enable
 	if (config.dhcpc.enabled)
 	{
 		uint8_t nil_ip [4] = {0, 0, 0, 0};
 		udp_ip_set (nil_ip);
 
-		uint16_t secs = systick_uptime () / 10000 + 1;
-		uint16_t len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
-		udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+		uint16_t secs;
+		uint16_t len;
+		while (dhcpc.state != LEASE)
+			switch (dhcpc.state)
+			{
+				case DISCOVER:
+					secs = systick_uptime () / 10000 + 1;
+					len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+					break;
+				case OFFER:
+					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+					break;
+				case REQUEST:
+					secs = systick_uptime () / 10000 + 1;
+					len = dhcpc_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+					break;
+				case ACK:
+					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+					break;
+				case LEASE: // we never get here
+					break;
+			}
+
+		memcpy (config.comm.ip, dhcpc.ip, 4);
+		memcpy (config.comm.gateway, dhcpc.gateway_ip, 4);
+		memcpy (config.comm.subnet, dhcpc.subnet_mask, 4);
 
 		udp_ip_set (config.comm.ip);
+		udp_gateway_set (config.comm.gateway);
+		udp_subnet_set (config.comm.subnet);
+
+		//TODO timeout
+		//TODO lease renewal
+		//TODO ARP PROBE
 	}
 
-	// set up link local IP
+	// set up link local IP TODO ARP PROBE
 	/*
 	uint8_t link_local_ip [4];
 	uint8_t success;

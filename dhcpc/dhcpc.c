@@ -27,16 +27,31 @@
 
 static uint32_t xid = 0x3903F326;
 
-uint8_t dat_53 [1] = {DHCPDISCOVER};
-uint8_t dat_61 [7] = {1, 0, 0, 0, 0, 0, 0};
-uint8_t dat_12 [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
-uint8_t dat_55 [4] = {1, 3, 15, 6};
+DHCPC dhcpc = {
+	.state = DISCOVER
+};
+
+uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
+uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
+uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
+uint8_t parameter_request_list [4] = {OPTION_SUBNET_MASK, OPTION_ROUTER, OPTION_DOMAIN_NAME, OPTION_DOMAIN_NAME_SERVER};
 
 BOOTP_Option dhcp_discover_options [] = {
-	BOOTP_OPTION(53, dat_53),
-	BOOTP_OPTION(61, dat_61),
-	BOOTP_OPTION(12, dat_12),
-	BOOTP_OPTION(55, dat_55),
+	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_discover),
+	BOOTP_OPTION (OPTION_CLIENT_IDENTIFIER, client_identifier),
+	BOOTP_OPTION (OPTION_HOST_NAME, host_name),
+	BOOTP_OPTION (OPTION_PARAMETER_REQUEST_LIST, parameter_request_list),
+	BOOTP_OPTION_END
+};
+
+uint8_t dhcp_message_type_request [1] = {DHCPREQUEST};
+uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
+uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
+
+BOOTP_Option dhcp_request_options [] = {
+	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_request),
+	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, dhcp_request_ip),
+	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
@@ -82,8 +97,31 @@ dhcpc_discover (uint8_t *buf, uint16_t secs)
 	dhcp_packet.bootp.secs = hton (secs);
 
 	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
-	dat_53[0] = DHCPDISCOVER;
-	memcpy (&dat_61[1], config.comm.mac, 6);
+
+	dhcp_packet.options = dhcp_discover_options;
+
+	memcpy (&client_identifier[1], config.comm.mac, 6);
+
+	dhcpc.state = OFFER;
+
+	return _dhcp_packet_serialize (&dhcp_packet, buf);
+}
+
+uint16_t
+dhcpc_request (uint8_t *buf, uint16_t secs)
+{
+	dhcp_packet.bootp.xid = htonl (xid);
+	dhcp_packet.bootp.secs = hton (secs);
+
+	memcpy (dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
+	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+
+	dhcp_packet.options = dhcp_request_options;
+
+	memcpy (dhcp_request_ip, dhcpc.ip, 4);
+	memcpy (dhcp_server_identifier, dhcpc.server_id, 4);
+
+	dhcpc.state = ACK;
 
 	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
@@ -92,39 +130,66 @@ void
 dhcpc_dispatch (uint8_t *buf, uint16_t size)
 {
 	DHCP_Packet *recv = (DHCP_Packet *)buf;
+
+	// check for magic_cokie
+	if (strncmp (recv->magic_cookie, dhcp_packet.magic_cookie, 4))
+		return;
+
 	recv->bootp.xid = htonl (recv->bootp.xid);
 	recv->bootp.secs = hton (recv->bootp.secs);
 
-	uint8_t *buf_ptr = (uint8_t *)recv->options;
-	BOOTP_Option *opt;
-	while (buf_ptr-buf < size)
-		switch ((opt = (BOOTP_Option *)buf_ptr)->code)
+	memcpy (dhcpc.ip, recv->bootp.yiaddr, 4);
+	memcpy (dhcpc.server_ip, recv->bootp.siaddr, 4);
+	memcpy (dhcpc.gateway_ip, recv->bootp.giaddr, 4);
+
+	uint8_t *buf_ptr = buf + sizeof (BOOTP_Packet) + 4; // offset of options
+	uint8_t code;
+	while ( (code = buf_ptr[0]) != OPTION_END)
+	{
+		uint8_t len = buf_ptr[1];
+		uint8_t *dat = &buf_ptr[2];
+		switch (code)
 		{
-			case 53:
-				switch (opt->dat[0])
+			case OPTION_SUBNET_MASK:
+				memcpy (dhcpc.subnet_mask, dat, 4);
+				break;
+
+			case OPTION_ROUTER:
+				memcpy (dhcpc.router_ip, dat, 4);
+				break;
+
+			case OPTION_DOMAIN_NAME_SERVER:
+				//TODO
+				break;
+
+			case OPTION_HOST_NAME:
+				//TODO
+				break;
+
+			case OPTION_DOMAIN_NAME:
+				//TODO
+				break;
+
+			case OPTION_IP_ADDRESS_LEASE_TIME:
+				//TODO
+				break;
+
+			case OPTION_DHCP_MESSAGE_TYPE:
+				switch (dat[0])
 				{
-					case DHCPDECLINE:
-						break;
 					case DHCPOFFER:
+						dhcpc.state = REQUEST;
 						break;
 					case DHCPACK:
-						break;
-					case DHCPNAK:
+						dhcpc.state = LEASE;
 						break;
 				}
-				buf_ptr += 2 + opt->len;
 				break;
-			case 61:
-				buf_ptr += 2 + opt->len;
-				break;
-			case 12:
-				buf_ptr += 2 + opt->len;
-				break;
-			case 55:
-				buf_ptr += 2 + opt->len;
-				break;
-			case 255:
-				buf_ptr += 1;
+
+			case OPTION_DHCP_SERVER_IDENTIFIER:
+				memcpy (dhcpc.server_id, dat, 4);
 				break;
 		}
+		buf_ptr += 2 + len;
+	}
 }

@@ -41,6 +41,19 @@
 #define BOOTP_FLAGS_UNICAST {0x00, 0x00}
 #define DHCP_MAGIC_COOKIE {0x63, 0x82, 0x53, 0x63}
 
+#define OPTION_SUBNET_MASK 1
+#define OPTION_ROUTER 3
+#define OPTION_DOMAIN_NAME_SERVER 6
+#define OPTION_HOST_NAME 12
+#define OPTION_DOMAIN_NAME 15
+#define OPTION_DHCP_REQUEST_IP 50
+#define OPTION_IP_ADDRESS_LEASE_TIME 51
+#define OPTION_DHCP_MESSAGE_TYPE 53
+#define OPTION_DHCP_SERVER_IDENTIFIER 54
+#define OPTION_PARAMETER_REQUEST_LIST 55
+#define OPTION_CLIENT_IDENTIFIER 61
+#define OPTION_END 255
+
 typedef struct _BOOTP_Packet BOOTP_Packet;
 typedef struct _BOOTP_Option BOOTP_Option;
 typedef struct _DHCP_Packet DHCP_Packet;
@@ -72,7 +85,7 @@ struct _BOOTP_Option {
 };
 
 #define BOOTP_OPTION(CODE,DAT) {.code=CODE,.len=sizeof(DAT),.dat=DAT}
-#define BOOTP_OPTION_END {.code=255}
+#define BOOTP_OPTION_END {.code=OPTION_END}
 
 struct _DHCP_Packet {
 	BOOTP_Packet bootp;
