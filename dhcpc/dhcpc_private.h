@@ -34,8 +34,16 @@
 #define DHCPNAK 6
 #define DHCPRELEASE 7
 
+#define BOOTP_OP_REQUEST 1
+#define BOOTP_HTYPE_ETHERNET 1
+#define BOOTP_HLEN_ETHERNET 6
+#define BOOTP_FLAGS_BROADCAST {0x80, 0x00}
+#define BOOTP_FLAGS_UNICAST {0x00, 0x00}
+#define DHCP_MAGIC_COOKIE {0x63, 0x82, 0x53, 0x63}
+
 typedef struct _BOOTP_Packet BOOTP_Packet;
-typedef struct _DHCP_Request DHCP_Request;
+typedef struct _BOOTP_Option BOOTP_Option;
+typedef struct _DHCP_Packet DHCP_Packet;
 
 struct _BOOTP_Packet {
 	uint8_t op;					// 1: request, 0: reply
@@ -57,39 +65,19 @@ struct _BOOTP_Packet {
 	char file [128];		// file name [optional]
 };
 
-struct _DHCP_Request {
-	BOOTP_Packet packet;
+struct _BOOTP_Option {
+	uint8_t code;
+	uint8_t len;
+	uint8_t *dat;
+};
 
+#define BOOTP_OPTION(CODE,DAT) {.code=CODE,.len=sizeof(DAT),.dat=DAT}
+#define BOOTP_OPTION_END {.code=255}
+
+struct _DHCP_Packet {
+	BOOTP_Packet bootp;
 	uint8_t magic_cookie [4];
-
-	struct _option_53 {
-		uint8_t code;
-		uint8_t len;
-		uint8_t dat;
-	} option_53;
-
-	struct _option_61 {
-		uint8_t code;
-		uint8_t len;
-		uint8_t typ;
-		uint8_t dat[6];
-	} option_61;
-
-	struct _option_12 {
-		uint8_t code;
-		uint8_t len;
-		uint8_t dat[8];
-	} option_12;
-
-	struct _option_55 {
-		uint8_t code;
-		uint8_t len;
-		uint8_t dat[4];
-	} option_55;
-
-	struct _option_end {
-		uint8_t code;
-	} option_end;
+	BOOTP_Option *options;
 };
 
 #endif // DHCPC_PRIVATE_H

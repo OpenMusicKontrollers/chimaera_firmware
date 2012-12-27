@@ -489,9 +489,12 @@ setup ()
 	{
 		uint8_t nil_ip [4] = {0, 0, 0, 0};
 		udp_ip_set (nil_ip);
+
 		uint16_t secs = systick_uptime () / 10000 + 1;
 		uint16_t len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
 		udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+
+		udp_ip_set (config.comm.ip);
 	}
 
 	// set up link local IP

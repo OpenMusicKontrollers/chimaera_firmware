@@ -27,62 +27,104 @@
 
 static uint32_t xid = 0x3903F326;
 
-DHCP_Request request = {
-	.packet = {
-		.op = 1,
-		.htype = 1,
-		.hlen = 6,
+uint8_t dat_53 [1] = {DHCPDISCOVER};
+uint8_t dat_61 [7] = {1, 0, 0, 0, 0, 0, 0};
+uint8_t dat_12 [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
+uint8_t dat_55 [4] = {1, 3, 15, 6};
 
-		.flags = {0x80, 0x00} // multicast
-	},
-
-	.magic_cookie = {0x63, 0x82, 0x53, 0x63},
-
-	.option_53 = {
-		.code = 53,
-		.len = 1,
-		.dat = DHCPDISCOVER
-	},
-
-	.option_61 = {
-		.code = 61,
-		.len = 7,
-		.typ = 1
-	},
-
-	.option_12 = {
-		.code = 12,
-		.len = 8,
-		.dat = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'}
-	},
-
-	.option_55 = {
-		.code = 55,
-		.len = 4,
-		.dat = {1, 3, 15, 6}
-	},
-
-	.option_end = {
-		.code = 255
-	}
+BOOTP_Option dhcp_discover_options [] = {
+	BOOTP_OPTION(53, dat_53),
+	BOOTP_OPTION(61, dat_61),
+	BOOTP_OPTION(12, dat_12),
+	BOOTP_OPTION(55, dat_55),
+	BOOTP_OPTION_END
 };
+
+DHCP_Packet dhcp_packet = {
+	.bootp = {
+		.op = BOOTP_OP_REQUEST,
+		.htype = BOOTP_HTYPE_ETHERNET,
+		.hlen = BOOTP_HLEN_ETHERNET,
+
+		.flags = BOOTP_FLAGS_BROADCAST
+	},
+
+	.magic_cookie = DHCP_MAGIC_COOKIE,
+
+	.options = dhcp_discover_options
+};
+
+static uint16_t
+_dhcp_packet_serialize (DHCP_Packet *packet, uint8_t *buf)
+{
+	uint8_t *buf_ptr = buf;
+
+	memcpy (buf_ptr, packet, sizeof (BOOTP_Packet) + 4); // bootp + magic_cookie
+	buf_ptr += sizeof (BOOTP_Packet) + 4;
+
+	BOOTP_Option *opt;
+	for (opt=packet->options; opt->code!=255; opt++)
+	{
+		*buf_ptr++ = opt->code;
+		*buf_ptr++ = opt->len;
+		memcpy (buf_ptr, opt->dat, opt->len);
+		buf_ptr += opt->len;
+	}
+	*buf_ptr++ = 255; // option end
+
+	return buf_ptr-buf;
+}
 
 uint16_t
 dhcpc_discover (uint8_t *buf, uint16_t secs)
 {
-	request.packet.xid = htonl (xid);
-	request.packet.secs = hton (secs);
-	memcpy (request.packet.chaddr, config.comm.mac, 6);
-	request.option_53.dat = DHCPDISCOVER;
-	memcpy (request.option_61.dat, config.comm.mac, 6);
+	dhcp_packet.bootp.xid = htonl (++xid);
+	dhcp_packet.bootp.secs = hton (secs);
 
-	uint16_t len = sizeof (DHCP_Request);
-	memcpy (buf, &request, len);
-	return len;
+	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+	dat_53[0] = DHCPDISCOVER;
+	memcpy (&dat_61[1], config.comm.mac, 6);
+
+	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
 
 void
 dhcpc_dispatch (uint8_t *buf, uint16_t size)
 {
+	DHCP_Packet *recv = (DHCP_Packet *)buf;
+	recv->bootp.xid = htonl (recv->bootp.xid);
+	recv->bootp.secs = hton (recv->bootp.secs);
 
+	uint8_t *buf_ptr = (uint8_t *)recv->options;
+	BOOTP_Option *opt;
+	while (buf_ptr-buf < size)
+		switch ((opt = (BOOTP_Option *)buf_ptr)->code)
+		{
+			case 53:
+				switch (opt->dat[0])
+				{
+					case DHCPDECLINE:
+						break;
+					case DHCPOFFER:
+						break;
+					case DHCPACK:
+						break;
+					case DHCPNAK:
+						break;
+				}
+				buf_ptr += 2 + opt->len;
+				break;
+			case 61:
+				buf_ptr += 2 + opt->len;
+				break;
+			case 12:
+				buf_ptr += 2 + opt->len;
+				break;
+			case 55:
+				buf_ptr += 2 + opt->len;
+				break;
+			case 255:
+				buf_ptr += 1;
+				break;
+		}
 }
