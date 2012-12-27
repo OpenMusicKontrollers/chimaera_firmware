@@ -83,6 +83,10 @@ uint32_t _micros ();
 void stop_watch_start (Stop_Watch *sw);
 void stop_watch_stop (Stop_Watch *sw);
 
+extern uint8_t EUI_32 [4];
+extern uint8_t EUI_48 [6];
+void eui_init ();
+
 #ifdef __cplusplus
 }
 #endif

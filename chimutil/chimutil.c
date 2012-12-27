@@ -23,6 +23,7 @@
 
 #include <libmaple/nvic.h>
 #include <libmaple/dma.h>
+#include <libmaple/systick.h>
 
 #include <string.h>
 #include <math.h>
@@ -30,6 +31,7 @@
 #include <chimutil.h>
 #include <tube.h>
 #include <armfix.h>
+#include <dhcpc.h>
 
 volatile uint8_t mem2mem_dma_done = 0;
 
@@ -145,6 +147,8 @@ tuio_enable (uint8_t b)
 		udp_begin (config.tuio.socket.sock, config.tuio.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.tuio.socket.sock, config.tuio.socket.ip, config.tuio.socket.port[DST_PORT]);
 	}
+	else
+		udp_end (config.tuio.socket.sock);
 }
 
 void 
@@ -161,6 +165,8 @@ config_enable (uint8_t b)
 
 		timer_resume (config_timer);
 	}
+	else
+		udp_end (config.config.socket.sock);
 }
 
 void 
@@ -177,6 +183,8 @@ sntp_enable (uint8_t b)
 
 		timer_resume (sntp_timer);
 	}
+	else
+		udp_end (config.sntp.socket.sock);
 }
 
 void 
@@ -188,6 +196,8 @@ dump_enable (uint8_t b)
 		udp_begin (config.dump.socket.sock, config.dump.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.dump.socket.sock, config.dump.socket.ip, config.dump.socket.port[DST_PORT]);
 	}
+	else
+		udp_end (config.dump.socket.sock);
 }
 
 void 
@@ -199,6 +209,8 @@ debug_enable (uint8_t b)
 		udp_begin (config.debug.socket.sock, config.debug.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port[DST_PORT]);
 	}
+	else
+		udp_end (config.debug.socket.sock);
 }
 
 void 
@@ -212,6 +224,14 @@ zeroconf_enable (uint8_t b)
 		udp_set_remote (config.zeroconf.socket.sock, config.zeroconf.socket.ip, config.zeroconf.socket.port[DST_PORT]);
 		udp_begin (config.zeroconf.socket.sock, config.zeroconf.socket.port[SRC_PORT], 1);
 	}
+	else
+		udp_end (config.zeroconf.socket.sock);
+}
+
+static void
+dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	dhcpc_dispatch (buf, len);
 }
 
 void 
@@ -223,7 +243,49 @@ dhcpc_enable (uint8_t b)
 	{
 		udp_set_remote (config.dhcpc.socket.sock, config.dhcpc.socket.ip, config.dhcpc.socket.port[DST_PORT]);
 		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);
+
+		uint8_t nil_ip [4] = {0, 0, 0, 0};
+		udp_ip_set (nil_ip);
+
+		uint16_t secs;
+		uint16_t len;
+		while (dhcpc.state != LEASE)
+			switch (dhcpc.state)
+			{
+				case DISCOVER:
+					secs = systick_uptime () / 10000 + 1;
+					len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+					break;
+				case OFFER:
+					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+					break;
+				case REQUEST:
+					secs = systick_uptime () / 10000 + 1;
+					len = dhcpc_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+					break;
+				case ACK:
+					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+					break;
+				case LEASE: // we never get here
+					break;
+			}
+
+		memcpy (config.comm.ip, dhcpc.ip, 4);
+		memcpy (config.comm.gateway, dhcpc.gateway_ip, 4);
+		memcpy (config.comm.subnet, dhcpc.subnet_mask, 4);
+
+		udp_ip_set (config.comm.ip);
+		udp_gateway_set (config.comm.gateway);
+		udp_subnet_set (config.comm.subnet);
+
+		//TODO timeout
+		//TODO lease renewal
+		//TODO ARP PROBE
 	}
+	else
+		udp_end (config.dhcpc.socket.sock);
 }
 
 void
@@ -247,4 +309,23 @@ stop_watch_stop (Stop_Watch *sw)
 		sw->micros = 0;
 		sw->counter = 0;
 	}
+}
+
+uint8_t EUI_32 [4];
+uint8_t EUI_48 [6];
+
+void
+eui_init ()
+{
+	EUI_32[0] =	UID_BASE[11] ^ UID_BASE[7] ^ UID_BASE[3];
+	EUI_32[1] =	UID_BASE[10] ^ UID_BASE[6] ^ UID_BASE[2];
+	EUI_32[2] =	UID_BASE[9]  ^ UID_BASE[5] ^ UID_BASE[1];
+	EUI_32[3] =	UID_BASE[8]  ^ UID_BASE[4] ^ UID_BASE[0];
+
+	EUI_48[0] =	UID_BASE[11] ^ UID_BASE[5];
+	EUI_48[1] =	UID_BASE[10] ^ UID_BASE[4];
+	EUI_48[2] =	UID_BASE[9]  ^ UID_BASE[3];
+	EUI_48[3] =	UID_BASE[8]  ^ UID_BASE[2];
+	EUI_48[4] =	UID_BASE[7]  ^ UID_BASE[1];
+	EUI_48[5] =	UID_BASE[6]  ^ UID_BASE[0];
 }

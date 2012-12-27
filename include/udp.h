@@ -47,6 +47,7 @@ void udp_gateway_set (uint8_t *gateway);
 void udp_subnet_set (uint8_t *subnet);
 
 void udp_begin (uint8_t sock, uint16_t port, uint8_t multicast);
+void udp_end (uint8_t sock);
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);
 uint8_t udp_send (uint8_t sock, uint8_t ptr, uint16_t len);

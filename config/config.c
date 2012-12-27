@@ -158,7 +158,7 @@ Config config = {
 	},
 
 	.dhcpc = {
-		.enabled = 1,
+		.enabled = 0,
 		.socket = {
 			.sock = 6,
 			.port = {68, 67}, // BOOTPclient, BOOTPserver
@@ -770,6 +770,15 @@ _debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
+_dhcpc_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	if (argc == 1) // query
+		return _enabled_get (config.dhcpc.enabled, path, fmt, argc, args);
+	else
+		return _enabled_set (dhcpc_enable, path, fmt, argc, args);
+}
+
+static uint8_t
 _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -832,6 +841,12 @@ static uint8_t
 _debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _socket (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
+}
+
+static uint8_t
+_dhcpc_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _socket (&config.dhcpc.socket, dhcpc_enable, config.dhcpc.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -963,6 +978,37 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	delay_us (sec * 1e6); // delay sec seconds until reset
+	nvic_sys_reset ();
+
+	return 1;
+}
+
+static uint8_t
+_factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+	int32_t sec;
+
+	if (argc > 1)
+	{
+		sec = args[1].val.i;
+		if (sec < 1)
+			sec = 1;
+	}
+	else
+		sec = 1;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	// FIXME does not work as intended without VBAT powered up, needs a change on the PCB
+	bkp_init ();
+	bkp_enable_writes ();
+	bkp_write (FACTORY_RESET_REG, FACTORY_RESET_VAL);
+	bkp_disable_writes ();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
@@ -1300,6 +1346,12 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/debug/socket", "i", _debug_socket},
 	{"/chimaera/debug/socket", "iiiiiii", _debug_socket},
 
+	{"/chimaera/dhcpc/enabled", "i", _dhcpc_enabled},
+	{"/chimaera/dhcpc/enabled", "iT", _dhcpc_enabled},
+	{"/chimaera/dhcpc/enabled", "iF", _dhcpc_enabled},
+	{"/chimaera/dhcpc/socket", "i", _dhcpc_socket},
+	{"/chimaera/dhcpc/socket", "iiiiiii", _dhcpc_socket},
+
 	{"/chimaera/host/socket", "iiiii", _host_socket},
 
 	//TODO
@@ -1323,6 +1375,9 @@ nOSC_Method config_serv [] = {
 
 	{"/chimaera/reset", "i", _reset},
 	{"/chimaera/reset", "ii", _reset},
+
+	{"/chimaera/factory", "i", _factory},
+	{"/chimaera/factory", "ii", _factory},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},

@@ -362,7 +362,7 @@ udp_subnet_set (uint8_t *subnet)
 }
 
 void
-udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
+udp_end (uint8_t sock)
 {
 	uint8_t flag;
 
@@ -371,8 +371,17 @@ udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 	_dma_write_sock (sock, SnCR, &flag, 1);
 	do _dma_read_sock (sock, SnSR, &flag, 1);
 	while (flag != SnSR_CLOSED);
+}
 
-	// clear interrupt?
+void
+udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
+{
+	uint8_t flag;
+
+	// first close socket
+	udp_end (sock);
+
+	// clear socket interrupt register
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
 	// set socket mode to UDP

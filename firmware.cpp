@@ -36,6 +36,7 @@
 #include <libmaple/i2c.h> // i2c for eeprom
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
+#include <libmaple/bkp.h> // backup register
 
 /*
  * include chimaera custom libraries
@@ -186,12 +187,6 @@ static void
 zeroconf_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	zeroconf_dispatch (buf, len);
-}
-
-static void
-dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
-{
-	dhcpc_dispatch (buf, len);
 }
 
 uint8_t send_status = 0;
@@ -424,14 +419,30 @@ setup ()
 		pinMode (adc2_sequence[i], INPUT_ANALOG);
 	}
 
+	// create EUI-32 and EUI-48 from unique identifier
+	eui_init ();
+
+	// initialize random number generator based on EUI_32
+	uint32_t *seed = (uint32_t *)&EUI_32[0];
+	srand (*seed);
+
+	// create "unique" ethernet MAC from EUI_48
+	uint8_t locally_administered = 0; // FIXME make this configurable
+	memcpy (config.comm.mac, EUI_48, 6);
+	if (locally_administered)
+		config.comm.mac[0] = (config.comm.mac[0] | 0x02) & 0xfe; // locally administered unicast: 0bxxxxxx10
+	else
+		config.comm.mac[0] = config.comm.mac[0] & 0xfc; // globally administered unicast: 0bxxxxxx00
+
 	// init eeprom for I2C1
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
 
 	// load configuration from eeprom
-	config_load ();
-
-	// initialize random number generator based on mac address (used for IPv4LL)
-	srand (config.comm.mac[0] * config.comm.mac[1] + config.comm.mac[2] - config.comm.mac[3]);
+	uint16_t bkp_val = bkp_read (FACTORY_RESET_REG); //FIXME does not yet work
+	if (bkp_val == FACTORY_RESET_VAL)
+		bkp_init (); // clear backup register
+	else
+		config_load ();
 
 	// load calibrated sensor ranges from eeprom
 	range_load (config.calibration);
@@ -445,19 +456,6 @@ setup ()
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
-
-	uint8_t uid_mac [6] = {
-		//(UID_BASE[5] | 0x02) & 0xfe, // locally administered unicast: 0bxxxxxx10
-		UID_BASE[5] & 0b11111100, // globally administered unicast: 0bxxxxxx00
-		UID_BASE[4],
-		UID_BASE[3],
-		UID_BASE[2],
-		UID_BASE[1],
-		UID_BASE[0]
-	};
-
-	if (1) //TODO make this configurable
-		memcpy (config.comm.mac, uid_mac, 6);
 
 	// initialize wiz820io
 	uint8_t tx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
@@ -487,54 +485,13 @@ setup ()
 	sntp_enable (config.sntp.enabled);
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
+	// FIXME zeroconf and dhcpc should be exclusive-or
 	zeroconf_enable (config.zeroconf.enabled);
 	dhcpc_enable (config.dhcpc.enabled);
 
-	// dhcp discover TODO move this to dhcpc_enable
-	if (config.dhcpc.enabled)
-	{
-		uint8_t nil_ip [4] = {0, 0, 0, 0};
-		udp_ip_set (nil_ip);
-
-		uint16_t secs;
-		uint16_t len;
-		while (dhcpc.state != LEASE)
-			switch (dhcpc.state)
-			{
-				case DISCOVER:
-					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
-					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
-					break;
-				case OFFER:
-					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
-					break;
-				case REQUEST:
-					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
-					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
-					break;
-				case ACK:
-					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
-					break;
-				case LEASE: // we never get here
-					break;
-			}
-
-		memcpy (config.comm.ip, dhcpc.ip, 4);
-		memcpy (config.comm.gateway, dhcpc.gateway_ip, 4);
-		memcpy (config.comm.subnet, dhcpc.subnet_mask, 4);
-
-		udp_ip_set (config.comm.ip);
-		udp_gateway_set (config.comm.gateway);
-		udp_subnet_set (config.comm.subnet);
-
-		//TODO timeout
-		//TODO lease renewal
-		//TODO ARP PROBE
-	}
-
-	// set up link local IP TODO ARP PROBE
+	// set up link local IP
+	// FIXME ARP PROBE
+	// FIXME move to zeroconf_enable
 	/*
 	uint8_t link_local_ip [4];
 	uint8_t success;
