@@ -412,11 +412,13 @@ udp_set_remote_har (uint8_t sock, uint8_t *har)
 	_dma_write_sock (sock, SnDHAR, har, 6);
 }
 
-void
+uint8_t
 udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
+	uint8_t success = 0;
 	if (udp_send_nonblocking (sock, buf_ptr, len))
-		udp_send_block (sock);
+		success = udp_send_block (sock);
+	return success;
 }
 
 uint8_t 
@@ -482,34 +484,18 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	return 1;
 }
 
-void
-udp_probe (uint8_t sock)
+uint8_t
+udp_probe (uint8_t sock, uint8_t buf_ptr)
 {
-	// send data
-	uint8_t flag;
-	flag = SnCR_SEND;
-	_dma_write_sock (sock, SnCR, &flag, 1);
-
-	uint8_t ir;
-	do
-	{
-		_dma_read_sock (sock, SnIR, &ir, 1);
-		if (ir & SnIR_TIMEOUT) // ARPto occured, SEND failed
-		{
-			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
-			_dma_write_sock (sock, SnIR, &flag, 1);
-		}
-	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
-
-	flag = SnIR_SEND_OK;
-	_dma_write_sock (sock, SnIR, &flag, 1);
+	return udp_send (sock, buf_ptr, 4); // send four bytes of random data to trigger ARP
 }
 
-void 
+uint8_t 
 udp_send_block (uint8_t sock)
 {
 	_dma_write_nonblocking_out ();
 
+	uint8_t success = 1;
 	uint8_t ir;
 	uint8_t flag;
 	do
@@ -517,12 +503,13 @@ udp_send_block (uint8_t sock)
 		_dma_read_sock (sock, SnIR, &ir, 1);
 		if (ir & SnIR_TIMEOUT) // ARPto occured, SEND failed
 		{
-			flag = SnIR_SEND_OK | SnIR_TIMEOUT;
+			flag = SnIR_SEND_OK | SnIR_TIMEOUT; // set SEND_OK flag and clear TIMEOUT flag
 			_dma_write_sock (sock, SnIR, &flag, 1);
+			success = 0;
 		}
 	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
 
-	flag = SnIR_SEND_OK;
+	flag = SnIR_SEND_OK; // clear SEND_OK flag
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
 	//FIXME remove stuff below
@@ -534,6 +521,8 @@ udp_send_block (uint8_t sock)
 	do
 		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
 	while (frei != SSIZE[sock]);
+
+	return success;
 }
 
 uint16_t

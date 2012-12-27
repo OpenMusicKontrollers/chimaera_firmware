@@ -68,7 +68,7 @@ extern "C" {
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define MAGIC 0x01
+#define MAGIC 0x03
 
 #define EEPROM_CONFIG_OFFSET 0x0000
 #define EEPROM_GROUP_OFFSET_DATA 0x00e0
@@ -76,6 +76,12 @@ extern "C" {
 #define EEPROM_RANGE_OFFSET 0x01a0
 #define EEPROM_RANGE_SIZE 0x0a20 // sizeof(ADC_Range)*144
 #define EEPROM_RANGE_MAX 2 // we have palce for three slots: 0, 1 and 2
+
+// STM32F1 flash memory size (16bit)
+#define FSIZE_BASE  ((const uint16_t *)0x1FFFF7E0)
+
+// STM32F1 universal ID (96bit)
+#define UID_BASE  ((const uint8_t *)0x1FFFF7E8)
 
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer

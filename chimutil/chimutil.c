@@ -214,6 +214,18 @@ zeroconf_enable (uint8_t b)
 	}
 }
 
+void 
+dhcpc_enable (uint8_t b)
+{
+	//FIXME handle timer
+	config.dhcpc.enabled = b;
+	if (config.dhcpc.enabled)
+	{
+		udp_set_remote (config.dhcpc.socket.sock, config.dhcpc.socket.ip, config.dhcpc.socket.port[DST_PORT]);
+		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);
+	}
+}
+
 void
 stop_watch_start (Stop_Watch *sw)
 {

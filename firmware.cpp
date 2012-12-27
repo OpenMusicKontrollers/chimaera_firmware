@@ -49,6 +49,7 @@
 #include <tuio2.h>
 #include <dump.h>
 #include <zeroconf.h>
+#include <dhcpc.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 gpio_dev *mux_gpio_dev [MUX_LENGTH];
@@ -371,11 +372,13 @@ config_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
 }
 
+/*
 static void
 udp_irq (void)
 {
 	//TODO
 }
+*/
 
 inline void
 setup ()
@@ -437,6 +440,19 @@ setup ()
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
+	uint8_t uid_mac [6] = {
+		//(UID_BASE[5] | 0x02) & 0xfe, // locally administered unicast: 0bxxxxxx10
+		UID_BASE[5] & 0b11111100, // globally administered unicast: 0bxxxxxx00
+		UID_BASE[4],
+		UID_BASE[3],
+		UID_BASE[2],
+		UID_BASE[1],
+		UID_BASE[0]
+	};
+
+	if (1) //TODO make this configurable
+		memcpy (config.comm.mac, uid_mac, 6);
+
 	// initialize wiz820io
 	uint8_t tx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
@@ -466,25 +482,41 @@ setup ()
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
 	zeroconf_enable (config.zeroconf.enabled);
+	dhcpc_enable (config.dhcpc.enabled);
 
-	/*
-	// IPv4LL
-	udp_probe (config.debug.socket.sock);
-	uint8_t nil_ip [4] = {0, 0, 0, 0};
-	uint8_t src_ip [4];
-	udp_begin (config.zeroconf.socket.sock, 10000, 0);
-	while (1)
+	// dhcp discover
+	if (config.dhcpc.enabled)
 	{
-		debug_str ("IPv4LL probe");
-		zeroconf_IPv4LL_random (src_ip);
+		uint8_t nil_ip [4] = {0, 0, 0, 0};
 		udp_ip_set (nil_ip);
-		udp_gateway_set (src_ip);
-		udp_set_remote (config.zeroconf.socket.sock, src_ip, 10000);
-		udp_probe (config.zeroconf.socket.sock);
-
-		for (uint8_t a=0; a<1e3; a++)
-			delay_us (1e3);
+		uint16_t secs = systick_uptime () / 10000 + 1;
+		uint16_t len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+		udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
 	}
+
+	// set up link local IP
+	/*
+	uint8_t link_local_ip [4];
+	uint8_t success;
+	do
+	{
+		zeroconf_IPv4LL_random (link_local_ip);
+
+		debug_int32 (link_local_ip[0]);
+		debug_int32 (link_local_ip[1]);
+		debug_int32 (link_local_ip[2]);
+		debug_int32 (link_local_ip[3]);
+
+		//udp_ip_set (link_local_ip);
+		//udp_gateway_set (gateway_ip);
+		udp_set_remote (config.dump.socket.sock, link_local_ip, config.dump.socket.port[DST_PORT]); 
+		success = udp_probe (config.dump.socket.sock, buf_o_ptr);
+
+		debug_int32 (success);
+	} while (success); // when ARP timed out (and there is no success), we've found an unused IP
+	udp_ip_set (link_local_ip);
+	link_local_ip[3] = 1;
+	udp_gateway_set (link_local_ip);
 	*/
 
 	// set up ADCs

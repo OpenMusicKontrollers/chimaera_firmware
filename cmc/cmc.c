@@ -77,6 +77,8 @@ cmc_sensor (uint8_t order[16][9], uint8_t p, uint8_t i)
 		return (float)cmc.sensors[pos+1].v;
 }
 
+#define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
+
 uint8_t
 cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 {
@@ -94,7 +96,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			int16_t val = raw[p][i] - adc_range[p][i].mean;
 			uint16_t aval = abs (val);
 			uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
-			if (aval > adc_range[p][i].thresh[pole] / 4) // thresh0 == thresh1 / 4
+			if ( (aval > THRESH_MIN) && (aval > adc_range[p][i].thresh[pole] / 4) ) // thresh0 == thresh1 / 4
 			{
 				cmc.sensors[pos+1].n = pole;
 				cmc.sensors[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down

@@ -102,6 +102,11 @@ struct _Config {
 		Socket_Config socket;
 	} zeroconf;
 
+	struct _dhcpc {
+		uint8_t enabled;
+		Socket_Config socket;
+	} dhcpc;
+
 	struct _cmc {
 		uint8_t peak_thresh;
 	} cmc;

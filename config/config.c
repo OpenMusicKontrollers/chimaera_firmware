@@ -92,14 +92,14 @@ Config config = {
 	},
 
 	.comm = {
-		.mac = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED},
+		.mac = {(0x1a | 0b00000010) & 0b11111110, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f}, // locally administered unicast MAC
 		.ip = {192, 168, 1, 177},
 		.gateway = {192, 168, 1, 1},
 		.subnet = {255, 255, 255, 0}
 	},
 	
 	.tuio = {
-		.enabled = 0, // enabled by default
+		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 0,
 			.port = {3333, 3333},
@@ -154,6 +154,15 @@ Config config = {
 			.sock = 5,
 			.port = {5353, 5353}, // mDNS multicast port
 			.ip = {224, 0, 0, 251} // mDNS multicast group
+		}
+	},
+
+	.dhcpc = {
+		.enabled = 1,
+		.socket = {
+			.sock = 6,
+			.port = {68, 67}, // BOOTPclient, BOOTPserver
+			.ip = {255, 255, 255, 255} // broadcast
 		}
 	},
 
