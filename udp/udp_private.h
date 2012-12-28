@@ -66,6 +66,7 @@
 #define SnSR_CLOSED 0x00
 #define SnSR_INIT   0x13
 #define SnSR_UDP    0x22
+#define SnSR_MACRAW 0x42
 
 #define SnMR     0x0000 // 1 Mode
 #define SnCR     0x0001 // 1 Command

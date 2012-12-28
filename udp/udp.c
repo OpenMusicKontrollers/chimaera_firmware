@@ -522,6 +522,7 @@ udp_send_block (uint8_t sock)
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
 	//FIXME remove stuff below
+	/*
 	// update write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 
@@ -530,6 +531,7 @@ udp_send_block (uint8_t sock)
 	do
 		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
 	while (frei != SSIZE[sock]);
+	*/
 
 	return success;
 }
@@ -632,4 +634,116 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 			remaining -= UDP_HDR_SIZE + size;
 		}
 	}
+}
+
+void
+macraw_begin (uint8_t sock)
+{
+	uint8_t flag;
+
+	// first close socket
+	udp_end (sock);
+
+	// clear socket interrupt register
+	_dma_write_sock (sock, SnIR, &flag, 1);
+
+	// set socket mode to UDP
+	flag = SnMR_MACRAW;
+	_dma_write_sock (sock, SnMR, &flag, 1);
+
+	// open socket
+	flag = SnCR_OPEN;
+	_dma_write_sock (sock, SnCR, &flag, 1);
+	do _dma_read_sock (sock, SnSR, &flag, 1);
+	while (flag != SnSR_MACRAW);
+
+	// get write pointer
+	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+}
+
+typedef struct _ARP_Packet ARP_Packet;
+typedef struct _ARP_Data ARP_Data;
+typedef struct _MACRAW_Packet MACRAW_Packet;
+
+struct _ARP_Packet {
+	uint8_t htype [2];
+	uint8_t ptype [2];
+	uint8_t hlen;
+	uint8_t plen;
+	uint8_t oper [2];
+	uint8_t sha [6];
+	uint8_t spa [4];
+	uint8_t tha [6];
+	uint8_t tpa [4];
+};
+
+struct _ARP_Data {
+	uint8_t dst_mac [6];
+	uint8_t src_mac [6];
+	uint8_t type [2];
+
+	ARP_Packet payload;
+};
+
+struct _MACRAW_Packet {
+	uint16_t size;
+
+	struct _data {
+		uint8_t dst_mac [6];
+		uint8_t src_mac [6];
+		uint8_t type [2];
+
+		uint8_t payload [46];
+	} data;
+
+	uint32_t CRC;
+};
+
+ARP_Data arp_probe = {
+	.type = {0x08, 0x06}, // ARP
+	.dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00},
+	// .src_mac to fill
+
+	.payload = {
+		.htype = {0x00, 0x01},	// ethernet
+		.ptype = {0x08, 0x00},	// Ipv4
+		.hlen = 0x06,						// ethernet MAC
+		.plen = 0x04,						// IPv4
+		.oper = {0x00, 0x01},		// 1: request, 2: reply
+
+		// .sha to fill
+		.spa = {0x00, 0x00, 0x00, 0x00},
+		.tha = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		// .thp to fill
+	}
+};
+
+void
+macraw_end (uint8_t sock)
+{
+	udp_end (sock);
+}
+
+uint8_t
+macraw_send (uint8_t sock, uint8_t ptr, uint16_t len)
+{
+	return udp_send (sock, ptr, len);
+}
+
+void
+macraw_available (uint8_t sock)
+{
+	udp_available (sock);
+}
+
+void
+macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len)
+{
+	udp_receive (sock, ptr, len);
+}
+
+void
+macraw_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *src_mac, uint8_t *src_ip, uint8_t *dst_mac, uint8_t *dst_ip, uint8_t *buf, uint16_t len))
+{
+	//TODO
 }

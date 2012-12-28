@@ -58,6 +58,13 @@ uint16_t udp_available (uint8_t sock);
 void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
 void udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)); 
 
+void macraw_begin (uint8_t sock);
+void macraw_end (uint8_t sock);
+uint8_t macraw_send (uint8_t sock, uint8_t ptr, uint16_t len);
+void macraw_available (uint8_t sock);
+void macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len);
+void macraw_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *src_mac, uint8_t *src_ip, uint8_t *dst_mac, uint8_t *dst_ip, uint8_t *buf, uint16_t len));
+
 #ifdef __cplusplus
 }
 #endif
