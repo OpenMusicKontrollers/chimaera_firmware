@@ -621,15 +621,11 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 		{
 			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
 
-			uint8_t ip [4];
-			ip[0] = buf_in_ptr[0];
-			ip[1] = buf_in_ptr[1];
-			ip[2] = buf_in_ptr[2];
-			ip[3] = buf_in_ptr[3];
+			uint8_t *ip = &buf_in_ptr[0]; //FIXME test this
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
 			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
-			cb ((uint8_t *)&ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
+			cb (ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
 
 			remaining -= UDP_HDR_SIZE + size;
 		}
@@ -637,7 +633,7 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 }
 
 void
-macraw_begin (uint8_t sock)
+macraw_begin (uint8_t sock, uint8_t mac_filter)
 {
 	uint8_t flag;
 
@@ -647,8 +643,11 @@ macraw_begin (uint8_t sock)
 	// clear socket interrupt register
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
-	// set socket mode to UDP
-	flag = SnMR_MACRAW;
+	// set socket mode to MACRAW
+	if (mac_filter) // only look for packages addressed to our MAC or broadcast
+		flag = SnMR_MACRAW | SnMR_MF;
+	else
+		flag = SnMR_MACRAW;
 	_dma_write_sock (sock, SnMR, &flag, 1);
 
 	// open socket
@@ -660,63 +659,6 @@ macraw_begin (uint8_t sock)
 	// get write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 }
-
-typedef struct _ARP_Packet ARP_Packet;
-typedef struct _ARP_Data ARP_Data;
-typedef struct _MACRAW_Packet MACRAW_Packet;
-
-struct _ARP_Packet {
-	uint8_t htype [2];
-	uint8_t ptype [2];
-	uint8_t hlen;
-	uint8_t plen;
-	uint8_t oper [2];
-	uint8_t sha [6];
-	uint8_t spa [4];
-	uint8_t tha [6];
-	uint8_t tpa [4];
-};
-
-struct _ARP_Data {
-	uint8_t dst_mac [6];
-	uint8_t src_mac [6];
-	uint8_t type [2];
-
-	ARP_Packet payload;
-};
-
-struct _MACRAW_Packet {
-	uint16_t size;
-
-	struct _data {
-		uint8_t dst_mac [6];
-		uint8_t src_mac [6];
-		uint8_t type [2];
-
-		uint8_t payload [46];
-	} data;
-
-	uint32_t CRC;
-};
-
-ARP_Data arp_probe = {
-	.type = {0x08, 0x06}, // ARP
-	.dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00},
-	// .src_mac to fill
-
-	.payload = {
-		.htype = {0x00, 0x01},	// ethernet
-		.ptype = {0x08, 0x00},	// Ipv4
-		.hlen = 0x06,						// ethernet MAC
-		.plen = 0x04,						// IPv4
-		.oper = {0x00, 0x01},		// 1: request, 2: reply
-
-		// .sha to fill
-		.spa = {0x00, 0x00, 0x00, 0x00},
-		.tha = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-		// .thp to fill
-	}
-};
 
 void
 macraw_end (uint8_t sock)
@@ -730,10 +672,10 @@ macraw_send (uint8_t sock, uint8_t ptr, uint16_t len)
 	return udp_send (sock, ptr, len);
 }
 
-void
+uint16_t
 macraw_available (uint8_t sock)
 {
-	udp_available (sock);
+	return udp_available (sock);
 }
 
 void
@@ -742,8 +684,99 @@ macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len)
 	udp_receive (sock, ptr, len);
 }
 
-void
-macraw_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *src_mac, uint8_t *src_ip, uint8_t *dst_mac, uint8_t *dst_ip, uint8_t *buf, uint16_t len))
+void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *data)
 {
-	//TODO
+	uint16_t len;
+
+	if ( (len = macraw_available (sock)) )
+	{
+		macraw_receive (sock, ptr, len);
+
+		// separate concurrent UDP messages
+		uint16_t remaining = len;
+		while (remaining > 0)
+		{
+			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
+
+			uint16_t data_size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
+			uint8_t *data = &buf_in_ptr[2];
+
+			cb (data, data_size, data);
+
+			remaining -= 2 + data_size + 4; // -(packet_info + packet_size + CRC)
+		}
+	}
+}
+
+static uint8_t arp_collision = 0;
+
+static void
+arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
+{
+	uint8_t *ip = data;
+
+	MACRAW_Packet *packet = (MACRAW_Packet *)buf;
+
+	// check whether this is an ethernet ARP packet
+	if (hton (packet->data.type) != MACRAW_TYPE_ARP)
+		return;
+
+	ARP_Data *arp_reply = (ARP_Data *)buf;
+
+	// check whether this is an IPv4 ARP reply
+	if ((hton (arp_reply->payload.htype) != ARP_HTYPE_ETHERNET) ||
+			(hton (arp_reply->payload.ptype) != ARP_PTYPE_IPV4) ||
+			(arp_reply->payload.hlen != ARP_HLEN_ETHERNET) ||
+			(arp_reply->payload.plen != ARP_PLEN_IPV4) ||
+			(hton (arp_reply->payload.oper) != ARP_OPER_REPLY) )
+		return;
+
+	// check whether the ARP is for us
+	if (strncmp (arp_reply->payload.tha, config.comm.mac, 6))
+		return;
+
+	// check whether the ARP has our requested IP as source -> then there is an ARP probe collision
+	if (!strncmp (arp_reply->payload.spa, ip, 4))
+		arp_collision = 1;
+}
+
+uint8_t
+arp_probe (uint8_t sock, uint8_t *ip)
+{
+	ARP_Data arp_probe = {
+		.dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00},
+		// .src_mac to fill
+		.type = hton (0x0806), // ARP
+
+		.payload = {
+			.htype = hton (ARP_HTYPE_ETHERNET),
+			.ptype = hton (ARP_PTYPE_IPV4),
+			.hlen = ARP_HLEN_ETHERNET,
+			.plen = ARP_PLEN_IPV4,
+			.oper = hton (ARP_OPER_REQUEST),
+
+			// .sha to fill
+			.spa = {0x00, 0x00, 0x00, 0x00},
+			.tha = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			// .tpa to fill
+		}
+	};
+
+	memcpy (arp_probe.src_mac, config.comm.mac, 6);
+	memcpy (arp_probe.payload.sha, config.comm.mac, 6);
+	memcpy (arp_probe.payload.tpa, ip, 4);
+
+	macraw_begin (sock, 1); // mac_filter enabled
+	uint16_t len = sizeof (arp_probe);
+	memcpy (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], &arp_probe, len);
+	macraw_send (sock, buf_o_ptr, len);
+	macraw_end (sock);
+
+	uint32_t tick = systick_uptime ();
+	uint32_t arp_timeout = 10000; // 10000 * 100us = 1s
+	arp_collision = 0;
+	while (!arp_collision || (systick_uptime() - tick < arp_timeout) )
+		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+
+	return arp_collision;
 }

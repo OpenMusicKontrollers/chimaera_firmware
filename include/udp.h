@@ -38,6 +38,8 @@ extern "C" {
 #define UDP_RESET 7 // Reset BIT
 #define UDP_MAX_SOCK_NUM 8
 
+typedef void (*UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
+
 void udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[UDP_MAX_SOCK_NUM], uint8_t rx_mem[UDP_MAX_SOCK_NUM]);
 uint8_t udp_link_up ();
 
@@ -56,14 +58,18 @@ uint8_t udp_send_block (uint8_t sock);
 uint8_t udp_probe (uint8_t sock, uint8_t buf_ptr);
 uint16_t udp_available (uint8_t sock);
 void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
-void udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)); 
+void udp_dispatch (uint8_t sock, uint8_t ptr, UDP_Dispatch_Cb cb);
 
-void macraw_begin (uint8_t sock);
+typedef void (*MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
+
+void macraw_begin (uint8_t sock, uint8_t mac_filter);
 void macraw_end (uint8_t sock);
 uint8_t macraw_send (uint8_t sock, uint8_t ptr, uint16_t len);
-void macraw_available (uint8_t sock);
+uint16_t macraw_available (uint8_t sock);
 void macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len);
-void macraw_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *src_mac, uint8_t *src_ip, uint8_t *dst_mac, uint8_t *dst_ip, uint8_t *buf, uint16_t len));
+void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *data);
+
+uint8_t arp_probe (uint8_t sock, uint8_t *ip);
 
 #ifdef __cplusplus
 }

@@ -51,6 +51,7 @@
 #define SnMR_MACRAW 0x04
 #define SnMR_PPPOE  0x05
 #define SnMR_ND     0x20
+#define SnMR_MF			0x40
 #define SnMR_MULTI  0x80
 
 #define SnCR_OPEN      0x01
@@ -100,5 +101,53 @@
 
 #define TX_BUF_BASE 0x8000
 #define RX_BUF_BASE 0xC000
+
+typedef struct _ARP_Packet ARP_Packet;
+typedef struct _ARP_Data ARP_Data;
+typedef struct _MACRAW_Packet MACRAW_Packet;
+
+struct _ARP_Packet {
+	uint16_t htype;
+	uint16_t ptype;
+	uint8_t hlen;
+	uint8_t plen;
+	uint16_t oper;
+	uint8_t sha [6];
+	uint8_t spa [4];
+	uint8_t tha [6];
+	uint8_t tpa [4];
+};
+
+struct _ARP_Data {
+	uint8_t dst_mac [6];
+	uint8_t src_mac [6];
+	uint16_t type;
+
+	ARP_Packet payload;
+};
+
+struct _MACRAW_Packet {
+	uint16_t size;
+
+	struct _data {
+		uint8_t dst_mac [6];
+		uint8_t src_mac [6];
+		uint16_t type;
+
+		uint8_t payload [46];
+	} data;
+
+	uint32_t CRC;
+};
+
+#define MACRAW_TYPE_ARP 0x0806
+
+#define ARP_HTYPE_ETHERNET 0x0001
+#define ARP_PTYPE_IPV4 0x0800
+#define ARP_HLEN_ETHERNET 0X06
+#define ARP_PLEN_IPV4 0x04
+
+#define ARP_OPER_REQUEST 0x0001
+#define ARP_OPER_REPLY 0x0002
 
 #endif // UDP_PRIVATE_H
