@@ -25,6 +25,7 @@
 #include <libmaple/dma.h>
 #include <libmaple/systick.h>
 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -313,6 +314,7 @@ stop_watch_stop (Stop_Watch *sw)
 
 uint8_t EUI_32 [4];
 uint8_t EUI_48 [6];
+char EUI_96_STR [96/8+1]; // (96bit/8bit)byte + '\0'
 
 void
 eui_init ()
@@ -328,4 +330,18 @@ eui_init ()
 	EUI_48[3] =	UID_BASE[8]  ^ UID_BASE[2];
 	EUI_48[4] =	UID_BASE[7]  ^ UID_BASE[1];
 	EUI_48[5] =	UID_BASE[6]  ^ UID_BASE[0];
+
+	sprintf (EUI_96_STR, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		UID_BASE[11],
+		UID_BASE[10],
+		UID_BASE[9],
+		UID_BASE[8],
+		UID_BASE[7],
+		UID_BASE[6],
+		UID_BASE[5],
+		UID_BASE[4],
+		UID_BASE[3],
+		UID_BASE[2],
+		UID_BASE[1],
+		UID_BASE[0]);
 }

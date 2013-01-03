@@ -85,6 +85,7 @@ void stop_watch_stop (Stop_Watch *sw);
 
 extern uint8_t EUI_32 [4];
 extern uint8_t EUI_48 [6];
+extern char EUI_96_STR [96/8+1];
 void eui_init ();
 
 #ifdef __cplusplus

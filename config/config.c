@@ -1264,6 +1264,18 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 }
 
 static uint8_t
+_uid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, EUI_96_STR);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1389,6 +1401,8 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/save", "ii", _calibration_save},
 	{"/chimaera/calibration/load", "i", _calibration_load},
 	{"/chimaera/calibration/load", "ii", _calibration_load},
+
+	{"/chimaera/uid", "i", _uid},
 
 	//TODO remove
 	{"/chimaera/test", "i", _test},
