@@ -62,6 +62,8 @@ typedef enum _nOSC_Type {
 	nOSC_INT64 = 'h',
 	nOSC_TIMESTAMP = 't',
 
+	nOSC_SYMBOL = 'S',
+	nOSC_CHAR = 'c',
 	nOSC_MIDI = 'm',
 
 	nOSC_END = '\0'
@@ -86,6 +88,8 @@ struct _nOSC_Arg {
 		uint64_t t;
 
 		uint8_t m[4];
+		char *S;
+		char c;
 	} val;
 };
 
@@ -102,6 +106,10 @@ struct _nOSC_Arg {
 #define nosc_double(x)		(nOSC_Arg){nOSC_DOUBLE, {.d=(x)}}
 #define nosc_int64(x)			(nOSC_Arg){nOSC_INT64, {.h=(x)}}
 #define nosc_timestamp(x)	(nOSC_Arg){nOSC_TIMESTAMP, {.t=(x)}}
+
+#define nosc_midi(x)			(nOSC_Arg){nOSC_MIDI, {.m={(x)[0],(x)[1],(x)[2],(x)[3]}}}
+#define nosc_symbol(x)		(nOSC_Arg){nOSC_SYMBOL, {.S=(x)}}
+#define nosc_char(x)			(nOSC_Arg){nOSC_CHAR, {.c=(x)}}
 
 #define nosc_end					(nOSC_Arg){nOSC_END}
 
@@ -151,6 +159,10 @@ void nosc_message_set_infty (nOSC_Message msg, uint8_t pos);
 void nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d);
 void nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h);
 void nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t);
+
+void nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m);
+void nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S);
+void nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c);
 
 void nosc_message_set_end (nOSC_Message msg, uint8_t pos);
 

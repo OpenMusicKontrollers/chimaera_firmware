@@ -175,6 +175,22 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				nosc_message_set_timestamp (msg, pos, ref_ntohll (buf_ptr));
 				buf_ptr += 8;
 				break;
+
+			case nOSC_MIDI:
+				nosc_message_set_midi (msg, pos, buf_ptr);
+				buf_ptr += 4;
+				break;
+			case nOSC_SYMBOL:
+				nosc_message_set_symbol (msg, pos, buf_ptr);
+				len = strlen (buf_ptr)+1;
+				if (len%4)
+					len += 4 - len%4;
+				buf_ptr += len;
+				break;
+			case nOSC_CHAR:
+				nosc_message_set_char (msg, pos, buf_ptr[3]);
+				buf_ptr += 4;
+				break;
 		}
 	}
 }
@@ -287,6 +303,27 @@ nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t)
 }
 
 inline void
+nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m)
+{
+	msg[pos].type = nOSC_MIDI;
+	memcpy (msg[pos].val.m, m, 4);
+}
+
+inline void
+nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S)
+{
+	msg[pos].type = nOSC_SYMBOL;
+	msg[pos].val.S = S;
+}
+
+inline void
+nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c)
+{
+	msg[pos].type = nOSC_CHAR;
+	msg[pos].val.c = c;
+}
+
+inline void
 nosc_message_set_end (nOSC_Message msg, uint8_t pos)
 {
 	msg[pos].type = nOSC_END;
@@ -374,6 +411,26 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				ref_htonll (buf_ptr, arg->val.h);
 				buf_ptr += 8;
 				break;
+
+			case nOSC_MIDI:
+				memcpy (buf_ptr, arg->val.m, 4);
+				buf_ptr += 4;
+				break;
+			case nOSC_SYMBOL:
+				len = strlen (arg->val.S) + 1;
+				memcpy (buf_ptr, arg->val.S, len);
+				buf_ptr += len;
+				if (len%4)
+				{
+					memset (buf_ptr, '\0', 4-rem);
+					buf_ptr += 4-rem;
+				}
+				break;
+			case nOSC_CHAR:
+				memset (buf_ptr, '\0', 3);
+				buf_ptr[3] = arg->val.c;
+				buf_ptr+= 4;
+				break;
 		}
 
 	return buf_ptr - buf;
@@ -402,7 +459,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 				nosc_message_set_int32 (msg, pos, va_arg (args, int32_t));
         break;
 			case nOSC_FLOAT:
-				 nosc_message_set_float (msg, pos, (float) va_arg (args, double));
+				 nosc_message_set_float (msg, pos, (float) va_arg (args, double)); // float is promoted to double in ...
         break;
 			case nOSC_STRING:
 				nosc_message_set_string (msg, pos, va_arg (args, char *));
@@ -433,6 +490,16 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 			case nOSC_TIMESTAMP:
 				nosc_message_set_timestamp (msg, pos, va_arg (args, uint64_t));
         break;
+
+			case nOSC_MIDI:
+				nosc_message_set_midi (msg, pos, va_arg (args, uint8_t *));
+				break;
+			case nOSC_SYMBOL:
+				nosc_message_set_symbol (msg, pos, va_arg (args, char *));
+				break;
+			case nOSC_CHAR:
+				nosc_message_set_char (msg, pos, (char) va_arg (args, int)); // char is promoted to int in ...
+				break;
 		}
 	}
   va_end (args);
