@@ -314,7 +314,7 @@ stop_watch_stop (Stop_Watch *sw)
 
 uint8_t EUI_32 [4];
 uint8_t EUI_48 [6];
-char EUI_96_STR [96/8+1]; // (96bit/8bit)byte + '\0'
+char EUI_96_STR [96/8*2+1]; // (96bit/8bit)byte + '\0'
 
 void
 eui_init ()

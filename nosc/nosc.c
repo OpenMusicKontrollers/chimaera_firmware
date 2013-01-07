@@ -31,8 +31,8 @@
  * static variabled
  */
 
-nOSC_Arg dispatch_msg [OSC_ARGS_MAX+1];
-nOSC_Arg vararg_msg [OSC_ARGS_MAX+1];
+static nOSC_Arg dispatch_msg [OSC_ARGS_MAX+1];
+static nOSC_Arg vararg_msg [OSC_ARGS_MAX+1];
 
 static const char *bundle_str = "#bundle";
 
@@ -104,15 +104,15 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	// find path
 	*path = buf_ptr;
 	len = strlen (*path)+1;
-	if (len%4)
-		len += 4 - len%4;
+	if (rem=len%4)
+		len += 4 - rem;
 	buf_ptr += len;
 
 	// find format
 	*fmt = buf_ptr;
 	len = strlen (*fmt)+1;
-	if (len%4)
-		len += 4 - len%4;
+	if (rem=len%4)
+		len += 4 - rem;
 	*fmt = buf_ptr + 1; // skip ','
 	buf_ptr += len;
 
@@ -135,8 +135,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 			case nOSC_STRING:
 				nosc_message_set_string (msg, pos, buf_ptr);
 				len = strlen (buf_ptr)+1;
-				if (len%4)
-					len += 4 - len%4;
+				if (rem=len%4)
+					len += 4 - rem;
 				buf_ptr += len;
 				break;
 			case nOSC_BLOB:
@@ -183,8 +183,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 			case nOSC_SYMBOL:
 				nosc_message_set_symbol (msg, pos, buf_ptr);
 				len = strlen (buf_ptr)+1;
-				if (len%4)
-					len += 4 - len%4;
+				if (rem=len%4)
+					len += 4 - rem;
 				buf_ptr += len;
 				break;
 			case nOSC_CHAR:
@@ -203,6 +203,7 @@ uint16_t
 nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
+	int32_t msg_size;
 
 	memcpy (buf_ptr, bundle_str, 8);
 	buf_ptr += 8;
@@ -213,9 +214,6 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 	nOSC_Item *itm;
 	for (itm=bund; itm->path!=NULL; itm++)
 	{
-		int32_t msg_size;
-		int32_t i;
-
 		msg_size = nosc_message_serialize (itm->msg, itm->path, buf_ptr+4);
 		ref_htonl (buf_ptr, msg_size);
 		buf_ptr += msg_size + 4;
@@ -380,7 +378,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				len = strlen (arg->val.s) + 1;
 				memcpy (buf_ptr, arg->val.s, len);
 				buf_ptr += len;
-				if (len%4)
+				if (rem=len%4)
 				{
 					memset (buf_ptr, '\0', 4-rem);
 					buf_ptr += 4-rem;
@@ -408,9 +406,13 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 			case nOSC_DOUBLE:
 			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
+			{
 				ref_htonll (buf_ptr, arg->val.h);
+				//uint64_t tmp = htonll (arg->val.t);
+				//memcpy (buf_ptr, &tmp, 8);
 				buf_ptr += 8;
 				break;
+			}
 
 			case nOSC_MIDI:
 				memcpy (buf_ptr, arg->val.m, 4);
@@ -420,7 +422,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				len = strlen (arg->val.S) + 1;
 				memcpy (buf_ptr, arg->val.S, len);
 				buf_ptr += len;
-				if (len%4)
+				if (rem=len%4)
 				{
 					memset (buf_ptr, '\0', 4-rem);
 					buf_ptr += 4-rem;
@@ -429,7 +431,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 			case nOSC_CHAR:
 				memset (buf_ptr, '\0', 3);
 				buf_ptr[3] = arg->val.c;
-				buf_ptr+= 4;
+				buf_ptr += 4;
 				break;
 		}
 

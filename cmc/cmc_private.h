@@ -40,6 +40,7 @@ extern fix_0_32_t lookup [];
 extern fix_0_32_t lookup_sqrt [];
 
 typedef struct _CMC_Sensor CMC_Sensor;
+typedef struct _CMC_Sensor_State CMC_Sensor_State;
 typedef struct _CMC_Blob CMC_Blob;
 typedef struct _CMC_Group CMC_Group;
 typedef struct _CMC CMC;
@@ -47,35 +48,40 @@ typedef struct _CMC CMC;
 struct _CMC_Sensor {
 	fix_0_32_t x;
 	fix_0_32_t v;
-	uint8_t n :1; // negative?
-	uint8_t a :1; // above thresh?
+};
+
+struct _CMC_Sensor_State {
+	uint8_t n : 1;
+	uint8_t a : 1;
 };
 
 struct _CMC_Blob {
 	uint32_t sid;
-	uint16_t uid;
 	CMC_Group *group;
 	fix_0_32_t x, p;
-	uint8_t above_thresh :1;
-	uint8_t ignore :1;
+	uint16_t uid;
+	uint8_t above_thresh;
+	uint8_t ignore;
 };
 
 struct _CMC_Group {
-	uint16_t tid;
-	uint16_t uid;
 	fix_0_32_t x0, x1;
 	fix_16_16_t m;
+	uint16_t tid;
+	uint16_t uid;
 };
 
 struct _CMC {
-	uint8_t I, J;
 	uint32_t fid, sid;
 	fix_0_32_t d;
 	fix_0_32_t d_2;
 	
 	CMC_Sensor sensors[SENSOR_N+2];
+	CMC_Sensor_State states[SENSOR_N+2];
 	CMC_Blob blobs[2][BLOB_MAX];
 	CMC_Group groups[GROUP_MAX];
+
+	uint8_t I, J;
 	uint8_t n_groups;
 	uint8_t old;
 	uint8_t neu;

@@ -134,7 +134,7 @@ struct _MACRAW_Packet {
 		uint8_t src_mac [6];
 		uint16_t type;
 
-		uint8_t payload [46];
+		uint8_t payload [1]; // minimal payload size
 	} data;
 
 	uint32_t CRC;

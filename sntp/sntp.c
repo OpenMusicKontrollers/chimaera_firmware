@@ -55,6 +55,8 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 {
 	sntp_t *answer = (sntp_t *)buf;
 
+	//FIXME check whether its a SNTP answer
+
 	timestamp64_t t1, t2, t3, _t4;
 
 	t1.osc.sec = ntohl (answer->originate_timestamp.ntp.sec);
@@ -68,12 +70,6 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 
 	_t4.stamp = t4;
 
-	fix_32_32_t T1 = t1.fix;
-	fix_32_32_t T2 = t2.fix;
-	fix_32_32_t T3 = t3.fix;
-	//fix_32_32_t T4 = utime2fix (t4);
-	fix_32_32_t T4 = _t4.fix;
-
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
   //Transmit Timestamp      T3   time reply sent by server
@@ -82,11 +78,12 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
+	fix_s31_32_t clock_offset;
 	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.tuio.offset with this value
-	fix_s31_32_t clock_offset = (fix_s31_32_t)(T2 - T1) - (fix_s31_32_t)(T4 - T3);
+	clock_offset = 0.5LLK * (fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix);
 
 	if (t0 == 0.0ULLK)
-		t0 = T3;
+		t0 = t3.fix;
 	else
 		t0 += clock_offset;
 }
@@ -99,6 +96,8 @@ sntp_timestamp_refresh (uint64_t *now)
 	uptime.fix = systick_uptime () * 0.0001ULLK; // that many 100us
 	_now.fix = t0 + uptime.fix;
 	*now = _now.stamp;
+
+	//FIXME there is a bug here somewhere occuring from time to time, giving back timestamp in the far future (2036)
 
 	//fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
 	//fix_32_32_t _now = t0 + uptime;

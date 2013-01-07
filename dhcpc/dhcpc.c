@@ -31,12 +31,12 @@ DHCPC dhcpc = {
 	.state = DISCOVER
 };
 
-uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
-uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
-uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
-uint8_t parameter_request_list [4] = {OPTION_SUBNET_MASK, OPTION_ROUTER, OPTION_DOMAIN_NAME, OPTION_DOMAIN_NAME_SERVER};
+static uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
+static uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
+static uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
+static uint8_t parameter_request_list [4] = {OPTION_SUBNET_MASK, OPTION_ROUTER, OPTION_DOMAIN_NAME, OPTION_DOMAIN_NAME_SERVER};
 
-BOOTP_Option dhcp_discover_options [] = {
+static BOOTP_Option dhcp_discover_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_discover),
 	BOOTP_OPTION (OPTION_CLIENT_IDENTIFIER, client_identifier),
 	BOOTP_OPTION (OPTION_HOST_NAME, host_name),
@@ -44,18 +44,18 @@ BOOTP_Option dhcp_discover_options [] = {
 	BOOTP_OPTION_END
 };
 
-uint8_t dhcp_message_type_request [1] = {DHCPREQUEST};
-uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
-uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
+static uint8_t dhcp_message_type_request [1] = {DHCPREQUEST};
+static uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
+static uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
 
-BOOTP_Option dhcp_request_options [] = {
+static BOOTP_Option dhcp_request_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_request),
 	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, dhcp_request_ip),
 	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
-DHCP_Packet dhcp_packet = {
+static DHCP_Packet dhcp_packet = {
 	.bootp = {
 		.op = BOOTP_OP_REQUEST,
 		.htype = BOOTP_HTYPE_ETHERNET,

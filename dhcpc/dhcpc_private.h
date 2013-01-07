@@ -74,7 +74,7 @@ struct _BOOTP_Packet {
 	uint8_t giaddr [4]; // relay agent IP
 	uint8_t chaddr [16];// client MAC
 
-	char sname [64];		// server name [optional]
+	char sname [64];		// server name [optional] FIXME this is unused, we don't want to waste memory on it!
 	char file [128];		// file name [optional]
 };
 

@@ -218,20 +218,6 @@ loop ()
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
-		/*
-		uint16_t size;
-		int16_t one = adc_raw[adc_raw_ptr][0][4] - range_mean(0, 4);
-		int16_t two = adc_raw[adc_raw_ptr][1][4] - range_mean(1, 4);
-		int16_t three = adc_raw[adc_raw_ptr][2][4] - range_mean(2, 4);
-
-		float f_one = cmc_sensor (order, 0, 4);
-		float f_two = cmc_sensor (order, 1, 4);
-		float f_three = cmc_sensor (order, 2, 4);
-
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/sensor", "iiifff", one, two, three, f_one, f_two, f_three);
-		udp_send (config.debug.socket.sock, buf_o_ptr, size);
-		*/
-
 		sntp_timestamp_refresh (&now);
 
 		dump_timestamp_set (now); 
@@ -274,7 +260,7 @@ loop ()
 		udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
 		config_should_listen = 0;
 	}
-
+	
 	// run sntp client
 	if (config.sntp.enabled)
 	{
@@ -438,11 +424,13 @@ setup ()
 	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
 
 	// load configuration from eeprom
+	/* FIXME
 	uint16_t bkp_val = bkp_read (FACTORY_RESET_REG); //FIXME does not yet work
 	if (bkp_val == FACTORY_RESET_VAL)
 		bkp_init (); // clear backup register
 	else
 		config_load ();
+	*/
 
 	// load calibrated sensor ranges from eeprom
 	range_load (config.calibration);
@@ -451,8 +439,9 @@ setup ()
 	dma_init (DMA1);
 
 	// set up SPI for usage with wiz820io
-  spi.begin (SPI_18MHZ, MSBFIRST, 0); 
+  spi.begin (SPI_18MHZ, MSBFIRST, 0);
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
+	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode TODO
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
@@ -485,9 +474,10 @@ setup ()
 	sntp_enable (config.sntp.enabled);
 	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
-	// FIXME zeroconf and dhcpc should be exclusive-or
-	zeroconf_enable (config.zeroconf.enabled);
 	dhcpc_enable (config.dhcpc.enabled);
+	// FIXME when dhcpc fails, then fall back to zeroconf (if enabled)
+	zeroconf_enable (config.zeroconf.enabled);
+	// FIXME when zeroconf not enabled, fall back to fixed IP
 
 	// set up link local IP
 	// FIXME ARP PROBE

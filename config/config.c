@@ -552,6 +552,52 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
+static void
+str2mac (char *str, uint8_t *mac)
+{
+	sscanf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
+		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+}
+
+#define MAC_STR_LEN 18
+#define IP_STR_LEN 16
+#define ADDR_STR_LEN 32
+
+static void
+mac2str (uint8_t *mac, char *str)
+{
+	sprintf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static void
+str2ip (char *str, uint8_t *ip)
+{
+	sscanf (str, "%i.%i.%i.%i",
+		&ip[0], &ip[1], &ip[2], &ip[3]);
+}
+
+static void
+ip2str (uint8_t *ip, char *str)
+{
+	sprintf (str, "%i.%i.%i.%i",
+		ip[0], ip[1], ip[2], ip[3]);
+}
+
+static void
+str2addr (char *str, uint8_t *ip, uint16_t *port)
+{
+	sscanf (str, "osc.udp://%i.%i.%i.%i:%i",
+		&ip[0], &ip[1], &ip[2], &ip[3], port);
+}
+
+static void
+addr2str (uint8_t *ip, uint16_t port, char *str)
+{
+	sprintf (str, "osc.udp://%i.%i.%i.%i:%i",
+		ip[0], ip[1], ip[2], ip[3], port);
+}
+
 static uint8_t
 _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
@@ -562,9 +608,16 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	{
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
 			config.comm.mac[0], config.comm.mac[1], config.comm.mac[2], config.comm.mac[3], config.comm.mac[4], config.comm.mac[5]);
+
+		//TODO also do the scanning of a string
+		static char buf[MAC_STR_LEN];
+		mac2str (config.comm.mac, buf);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, buf);
 	}
 	else
 	{
+		//str2mac (args[1].val.s, config.comm.mac); //TODO
+
 		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) && (args[5].val.i < 0x100) && (args[6].val.i < 0x100) )
 		{
 			config.comm.mac[0] = args[1].val.i;
@@ -1301,7 +1354,94 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	debug_int32 (sizeof (sat long accum));									// size = 8
 	debug_int32 (sizeof (sat long long accum));							// size = 8
 
+	debug_str ("nOSC_Arg");
+	debug_int32 (sizeof (nOSC_Type));
+	debug_int32 (sizeof (nOSC_Union));
+	debug_int32 (sizeof (nOSC_Arg));
+	debug_int32 (sizeof (nOSC_Item));
+	debug_int32 (sizeof (nOSC_Method));
+	debug_int32 (sizeof (int32_t));
+	debug_int32 (sizeof (float));
+	debug_int32 (sizeof (char *));
+	debug_int32 (sizeof (nOSC_Blob));
+	debug_int32 (sizeof (int64_t));
+	debug_int32 (sizeof (double));
+	debug_int32 (sizeof (uint64_t));
+	debug_int32 (sizeof (uint8_t [4]));
+	debug_int32 (sizeof (char *));
+	debug_int32 (sizeof (char));
+
+	struct {
+		union {
+			uint32_t i;
+		} u;
+		char c;
+	} s;
+	debug_int32 (sizeof (s));
+
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	switch (args[1].val.c)
+	{
+		case nOSC_INT32:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, 12);
+			break;
+		case nOSC_FLOAT:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, 1.2);
+			break;
+		case nOSC_STRING:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, "hello");
+			break;
+		case nOSC_BLOB:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTb", id, 0, NULL);
+			break;
+
+		case nOSC_TRUE:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+			break;
+		case nOSC_FALSE:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+			break;
+		case nOSC_NIL:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTN", id);
+			break;
+		case nOSC_INFTY:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
+			break;
+
+		case nOSC_INT64:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTh", id, 12LL);
+			break;
+		case nOSC_DOUBLE:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTd", id, 1.2);
+			break;
+		case nOSC_TIMESTAMP:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", id, nOSC_IMMEDIATE);
+			break;
+
+		case nOSC_MIDI:
+			{
+				uint8_t m [4] = {0x90, 0x5f, 0x7f, 0x00};
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTm", id, m);
+				break;
+			}
+		case nOSC_SYMBOL:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTS", id, "/hello");
+			break;
+		case nOSC_CHAR:
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTc", id, 'c');
+			break;
+	}
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1406,6 +1546,7 @@ nOSC_Method config_serv [] = {
 
 	//TODO remove
 	{"/chimaera/test", "i", _test},
+	{"/chimaera/echo", "ic", _echo},
 
 	{NULL, NULL, NULL} // terminator
 };

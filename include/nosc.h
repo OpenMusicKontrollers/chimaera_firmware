@@ -38,6 +38,7 @@ extern "C" {
  * Definitions
  */
 
+typedef union _nOSC_Union nOSC_Union;
 typedef struct _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
 typedef struct _nOSC_Item nOSC_Item;
@@ -74,44 +75,48 @@ struct _nOSC_Blob {
 	uint8_t *data;
 };
 
-struct _nOSC_Arg {
-	nOSC_Type type;
-
-	union {
-		int32_t i;
-		float f;
-		char *s;
-		nOSC_Blob b;
+union _nOSC_Union {
+	// 8 bytes
+	int64_t h;
+	double d;
+	uint64_t t;
+	nOSC_Blob b;
 	
-		double d;
-		int64_t h;
-		uint64_t t;
+	// 4 bytes
+	int32_t i;
+	float f;
+	char *s;
+	uint8_t m[4];
+	char *S;
 
-		uint8_t m[4];
-		char *S;
-		char c;
-	} val;
+	// 1 byte
+	char c;
 };
 
-#define nosc_int32(x)			(nOSC_Arg){nOSC_INT32, {.i=(x)}}
-#define nosc_float(x)			(nOSC_Arg){nOSC_FLOAT, {.f=(x)}}
-#define nosc_string(x)		(nOSC_Arg){nOSC_STRING, {.s=(x)}}
-#define nosc_blob(s,x)		(nOSC_Arg){nOSC_BLOB, {.b={.size=(s), .data=(x)}}}
+struct _nOSC_Arg {
+	nOSC_Type type;
+	nOSC_Union val;
+} __attribute__((packed,aligned(4))); // if not it gets aligned to sizeof(nOSC_Union)=8 by GCC, which is a silly waste of ram
 
-#define nosc_true					(nOSC_Arg){nOSC_TRUE}
-#define nosc_false				(nOSC_Arg){nOSC_FALSE}
-#define nosc_nil					(nOSC_Arg){nOSC_NIL}
-#define nosc_infty				(nOSC_Arg){nOSC_INFTY}
+#define nosc_int32(x)			(nOSC_Arg){.type=nOSC_INT32, .val={.i=(x)}}
+#define nosc_float(x)			(nOSC_Arg){.type=nOSC_FLOAT, .val={.f=(x)}}
+#define nosc_string(x)		(nOSC_Arg){.type=nOSC_STRING, .val={.s=(x)}}
+#define nosc_blob(s,x)		(nOSC_Arg){.type=nOSC_BLOB, .val={.b={.size=(s), .data=(x)}}}
 
-#define nosc_double(x)		(nOSC_Arg){nOSC_DOUBLE, {.d=(x)}}
-#define nosc_int64(x)			(nOSC_Arg){nOSC_INT64, {.h=(x)}}
-#define nosc_timestamp(x)	(nOSC_Arg){nOSC_TIMESTAMP, {.t=(x)}}
+#define nosc_true					(nOSC_Arg){.type=nOSC_TRUE}
+#define nosc_false				(nOSC_Arg){.type=nOSC_FALSE}
+#define nosc_nil					(nOSC_Arg){.type=nOSC_NIL}
+#define nosc_infty				(nOSC_Arg){.type=nOSC_INFTY}
 
-#define nosc_midi(x)			(nOSC_Arg){nOSC_MIDI, {.m={(x)[0],(x)[1],(x)[2],(x)[3]}}}
-#define nosc_symbol(x)		(nOSC_Arg){nOSC_SYMBOL, {.S=(x)}}
-#define nosc_char(x)			(nOSC_Arg){nOSC_CHAR, {.c=(x)}}
+#define nosc_double(x)		(nOSC_Arg){.type=nOSC_DOUBLE, .val={.d=(x)}}
+#define nosc_int64(x)			(nOSC_Arg){.type=nOSC_INT64, .val={.h=(x)}}
+#define nosc_timestamp(x)	(nOSC_Arg){.type=nOSC_TIMESTAMP, .val={.t=(x)}}
 
-#define nosc_end					(nOSC_Arg){nOSC_END}
+#define nosc_midi(x)			(nOSC_Arg){.type=nOSC_MIDI, .val={.m={(x)[0],(x)[1],(x)[2],(x)[3]}}}
+#define nosc_symbol(x)		(nOSC_Arg){.type=nOSC_SYMBOL, .val={.S=(x)}}
+#define nosc_char(x)			(nOSC_Arg){.type=nOSC_CHAR, .val={.c=(x)}}
+
+#define nosc_end					(nOSC_Arg){.type=nOSC_END}
 
 struct _nOSC_Item {
 	char *path;

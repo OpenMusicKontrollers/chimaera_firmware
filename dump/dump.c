@@ -27,17 +27,17 @@
 #include "../nosc/nosc_private.h"
 #include "../sntp/sntp_private.h"
 
-int16_t dump_array [SENSOR_N]; //TODO can we use some other array teomporarily to save memory? those are 288bytes
-uint32_t frame = 0;
+static int16_t dump_array [SENSOR_N]; //TODO can we use some other array teomporarily to save memory? those are 288bytes
+static uint32_t frame = 0;
  
-nOSC_Arg dump_msg [] = {
+static nOSC_Arg dump_msg [] = {
 	nosc_int32 (0), // frame number
 	nosc_timestamp (nOSC_IMMEDIATE), // timestamp of sensor array sweep
 	nosc_blob (sizeof (dump_array), (uint8_t *)dump_array), // 16-bit sensor data (network endianess)
 	nosc_end
 };
 
-nOSC_Item dump_bndl [] = {
+static nOSC_Item dump_bndl [] = {
 	{"/dump", dump_msg},
 	{NULL, NULL}
 };

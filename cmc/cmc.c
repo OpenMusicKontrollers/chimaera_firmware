@@ -57,7 +57,7 @@ cmc_init ()
 	{
 		cmc.sensors[i].x = cmc.d * (i-1);
 		cmc.sensors[i].v = 0;
-		cmc.sensors[i].n = 0;
+		cmc.states[i].n = 0;
 	}
 
 	cmc.n_groups = 0;
@@ -71,7 +71,7 @@ float
 cmc_sensor (uint8_t order[16][9], uint8_t p, uint8_t i)
 {
 	uint8_t pos = order[p][i];
-	if (cmc.sensors[pos+1].n)
+	if (cmc.states[pos+1].n)
 		return -(float)cmc.sensors[pos+1].v;
 	else
 		return (float)cmc.sensors[pos+1].v;
@@ -98,8 +98,8 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
 			if ( (aval > THRESH_MIN) && (aval > adc_range[p][i].thresh[pole] / 4) ) // thresh0 == thresh1 / 4
 			{
-				cmc.sensors[pos+1].n = pole;
-				cmc.sensors[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
+				cmc.states[pos+1].n = pole;
+				cmc.states[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
 				cmc.sensors[pos+1].v =  adc_range[p][i].A[pole].fix * lookup_sqrt[aval]  //FIXME move this down
 															+ adc_range[p][i].B[pole].fix * lookup[aval]
 															+ adc_range[p][i].C[pole].fix;
@@ -163,11 +163,11 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
 				{
 					cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-					cmc.blobs[cmc.neu][cmc.J].uid = cmc.sensors[i].n == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+					cmc.blobs[cmc.neu][cmc.J].uid = cmc.states[i].n == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
 					cmc.blobs[cmc.neu][cmc.J].group = NULL;
 					cmc.blobs[cmc.neu][cmc.J].x = x;
 					cmc.blobs[cmc.neu][cmc.J].p = y;
-					cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.sensors[i].a;
+					cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.states[i].a;
 					cmc.blobs[cmc.neu][cmc.J].ignore = 0;
 
 					cmc.J++;
