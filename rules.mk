@@ -15,7 +15,7 @@ include $(MAKEDIR)/header.mk
 # where compilation output (like object files) goes. The variable $(d)
 # gets expanded to the directory containing this rules.mk file.
 BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
-BUILDDIRS += $(BUILD_PATH)/$(d)/udp
+BUILDDIRS += $(BUILD_PATH)/$(d)/wiz
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
 BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
 BUILDDIRS += $(BUILD_PATH)/$(d)/dump
@@ -59,12 +59,17 @@ ASFLAGS_$(d) :=
 # You can add any additional rules you want here. We don't have
 # any extra rules to add.
 
+### Custom targets
+
+cmc/cmc_lookup.c:
+	./cmc/cmc_lookup.py > $@
+
 ### Source files
 
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
 cSRCS_$(d) += cmc/cmc_lookup.c
-cSRCS_$(d) += udp/udp.c
+cSRCS_$(d) += wiz/wiz.c
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
 cSRCS_$(d) += dump/dump.c

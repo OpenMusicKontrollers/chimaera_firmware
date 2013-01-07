@@ -23,7 +23,7 @@
 
 #include "zeroconf_private.h"
 #include <chimaera.h>
-#include <udp.h>
+#include <wiz.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -105,7 +105,7 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			a->TTL = htonl (0x00000078);
 			a->RLEN = hton (0x0004);
 
-			uint8_t *ref = &buf_o[buf_o_ptr][UDP_SEND_OFFSET];
+			uint8_t *ref = &buf_o[buf_o_ptr][WIZ_SEND_OFFSET];
 			uint8_t *ptr = ref;
 
 			memcpy (ptr, q, sizeof (DNS_Query));

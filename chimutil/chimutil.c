@@ -73,7 +73,7 @@ debug_str (const char *str)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "is", debug_counter++, str);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "is", debug_counter++, str);
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
@@ -83,7 +83,7 @@ debug_int32 (int32_t i)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "ii", debug_counter++, i);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "ii", debug_counter++, i);
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
@@ -93,7 +93,7 @@ debug_float (float f)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "if", debug_counter++, f);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "if", debug_counter++, f);
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
@@ -103,7 +103,7 @@ debug_timestamp (uint64_t t)
 	if (!config.debug.enabled)
 		return;
 	uint16_t size;
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/debug", "it", debug_counter++, t);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "it", debug_counter++, t);
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
@@ -246,7 +246,7 @@ dhcpc_enable (uint8_t b)
 		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);
 
 		uint8_t nil_ip [4] = {0, 0, 0, 0};
-		udp_ip_set (nil_ip);
+		wiz_ip_set (nil_ip);
 
 		uint16_t secs;
 		uint16_t len;
@@ -255,7 +255,7 @@ dhcpc_enable (uint8_t b)
 			{
 				case DISCOVER:
 					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_discover (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					len = dhcpc_discover (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
 					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
 					break;
 				case OFFER:
@@ -263,7 +263,7 @@ dhcpc_enable (uint8_t b)
 					break;
 				case REQUEST:
 					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], secs);
+					len = dhcpc_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
 					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
 					break;
 				case ACK:
@@ -277,9 +277,9 @@ dhcpc_enable (uint8_t b)
 		memcpy (config.comm.gateway, dhcpc.gateway_ip, 4);
 		memcpy (config.comm.subnet, dhcpc.subnet_mask, 4);
 
-		udp_ip_set (config.comm.ip);
-		udp_gateway_set (config.comm.gateway);
-		udp_subnet_set (config.comm.subnet);
+		wiz_ip_set (config.comm.ip);
+		wiz_gateway_set (config.comm.gateway);
+		wiz_subnet_set (config.comm.subnet);
 
 		//TODO timeout
 		//TODO lease renewal
@@ -304,7 +304,7 @@ stop_watch_stop (Stop_Watch *sw)
 	if (sw->counter > 1000)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], "/stop_watch", "si", sw->id, sw->micros/1000);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/stop_watch", "si", sw->id, sw->micros/1000);
 		udp_send (config.debug.socket.sock, buf_o_ptr, size);
 
 		sw->micros = 0;

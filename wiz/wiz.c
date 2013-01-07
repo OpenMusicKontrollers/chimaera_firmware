@@ -24,7 +24,7 @@
 #include <tube.h>
 #include <chimutil.h>
 
-#include "udp_private.h"
+#include "wiz_private.h"
 
 #include <string.h>
 
@@ -41,14 +41,14 @@ static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
 static uint8_t tmp_buf_i_ptr = INPUT_BUF_SEND;
 
-uint16_t SSIZE [UDP_MAX_SOCK_NUM];
-uint16_t RSIZE [UDP_MAX_SOCK_NUM];
+static uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
+static uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 
-uint16_t SBASE [UDP_MAX_SOCK_NUM];
-uint16_t RBASE [UDP_MAX_SOCK_NUM];
+static uint16_t SBASE [WIZ_MAX_SOCK_NUM];
+static uint16_t RBASE [WIZ_MAX_SOCK_NUM];
 
-uint16_t SMASK [UDP_MAX_SOCK_NUM];
-uint16_t RMASK [UDP_MAX_SOCK_NUM];
+static uint16_t SMASK [WIZ_MAX_SOCK_NUM];
+static uint16_t RMASK [WIZ_MAX_SOCK_NUM];
 
 inline void setSS ()
 {
@@ -264,7 +264,7 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 void
-udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[UDP_MAX_SOCK_NUM], uint8_t rx_mem[UDP_MAX_SOCK_NUM])
+wiz_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
 {
 	int status;
 
@@ -290,11 +290,11 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 	uint8_t sock;
 	uint8_t flag;
 
-	flag = 1 << UDP_RESET;
+	flag = 1 << WIZ_RESET;
 	_dma_write (MR, &flag, 1);
 
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
-  for (sock=0; sock<UDP_MAX_SOCK_NUM; sock++)
+  for (sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
 	{
 		// initialize tx registers
 		SSIZE[sock] = (uint16_t)tx_mem[sock] * 0x0400;
@@ -323,14 +323,14 @@ udp_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
 
-	udp_mac_set (mac);
-	udp_ip_set (ip);
-	udp_gateway_set (gateway);
-	udp_subnet_set (subnet);
+	wiz_mac_set (mac);
+	wiz_ip_set (ip);
+	wiz_gateway_set (gateway);
+	wiz_subnet_set (subnet);
 }
 
 uint8_t
-udp_link_up ()
+wiz_link_up ()
 {
 	uint8_t physr;
 	_dma_read (PHYSR, &physr, 1);
@@ -338,25 +338,25 @@ udp_link_up ()
 }
 
 void
-udp_mac_set (uint8_t *mac)
+wiz_mac_set (uint8_t *mac)
 {
 	_dma_write (SHAR, mac, 6);
 }
 
 void
-udp_ip_set (uint8_t *ip)
+wiz_ip_set (uint8_t *ip)
 {
 	_dma_write (SIPR, ip, 4);
 }
 
 void
-udp_gateway_set (uint8_t *gateway)
+wiz_gateway_set (uint8_t *gateway)
 {
 	_dma_write (GAR, gateway, 4);
 }
 
 void
-udp_subnet_set (uint8_t *subnet)
+wiz_subnet_set (uint8_t *subnet)
 {
 	_dma_write (SUBR, subnet, 4);
 }
@@ -433,7 +433,7 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
-	if (len > (CHIMAERA_BUFSIZE - 2*UDP_SEND_OFFSET) ) // return when buffer exceeds given size
+	if (len > (CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) ) // return when buffer exceeds given size
 		return 0;
 
 	// switch DMA memory source to right buffer, input buffer is on SEND by default
@@ -473,7 +473,7 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		// we have to move the remaining data 4 bytes to the right on the buffer to fill in the SPI address commands
 		uint16_t i;
 		for (i=len-size; i>0; i--)
-			buf[i - 1 + UDP_SEND_OFFSET] = buf[i-1];
+			buf[i - 1 + WIZ_SEND_OFFSET] = buf[i-1];
 		buf = _dma_write_inline (buf, SBASE[sock], len-size);
   } 
   else
@@ -625,9 +625,9 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
 			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
-			cb (ip, port, buf_in_ptr + UDP_HDR_SIZE, size);
+			cb (ip, port, buf_in_ptr + WIZ_UDP_HDR_SIZE, size);
 
-			remaining -= UDP_HDR_SIZE + size;
+			remaining -= WIZ_UDP_HDR_SIZE + size;
 		}
 	}
 }
@@ -768,7 +768,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 
 	macraw_begin (sock, 1); // mac_filter enabled
 	uint16_t len = sizeof (arp_probe);
-	memcpy (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], &arp_probe, len);
+	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &arp_probe, len);
 	macraw_send (sock, buf_o_ptr, len);
 	macraw_end (sock);
 

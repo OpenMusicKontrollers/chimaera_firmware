@@ -226,7 +226,7 @@ loop ()
 			for (uint8_t v=0; v<MUX_MAX; v++)
 				dump_tok_set (order[v][u], adc_raw[adc_raw_ptr][v][u] - (int16_t)range_mean(v, u)); //TODO get rid of range_mean function
 
-		len = dump_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], nOSC_IMMEDIATE); //FIXME fill in offset here
+		len = dump_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], nOSC_IMMEDIATE); //FIXME fill in offset here
 		//FIXME  DMAise it if TUIO not active
 		udp_send (config.dump.socket.sock, buf_o_ptr, len);
 	}
@@ -242,7 +242,7 @@ loop ()
 		if (job)
 		{
 			sntp_timestamp_refresh (&now);
-			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
+			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
 		}
 
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
@@ -277,7 +277,7 @@ loop ()
 			sntp_should_listen = 1;
 
 			sntp_timestamp_refresh (&now);
-			len = sntp_request (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], now);
+			len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
 	}
@@ -447,13 +447,13 @@ setup ()
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
 	// initialize wiz820io
-	uint8_t tx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
-	uint8_t rx_mem[UDP_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
-	udp_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
+	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
+	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
+	wiz_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
 
 	// wait for link up before proceeding
-	while (!udp_link_up ())
+	while (!wiz_link_up ())
 		;
 
 	// initialize timers

@@ -21,10 +21,10 @@
  *     distribution.
  */
 
-#ifndef UDP_PRIVATE_H
-#define UDP_PRIVATE_H
+#ifndef WIZ_PRIVATE_H
+#define WIZ_PRIVATE_H
 
-#include <udp.h>
+#include <wiz.h>
 
 #define MR		 0x0000
 #define GAR		 0x0001

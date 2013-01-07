@@ -25,7 +25,7 @@
 #define _CHIMUTIL_H_
 
 #include <chimaera.h>
-#include <udp.h>
+#include <wiz.h>
 
 #include <libmaple/adc.h>
 #include <libmaple/timer.h>

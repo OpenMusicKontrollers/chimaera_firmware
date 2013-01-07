@@ -30,7 +30,7 @@
 
 #include <chimaera.h>
 #include <chimutil.h>
-#include <udp.h>
+#include <wiz.h>
 #include <eeprom.h>
 #include <cmc.h>
 
@@ -425,7 +425,7 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
 	}
 	else
 	{
@@ -433,13 +433,13 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
 		{
 			char buf[64];
 			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
 		}
 	}
 
@@ -455,7 +455,7 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, *val);
 	}
 	else
 	{
@@ -463,13 +463,13 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
 		{
 			char buf[64];
 			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
 		}
 	}
 
@@ -485,7 +485,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, *val);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, *val);
 	}
 	else
 	{
@@ -493,13 +493,13 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 		if ( (arg >= min) && (arg < max) )
 		{
 			*val = arg;
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
 		{
 			char buf[64];
 			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, buf);
 		}
 	}
 
@@ -514,7 +514,7 @@ _version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -527,9 +527,9 @@ _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (config_load ())
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "loading of configuration from EEPROM failed");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "loading of configuration from EEPROM failed");
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -543,9 +543,9 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (config_save ())
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "saving configuration to EEPROM failed");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "saving configuration to EEPROM failed");
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -606,13 +606,13 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
 			config.comm.mac[0], config.comm.mac[1], config.comm.mac[2], config.comm.mac[3], config.comm.mac[4], config.comm.mac[5]);
 
 		//TODO also do the scanning of a string
 		static char buf[MAC_STR_LEN];
 		mac2str (config.comm.mac, buf);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, buf);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, buf);
 	}
 	else
 	{
@@ -627,12 +627,12 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 			config.comm.mac[4] = args[5].val.i;
 			config.comm.mac[5] = args[6].val.i;
 
-			udp_mac_set (config.comm.mac);
+			wiz_mac_set (config.comm.mac);
 
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in MAC must be < 0x100");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in MAC must be < 0x100");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -648,7 +648,7 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
 			config.comm.ip[0], config.comm.ip[1], config.comm.ip[2], config.comm.ip[3]);
 	}
 	else
@@ -660,12 +660,12 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 			config.comm.ip[2] = args[3].val.i;
 			config.comm.ip[3] = args[4].val.i;
 
-			udp_ip_set (config.comm.ip);
+			wiz_ip_set (config.comm.ip);
 
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -681,7 +681,7 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
 			config.comm.gateway[0], config.comm.gateway[1], config.comm.gateway[2], config.comm.gateway[3]);
 	}
 	else
@@ -693,12 +693,12 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 			config.comm.gateway[2] = args[3].val.i;
 			config.comm.gateway[3] = args[4].val.i;
 
-			udp_gateway_set (config.comm.gateway);
+			wiz_gateway_set (config.comm.gateway);
 
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -714,7 +714,7 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
 			config.comm.subnet[0], config.comm.subnet[1], config.comm.subnet[2], config.comm.subnet[3]);
 	}
 	else
@@ -726,12 +726,12 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 			config.comm.subnet[2] = args[3].val.i;
 			config.comm.subnet[3] = args[4].val.i;
 
-			udp_subnet_set (config.comm.subnet);
+			wiz_subnet_set (config.comm.subnet);
 
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: all numbers in IP must be < 0x100");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -746,9 +746,9 @@ _enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_A
 	int32_t id = args[0].val.i;
 
 	if (b)
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -764,12 +764,12 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 	if (fmt[1] == nOSC_TRUE)
 	{
 		cb (1);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 	else if (fmt[1] == nOSC_FALSE)
 	{
 		cb (0);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -839,7 +839,7 @@ _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
 			socket->port[0], socket->port[1], socket->ip[0], socket->ip[1], socket->ip[2], socket->ip[3]);
 	}
 	else
@@ -855,10 +855,10 @@ _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char
 
 			cb (flag);
 
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 		}
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -930,7 +930,7 @@ _host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 		debug_enable (config.debug.enabled);
 	}
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -958,12 +958,12 @@ _tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", config.tuio.offset);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", config.tuio.offset);
 	}
 	else
 	{
 		config.tuio.offset = args[1].val.t;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -980,9 +980,9 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	if (argc == 1) // query
 	{
 		if (config.rate)
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, config.rate);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, config.rate);
 		else // infinity
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
 	}
 	else
 	{
@@ -1005,7 +1005,7 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 		else
 			timer_pause (adc_timer);
 
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1029,7 +1029,7 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	else
 		sec = 1;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
@@ -1054,7 +1054,7 @@ _factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	else
 		sec = 1;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	// FIXME does not work as intended without VBAT powered up, needs a change on the PCB
@@ -1083,7 +1083,7 @@ _group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	cmc_group_clear ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1096,9 +1096,9 @@ _group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (cmc_group_add (args[1].val.i, args[2].val.i, args[3].val.f, args[4].val.f))
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group already existing or maximal number of groups overstept");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group already existing or maximal number of groups overstept");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1111,9 +1111,9 @@ _group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (cmc_group_set (args[1].val.i, args[2].val.i, args[3].val.f, args[4].val.f))
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group not found");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "group not found");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1126,9 +1126,9 @@ _group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (cmc_group_del (args[1].val.i))
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1141,9 +1141,9 @@ _group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (groups_load ())
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1156,9 +1156,9 @@ _group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].val.i;
 
 	if (groups_save ())
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	else
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iF", id, "there was an error");
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1184,7 +1184,7 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	// enable calibration
 	calibrating = 1;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1199,7 +1199,7 @@ _calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	// update new range
 	range_update_quiescent ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1215,7 +1215,7 @@ _calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	// update new range
 	range_update_b0 ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1232,7 +1232,7 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	// update new range
 	range_update_b1 ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1251,7 +1251,7 @@ _calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	range_update_b2 ();
 	range_update ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1273,7 +1273,7 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	// store new calibration range to EEPROM
 	range_save (pos);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1295,7 +1295,7 @@ _calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	// load calibration range from EEPROM
 	range_load (pos);
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1310,7 +1310,7 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	// print calibration in RAM
 	range_print ();
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1322,7 +1322,7 @@ _uid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, EUI_96_STR);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, EUI_96_STR);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1379,7 +1379,7 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	} s;
 	debug_int32 (sizeof (s));
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1394,52 +1394,52 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	switch (args[1].val.c)
 	{
 		case nOSC_INT32:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, 12);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, 12);
 			break;
 		case nOSC_FLOAT:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, 1.2);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, 1.2);
 			break;
 		case nOSC_STRING:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, "hello");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, "hello");
 			break;
 		case nOSC_BLOB:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTb", id, 0, NULL);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTb", id, 0, NULL);
 			break;
 
 		case nOSC_TRUE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
 			break;
 		case nOSC_FALSE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 			break;
 		case nOSC_NIL:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTN", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTN", id);
 			break;
 		case nOSC_INFTY:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
 			break;
 
 		case nOSC_INT64:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTh", id, 12LL);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTh", id, 12LL);
 			break;
 		case nOSC_DOUBLE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTd", id, 1.2);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTd", id, 1.2);
 			break;
 		case nOSC_TIMESTAMP:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", id, nOSC_IMMEDIATE);
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", id, nOSC_IMMEDIATE);
 			break;
 
 		case nOSC_MIDI:
 			{
 				uint8_t m [4] = {0x90, 0x5f, 0x7f, 0x00};
-				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTm", id, m);
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTm", id, m);
 				break;
 			}
 		case nOSC_SYMBOL:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTS", id, "/hello");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTS", id, "/hello");
 			break;
 		case nOSC_CHAR:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][UDP_SEND_OFFSET], CONFIG_REPLY_PATH, "iTc", id, 'c');
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTc", id, 'c');
 			break;
 	}
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
