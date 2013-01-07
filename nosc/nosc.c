@@ -164,7 +164,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				break;
 
 			case nOSC_DOUBLE:
-				nosc_message_set_double (msg, pos, ref_ntohll (buf_ptr));
+				nosc_message_set_double (msg, pos, 0.0);
+				msg[pos].val.h = ref_ntohll (buf_ptr);
 				buf_ptr += 8;
 				break;
 			case nOSC_INT64:

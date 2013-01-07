@@ -1391,58 +1391,70 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	switch (args[1].val.c)
-	{
-		case nOSC_INT32:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, 12);
-			break;
-		case nOSC_FLOAT:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, 1.2);
-			break;
-		case nOSC_STRING:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, "hello");
-			break;
-		case nOSC_BLOB:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTb", id, 0, NULL);
-			break;
-
-		case nOSC_TRUE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
-			break;
-		case nOSC_FALSE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
-			break;
-		case nOSC_NIL:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTN", id);
-			break;
-		case nOSC_INFTY:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
-			break;
-
-		case nOSC_INT64:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTh", id, 12LL);
-			break;
-		case nOSC_DOUBLE:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTd", id, 1.2);
-			break;
-		case nOSC_TIMESTAMP:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", id, nOSC_IMMEDIATE);
-			break;
-
-		case nOSC_MIDI:
-			{
-				uint8_t m [4] = {0x90, 0x5f, 0x7f, 0x00};
-				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTm", id, m);
+	uint8_t i;
+	for (i=1; i<argc; i++)
+		switch (args[i].type)
+		{
+			case nOSC_INT32:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTi", id, args[i].val.i);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
 				break;
-			}
-		case nOSC_SYMBOL:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTS", id, "/hello");
-			break;
-		case nOSC_CHAR:
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTc", id, 'c');
-			break;
-	}
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+			case nOSC_FLOAT:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTf", id, args[i].val.f);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_STRING:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, args[i].val.s);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_BLOB:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTb", id, args[i].val.b.size, args[i].val.b.data);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+
+			case nOSC_TRUE:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_FALSE:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_NIL:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTN", id);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_INFTY:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTI", id);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+
+			case nOSC_INT64:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTh", id, args[i].val.h);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_DOUBLE:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTd", id, args[i].val.d);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_TIMESTAMP:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", id, args[i].val.t);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+
+			case nOSC_MIDI:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTm", id, args[i].val.m);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_SYMBOL:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTS", id, args[i].val.S);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+			case nOSC_CHAR:
+				size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTc", id, args[i].val.c);
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				break;
+		}
 
 	return 1;
 }
@@ -1546,7 +1558,7 @@ nOSC_Method config_serv [] = {
 
 	//TODO remove
 	{"/chimaera/test", "i", _test},
-	{"/chimaera/echo", "ic", _echo},
+	{"/chimaera/echo", NULL, _echo},
 
 	{NULL, NULL, NULL} // terminator
 };
