@@ -79,7 +79,7 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
 	fix_s31_32_t clock_offset;
-	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.tuio.offset with this value
+	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.tuio.offset with this value by default?
 	clock_offset = 0.5LLK * (fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix);
 
 	if (t0 == 0.0ULLK)
@@ -96,10 +96,4 @@ sntp_timestamp_refresh (uint64_t *now)
 	uptime.fix = systick_uptime () * 0.0001ULLK; // that many 100us
 	_now.fix = t0 + uptime.fix;
 	*now = _now.stamp;
-
-	//FIXME there is a bug here somewhere occuring from time to time, giving back timestamp in the far future (2036)
-
-	//fix_32_32_t uptime = systick_uptime () * 0.0001ULLK; // that many 100us
-	//fix_32_32_t _now = t0 + uptime;
-	//*now = ufix2time (_now);
 }

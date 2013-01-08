@@ -41,8 +41,8 @@
 #define IR2    0x0034
 #define PHYSR  0x0035
 
-#define PHYSR_LINK  (1 << 5)
-#define PHYSR_PWDN  (1 << 3)
+#define PHYSR_LINK  (1U << 5)
+#define PHYSR_PWDN  (1U << 3)
 
 #define SnMR_CLOSE  0x00
 #define SnMR_TCP    0x01
@@ -50,9 +50,9 @@
 #define SnMR_IPRAW  0x03
 #define SnMR_MACRAW 0x04
 #define SnMR_PPPOE  0x05
-#define SnMR_ND     0x20
-#define SnMR_MF			0x40
-#define SnMR_MULTI  0x80
+#define SnMR_ND_MC	(1U << 5)
+#define SnMR_MF			(1U << 6)
+#define SnMR_MULTI  (1U << 7)
 
 #define SnCR_OPEN      0x01
 #define SnCR_LISTEN    0x02
@@ -102,11 +102,10 @@
 #define TX_BUF_BASE 0x8000
 #define RX_BUF_BASE 0xC000
 
-typedef struct _ARP_Packet ARP_Packet;
-typedef struct _ARP_Data ARP_Data;
-typedef struct _MACRAW_Packet MACRAW_Packet;
+typedef struct _ARP_Payload ARP_Payload;
+typedef struct _MACRAW_Header MACRAW_Header;
 
-struct _ARP_Packet {
+struct _ARP_Payload {
 	uint16_t htype;
 	uint16_t ptype;
 	uint8_t hlen;
@@ -116,35 +115,22 @@ struct _ARP_Packet {
 	uint8_t spa [4];
 	uint8_t tha [6];
 	uint8_t tpa [4];
-};
+} __attribute((packed,aligned(2)));
 
-struct _ARP_Data {
+struct _MACRAW_Header {
 	uint8_t dst_mac [6];
 	uint8_t src_mac [6];
 	uint16_t type;
+} __attribute((packed,aligned(2)));
 
-	ARP_Packet payload;
-};
-
-struct _MACRAW_Packet {
-	uint16_t size;
-
-	struct _data {
-		uint8_t dst_mac [6];
-		uint8_t src_mac [6];
-		uint16_t type;
-
-		uint8_t payload [1]; // minimal payload size
-	} data;
-
-	uint32_t CRC;
-};
+#define MACRAW_HEADER_SIZE sizeof(MACRAW_Header)
+#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
 
 #define MACRAW_TYPE_ARP 0x0806
 
 #define ARP_HTYPE_ETHERNET 0x0001
 #define ARP_PTYPE_IPV4 0x0800
-#define ARP_HLEN_ETHERNET 0X06
+#define ARP_HLEN_ETHERNET 0x06
 #define ARP_PLEN_IPV4 0x04
 
 #define ARP_OPER_REQUEST 0x0001

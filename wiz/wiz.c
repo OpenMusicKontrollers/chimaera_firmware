@@ -30,6 +30,7 @@
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
+#include <libmaple/systick.h>
 
 #define SPI_CMD_SIZE 4
 
@@ -470,10 +471,7 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
     // Wrap around circular buffer
     uint16_t size = SSIZE[sock] - offset;
 		buf = _dma_write_inline (buf, dstAddr, size);
-		// we have to move the remaining data 4 bytes to the right on the buffer to fill in the SPI address commands
-		uint16_t i;
-		for (i=len-size; i>0; i--)
-			buf[i - 1 + WIZ_SEND_OFFSET] = buf[i-1];
+		memmove (buf + SPI_CMD_SIZE, buf, len-size); // add 4byte padding between chunks
 		buf = _dma_write_inline (buf, SBASE[sock], len-size);
   } 
   else
@@ -491,12 +489,6 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	_dma_write_nonblocking_in (buf);
 
 	return 1;
-}
-
-uint8_t
-udp_probe (uint8_t sock, uint8_t buf_ptr)
-{
-	return udp_send (sock, buf_ptr, 4); // send four bytes of random data to trigger ARP
 }
 
 uint8_t 
@@ -588,8 +580,9 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	_dma_write_nonblocking_in (buf);
 	_dma_write_nonblocking_out ();
 
+	// remove 4byte padding between chunks
 	if (size)
-		memcpy (buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size, buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + len - size + SPI_CMD_SIZE, size);
+		memmove (buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + size, buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + size + SPI_CMD_SIZE, len-size);
 
 	// switch back to RECV buffer
 	tmp_buf_i_ptr = INPUT_BUF_SEND;
@@ -621,7 +614,7 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 		{
 			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
 
-			uint8_t *ip = &buf_in_ptr[0]; //FIXME test this
+			uint8_t *ip = &buf_in_ptr[0];
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
 			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
@@ -715,68 +708,79 @@ arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
 {
 	uint8_t *ip = data;
 
-	MACRAW_Packet *packet = (MACRAW_Packet *)buf;
+	MACRAW_Header *mac_header = (MACRAW_Header *)buf;
 
 	// check whether this is an ethernet ARP packet
-	if (hton (packet->data.type) != MACRAW_TYPE_ARP)
+	if (hton (mac_header->type) != MACRAW_TYPE_ARP)
 		return;
 
-	ARP_Data *arp_reply = (ARP_Data *)buf;
+	ARP_Payload *arp_reply = (ARP_Payload *)(buf + MACRAW_HEADER_SIZE);
 
 	// check whether this is an IPv4 ARP reply
-	if ((hton (arp_reply->payload.htype) != ARP_HTYPE_ETHERNET) ||
-			(hton (arp_reply->payload.ptype) != ARP_PTYPE_IPV4) ||
-			(arp_reply->payload.hlen != ARP_HLEN_ETHERNET) ||
-			(arp_reply->payload.plen != ARP_PLEN_IPV4) ||
-			(hton (arp_reply->payload.oper) != ARP_OPER_REPLY) )
+	if ((hton (arp_reply->htype) != ARP_HTYPE_ETHERNET) ||
+			(hton (arp_reply->ptype) != ARP_PTYPE_IPV4) ||
+			(arp_reply->hlen != ARP_HLEN_ETHERNET) ||
+			(arp_reply->plen != ARP_PLEN_IPV4) ||
+			(hton (arp_reply->oper) != ARP_OPER_REPLY) )
 		return;
 
 	// check whether the ARP is for us
-	if (strncmp (arp_reply->payload.tha, config.comm.mac, 6))
+	if (strncmp (arp_reply->tha, config.comm.mac, 6))
 		return;
 
 	// check whether the ARP has our requested IP as source -> then there is an ARP probe collision
-	if (!strncmp (arp_reply->payload.spa, ip, 4))
+	if (!strncmp (arp_reply->spa, ip, 4))
 		arp_collision = 1;
 }
 
 uint8_t
 arp_probe (uint8_t sock, uint8_t *ip)
 {
-	ARP_Data arp_probe = {
-		.dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00},
+	MACRAW_Header mac_header = {
+		.dst_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, // broadcast
 		// .src_mac to fill
-		.type = hton (0x0806), // ARP
-
-		.payload = {
-			.htype = hton (ARP_HTYPE_ETHERNET),
-			.ptype = hton (ARP_PTYPE_IPV4),
-			.hlen = ARP_HLEN_ETHERNET,
-			.plen = ARP_PLEN_IPV4,
-			.oper = hton (ARP_OPER_REQUEST),
-
-			// .sha to fill
-			.spa = {0x00, 0x00, 0x00, 0x00},
-			.tha = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-			// .tpa to fill
-		}
+		.type = hton (MACRAW_TYPE_ARP),
 	};
 
-	memcpy (arp_probe.src_mac, config.comm.mac, 6);
-	memcpy (arp_probe.payload.sha, config.comm.mac, 6);
-	memcpy (arp_probe.payload.tpa, ip, 4);
+	memcpy (mac_header.src_mac, config.comm.mac, 6);
 
+	ARP_Payload arp_probe = {
+		.htype = hton (ARP_HTYPE_ETHERNET),
+		.ptype = hton (ARP_PTYPE_IPV4),
+		.hlen = ARP_HLEN_ETHERNET,
+		.plen = ARP_PLEN_IPV4,
+		.oper = hton (ARP_OPER_REQUEST),
+
+		// .sha to fill
+		.spa = {0x00, 0x00, 0x00, 0x00},
+		.tha = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+		// .tpa to fill
+	};
+	
+	debug_int32 (MACRAW_HEADER_SIZE);
+	debug_int32 (ARP_PAYLOAD_SIZE);
+
+	memcpy (arp_probe.sha, config.comm.mac, 6);
+	memcpy (arp_probe.tpa, ip, 4); // IP to probe for
+
+	debug_str ("begin");
 	macraw_begin (sock, 1); // mac_filter enabled
-	uint16_t len = sizeof (arp_probe);
-	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &arp_probe, len);
-	macraw_send (sock, buf_o_ptr, len);
+	debug_str ("memcpy");
+	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &mac_header, MACRAW_HEADER_SIZE);
+	debug_str ("memcpy");
+	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &arp_probe, ARP_PAYLOAD_SIZE);
+	debug_str ("send");
+	macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
+	debug_str ("end");
 	macraw_end (sock);
 
+	/*
 	uint32_t tick = systick_uptime ();
 	uint32_t arp_timeout = 10000; // 10000 * 100us = 1s
 	arp_collision = 0;
 	while (!arp_collision || (systick_uptime() - tick < arp_timeout) )
 		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+	*/
 
 	return arp_collision;
 }

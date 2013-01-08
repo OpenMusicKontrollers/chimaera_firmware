@@ -98,6 +98,16 @@ debug_float (float f)
 }
 
 void
+debug_double (double d)
+{
+	if (!config.debug.enabled)
+		return;
+	uint16_t size;
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "id", debug_counter++, d);
+	udp_send (config.debug.socket.sock, buf_o_ptr, size);
+}
+
+void
 debug_timestamp (uint64_t t)
 {
 	if (!config.debug.enabled)

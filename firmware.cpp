@@ -177,6 +177,8 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
+	debug_str ("sntp_cb");
+	debug_int32 (len);
 	sntp_timestamp_refresh (&now);
 	sntp_dispatch (buf, now);
 
@@ -453,8 +455,18 @@ setup ()
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
 
 	// wait for link up before proceeding
-	while (!wiz_link_up ())
+	while (!wiz_link_up ()) // TODO monitor this and go to sleep mode when link is down
 		;
+
+	/*
+	debug_enable (config.debug.enabled); //TODO remove me
+	// arp probe
+	debug_str ("probe");
+	uint8_t link_local_ip [4];
+	zeroconf_IPv4LL_random (link_local_ip);
+	uint8_t ret = arp_probe (0, link_local_ip);
+	debug_int32 (ret);
+	*/
 
 	// initialize timers
 	adc_timer = TIMER1;
