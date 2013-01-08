@@ -53,12 +53,12 @@ static uint16_t RMASK [WIZ_MAX_SOCK_NUM];
 
 inline void setSS ()
 {
-	gpio_write_bit (ss_dev, ss_bit, 0);
+	//gpio_write_bit (ss_dev, ss_bit, 0); //FIXME should now be done automatically
 }
 
 inline void resetSS ()
 {
-	gpio_write_bit (ss_dev, ss_bit, 1);
+	//gpio_write_bit (ss_dev, ss_bit, 1); //FIXME should now be done automatically
 }
 
 static uint16_t Sn_Tx_WR[8];
@@ -486,7 +486,7 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	flag = SnCR_SEND;
 	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
 
-	_dma_write_nonblocking_in (buf);
+	_dma_write_nonblocking_in (buf); //TODO send with deactivated RX to lower demand on DMA multiplexing
 
 	return 1;
 }

@@ -443,7 +443,7 @@ setup ()
 	// set up SPI for usage with wiz820io
   spi.begin (SPI_18MHZ, MSBFIRST, 0);
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
-	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode TODO
+	SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode TODO
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
