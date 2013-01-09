@@ -53,12 +53,12 @@ static uint16_t RMASK [WIZ_MAX_SOCK_NUM];
 
 inline void setSS ()
 {
-	//gpio_write_bit (ss_dev, ss_bit, 0); //FIXME should now be done automatically
+	gpio_write_bit (ss_dev, ss_bit, 0);
 }
 
 inline void resetSS ()
 {
-	//gpio_write_bit (ss_dev, ss_bit, 1); //FIXME should now be done automatically
+	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
 static uint16_t Sn_Tx_WR[8];

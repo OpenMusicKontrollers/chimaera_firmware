@@ -177,8 +177,6 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	debug_str ("sntp_cb");
-	debug_int32 (len);
 	sntp_timestamp_refresh (&now);
 	sntp_dispatch (buf, now);
 
@@ -443,7 +441,8 @@ setup ()
 	// set up SPI for usage with wiz820io
   spi.begin (SPI_18MHZ, MSBFIRST, 0);
 	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
-	SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode TODO
+	digitalWrite (BOARD_SPI2_NSS_PIN, HIGH); // disable peripheral
+	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode, we don't use this
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
