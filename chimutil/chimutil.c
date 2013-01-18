@@ -324,6 +324,7 @@ stop_watch_stop (Stop_Watch *sw)
 
 uint8_t EUI_32 [4];
 uint8_t EUI_48 [6];
+uint8_t EUI_64 [8];
 char EUI_96_STR [96/8*2+1]; // (96bit/8bit)byte + '\0'
 
 void
@@ -340,6 +341,15 @@ eui_init ()
 	EUI_48[3] =	UID_BASE[8]  ^ UID_BASE[2];
 	EUI_48[4] =	UID_BASE[7]  ^ UID_BASE[1];
 	EUI_48[5] =	UID_BASE[6]  ^ UID_BASE[0];
+
+	EUI_64[0] = EUI_48[0];
+	EUI_64[1] = EUI_48[1];
+	EUI_64[2] = EUI_48[2];
+	EUI_64[3] = 0xfe;
+	EUI_64[4] = 0xff;
+	EUI_64[5] = EUI_48[3];
+	EUI_64[6] = EUI_48[4];
+	EUI_64[7] = EUI_48[5];
 
 	sprintf (EUI_96_STR, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
 		UID_BASE[11],

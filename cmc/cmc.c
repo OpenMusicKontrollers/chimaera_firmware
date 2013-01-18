@@ -50,12 +50,12 @@ cmc_init ()
 	cmc.fid = 0; // we start counting at 1, 0 marks an 'out of order' frame
 	cmc.sid = 0; // we start counting at 0
 
-	cmc.d = 1.0ulr / (SENSOR_N-1);
+	cmc.d = 1.0ulr / SENSOR_N;
 	cmc.d_2 = cmc.d / 2;
 
 	for (i=0; i<SENSOR_N+2; i++)
 	{
-		cmc.sensors[i].x = cmc.d * (i-1);
+		cmc.sensors[i].x = cmc.d * i - cmc.d_2; //TODO caution: sensors[0] and sensors[145] get saturated to 0 and 1
 		cmc.sensors[i].v = 0;
 		cmc.states[i].n = 0;
 	}

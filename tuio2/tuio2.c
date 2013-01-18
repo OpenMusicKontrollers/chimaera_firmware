@@ -22,6 +22,7 @@
  */
 
 #include <chimaera.h>
+#include <chimutil.h>
 
 #include "tuio2_private.h"
 #include "config.h"
@@ -56,6 +57,9 @@ tuio2_init ()
 	nosc_message_set_int32 (tuio.frm, 0, 0);
 	nosc_message_set_timestamp (tuio.frm, 1, nOSC_IMMEDIATE);
 	nosc_message_set_end (tuio.frm, 2);
+
+	// long header
+	tuio2_long_header_enable (config.tuio.long_header);
 
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
@@ -138,4 +142,34 @@ tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z)
 	msg[3].val.f = z;
 
 	nosc_message_set_int32 (tuio.alv, pos, S);
+}
+
+static char *APP_STR = "chimaera";
+
+void
+tuio2_long_header_enable (uint8_t on)
+{
+	config.tuio.long_header = on;
+
+	if (on)
+	{
+		// use EUI_64
+		//int32_t addr = (EUI_64[0] << 24) | (EUI_64[1] << 16) | (EUI_64[2] << 8) | EUI_64[3];
+		//int32_t inst = (EUI_64[4] << 24) | (EUI_64[5] << 16) | (EUI_64[6] << 8) | EUI_64[7];
+
+		// or use EUI_48 + port
+		uint16_t port = config.tuio.socket.port[SRC_PORT];
+		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
+		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
+
+		nosc_message_set_string (tuio.frm, 2, APP_STR);
+		nosc_message_set_int32 (tuio.frm, 3, addr);
+		nosc_message_set_int32 (tuio.frm, 4, inst);
+		nosc_message_set_int32 (tuio.frm, 5, (SENSOR_N << 16) | 1);
+		nosc_message_set_end (tuio.frm, 6);
+	}
+	else // off
+	{
+		nosc_message_set_end (tuio.frm, 2);
+	}
 }

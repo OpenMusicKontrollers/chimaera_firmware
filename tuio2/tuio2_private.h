@@ -31,7 +31,7 @@ typedef nOSC_Arg Tuio2_Tok [4 + 1];
 typedef struct _Tuio2 Tuio2;
 
 struct _Tuio2 {
-	nOSC_Arg frm [2+1];
+	nOSC_Arg frm [6 + 1];
 	Tuio2_Tok tok [BLOB_MAX];
 	nOSC_Arg alv [BLOB_MAX + 1];
 

@@ -36,6 +36,8 @@ extern "C" {
 #define SRC_PORT 0
 #define DST_PORT 1
 
+#define COMPACT __attribute__((packed,aligned(1))) // we don't have endless space in EEPROM
+
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
 
@@ -43,7 +45,7 @@ struct _Socket_Config {
 	uint8_t sock;
 	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
-};
+} COMPACT;
 
 struct _Config {
 	/*
@@ -55,7 +57,7 @@ struct _Config {
 		uint8_t major;
 		uint8_t minor;
 		uint8_t patch_level;
-	} version;
+	} COMPACT version;
 
 	/*
 	 * read-write
@@ -65,47 +67,52 @@ struct _Config {
 		uint8_t ip [4];
 		uint8_t gateway [4];
 		uint8_t subnet [4];
-	} comm;
+	} COMPACT comm;
 
 	struct _tuio {
 		uint8_t enabled;
 		Socket_Config socket;
 		uint8_t long_header;
 		uint64_t offset;
-	} tuio;
+	} COMPACT tuio;
 
 	struct _config {
 		uint16_t rate;
 		uint8_t enabled;
 		Socket_Config socket;
-	} config;
+	} COMPACT config;
 
 	struct _sntp {
 		uint8_t tau;
 		uint8_t enabled;
 		Socket_Config socket;
-	} sntp;
+	} COMPACT sntp;
 
 	struct _dump {
 		uint8_t enabled;
 		Socket_Config socket;
-	} dump;
+	} COMPACT dump;
 
 	struct _debug {
 		uint8_t enabled;
 		Socket_Config socket;
-	} debug;
+	} COMPACT debug;
 
 	struct _zeroconf {
 		uint8_t enabled;
 		uint8_t har [6];
 		Socket_Config socket;
-	} zeroconf;
+	} COMPACT zeroconf;
 
 	struct _dhcpc {
 		uint8_t enabled;
 		Socket_Config socket;
-	} dhcpc;
+	} COMPACT dhcpc;
+
+	struct _rtpmidi {
+		uint8_t enabled;
+		Socket_Config socket;
+	} COMPACT rtpmidi;
 
 	struct _cmc {
 		uint8_t peak_thresh;

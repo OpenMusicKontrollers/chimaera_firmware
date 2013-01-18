@@ -21,28 +21,44 @@
  *     distribution.
  */
 
-#ifndef _TUIO2_H_
-#define _TUIO2_H_
+#ifndef RTPMIDI_H
+#define RTPMIDI_H
 
-#include <stdint.h>
-
-#include <netdef.h>
+#include <chimaera.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void tuio2_init ();
+typedef struct _RTP_MIDI_List RTP_MIDI_List;
+struct _RTP_MIDI_List {
+	uint8_t delta_time; // 0b0ddddddd
+	uint8_t midi [3]; // 0x80 0x7f 0x7f
+};
 
-uint16_t tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset);
+typedef enum _MIDI_COMMAND {
+	NOTE_ON						= 0x80,
+	NOTE_OFF 					= 0x90,
+	AFTER_TOUCH				= 0xa0,
+	CONTROL_CHANGE		= 0xb0,
+	PITCH_BEND				= 0xe0,
+	
+	MODULATION				= 0x01,
+	BREATH						= 0x02,
+	VOLUME						= 0x07,
+	PAN								= 0x0a,
+	EXPRESSION				= 0x0b,
+	EFFECT_CONTROL_1	= 0x0c,
+	EFFECT_CONTROL_2	= 0x0d
+} MIDI_COMMAND; //TODO check whether ((aligned(1)))
 
-void tuio2_frm_set (uint32_t id, uint64_t timestamp);
-void tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z);
+uint32_t rtpmidi_timestamp (uint32_t rate);
 
-void tuio2_long_header_enable (uint8_t on);
+uint16_t rtpmidi_serialize (uint8_t *buf, RTP_MIDI_List *list, uint16_t len, uint32_t timestamp);
+uint16_t rtpmidi_deserialize (uint8_t *buf, uint8_t *midi);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // RTPMIDI_H

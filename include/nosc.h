@@ -44,9 +44,11 @@ typedef nOSC_Arg *nOSC_Message;
 typedef struct _nOSC_Item nOSC_Item;
 typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
+typedef struct _nOSC_Method nOSC_Method;
 
 typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args);
-typedef struct _nOSC_Method nOSC_Method;
+typedef void (*nOSC_Bundle_Start_Cb) (uint64_t timestamp);
+typedef void (*nOSC_Bundle_End_Cb) ();
 
 typedef enum _nOSC_Type {
 	nOSC_INT32 = 'i',
@@ -139,7 +141,7 @@ struct _nOSC_Method {
  * Method functions
  */
 
-void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size);
+void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end);
 
 /*
  * Bundle functions

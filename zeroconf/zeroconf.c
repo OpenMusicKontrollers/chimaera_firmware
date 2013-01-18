@@ -116,8 +116,8 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			memcpy (ptr, name, strlen (name) + 1); // copy 0x0 string end, too
 			ptr += strlen (name) + 1;
 
-			memcpy (ptr, a, 10); // sizeof (DNS_Answer) returns 12 (32bit aligned), so cannot be used
-			ptr += 10;
+			memcpy (ptr, a, sizeof (DNS_Answer));
+			ptr += sizeof (DNS_Answer);
 
 			memcpy (ptr, config.comm.ip, 4);
 			ptr += 4;
@@ -220,4 +220,17 @@ zeroconf_dispatch (uint8_t *buf, uint16_t len)
 			dns_answer (query, buf_ptr, len - (buf_ptr-buf));
 			break;
 	}
+}
+
+void
+zeroconf_publish (const char *name, const char *type, uint16_t port)
+{
+	// TODO
+	// zeroconf_publish ("chimaera", "_osc._udp", "_tuio2._sub._osc._udp", 3333);
+}
+
+void
+zeroconf_discover (const char *name, const char *type, uint16_t port)
+{
+	// TODO
 }

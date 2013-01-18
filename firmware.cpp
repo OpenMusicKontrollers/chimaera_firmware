@@ -152,6 +152,22 @@ adc_dma_block ()
 	adc_raw_ptr ^= 1; // toggle
 }
 
+//TODO move to config.c
+static void
+config_bndl_start_cb (uint64_t timestamp)
+{
+	//TODO only for testing
+	debug_str ("bndl_start");
+	debug_timestamp (timestamp);
+}
+
+static void
+config_bndl_end_cb ()
+{
+	//TODO only for testing
+	debug_str ("bndl_end");
+}
+
 static void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
@@ -163,7 +179,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	nosc_method_dispatch (config_serv, buf, len);
+	nosc_method_dispatch (config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
 }
 
 static void

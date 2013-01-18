@@ -63,34 +63,51 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 }
 
 void
-nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size)
+nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end)
 {
-	char *path;
-	char *fmt;
-
-	if (buf[0] == '#') // check whether we are a bundle
+	if (!strncmp (buf, bundle_str, 8))
 	{
 		int32_t msg_size;
 		uint8_t *buf_ptr = buf;
 
 		buf_ptr += 8; // skip "#bundle"
-		buf_ptr += 8; // XXX timestamp is ignored fo now and messages dispatched immediately, we have too little memory to store arbitrary amounts of messages for later dispatching
+
+		if (start) // call start callback with bundle timestamp if existent
+		{
+			uint64_t timestamp = ref_ntohll (buf_ptr);
+			start (timestamp);
+		}
+
+		buf_ptr += 8; // skip timestamp
 
 		while (buf_ptr-buf < size)
 		{
 			msg_size = ref_ntohl (buf_ptr);
 			buf_ptr += 4;
 
-			_nosc_message_deserialize (buf_ptr, msg_size, &path, &fmt);
-			_nosc_method_message_dispatch (meth, path, fmt);
+			// bundles may be nested
+			nosc_method_dispatch (meth, buf_ptr, msg_size, start, end);
 			buf_ptr += msg_size;
 		}
+
+		// call bundle end callback if existent
+		if (end)
+			end ();
 	}
 	else if (buf[0] == '/') // check whether we are a message
 	{
+		char *path;
+		char *fmt;
 		_nosc_message_deserialize (buf, size, &path, &fmt);
 		_nosc_method_message_dispatch (meth, path, fmt);
 	}
+	// else THIS IS NO OSC MESSAGE, IGNORE IT
+}
+
+void
+_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, uint64_t *timestamp)
+{
+	//FIXME
 }
 
 void

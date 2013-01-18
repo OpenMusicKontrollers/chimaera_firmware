@@ -74,5 +74,5 @@ struct _DNS_Answer {
 	uint16_t RCLASS;
 	uint32_t TTL;
 	uint16_t RLEN;
-};
+} __attribute((packed,aligned(2)));
 

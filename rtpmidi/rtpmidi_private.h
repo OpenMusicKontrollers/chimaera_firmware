@@ -21,28 +21,39 @@
  *     distribution.
  */
 
-#ifndef _TUIO2_H_
-#define _TUIO2_H_
+#ifndef RTPMIDI_PRIVATE_H
+#define RTPMIDI_PRIVATE_H
 
-#include <stdint.h>
+#include <rtpmidi.h>
 
-#include <netdef.h>
+typedef struct _RTP_Header RTP_Header;
+typedef struct _RTP_MIDI_Session RTP_MIDI_Session;
+typedef struct _RTP_MIDI_Header RTP_MIDI_Header;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct _RTP_Header {
+	uint8_t V_P_X_CC;
+	uint8_t M_PT;
+	uint16_t sequence_number;
+	uint32_t timestamp;
+	uint32_t SSRC;
+};
 
-void tuio2_init ();
+struct _RTP_MIDI_Session {
+	uint32_t rate;
+};
 
-uint16_t tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset);
+struct _RTP_MIDI_Header {
+	/*
+	 B: 0: LEN is 4bits, 1: LEN is 12bits
+	 J: 0: no journal, 1: journal
+	 Z: 0: delta_0 existent, 1: delta_0 absent
+	 LEN: number of octets in MIDI list
+	 */
+	uint8_t B_J_Z_P_LEN1;
+	uint8_t LEN2;
+};
 
-void tuio2_frm_set (uint32_t id, uint64_t timestamp);
-void tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z);
+#define LSV 0x00
+#define MSV 0x20
 
-void tuio2_long_header_enable (uint8_t on);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+#endif // RTPMIDI_PRIVATE_H

@@ -33,6 +33,9 @@ extern "C" {
 void zeroconf_IPv4LL_random (uint8_t *ip);
 void zeroconf_dispatch (uint8_t *buf, uint16_t len);
 
+void zeroconf_publish (const char *name, const char *type, uint16_t port);
+void zeroconf_discover (const char *name, const char *type, uint16_t port);
+
 #ifdef __cplusplus
 }
 #endif

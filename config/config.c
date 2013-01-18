@@ -166,6 +166,15 @@ Config config = {
 		}
 	},
 
+	.rtpmidi = {
+		.enabled = 0,
+		.socket = {
+			.sock = 7,
+			.port = {7777, 7777},
+			.ip = LAN_BROADCAST
+		}
+	},
+
 	.cmc = {
 		.peak_thresh = 5,
 	},
@@ -761,16 +770,8 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	if (fmt[1] == nOSC_TRUE)
-	{
-		cb (1);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	}
-	else if (fmt[1] == nOSC_FALSE)
-	{
-		cb (0);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	}
+	cb (fmt[1] == nOSC_TRUE ? 1 : 0);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -948,6 +949,30 @@ static uint8_t
 _sntp_tau (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.sntp.tau, 1, 10, path, fmt, argc, args);
+}
+
+static uint8_t
+_tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	if (argc == 1) // query
+	{
+		if (config.tuio.long_header)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT");
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF");
+	}
+	else
+	{
+		tuio2_long_header_enable (fmt[1] == nOSC_TRUE ? 1 : 0);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
 }
 
 static uint8_t
@@ -1479,6 +1504,9 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
 	{"/chimaera/tuio/socket", "i", _tuio_socket},
 	{"/chimaera/tuio/socket", "iiiiiii", _tuio_socket},
+	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
+	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
+	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
 	{"/chimaera/tuio/offset", "i", _tuio_offset},
 	{"/chimaera/tuio/offset", "it", _tuio_offset},
 
