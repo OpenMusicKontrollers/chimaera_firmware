@@ -85,6 +85,8 @@ curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, f
 Config config = {
 	.magic = MAGIC, // used to compare EEPROM and FLASH config versions
 
+	.name = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a', '\0'},
+
 	.version = {
 		.major = 0,
 		.minor = 1,
@@ -530,6 +532,33 @@ _version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
+_name (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, config.name);
+	}
+	else
+	{
+		if (strlen (args[1].val.s) < NAME_LENGTH)
+		{
+			strcpy (config.name, args[1].val.s);
+
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+		}
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFs", id, "name is too long");
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -561,16 +590,16 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static void
-str2mac (char *str, uint8_t *mac)
-{
-	sscanf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
-		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-}
-
 #define MAC_STR_LEN 18
 #define IP_STR_LEN 16
 #define ADDR_STR_LEN 32
+
+static uint8_t
+str2mac (char *str, uint8_t *mac)
+{
+	return sscanf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
+		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) == 6;
+}
 
 static void
 mac2str (uint8_t *mac, char *str)
@@ -579,11 +608,11 @@ mac2str (uint8_t *mac, char *str)
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-static void
+static uint8_t
 str2ip (char *str, uint8_t *ip)
 {
-	sscanf (str, "%i.%i.%i.%i",
-		&ip[0], &ip[1], &ip[2], &ip[3]);
+	return sscanf (str, "%hhi.%hhi.%hhi.%hhi",
+		&ip[0], &ip[1], &ip[2], &ip[3]) == 4;
 }
 
 static void
@@ -593,17 +622,18 @@ ip2str (uint8_t *ip, char *str)
 		ip[0], ip[1], ip[2], ip[3]);
 }
 
-static void
+static uint8_t
 str2addr (char *str, uint8_t *ip, uint16_t *port)
 {
-	sscanf (str, "osc.udp://%i.%i.%i.%i:%i",
-		&ip[0], &ip[1], &ip[2], &ip[3], port);
+	return sscanf (str, "%hhi.%hhi.%hhi.%hhi:%hi",
+		&ip[0], &ip[1], &ip[2], &ip[3], port) == 5;
 }
 
 static void
-addr2str (uint8_t *ip, uint16_t port, char *str)
+addr2str (const char *protocol, const char *transport, uint8_t *ip, uint16_t port, char *str)
 {
-	sprintf (str, "osc.udp://%i.%i.%i.%i:%i",
+	sprintf (str, "%s.%s://%i.%i.%i.%i:%i",
+		protocol, transport,
 		ip[0], ip[1], ip[2], ip[3], port);
 }
 
@@ -615,26 +645,16 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
-			config.comm.mac[0], config.comm.mac[1], config.comm.mac[2], config.comm.mac[3], config.comm.mac[4], config.comm.mac[5]);
-
-		//TODO also do the scanning of a string
-		static char buf[MAC_STR_LEN];
-		mac2str (config.comm.mac, buf);
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, buf);
+		char mac_str[MAC_STR_LEN];
+		mac2str (config.comm.mac, mac_str);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, mac_str);
 	}
 	else
 	{
-		//str2mac (args[1].val.s, config.comm.mac); //TODO
-
-		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) && (args[5].val.i < 0x100) && (args[6].val.i < 0x100) )
+		uint8_t mac[6];
+		if (str2mac (args[1].val.s, mac)) // TODO check if mac is valid
 		{
-			config.comm.mac[0] = args[1].val.i;
-			config.comm.mac[1] = args[2].val.i;
-			config.comm.mac[2] = args[3].val.i;
-			config.comm.mac[3] = args[4].val.i;
-			config.comm.mac[4] = args[5].val.i;
-			config.comm.mac[5] = args[6].val.i;
+			memcpy (config.comm.mac, mac, 6);
 
 			wiz_mac_set (config.comm.mac);
 
@@ -657,17 +677,16 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
-			config.comm.ip[0], config.comm.ip[1], config.comm.ip[2], config.comm.ip[3]);
+		char ip_str[IP_STR_LEN];
+		ip2str (config.comm.ip, ip_str);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, ip_str);
 	}
 	else
 	{
-		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
+		uint8_t ip[4];
+		if (str2ip (args[1].val.s, ip)) //TODO check if ip is valid
 		{
-			config.comm.ip[0] = args[1].val.i;
-			config.comm.ip[1] = args[2].val.i;
-			config.comm.ip[2] = args[3].val.i;
-			config.comm.ip[3] = args[4].val.i;
+			memcpy (config.comm.ip, ip, 4);
 
 			wiz_ip_set (config.comm.ip);
 
@@ -690,17 +709,16 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
-			config.comm.gateway[0], config.comm.gateway[1], config.comm.gateway[2], config.comm.gateway[3]);
+		char ip_str[IP_STR_LEN];
+		ip2str (config.comm.gateway, ip_str);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, ip_str);
 	}
 	else
 	{
-		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
+		uint8_t ip[4];
+		if (str2ip (args[1].val.s, ip)) //TODO check if valid
 		{
-			config.comm.gateway[0] = args[1].val.i;
-			config.comm.gateway[1] = args[2].val.i;
-			config.comm.gateway[2] = args[3].val.i;
-			config.comm.gateway[3] = args[4].val.i;
+			memcpy (config.comm.gateway, ip, 4);
 
 			wiz_gateway_set (config.comm.gateway);
 
@@ -723,17 +741,16 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiii", id,
-			config.comm.subnet[0], config.comm.subnet[1], config.comm.subnet[2], config.comm.subnet[3]);
+		char ip_str[IP_STR_LEN];
+		ip2str (config.comm.subnet, ip_str);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, ip_str);
 	}
 	else
 	{
-		if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
+		uint8_t ip[4];
+		if (str2ip (args[1].val.s, ip)) //TODO check if valid
 		{
-			config.comm.subnet[0] = args[1].val.i;
-			config.comm.subnet[1] = args[2].val.i;
-			config.comm.subnet[2] = args[3].val.i;
-			config.comm.subnet[3] = args[4].val.i;
+			memcpy (config.comm.subnet, ip, 4);
 
 			wiz_subnet_set (config.comm.subnet);
 
@@ -833,26 +850,31 @@ _dhcpc_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
-_socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_address (Socket_Config *socket, void (*cb) (uint8_t b), const char *protocol, const char *transport, uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiiiiii", id,
-			socket->port[0], socket->port[1], socket->ip[0], socket->ip[1], socket->ip[2], socket->ip[3]);
+		char addr[ADDR_STR_LEN];
+		addr2str (protocol, transport, socket->ip, socket->port[DST_PORT], addr);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, addr);
 	}
 	else
 	{
-		if ( (args[1].val.i < 0x10000) && (args[2].val.i < 0x10000) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) && (args[5].val.i < 0x100) && (args[6].val.i < 0x100) )
+		uint16_t port;
+		uint8_t ip[4];
+		if (str2addr(args[1].val.s, ip, &port)) // TODO check if valid
 		{
-			socket->port[0] = args[1].val.i;
-			socket->port[1] = args[2].val.i;
-			socket->ip[0] = args[3].val.i;
-			socket->ip[1] = args[4].val.i;
-			socket->ip[2] = args[5].val.i;
-			socket->ip[3] = args[6].val.i;
+			debug_int32 (ip[0]);
+			debug_int32 (ip[1]);
+			debug_int32 (ip[2]);
+			debug_int32 (ip[3]);
+			debug_int32 (port);
+
+			socket->port[DST_PORT] = port;
+			memcpy (socket->ip, ip, 4);
 
 			cb (flag);
 
@@ -868,56 +890,52 @@ _socket (Socket_Config *socket, void (*cb) (uint8_t b), uint8_t flag, const char
 }
 
 static uint8_t
-_tuio_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_tuio_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.tuio.socket, tuio_enable, config.tuio.enabled, path, fmt, argc, args);
+	return _address (&config.tuio.socket, tuio_enable, "osc", "udp", config.tuio.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_config_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_config_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.config.socket, config_enable, config.config.enabled, path, fmt, argc, args);
+	return _address (&config.config.socket, config_enable, "osc", "udp", config.config.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_sntp_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_sntp_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.sntp.socket, sntp_enable, config.sntp.enabled, path, fmt, argc, args);
+	return _address (&config.sntp.socket, sntp_enable, "ntp", "udp", config.sntp.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_dump_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_dump_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.dump.socket, dump_enable, config.dump.enabled, path, fmt, argc, args);
+	return _address (&config.dump.socket, dump_enable, "osc", "udp", config.dump.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
-_debug_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_debug_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.debug.socket, debug_enable, config.debug.enabled, path, fmt, argc, args);
+	return _address (&config.debug.socket, debug_enable, "osc", "udp", config.debug.enabled, path, fmt, argc, args);
 }
 
+/*
 static uint8_t
-_dhcpc_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_dhcpc_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _socket (&config.dhcpc.socket, dhcpc_enable, config.dhcpc.enabled, path, fmt, argc, args);
+	return _address (&config.dhcpc.socket, dhcpc_enable, "bootp", "udp", config.dhcpc.enabled, path, fmt, argc, args);
 }
+*/
 
 static uint8_t
-_host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	if ( (args[1].val.i < 0x100) && (args[2].val.i < 0x100) && (args[3].val.i < 0x100) && (args[4].val.i < 0x100) )
+	uint8_t ip[4];
+	if (str2ip (args[1].val.s, ip)) // TODO check if valid
 	{
-		uint8_t ip [4] = {
-			args[1].val.i,
-			args[2].val.i,
-			args[3].val.i,
-			args[4].val.i
-		};
-
 		memcpy (config.tuio.socket.ip, ip, 4);
 		memcpy (config.config.socket.ip, ip, 4);
 		memcpy (config.sntp.socket.ip, ip, 4);
@@ -933,8 +951,6 @@ _host_socket (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
 
 	return 1;
 }
@@ -1487,23 +1503,26 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
 
+	{"/chimaera/name", "i", _name},
+	{"/chimaera/name", "is", _name},
+
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
 
 	{"/chimaera/comm/mac", "i", _comm_mac},
-	{"/chimaera/comm/mac", "iiiiiii", _comm_mac},
+	{"/chimaera/comm/mac", "is", _comm_mac},
 	{"/chimaera/comm/ip", "i", _comm_ip},
-	{"/chimaera/comm/ip", "iiiii", _comm_ip},
+	{"/chimaera/comm/ip", "is", _comm_ip},
 	{"/chimaera/comm/gateway", "i", _comm_gateway},
-	{"/chimaera/comm/gateway", "iiiii", _comm_gateway},
+	{"/chimaera/comm/gateway", "is", _comm_gateway},
 	{"/chimaera/comm/subnet", "i", _comm_subnet},
-	{"/chimaera/comm/subnet", "iiiii", _comm_subnet},
+	{"/chimaera/comm/subnet", "is", _comm_subnet},
 
 	{"/chimaera/tuio/enabled", "i", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iT", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
-	{"/chimaera/tuio/socket", "i", _tuio_socket},
-	{"/chimaera/tuio/socket", "iiiiiii", _tuio_socket},
+	{"/chimaera/tuio/address", "i", _tuio_address},
+	{"/chimaera/tuio/address", "is", _tuio_address},
 	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
@@ -1513,38 +1532,38 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/config/enabled", "i", _config_enabled},
 	{"/chimaera/config/enabled", "iT", _config_enabled},
 	{"/chimaera/config/enabled", "iF", _config_enabled},
-	{"/chimaera/config/socket", "i", _config_socket},
-	{"/chimaera/config/socket", "iiiiiii", _config_socket},
+	{"/chimaera/config/address", "i", _config_address},
+	{"/chimaera/config/address", "is", _config_address},
 	{"/chimaera/config/rate", "i", _config_rate},
 	{"/chimaera/config/rate", "ii", _config_rate},
 
 	{"/chimaera/sntp/enabled", "i", _sntp_enabled},
 	{"/chimaera/sntp/enabled", "iT", _sntp_enabled},
 	{"/chimaera/sntp/enabled", "iF", _sntp_enabled},
-	{"/chimaera/sntp/socket", "i", _sntp_socket},
-	{"/chimaera/sntp/socket", "iiiiiii", _sntp_socket},
+	{"/chimaera/sntp/address", "i", _sntp_address},
+	{"/chimaera/sntp/address", "is", _sntp_address},
 	{"/chimaera/sntp/tau", "i", _sntp_tau},
 	{"/chimaera/sntp/tau", "ii", _sntp_tau},
 
 	{"/chimaera/dump/enabled", "i", _dump_enabled},
 	{"/chimaera/dump/enabled", "iT", _dump_enabled},
 	{"/chimaera/dump/enabled", "iF", _dump_enabled},
-	{"/chimaera/dump/socket", "i", _dump_socket},
-	{"/chimaera/dump/socket", "iiiiiii", _dump_socket},
+	{"/chimaera/dump/address", "i", _dump_address},
+	{"/chimaera/dump/address", "is", _dump_address},
 
 	{"/chimaera/debug/enabled", "i", _debug_enabled},
 	{"/chimaera/debug/enabled", "iT", _debug_enabled},
 	{"/chimaera/debug/enabled", "iF", _debug_enabled},
-	{"/chimaera/debug/socket", "i", _debug_socket},
-	{"/chimaera/debug/socket", "iiiiiii", _debug_socket},
+	{"/chimaera/debug/address", "i", _debug_address},
+	{"/chimaera/debug/address", "is", _debug_address},
 
 	{"/chimaera/dhcpc/enabled", "i", _dhcpc_enabled},
 	{"/chimaera/dhcpc/enabled", "iT", _dhcpc_enabled},
 	{"/chimaera/dhcpc/enabled", "iF", _dhcpc_enabled},
-	{"/chimaera/dhcpc/socket", "i", _dhcpc_socket},
-	{"/chimaera/dhcpc/socket", "iiiiiii", _dhcpc_socket},
+	//{"/chimaera/dhcpc/socket", "i", _dhcpc_socket},
+	//{"/chimaera/dhcpc/socket", "iiiiiii", _dhcpc_socket},
 
-	{"/chimaera/host/socket", "iiiii", _host_socket},
+	{"/chimaera/host/address", "is", _host_address},
 
 	//TODO
 	//{"/chimaera/zeroconf/enabled", "i", _zeroconf_enabled},

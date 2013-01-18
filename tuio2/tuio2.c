@@ -144,8 +144,6 @@ tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z)
 	nosc_message_set_int32 (tuio.alv, pos, S);
 }
 
-static char *APP_STR = "chimaera";
-
 void
 tuio2_long_header_enable (uint8_t on)
 {
@@ -162,7 +160,7 @@ tuio2_long_header_enable (uint8_t on)
 		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
 		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
 
-		nosc_message_set_string (tuio.frm, 2, APP_STR);
+		nosc_message_set_string (tuio.frm, 2, config.name);
 		nosc_message_set_int32 (tuio.frm, 3, addr);
 		nosc_message_set_int32 (tuio.frm, 4, inst);
 		nosc_message_set_int32 (tuio.frm, 5, (SENSOR_N << 16) | 1);

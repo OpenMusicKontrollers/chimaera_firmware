@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include <nosc.h>
+#include <chimaera.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,7 @@ extern "C" {
 #define CONFIG_REPLY_PATH "/reply"
 #define SRC_PORT 0
 #define DST_PORT 1
+#define NAME_LENGTH 16
 
 #define COMPACT __attribute__((packed,aligned(1))) // we don't have endless space in EEPROM
 
@@ -62,6 +64,8 @@ struct _Config {
 	/*
 	 * read-write
 	 */
+	char name[NAME_LENGTH];
+
 	struct _comm {
 		uint8_t mac [6];
 		uint8_t ip [4];
