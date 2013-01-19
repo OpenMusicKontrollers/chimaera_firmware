@@ -230,9 +230,17 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 	buf_ptr += 8;
 
 	nOSC_Item *itm;
-	for (itm=bund; itm->path!=NULL; itm++)
+	for (itm=bund; itm->type!=nOSC_TERM; itm++)
 	{
-		msg_size = nosc_message_serialize (itm->msg, itm->path, buf_ptr+4);
+		switch (itm->type)
+		{
+			case nOSC_MESSAGE:
+				msg_size = nosc_message_serialize (itm->content.message.msg, itm->content.message.path, buf_ptr+4);
+				break;
+			case nOSC_BUNDLE:
+				msg_size = nosc_bundle_serialize (itm->content.bundle.bndl, itm->content.bundle.tt, buf_ptr+4);
+				break;
+		}
 		ref_htonl (buf_ptr, msg_size);
 		buf_ptr += msg_size + 4;
 	}
@@ -529,4 +537,26 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 	uint16_t size = nosc_message_serialize (msg, path, buf);
 
 	return size;
+}
+
+inline void
+nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path)
+{
+	itm[pos].type = nOSC_MESSAGE;
+	itm[pos].content.message.msg = msg;
+	itm[pos].content.message.path = path;
+}
+
+inline void
+nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp)
+{
+	itm[pos].type = nOSC_BUNDLE;
+	itm[pos].content.bundle.bndl = bundle;
+	itm[pos].content.bundle.tt = timestamp;
+}
+
+inline void
+nosc_item_term_set (nOSC_Item *itm, uint8_t pos)
+{
+	itm[pos].type = nOSC_TERM;
 }

@@ -38,8 +38,8 @@ static nOSC_Arg dump_msg [] = {
 };
 
 static nOSC_Item dump_bndl [] = {
-	{"/dump", dump_msg},
-	{NULL, NULL}
+	nosc_message(dump_msg, "/dump"),
+	nosc_term
 };
 
 inline uint16_t

@@ -120,10 +120,33 @@ struct _nOSC_Arg {
 
 #define nosc_end					(nOSC_Arg){.type=nOSC_END}
 
+typedef enum _nOSC_Item_Type {
+	nOSC_MESSAGE = 1,
+	nOSC_BUNDLE = 2,
+	nOSC_TERM = 0
+} nOSC_Item_Type;
+
 struct _nOSC_Item {
-	char *path;
-	nOSC_Message msg;
-};
+	nOSC_Item_Type type;
+	union {
+		struct {
+			nOSC_Item *bndl;
+			uint64_t tt;
+		} bundle;
+		struct {
+			nOSC_Message msg;
+			char *path;
+		} message;
+	} content;
+} __attribute__((packed,aligned(4)));
+
+#define nosc_message(m,p)	(nOSC_Item){.type=nOSC_MESSAGE, .content={.message={.msg=m, .path=p}}}
+#define nosc_bundle(b,t)	(nOSC_Item){.type=nOSC_BUNDLE, .content={.bundle={.bndl=b, .tt=t}}}
+#define nosc_term (nOSC_Item){.type=nOSC_TERM}
+
+void nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path);
+void nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp);
+void nosc_item_term_set (nOSC_Item *itm, uint8_t pos);
 
 struct _nOSC_Method {
 	char *path;

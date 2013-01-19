@@ -259,6 +259,45 @@ range_save (uint8_t pos)
 	return 1;
 }
 
+nOSC_Arg _p [] = {nosc_int32 (0), nosc_end};
+nOSC_Arg _i [] = {nosc_int32 (0), nosc_end};
+nOSC_Arg _m [] = {nosc_int32 (0), nosc_end};
+
+nOSC_Arg _sa [] = {nosc_float (0), nosc_end};
+nOSC_Arg _sb [] = {nosc_float (0), nosc_end};
+nOSC_Arg _sc [] = {nosc_float (0), nosc_end};
+nOSC_Arg _st [] = {nosc_int32 (0), nosc_end};
+
+nOSC_Arg _na [] = {nosc_float (0), nosc_end};
+nOSC_Arg _nb [] = {nosc_float (0), nosc_end};
+nOSC_Arg _nc [] = {nosc_float (0), nosc_end};
+nOSC_Arg _nt [] = {nosc_int32 (0), nosc_end};
+
+nOSC_Item _s [] = {
+	nosc_message (_sa, "/A"),
+	nosc_message (_sb, "/B"),
+	nosc_message (_sc, "/C"),
+	nosc_message (_st, "/thresh"),
+	nosc_term
+};
+
+nOSC_Item _n [] = {
+	nosc_message (_na, "/A"),
+	nosc_message (_nb, "/B"),
+	nosc_message (_nc, "/C"),
+	nosc_message (_nt, "/thresh"),
+	nosc_term
+};
+
+nOSC_Item calib_out [] = {
+	nosc_message (_p, "/p"),
+	nosc_message (_i, "/i"),
+	nosc_message (_m, "/mean"),
+	nosc_bundle (_s, nOSC_IMMEDIATE),
+	nosc_bundle (_n, nOSC_IMMEDIATE),
+	nosc_term
+};
+
 uint8_t
 range_print ()
 {
@@ -266,22 +305,22 @@ range_print ()
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 		{
-			debug_int32 (p);
-			debug_int32 (i);
+			nosc_message_set_int32 (_p, 0, p);
+			nosc_message_set_int32 (_i, 0, i);
+			nosc_message_set_int32 (_m, 0, adc_range[p][i].mean);
 
-			debug_int32 (adc_range[p][i].mean);
+			nosc_message_set_float (_sa, 0, adc_range[p][i].A[POLE_SOUTH].fix);
+			nosc_message_set_float (_sb, 0, adc_range[p][i].A[POLE_SOUTH].fix);
+			nosc_message_set_float (_sc, 0, adc_range[p][i].B[POLE_SOUTH].fix);
+			nosc_message_set_int32 (_st, 0, adc_range[p][i].thresh[POLE_SOUTH]);
 
-			debug_float (adc_range[p][i].A[POLE_SOUTH].fix);
-			debug_float (adc_range[p][i].A[POLE_NORTH].fix);
+			nosc_message_set_float (_na, 0, adc_range[p][i].A[POLE_NORTH].fix);
+			nosc_message_set_float (_nb, 0, adc_range[p][i].A[POLE_NORTH].fix);
+			nosc_message_set_float (_nc, 0, adc_range[p][i].B[POLE_NORTH].fix);
+			nosc_message_set_int32 (_nt, 0, adc_range[p][i].thresh[POLE_NORTH]);
 
-			debug_float (adc_range[p][i].B[POLE_SOUTH].fix);
-			debug_float (adc_range[p][i].B[POLE_NORTH].fix);
-
-			debug_float (adc_range[p][i].C[POLE_SOUTH].fix);
-			debug_float (adc_range[p][i].C[POLE_NORTH].fix);
-
-			debug_int32 (adc_range[p][i].thresh[POLE_SOUTH]);
-			debug_int32 (adc_range[p][i].thresh[POLE_NORTH]);
+			uint16_t size = nosc_bundle_serialize (calib_out, nOSC_IMMEDIATE, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+			udp_send (config.config.socket.sock, buf_o_ptr, size);
 		}
 
 	return 1;
@@ -525,7 +564,9 @@ _version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTiii", id, config.version.major, config.version.minor, config.version.patch_level);
+	char version[16];
+	sprintf (version, "%i.%i.%i", config.version.major, config.version.minor, config.version.patch_level);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTs", id, version);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1500,6 +1541,18 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
+static uint8_t
+_non (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iFsss", id, "unkown path or format", path, fmt);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
 
@@ -1606,6 +1659,8 @@ nOSC_Method config_serv [] = {
 	//TODO remove
 	{"/chimaera/test", "i", _test},
 	{"/chimaera/echo", NULL, _echo},
+
+	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 
 	{NULL, NULL, NULL} // terminator
 };

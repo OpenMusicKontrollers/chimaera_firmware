@@ -38,20 +38,14 @@ tuio2_init ()
 	uint8_t i;
 
 	// initialize bundle
-	tuio.bndl[0].path =  frm_str;
-	tuio.bndl[0].msg = tuio.frm;
+	nosc_item_message_set (tuio.bndl, 0, tuio.frm, frm_str);
 
 	for (i=0; i<BLOB_MAX; i++)
-	{
-		tuio.bndl[i + 1].path = tok_str;
-		tuio.bndl[i + 1].msg = tuio.tok[i];
-	}
+		nosc_item_message_set (tuio.bndl, i+1, tuio.tok[i], tok_str);
 
-	tuio.bndl[BLOB_MAX + 1].path = alv_str;
-	tuio.bndl[BLOB_MAX + 1].msg = tuio.alv;
+	nosc_item_message_set (tuio.bndl, BLOB_MAX + 1, tuio.alv, alv_str);
 
-	tuio.bndl[BLOB_MAX + 2].path = NULL;
-	tuio.bndl[BLOB_MAX + 2].msg = NULL;
+	nosc_item_term_set (tuio.bndl, BLOB_MAX + 2);
 
 	// initialize frame
 	nosc_message_set_int32 (tuio.frm, 0, 0);
@@ -92,11 +86,9 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 			nosc_message_set_end (tuio.alv, 0);
 
 		// unlink bundle
-		tuio.bndl[end+1].path = tuio.bndl[BLOB_MAX+1].path; // alv
-		tuio.bndl[end+1].msg = tuio.bndl[BLOB_MAX+1].msg; // alv
+		nosc_item_message_set (tuio.bndl, end + 1, tuio.bndl[BLOB_MAX+1].content.message.msg, tuio.bndl[BLOB_MAX+1].content.message.path);
 
-		tuio.bndl[end+2].path = NULL;
-		tuio.bndl[end+2].msg = NULL;
+		nosc_item_term_set (tuio.bndl, end + 2);
 	}
 
 	// serialize
@@ -111,14 +103,10 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 		else
 			nosc_message_set_int32 (tuio.alv, 0, 0);
 
-		tuio.bndl[end+1].path = tok_str;
-		tuio.bndl[end+1].msg = tuio.tok[end];
+		nosc_item_message_set (tuio.bndl, end + 1, tuio.tok[end], tok_str);
 
 		if (end < BLOB_MAX-1)
-		{
-			tuio.bndl[end+2].path = tok_str;
-			tuio.bndl[end+2].msg = tuio.tok[end+1];
-		}
+			nosc_item_message_set (tuio.bndl, end + 2, tuio.tok[end+1], tok_str);
 	}
 
 	return size;
@@ -167,7 +155,5 @@ tuio2_long_header_enable (uint8_t on)
 		nosc_message_set_end (tuio.frm, 6);
 	}
 	else // off
-	{
 		nosc_message_set_end (tuio.frm, 2);
-	}
 }
