@@ -53,7 +53,7 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 		{
 			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
 			{
-				uint8_t res = ptr->cb (ptr->path, ptr->fmt, strlen (fmt), msg);
+				uint8_t res = ptr->cb (path, fmt, strlen (fmt), msg);
 
 				if (res) // return when handled
 					return;
