@@ -68,20 +68,14 @@ inline void
 _spi_dma_run (uint16_t len, uint8_t io_flags)
 {
 	// when only sending, we don't need to read RX
-	//if (io_flags & WIZ_RX)
+	if (io_flags & WIZ_RX)
 	{
-		//clear OVR overflow status bit
-		//uint8_t val = SPI2_BASE->DR;
-		//uint8_t spi_sr = SPI2_BASE->SR;
-
-		//spi_rx_dma_disable (SPI2); // disables RX DMA on SPI2
 		dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
 		dma_enable (DMA1, DMA_CH4); // Rx
 	}
 
-	//if (io_flags & WIZ_TX)
+	if (io_flags & WIZ_TX)
 	{
-		//spi_rx_dma_enable (SPI2); // enables RX DMA on SPI2
 		dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
 		dma_enable (DMA1, DMA_CH5); // Tx
 	}
@@ -90,37 +84,59 @@ _spi_dma_run (uint16_t len, uint8_t io_flags)
 inline uint8_t
 _spi_dma_block (uint8_t io_flags)
 {
-	//TODO handle flags
 	uint8_t ret = 1;
 	uint8_t isr_rx;
 	uint8_t isr_tx;
 	uint8_t spi_sr;
-	do
+
+	if (io_flags == WIZ_SENDRECV)
 	{
-		isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
-		isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
-		spi_sr = SPI2_BASE->SR;
+		do
+		{
+			isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
+			isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+			spi_sr = SPI2_BASE->SR;
 
-		// check for errors in DMA and SPI status registers
+			// check for errors in DMA and SPI status registers
 
-		if (isr_rx & 0x8) // RX DMA transfer error
-			ret = 0;
+			if (isr_rx & 0x8) // RX DMA transfer error
+				ret = 0;
 
-		if (isr_tx & 0x8) // TX DMA transfer error
-			ret = 0;
+			if (isr_tx & 0x8) // TX DMA transfer error
+				ret = 0;
 
-		if (spi_sr & SPI_SR_OVR) // SPI overrun error
-			ret = 0;
+			if (spi_sr & SPI_SR_OVR) // SPI overrun error
+				ret = 0;
 
-		if (spi_sr & SPI_SR_MODF) // SPI mode fault
-			ret = 0;
-	} while (!(isr_rx & 0x2) && ret); // RX DMA transfer complete
+			if (spi_sr & SPI_SR_MODF) // SPI mode fault
+				ret = 0;
+		} while (!(isr_rx & 0x2) && ret); // RX DMA transfer complete
 
-	dma_clear_isr_bits (DMA1, DMA_CH4);
-	//dma_clear_isr_bits (DMA1, DMA_CH5); TODO do we need this?
+		dma_clear_isr_bits (DMA1, DMA_CH4);
+		dma_clear_isr_bits (DMA1, DMA_CH5);
 
-	dma_disable (DMA1, DMA_CH5); // Tx
-	dma_disable (DMA1, DMA_CH4); // Rx
+		dma_disable (DMA1, DMA_CH5); // Tx
+		dma_disable (DMA1, DMA_CH4); // Rx
+	}
+	else if (io_flags == WIZ_SENDONLY)
+	{
+		do
+		{
+			isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+			spi_sr = SPI2_BASE->SR;
+
+			if (isr_tx & 0x8) // TX DMA transfer error
+				ret = 0;
+
+			// SPI_SR_OVR is set when not reading RX
+
+			if (spi_sr & SPI_SR_MODF)
+				ret = 0;
+		} while (!(isr_tx & 0x2) && !(spi_sr & SPI_SR_TXE) && (spi_sr & SPI_SR_BSY) && ret); // TX DMA transfer complete
+
+		dma_clear_isr_bits (DMA1, DMA_CH5);
+		dma_disable (DMA1, DMA_CH5); // Tx
+	}
 
 	return ret;
 }
@@ -140,9 +156,9 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen, WIZ_TX);
-	while (!_spi_dma_block (WIZ_TX))
-		_spi_dma_run (buflen, WIZ_TX);
+	_spi_dma_run (buflen, WIZ_SENDONLY);
+	while (!_spi_dma_block (WIZ_SENDONLY))
+		_spi_dma_run (buflen, WIZ_SENDONLY);
 
 	resetSS ();
 }
@@ -181,14 +197,30 @@ _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (nonblocklen, WIZ_TX);
+	_spi_dma_run (nonblocklen, WIZ_SENDONLY);
 }
 
 void
 _dma_write_nonblocking_out ()
 {
-	while (!_spi_dma_block (WIZ_TX))
-		_spi_dma_run (nonblocklen, WIZ_TX);
+	while (!_spi_dma_block (WIZ_SENDONLY))
+		_spi_dma_run (nonblocklen, WIZ_SENDONLY);
+	resetSS ();
+}
+
+void
+_dma_read_nonblocking_in (uint8_t *buf)
+{
+	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
+	setSS ();
+	_spi_dma_run (nonblocklen, WIZ_SENDRECV);
+}
+
+void
+_dma_read_nonblocking_out ()
+{
+	while (!_spi_dma_block (WIZ_SENDRECV))
+		_spi_dma_run (nonblocklen, WIZ_SENDRECV);
 	resetSS ();
 }
 
@@ -207,9 +239,9 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen, WIZ_TX | WIZ_RX);
-	while (!_spi_dma_block (WIZ_TX | WIZ_RX))
-		_spi_dma_run (buflen, WIZ_TX | WIZ_RX);
+	_spi_dma_run (buflen, WIZ_SENDRECV);
+	while (!_spi_dma_block (WIZ_SENDRECV))
+		_spi_dma_run (buflen, WIZ_SENDRECV);
 	resetSS ();
 
 	memcpy (dat, &buf_i[tmp_buf_i_ptr][SPI_CMD_SIZE], len);
@@ -484,8 +516,8 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		buf = _dma_write_inline (buf, dstAddr, len);
 
   ptr += len;
-	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, ptr);
 	Sn_Tx_WR[sock] = ptr;
+	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, ptr);
 
 	// send data
 	uint8_t flag;
@@ -519,18 +551,6 @@ udp_send_block (uint8_t sock)
 	flag = SnIR_SEND_OK; // clear SEND_OK flag
 	_dma_write_sock (sock, SnIR, &flag, 1);
 
-	//FIXME remove stuff below
-	/*
-	// update write pointer
-	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
-
-	// wait until everything is sent to be ready for next data
-	uint16_t frei;
-	do
-		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
-	while (frei != SSIZE[sock]);
-	*/
-
 	return success;
 }
 
@@ -542,9 +562,15 @@ udp_available (uint8_t sock)
 	return len;
 }
 
-//TODO write a nonblocking version for receiving, too
 void
 udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
+{
+	uint16_t wrap = udp_receive_nonblocking (sock, buf_ptr, len);
+	udp_receive_block (sock, wrap, len);
+}
+
+uint16_t
+udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
 	if (len > (CHIMAERA_BUFSIZE - 4) ) // return when buffer exceedes given size
 		return;
@@ -564,8 +590,6 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
-	//uint16_t ptr;
-	//_dma_read_sock_16 (sock, SnRX_RD, &ptr); // TODO store this offline
 	uint16_t ptr = Sn_Rx_RD[sock];
 
 	uint16_t size = 0;
@@ -584,8 +608,24 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	else
 		buf = _dma_read_append (buf, dstAddr, len);
 
-	_dma_write_nonblocking_in (buf);
-	_dma_write_nonblocking_out ();
+	//TODO what if something fails when receiving?
+	ptr += len;
+	Sn_Rx_RD[sock] = ptr;
+	buf = _dma_write_sock_16_append (buf, sock, SnRX_RD, ptr);
+
+	uint8_t flag;
+	flag = SnCR_RECV;
+	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
+
+	_dma_read_nonblocking_in (buf);
+
+	return size;
+}
+
+void
+udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
+{
+	_dma_read_nonblocking_out ();
 
 	// remove 4byte padding between chunks
 	if (size)
@@ -595,16 +635,8 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	tmp_buf_i_ptr = INPUT_BUF_SEND;
 
 	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
-	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-
-	ptr += len;
-	_dma_write_sock_16 (sock, SnRX_RD, ptr); //TODO work with _append
-	Sn_Rx_RD[sock] = ptr;
-
-	uint8_t flag;
-	flag = SnCR_RECV;
-	_dma_write_sock (sock, SnCR, &flag, 1);
 }
 
 void 

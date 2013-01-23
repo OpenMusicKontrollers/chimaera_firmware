@@ -48,16 +48,25 @@ void wiz_ip_set (uint8_t *ip);
 void wiz_gateway_set (uint8_t *gateway);
 void wiz_subnet_set (uint8_t *subnet);
 
+
 void udp_begin (uint8_t sock, uint16_t port, uint8_t multicast);
 void udp_end (uint8_t sock);
+
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);
+
 uint8_t udp_send (uint8_t sock, uint8_t ptr, uint16_t len);
 uint8_t udp_send_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
 uint8_t udp_send_block (uint8_t sock);
+
 uint16_t udp_available (uint8_t sock);
+
 void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
+uint16_t udp_receive_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
+void udp_receive_block (uint8_t sock, uint16_t wrap, uint16_t len);
+
 void udp_dispatch (uint8_t sock, uint8_t ptr, UDP_Dispatch_Cb cb);
+
 
 typedef void (*MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
 

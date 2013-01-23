@@ -138,5 +138,8 @@ struct _MACRAW_Header {
 
 #define WIZ_TX 0b01
 #define WIZ_RX 0b10
+#define WIZ_SENDRECV WIZ_TX | WIZ_RX
+//#define WIZ_SENDONLY WIZ_TX FIXME
+#define WIZ_SENDONLY WIZ_SENDRECV
 
 #endif // UDP_PRIVATE_H
