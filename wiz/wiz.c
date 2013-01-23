@@ -62,20 +62,35 @@ inline void resetSS ()
 }
 
 static uint16_t Sn_Tx_WR[8];
+static uint16_t Sn_Rx_RD[8];
 
 inline void
-_spi_dma_run (uint16_t len)
+_spi_dma_run (uint16_t len, uint8_t io_flags)
 {
-	dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
-	dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
+	// when only sending, we don't need to read RX
+	//if (io_flags & WIZ_RX)
+	{
+		//clear OVR overflow status bit
+		//uint8_t val = SPI2_BASE->DR;
+		//uint8_t spi_sr = SPI2_BASE->SR;
 
-	dma_enable (DMA1, DMA_CH4); // Rx
-	dma_enable (DMA1, DMA_CH5); // Tx
+		//spi_rx_dma_disable (SPI2); // disables RX DMA on SPI2
+		dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
+		dma_enable (DMA1, DMA_CH4); // Rx
+	}
+
+	//if (io_flags & WIZ_TX)
+	{
+		//spi_rx_dma_enable (SPI2); // enables RX DMA on SPI2
+		dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
+		dma_enable (DMA1, DMA_CH5); // Tx
+	}
 }
 
 inline uint8_t
-_spi_dma_block ()
+_spi_dma_block (uint8_t io_flags)
 {
+	//TODO handle flags
 	uint8_t ret = 1;
 	uint8_t isr_rx;
 	uint8_t isr_tx;
@@ -102,6 +117,7 @@ _spi_dma_block ()
 	} while (!(isr_rx & 0x2) && ret); // RX DMA transfer complete
 
 	dma_clear_isr_bits (DMA1, DMA_CH4);
+	//dma_clear_isr_bits (DMA1, DMA_CH5); TODO do we need this?
 
 	dma_disable (DMA1, DMA_CH5); // Tx
 	dma_disable (DMA1, DMA_CH4); // Rx
@@ -124,9 +140,9 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen);
-	while (!_spi_dma_block ())
-		_spi_dma_run (buflen);
+	_spi_dma_run (buflen, WIZ_TX);
+	while (!_spi_dma_block (WIZ_TX))
+		_spi_dma_run (buflen, WIZ_TX);
 
 	resetSS ();
 }
@@ -165,14 +181,14 @@ _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (nonblocklen);
+	_spi_dma_run (nonblocklen, WIZ_TX);
 }
 
 void
 _dma_write_nonblocking_out ()
 {
-	while (!_spi_dma_block ())
-		_spi_dma_run (nonblocklen);
+	while (!_spi_dma_block (WIZ_TX))
+		_spi_dma_run (nonblocklen, WIZ_TX);
 	resetSS ();
 }
 
@@ -191,9 +207,9 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen);
-	while (!_spi_dma_block ())
-		_spi_dma_run (buflen);
+	_spi_dma_run (buflen, WIZ_TX | WIZ_RX);
+	while (!_spi_dma_block (WIZ_TX | WIZ_RX))
+		_spi_dma_run (buflen, WIZ_TX | WIZ_RX);
 	resetSS ();
 
 	memcpy (dat, &buf_i[tmp_buf_i_ptr][SPI_CMD_SIZE], len);
@@ -403,6 +419,9 @@ udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 
 	// get write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+
+	// get read pointer
+	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
 }
 
 void
@@ -449,19 +468,6 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 
 	uint8_t *buf = buf_o[buf_ptr];
 
-	// wait until there is enough space left in buffer
-	/* XXX we don't need this as we always send stuff immediately and do not accumulate data in the buffer
-	uint16_t frei;
-	do
-		_dma_read_sock_16 (sock, SnTX_FSR, &frei);
-	while (len > frei);
-	*/
-
-	// move data to chip
-	/* XXX we don't need this as we keep track of the write position with an array instead
-	uint16_t ptr;
-	_dma_read_sock_16 (sock, SnTX_WR, &ptr);
-	*/
 	uint16_t ptr = Sn_Tx_WR[sock];
   uint16_t offset = ptr & SMASK[sock];
   uint16_t dstAddr = offset + SBASE[sock];
@@ -486,7 +492,7 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	flag = SnCR_SEND;
 	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
 
-	_dma_write_nonblocking_in (buf); //TODO send with deactivated RX to lower demand on DMA multiplexing
+	_dma_write_nonblocking_in (buf);
 
 	return 1;
 }
@@ -558,8 +564,9 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
-	uint16_t ptr;
-	_dma_read_sock_16 (sock, SnRX_RD, &ptr); // TODO store this offline
+	//uint16_t ptr;
+	//_dma_read_sock_16 (sock, SnRX_RD, &ptr); // TODO store this offline
+	uint16_t ptr = Sn_Rx_RD[sock];
 
 	uint16_t size = 0;
 	uint16_t offset = ptr & RMASK[sock];
@@ -592,7 +599,8 @@ udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
 	ptr += len;
-	_dma_write_sock_16 (sock, SnRX_RD, ptr);
+	_dma_write_sock_16 (sock, SnRX_RD, ptr); //TODO work with _append
+	Sn_Rx_RD[sock] = ptr;
 
 	uint8_t flag;
 	flag = SnCR_RECV;

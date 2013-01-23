@@ -55,7 +55,6 @@ void udp_set_remote_har (uint8_t sock, uint8_t *har);
 uint8_t udp_send (uint8_t sock, uint8_t ptr, uint16_t len);
 uint8_t udp_send_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
 uint8_t udp_send_block (uint8_t sock);
-uint8_t udp_probe (uint8_t sock, uint8_t buf_ptr);
 uint16_t udp_available (uint8_t sock);
 void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
 void udp_dispatch (uint8_t sock, uint8_t ptr, UDP_Dispatch_Cb cb);

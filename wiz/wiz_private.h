@@ -136,4 +136,7 @@ struct _MACRAW_Header {
 #define ARP_OPER_REQUEST 0x0001
 #define ARP_OPER_REPLY 0x0002
 
+#define WIZ_TX 0b01
+#define WIZ_RX 0b10
+
 #endif // UDP_PRIVATE_H
