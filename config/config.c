@@ -213,10 +213,19 @@ config_save ()
 	return 1;
 }
 
-inline uint16_t
-range_mean (uint8_t mux, uint8_t adc)
+void
+adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap)
 {
-	return adc_range[mux][adc].mean;
+	uint8_t p, i;
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
+		{
+			uint8_t pos = order[p][i];
+			int16_t val = raw[p][i] - adc_range[p][i].mean;
+			rela[pos] = val; 
+			if (config.dump.enabled)
+				swap[pos] = hton (val);
+		}
 }
 
 uint8_t

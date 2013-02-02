@@ -45,16 +45,6 @@ typedef struct _CMC_Blob CMC_Blob;
 typedef struct _CMC_Group CMC_Group;
 typedef struct _CMC CMC;
 
-struct _CMC_Sensor {
-	fix_0_32_t x;
-	fix_0_32_t v;
-};
-
-struct _CMC_Sensor_State {
-	uint8_t n : 1;
-	uint8_t a : 1;
-};
-
 struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
@@ -75,9 +65,11 @@ struct _CMC {
 	uint32_t fid, sid;
 	fix_0_32_t d;
 	fix_0_32_t d_2;
-	
-	CMC_Sensor sensors[SENSOR_N+2];
-	CMC_Sensor_State states[SENSOR_N+2];
+
+	fix_0_32_t x[SENSOR_N+2];
+	fix_0_32_t v[SENSOR_N+2];
+	uint8_t n[SENSOR_N+2];
+	uint8_t a[SENSOR_N+2];
 	CMC_Blob blobs[2][BLOB_MAX];
 	CMC_Group groups[GROUP_MAX];
 

@@ -26,14 +26,14 @@
 #include "dump_private.h"
 #include "../nosc/nosc_private.h"
 #include "../sntp/sntp_private.h"
+#include "../config/config_private.h"
 
-static int16_t dump_array [SENSOR_N]; //TODO can we use some other array teomporarily to save memory? those are 288bytes
 static uint32_t frame = 0;
  
 static nOSC_Arg dump_msg [] = {
 	nosc_int32 (0), // frame number
 	nosc_timestamp (nOSC_IMMEDIATE), // timestamp of sensor array sweep
-	nosc_blob (sizeof (dump_array), (uint8_t *)dump_array), // 16-bit sensor data (network endianess)
+	nosc_blob (0, NULL), // 16-bit sensor data (network endianess)
 	nosc_end
 };
 
@@ -48,15 +48,11 @@ dump_serialize (uint8_t *buf, uint64_t offset)
 	return nosc_bundle_serialize (dump_bndl, offset, buf);
 }
 
-inline void 
-dump_timestamp_set (uint64_t now)
+inline void
+dump_update (uint64_t now, int32_t size, int16_t *swap)
 {
 	dump_msg[DUMP_FRAME].val.i = ++frame;
 	dump_msg[DUMP_TIME].val.t = now;
-}
 
-inline void 
-dump_tok_set (uint8_t sensor, int16_t value)
-{
-	dump_array[sensor] = hton (value); // convert to network byte order
+	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t*)swap); //FIXME do this only once!!!
 }

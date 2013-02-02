@@ -63,6 +63,8 @@ uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 
 int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__ ((aligned (4)));; // the dma temporary data array.
+int16_t adc_rela[SENSOR_N];
+int16_t adc_swap[SENSOR_N];
 
 uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
@@ -210,6 +212,16 @@ uint8_t cmc_job = 0;
 uint16_t cmc_len = 0;
 uint16_t len = 0;
 
+Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
+
+Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
+Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
+Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
+
+Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
+Stop_Watch sw_tuio_serialize = {.id = "tuio_serialize", .thresh=2000};
+Stop_Watch sw_tuio_send = {.id = "tuio_send", .thresh=2000};
+
 inline void
 loop ()
 {
@@ -231,20 +243,27 @@ loop ()
 	if (calibrating)
 		range_calibrate (adc_raw[adc_raw_ptr]);
 
+	// fill adc_rela
+	stop_watch_start (&sw_adc_fill);
+	adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap); // 54us
+	stop_watch_stop (&sw_adc_fill);
+
 	// dump raw sensor data
 	if (config.dump.enabled)
 	{
+		//stop_watch_start (&sw_dump_update);
 		sntp_timestamp_refresh (&now);
 
-		dump_timestamp_set (now); 
+		dump_update (now, SENSOR_N*sizeof(int16_t), adc_swap); // 6us
+		//stop_watch_stop (&sw_dump_update);
 
-		for (uint8_t u=0; u<ADC_LENGTH; u++)
-			for (uint8_t v=0; v<MUX_MAX; v++)
-				dump_tok_set (order[v][u], adc_raw[adc_raw_ptr][v][u] - (int16_t)range_mean(v, u)); //TODO get rid of range_mean function
-
-		len = dump_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], nOSC_IMMEDIATE); //FIXME fill in offset here
-		//FIXME  DMAise it if TUIO not active
+		//stop_watch_start (&sw_dump_serialize);
+		len = dump_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], nOSC_IMMEDIATE); // 17us FIXME fill in offset here
+		//stop_watch_stop (&sw_dump_serialize);
+		//FIXME  DMAise it aka implement wiz_job infrastructure
+		//stop_watch_start (&sw_dump_send);
 		udp_send (config.dump.socket.sock, buf_o_ptr, len);
+		//stop_watch_stop (&sw_dump_send); // XXX 232us
 	}
 
 	// do touch recognition and interpolation
@@ -253,16 +272,24 @@ loop ()
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		uint8_t job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
+		stop_watch_start (&sw_tuio_process);
+		//uint8_t job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
+		uint8_t job = cmc_process (adc_rela); // touch recognition of current cycle
 
+		//stop_watch_start (&sw_tuio_serialize);
 		if (job)
 		{
 			sntp_timestamp_refresh (&now);
 			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
 		}
 
+		//stop_watch_start (&sw_tuio_send);
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
+
+		//stop_watch_stop (&sw_tuio_send);
+		//stop_watch_stop (&sw_tuio_serialize);
+		stop_watch_stop (&sw_tuio_process);
 
 		if (job) // switch output buffer
 			buf_o_ptr ^= 1;

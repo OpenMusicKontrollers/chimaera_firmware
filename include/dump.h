@@ -34,8 +34,7 @@ extern "C" {
 
 uint16_t dump_serialize (uint8_t *buf, uint64_t offset);
 
-void dump_timestamp_set (uint64_t now);
-void dump_tok_set (uint8_t sensor, int16_t value);
+void dump_update (uint64_t now, int32_t size, int16_t *swap);
 
 #ifdef __cplusplus
 }

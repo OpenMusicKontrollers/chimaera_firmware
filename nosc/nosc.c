@@ -434,8 +434,6 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 			case nOSC_TIMESTAMP:
 			{
 				ref_htonll (buf_ptr, arg->val.h);
-				//uint64_t tmp = htonll (arg->val.t);
-				//memcpy (buf_ptr, &tmp, 8);
 				buf_ptr += 8;
 				break;
 			}

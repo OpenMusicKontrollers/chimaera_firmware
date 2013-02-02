@@ -302,22 +302,22 @@ dhcpc_enable (uint8_t b)
 void
 stop_watch_start (Stop_Watch *sw)
 {
-	sw->micros -= _micros ();
+	sw->t0 = systick_uptime ();
 }
 
 void
 stop_watch_stop (Stop_Watch *sw)
 {
-	sw->micros += _micros ();
+	sw->ticks += systick_uptime () - sw->t0;
 	sw->counter++;
 
-	if (sw->counter > 1000)
+	if (sw->counter > sw->thresh)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/stop_watch", "si", sw->id, sw->micros/1000);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/stop_watch", "si", sw->id, sw->ticks * 100 / sw->thresh); // 1 tick = 100 us
 		udp_send (config.debug.socket.sock, buf_o_ptr, size);
 
-		sw->micros = 0;
+		sw->ticks = 0;
 		sw->counter = 0;
 	}
 }

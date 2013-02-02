@@ -76,11 +76,12 @@ typedef struct _Stop_Watch Stop_Watch;
 
 struct _Stop_Watch {
 	const char *id;
-	int32_t micros;
+	uint16_t thresh;
+	uint32_t t0;
+	uint32_t ticks;
 	uint16_t counter;
 };
 
-uint32_t _micros ();
 void stop_watch_start (Stop_Watch *sw);
 void stop_watch_stop (Stop_Watch *sw);
 

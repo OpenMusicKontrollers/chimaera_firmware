@@ -55,9 +55,9 @@ cmc_init ()
 
 	for (i=0; i<SENSOR_N+2; i++)
 	{
-		cmc.sensors[i].x = cmc.d * i - cmc.d_2; //TODO caution: sensors[0] and sensors[145] get saturated to 0 and 1
-		cmc.sensors[i].v = 0;
-		cmc.states[i].n = 0;
+		cmc.x[i] = cmc.d * i - cmc.d_2; //TODO caution: sensors[0] and sensors[145] get saturated to 0 and 1
+		cmc.v[i] = 0;
+		cmc.n[i] = 0;
 	}
 
 	cmc.n_groups = 0;
@@ -67,124 +67,132 @@ cmc_init ()
 	cmc.neu = 1;
 }
 
-float
-cmc_sensor (uint8_t order[16][9], uint8_t p, uint8_t i)
-{
-	uint8_t pos = order[p][i];
-	if (cmc.states[pos+1].n)
-		return -(float)cmc.sensors[pos+1].v;
-	else
-		return (float)cmc.sensors[pos+1].v;
-}
-
 #define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
 
-uint8_t
-cmc_process (int16_t raw[16][10], uint8_t order[16][9])
+uint8_t n_aoi;
+uint8_t aoi[64]; //TODO how big?
+
+uint8_t n_peaks;
+uint8_t peaks[BLOB_MAX];
+
+static int
+aoi_cmp (const void *a, const void *b)
 {
-//debug_str ("cmc process");
-//debug_int32 (cmc.fid);
-	uint8_t p;
-	uint8_t i, j;
+	const uint8_t *A = a;
+	const uint8_t *B = b;
 
-//debug_str ("ADC read");
-	// 11us
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
+	if (*A == *B)
+		return 0;
+	
+	if (*A < *B)
+		return -1;
+	
+	return 1;
+}
+
+uint8_t
+cmc_process (int16_t *rela)
+{
+	return 0;
+
+	/*
+	n_aoi = 0;
+	uint8_t pos;
+	for (pos=0; pos<SENSOR_N; pos++)
+	{
+		int16_t val = rela[pos];
+		uint16_t aval = abs (val);
+		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
+		if ( (aval > THRESH_MIN) && (aval*4 > adc_range[p][i].thresh[pole]) ) // thresh0 == thresh1 / 4
 		{
-			uint8_t pos = order[p][i];
-			int16_t val = raw[p][i] - adc_range[p][i].mean;
-			uint16_t aval = abs (val);
-			uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
-			if ( (aval > THRESH_MIN) && (aval > adc_range[p][i].thresh[pole] / 4) ) // thresh0 == thresh1 / 4
-			{
-				cmc.states[pos+1].n = pole;
-				cmc.states[pos+1].a = aval > adc_range[p][i].thresh[pole]; // TODO move this down
-				cmc.sensors[pos+1].v =  adc_range[p][i].A[pole].fix * lookup_sqrt[aval]  //FIXME move this down
-															+ adc_range[p][i].B[pole].fix * lookup[aval]
-															+ adc_range[p][i].C[pole].fix;
-			}
-			else
-				cmc.sensors[pos+1].v = 0;
-		}
+			aoi[n_aoi++] = pos+1;
 
-	// 80us
+			cmc.n[pos+1] = pole;
+			cmc.a[pos+1] = aval > adc_range[p][i].thresh[pole]; // TODO move this down
+			cmc.v[pos+1] =  adc_range[p][i].A[pole].fix * lookup_sqrt[aval]  //FIXME move this down
+										+ adc_range[p][i].B[pole].fix * lookup[aval]
+										+ adc_range[p][i].C[pole].fix;
+		}
+	} // 96us + n*130us
+	*/
+
 	uint8_t changed = 1; //TODO actually check for changes
 
 	/*
 	 * find maxima
 	 */
-	cmc.J = 0;
 
-//debug_str ("blob detection");
-	// look at array for blobs
-	// TODO simplify this by just searching for maximums and surrounding zeroes...
-	for (i=1; i<SENSOR_N+1; i++) // TODO merge the loop with the upper one ^^^^
+	// search for peaks
+	n_peaks = 0;
+	uint8_t a;
+	fix_0_32_t max = cmc.v[aoi[0]];
+	uint8_t peak = aoi[0];
+	uint8_t up = 1;
+	for (a=1; a<n_aoi; a++)
 	{
-		if (cmc.sensors[i].v)
+		if (aoi[a] - aoi[a-1] > 1) // new aoi
 		{
-			uint8_t I;
-			uint8_t peak = 1;
+			up = 1;
+			peak = aoi[a];
+			max = cmc.v[peak];
+			continue;
+		}
 
-			//FIXME this is REALLY inefficient, improve it with some fast sweeping algo
-			for (I=1; I<config.cmc.peak_thresh; I++)
+		if (up)
+		{
+			if (cmc.v[aoi[a]] >= max)
 			{
-				if ( (i >= I) && (cmc.sensors[i].v <= cmc.sensors[i-I].v) )
-				{
-					peak = 0;
-					break;
-				}
-
-				if ( (i+I <= SENSOR_N+1) && (cmc.sensors[i].v < cmc.sensors[i+I].v) )
-				{
-					peak = 0;
-					break;
-				}
+				peak = aoi[a];
+				max = cmc.v[peak];
 			}
-
-			if (peak)
+			else // < max
 			{
-				//fit parabola
-
-				fix_s_31_t y0 = cmc.sensors[i-1].v;
-				fix_s_31_t y1 = cmc.sensors[i].v;
-				fix_s_31_t y2 = cmc.sensors[i+1].v;
-
-				// parabolic interpolation
-				//fix_s_31_t divisor = y0 - y1 + y2 - y1;
-				fix_s31_32_t divisor = y0 - 2*y1 + y2;
-				fix_0_32_t x = cmc.sensors[i].x + cmc.d_2*(y0 - y2) / divisor;
-
-				fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
-
-				//fix_s31_32_t dividend = -0.125r*y0*y0 + y0*y1 - 2*y1*y1 + 0.25r*y0*y2 + y1*y2 - 0.125r*y2*y2;
-				//fix_0_32_t y = dividend / divisor;
-
-				if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
-				{
-					cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-					cmc.blobs[cmc.neu][cmc.J].uid = cmc.states[i].n == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
-					cmc.blobs[cmc.neu][cmc.J].group = NULL;
-					cmc.blobs[cmc.neu][cmc.J].x = x;
-					cmc.blobs[cmc.neu][cmc.J].p = y;
-					cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.states[i].a;
-					cmc.blobs[cmc.neu][cmc.J].ignore = 0;
-
-					cmc.J++;
-
-					if (cmc.J >= BLOB_MAX) // make sure to not exceed maximal number of blobs
-						break;
-				}
+				peaks[n_peaks++] = peak;
+				up = 0;
 			}
 		}
 	}
 
-//debug_int32 (cmc.J - cmc.I);
+	// handle found peaks to create blobs
+	cmc.J = 0;
+	uint8_t p;
+	for (p=0; p<n_peaks; p++)
+	{
+		uint8_t P = peaks[p];
+		//fit parabola
 
-//debug_str ("blob relation");
+		fix_s_31_t y0 = cmc.v[P-1];
+		fix_s_31_t y1 = cmc.v[P];
+		fix_s_31_t y2 = cmc.v[P+1];
+
+		// parabolic interpolation
+		//fix_s_31_t divisor = y0 - y1 + y2 - y1;
+		fix_s31_32_t divisor = y0 - 2*y1 + y2;
+		fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+
+		fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
+
+		//fix_s31_32_t dividend = -0.125r*y0*y0 + y0*y1 - 2*y1*y1 + 0.25r*y0*y2 + y1*y2 - 0.125r*y2*y2;
+		//fix_0_32_t y = dividend / divisor;
+
+		if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
+		{
+			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
+			cmc.blobs[cmc.neu][cmc.J].uid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+			cmc.blobs[cmc.neu][cmc.J].group = NULL;
+			cmc.blobs[cmc.neu][cmc.J].x = x;
+			cmc.blobs[cmc.neu][cmc.J].p = y;
+			cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
+			cmc.blobs[cmc.neu][cmc.J].ignore = 0;
+
+			cmc.J++;
+		}
+	} // 50us per blob
+
 	/*
 	 * relate new to old blobs
 	 */
+	uint8_t i, j;
 	if (cmc.I || cmc.J)
 	{
 		idle_word = 0;
@@ -277,7 +285,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				}
 		}
 
-//debug_str ("blob ignoring");
 		// overwrite blobs that are to be ignored
 		uint8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
@@ -299,9 +306,7 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 				newJ++;
 		}
 		cmc.J = newJ;
-//debug_int32 (cmc.J - cmc.I);
 
-//debug_str ("group relation");
 		// relate blobs to groups
 		for (j=0; j<cmc.J; j++)
 		{
@@ -344,7 +349,6 @@ cmc_process (int16_t raw[16][10], uint8_t order[16][9])
 			idle_word = 0;
 	}
 
-//debug_str ("buffer switching");
 	// switch blob buffers
 	cmc.old = !cmc.old;
 	cmc.neu = !cmc.neu;

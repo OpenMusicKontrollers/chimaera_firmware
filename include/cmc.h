@@ -35,8 +35,7 @@ extern "C" {
 #endif
 
 void cmc_init ();
-uint8_t cmc_process (int16_t raw[16][10], uint8_t order[16][9]);
-float cmc_sensor (uint8_t order[16][9], uint8_t p, uint8_t i);
+uint8_t cmc_process (int16_t *rela);
 uint16_t cmc_write_tuio2 (uint8_t *buf, uint64_t now);
 
 void cmc_group_clear ();
