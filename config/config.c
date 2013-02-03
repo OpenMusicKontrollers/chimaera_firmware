@@ -38,7 +38,7 @@
 #define LAN_BROADCAST {192, 168, 1, 255}
 #define LAN_HOST {192, 168, 1, 10}
 
-ADC_Range adc_range [MUX_MAX][ADC_LENGTH];
+ADC_Range adc_range [SENSOR_N];
 float Y1 = 0.5;
 
 static uint16_t
@@ -101,7 +101,7 @@ Config config = {
 	},
 	
 	.tuio = {
-		.enabled = 1, // enabled by default
+		.enabled = 0, // enabled by default
 		.socket = {
 			.sock = 0,
 			.port = {3333, 3333},
@@ -214,18 +214,65 @@ config_save ()
 }
 
 void
-adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap)
+adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap, uint8_t relative)
 {
-	uint8_t p, i;
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
+	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
+	if (relative)
+	{
+		if (config.dump.enabled)
 		{
-			uint8_t pos = order[p][i];
-			int16_t val = raw[p][i] - adc_range[p][i].mean;
-			rela[pos] = val; 
-			if (config.dump.enabled)
-				swap[pos] = hton (val);
+			uint8_t p, i;
+			for (p=0; p<MUX_MAX; p++)
+				for (i=0; i<ADC_LENGTH; i++)
+				{
+					uint8_t pos = order[p][i];
+					int16_t val = raw[p][i] - adc_range[pos].mean;
+
+					rela[pos] = val; 
+					swap[pos] = hton (val);
+				}
 		}
+		else // !config.dump.enabled
+		{
+			uint8_t p, i;
+			for (p=0; p<MUX_MAX; p++)
+				for (i=0; i<ADC_LENGTH; i++)
+				{
+					uint8_t pos = order[p][i];
+					int16_t val = raw[p][i] - adc_range[pos].mean;
+
+					rela[pos] = val; 
+				}
+		}
+	}
+	else // absolute
+	{
+		if (config.dump.enabled)
+		{
+			uint8_t p, i;
+			for (p=0; p<MUX_MAX; p++)
+				for (i=0; i<ADC_LENGTH; i++)
+				{
+					uint8_t pos = order[p][i];
+					int16_t val = raw[p][i];
+
+					rela[pos] = val; 
+					swap[pos] = hton (val);
+				}
+		}
+		else // !config.dump.enabled
+		{
+			uint8_t p, i;
+			for (p=0; p<MUX_MAX; p++)
+				for (i=0; i<ADC_LENGTH; i++)
+				{
+					uint8_t pos = order[p][i];
+					int16_t val = raw[p][i];
+
+					rela[pos] = val; 
+				}
+		}
+	}
 }
 
 uint8_t
@@ -235,24 +282,23 @@ range_load (uint8_t pos)
 		eeprom_bulk_read (I2C1, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
-		uint8_t p, i;
-		for (p=0; p<MUX_MAX; p++)
-			for (i=0; i<ADC_LENGTH; i++)
-			{
-				adc_range[p][i].mean = 0x7ff; // this is the ideal mean
+		uint8_t i;
+		for (i=0; i<SENSOR_N; i++)
+		{
+			adc_range[i].mean = 0x7ff; // this is the ideal mean
 
-				adc_range[p][i].A[POLE_SOUTH].fix = 1.0hk;
-				adc_range[p][i].A[POLE_NORTH].fix = 1.0hk;
+			adc_range[i].A[POLE_SOUTH].fix = 1.0hk;
+			adc_range[i].A[POLE_NORTH].fix = 1.0hk;
 
-				adc_range[p][i].B[POLE_SOUTH].fix = 0.0hk;
-				adc_range[p][i].B[POLE_NORTH].fix = 0.0hk;
+			adc_range[i].B[POLE_SOUTH].fix = 0.0hk;
+			adc_range[i].B[POLE_NORTH].fix = 0.0hk;
 
-				adc_range[p][i].C[POLE_SOUTH].fix = 0.0hk;
-				adc_range[p][i].C[POLE_NORTH].fix = 0.0hk;
+			adc_range[i].C[POLE_SOUTH].fix = 0.0hk;
+			adc_range[i].C[POLE_NORTH].fix = 0.0hk;
 
-				adc_range[p][i].thresh[POLE_SOUTH] = 0;
-				adc_range[p][i].thresh[POLE_NORTH] = 0;
-			}
+			adc_range[i].thresh[POLE_SOUTH] = 0;
+			adc_range[i].thresh[POLE_NORTH] = 0;
+		}
 
 		range_save (pos);
 	}
@@ -299,7 +345,6 @@ nOSC_Item _n [] = {
 };
 
 nOSC_Item calib_out [] = {
-	nosc_message (_p, "/p"),
 	nosc_message (_i, "/i"),
 	nosc_message (_m, "/mean"),
 	nosc_bundle (_s, nOSC_IMMEDIATE),
@@ -310,137 +355,129 @@ nOSC_Item calib_out [] = {
 uint8_t
 range_print ()
 {
-	uint8_t p, i;
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			nosc_message_set_int32 (_p, 0, p);
-			nosc_message_set_int32 (_i, 0, i);
-			nosc_message_set_int32 (_m, 0, adc_range[p][i].mean);
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		nosc_message_set_int32 (_i, 0, i);
+		nosc_message_set_int32 (_m, 0, adc_range[i].mean);
 
-			nosc_message_set_float (_sa, 0, adc_range[p][i].A[POLE_SOUTH].fix);
-			nosc_message_set_float (_sb, 0, adc_range[p][i].A[POLE_SOUTH].fix);
-			nosc_message_set_float (_sc, 0, adc_range[p][i].B[POLE_SOUTH].fix);
-			nosc_message_set_int32 (_st, 0, adc_range[p][i].thresh[POLE_SOUTH]);
+		nosc_message_set_float (_sa, 0, adc_range[i].A[POLE_SOUTH].fix);
+		nosc_message_set_float (_sb, 0, adc_range[i].A[POLE_SOUTH].fix);
+		nosc_message_set_float (_sc, 0, adc_range[i].B[POLE_SOUTH].fix);
+		nosc_message_set_int32 (_st, 0, adc_range[i].thresh[POLE_SOUTH]);
 
-			nosc_message_set_float (_na, 0, adc_range[p][i].A[POLE_NORTH].fix);
-			nosc_message_set_float (_nb, 0, adc_range[p][i].A[POLE_NORTH].fix);
-			nosc_message_set_float (_nc, 0, adc_range[p][i].B[POLE_NORTH].fix);
-			nosc_message_set_int32 (_nt, 0, adc_range[p][i].thresh[POLE_NORTH]);
+		nosc_message_set_float (_na, 0, adc_range[i].A[POLE_NORTH].fix);
+		nosc_message_set_float (_nb, 0, adc_range[i].A[POLE_NORTH].fix);
+		nosc_message_set_float (_nc, 0, adc_range[i].B[POLE_NORTH].fix);
+		nosc_message_set_int32 (_nt, 0, adc_range[i].thresh[POLE_NORTH]);
 
-			uint16_t size = nosc_bundle_serialize (calib_out, nOSC_IMMEDIATE, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
-			udp_send (config.config.socket.sock, buf_o_ptr, size);
-		}
+		uint16_t size = nosc_bundle_serialize (calib_out, nOSC_IMMEDIATE, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+		udp_send (config.config.socket.sock, buf_o_ptr, size);
+	}
 
 	return 1;
 }
 
 void
-range_calibrate (int16_t raw[16][10])
+range_calibrate (int16_t *raw)
 {
-	uint8_t p, i;
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			adc_range[p][i].mean += raw[p][i];
-			adc_range[p][i].mean /= 2;
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		adc_range[i].mean += raw[i];
+		adc_range[i].mean /= 2;
 
-			if (raw[p][i] > adc_range[p][i].thresh[POLE_SOUTH])
-				adc_range[p][i].thresh[POLE_SOUTH] = raw[p][i];
+		if (raw[i] > adc_range[i].thresh[POLE_SOUTH])
+			adc_range[i].thresh[POLE_SOUTH] = raw[i];
 
-			if (raw[p][i] < adc_range[p][i].thresh[POLE_NORTH])
-				adc_range[p][i].thresh[POLE_NORTH] = raw[p][i];
-		}
+		if (raw[i] < adc_range[i].thresh[POLE_NORTH])
+			adc_range[i].thresh[POLE_NORTH] = raw[i];
+	}
 }
 
 void
 range_update_quiescent ()
 {
-	uint8_t p, i;
+	uint8_t i;
 
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			// reset thresh to quiescent value
-			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
-			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
-		}
+	for (i=0; i<SENSOR_N; i++)
+	{
+		// reset thresh to quiescent value
+		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
+		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+	}
 }
 
 void
 range_update_b0 ()
 {
-	uint8_t p, i;
+	uint8_t i;
 
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			adc_range[p][i].A[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
-			adc_range[p][i].A[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+	for (i=0; i<SENSOR_N; i++)
+	{
+		adc_range[i].A[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
+		adc_range[i].A[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
 
-			// reset thresh to quiescent value
-			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
-			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
-		}
+		// reset thresh to quiescent value
+		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
+		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+	}
 }
 
 void
 range_update_b1 ()
 {
-	uint8_t p, i;
+	uint8_t i;
 
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			adc_range[p][i].B[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
-			adc_range[p][i].B[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+	for (i=0; i<SENSOR_N; i++)
+	{
+		adc_range[i].B[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
+		adc_range[i].B[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
 
-			// reset thresh to quiescent value
-			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
-			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
-		}
+		// reset thresh to quiescent value
+		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
+		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+	}
 }
 
 void
 range_update_b2 ()
 {
-	uint8_t p, i;
+	uint8_t i;
 
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			adc_range[p][i].C[POLE_SOUTH].uint = adc_range[p][i].thresh[POLE_SOUTH] - adc_range[p][i].mean;
-			adc_range[p][i].C[POLE_NORTH].uint = adc_range[p][i].mean - adc_range[p][i].thresh[POLE_NORTH];
+	for (i=0; i<SENSOR_N; i++)
+	{
+		adc_range[i].C[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
+		adc_range[i].C[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
 
-			// reset thresh to quiescent value
-			adc_range[p][i].thresh[POLE_SOUTH] = adc_range[p][i].mean;
-			adc_range[p][i].thresh[POLE_NORTH] = adc_range[p][i].mean;
-		}
+		// reset thresh to quiescent value
+		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
+		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+	}
 }
 
 void
 range_update ()
 {
-	uint8_t p, i;
+	uint8_t i;
 
 	// calculate maximal SOUTH and NORTH pole values
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			ADC_Union *b0 = adc_range[p][i].A;
-			ADC_Union *b1 = adc_range[p][i].B;
-			ADC_Union *b2 = adc_range[p][i].C;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		ADC_Union *b0 = adc_range[i].A;
+		ADC_Union *b1 = adc_range[i].B;
+		ADC_Union *b2 = adc_range[i].C;
 
-			ADC_Union *A = adc_range[p][i].A;
-			ADC_Union *B = adc_range[p][i].B;
-			ADC_Union *C = adc_range[p][i].C;
+		ADC_Union *A = adc_range[i].A;
+		ADC_Union *B = adc_range[i].B;
+		ADC_Union *C = adc_range[i].C;
 
-			curvefit (b0[POLE_SOUTH].uint, b1[POLE_SOUTH].uint, b2[POLE_SOUTH].uint, &A[POLE_SOUTH].fix, &B[POLE_SOUTH].fix, &C[POLE_SOUTH].fix);
-			curvefit (b0[POLE_NORTH].uint, b1[POLE_NORTH].uint, b2[POLE_NORTH].uint, &A[POLE_NORTH].fix, &B[POLE_NORTH].fix, &C[POLE_NORTH].fix);
+		curvefit (b0[POLE_SOUTH].uint, b1[POLE_SOUTH].uint, b2[POLE_SOUTH].uint, &A[POLE_SOUTH].fix, &B[POLE_SOUTH].fix, &C[POLE_SOUTH].fix);
+		curvefit (b0[POLE_NORTH].uint, b1[POLE_NORTH].uint, b2[POLE_NORTH].uint, &A[POLE_NORTH].fix, &B[POLE_NORTH].fix, &C[POLE_NORTH].fix);
 
-			adc_range[p][i].thresh[POLE_SOUTH] = By (A[POLE_SOUTH].fix, B[POLE_SOUTH].fix, C[POLE_SOUTH].fix);
-			adc_range[p][i].thresh[POLE_NORTH] = By (A[POLE_NORTH].fix, B[POLE_NORTH].fix, C[POLE_NORTH].fix);
-		}
+		adc_range[i].thresh[POLE_SOUTH] = By (A[POLE_SOUTH].fix, B[POLE_SOUTH].fix, C[POLE_SOUTH].fix);
+		adc_range[i].thresh[POLE_NORTH] = By (A[POLE_NORTH].fix, B[POLE_NORTH].fix, C[POLE_NORTH].fix);
+	}
 }
 
 uint8_t
@@ -1262,15 +1299,14 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	int32_t id = args[0].val.i;
 
 	// initialize sensor range
-	uint8_t p, i;
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-		{
-			adc_range[p][i].mean = ADC_HALF_BITDEPTH;
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		adc_range[i].mean = ADC_HALF_BITDEPTH;
 
-			adc_range[p][i].thresh[POLE_SOUTH] = ADC_HALF_BITDEPTH;
-			adc_range[p][i].thresh[POLE_NORTH] = ADC_HALF_BITDEPTH;
-		}
+		adc_range[i].thresh[POLE_SOUTH] = ADC_HALF_BITDEPTH;
+		adc_range[i].thresh[POLE_NORTH] = ADC_HALF_BITDEPTH;
+	}
 
 	// enable calibration
 	calibrating = 1;

@@ -134,11 +134,11 @@ extern nOSC_Method config_serv [];
 uint8_t config_load ();
 uint8_t config_save ();
 
-void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap);
+void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap, uint8_t relative);
 
 uint8_t range_load (uint8_t pos);
 uint8_t range_save (uint8_t pos);
-void range_calibrate (int16_t raw[16][10]);
+void range_calibrate (int16_t *rela);
 void range_update ();
 
 uint8_t groups_load ();

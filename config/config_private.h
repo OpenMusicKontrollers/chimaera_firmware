@@ -20,6 +20,6 @@ struct _ADC_Range {
 	uint16_t thresh [2]; // apart from thresh, here we store the maximal sensor values while calibrating
 };
 
-extern ADC_Range adc_range[MUX_MAX][ADC_LENGTH];
+extern ADC_Range adc_range[SENSOR_N]; //TODO instead of a array of struct, better convert to a single struct of arrays
 
 static uint8_t magic_match ();

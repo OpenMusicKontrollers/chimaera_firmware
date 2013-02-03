@@ -93,9 +93,6 @@ aoi_cmp (const void *a, const void *b)
 uint8_t
 cmc_process (int16_t *rela)
 {
-	return 0;
-
-	/*
 	n_aoi = 0;
 	uint8_t pos;
 	for (pos=0; pos<SENSOR_N; pos++)
@@ -103,18 +100,18 @@ cmc_process (int16_t *rela)
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
 		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
-		if ( (aval > THRESH_MIN) && (aval*4 > adc_range[p][i].thresh[pole]) ) // thresh0 == thresh1 / 4
+		uint8_t newpos = pos+1;
+		if ( (aval > THRESH_MIN) && (aval*4 > adc_range[newpos].thresh[pole]) ) // thresh0 == thresh1 / 4
 		{
-			aoi[n_aoi++] = pos+1;
+			aoi[n_aoi++] = newpos;
 
-			cmc.n[pos+1] = pole;
-			cmc.a[pos+1] = aval > adc_range[p][i].thresh[pole]; // TODO move this down
-			cmc.v[pos+1] =  adc_range[p][i].A[pole].fix * lookup_sqrt[aval]  //FIXME move this down
-										+ adc_range[p][i].B[pole].fix * lookup[aval]
-										+ adc_range[p][i].C[pole].fix;
+			cmc.n[newpos] = pole;
+			cmc.a[newpos] = aval > adc_range[newpos].thresh[pole];
+			cmc.v[newpos] = adc_range[newpos].A[pole].fix * lookup_sqrt[aval]
+										+ adc_range[newpos].B[pole].fix * lookup[aval]
+										+ adc_range[newpos].C[pole].fix;
 		}
 	} // 96us + n*130us
-	*/
 
 	uint8_t changed = 1; //TODO actually check for changes
 

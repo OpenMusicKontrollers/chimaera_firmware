@@ -240,13 +240,13 @@ loop ()
 		return;
 	}
 
-	if (calibrating)
-		range_calibrate (adc_raw[adc_raw_ptr]);
-
 	// fill adc_rela
-	stop_watch_start (&sw_adc_fill);
-	adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap); // 54us
-	stop_watch_stop (&sw_adc_fill);
+	//stop_watch_start (&sw_adc_fill);
+	adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
+	//stop_watch_stop (&sw_adc_fill);
+
+	if (calibrating)
+		range_calibrate (adc_rela);
 
 	// dump raw sensor data
 	if (config.dump.enabled)
@@ -272,7 +272,7 @@ loop ()
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
 			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
 
-		stop_watch_start (&sw_tuio_process);
+		//stop_watch_start (&sw_tuio_process);
 		//uint8_t job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
 		uint8_t job = cmc_process (adc_rela); // touch recognition of current cycle
 
@@ -287,14 +287,14 @@ loop ()
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.tuio.socket.sock);
 
-		//stop_watch_stop (&sw_tuio_send);
-		//stop_watch_stop (&sw_tuio_serialize);
-		stop_watch_stop (&sw_tuio_process);
-
 		if (job) // switch output buffer
 			buf_o_ptr ^= 1;
 
 		cmc_job = job;
+
+		//stop_watch_stop (&sw_tuio_send);
+		//stop_watch_stop (&sw_tuio_serialize);
+		//stop_watch_stop (&sw_tuio_process);
 	}
 
 	// run osc config server
