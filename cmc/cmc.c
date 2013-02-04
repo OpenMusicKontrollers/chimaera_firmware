@@ -111,7 +111,7 @@ cmc_process (int16_t *rela)
 										+ adc_range[newpos].B[pole].fix * lookup[aval]
 										+ adc_range[newpos].C[pole].fix;
 		}
-	} // 96us + n*130us
+	}
 
 	uint8_t changed = 1; //TODO actually check for changes
 
