@@ -21,45 +21,23 @@
  *     distribution.
  */
 
-/*
- * This library is for the Microchip 24LC64
- * 64K I2C Serial EEPROM
- *
- */
-
-#ifndef _EEPROM_H_
-#define _EEPROM_H_
+#ifndef SCSYNTH_H_
+#define SCSYNTH_H_
 
 #include <stdint.h>
 
-#include <libmaple/i2c.h>
+#include <netdef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _EEPROM_24xx EEPROM_24xx;
+extern nOSC_Item scsynth_bndl [];
 
-struct _EEPROM_24xx {
-	i2c_dev *dev;
-	uint8_t slave_addr;
-	uint8_t page_size;
-	uint32_t storage_size;
-};
+void scsynth_init ();
 
-extern EEPROM_24xx *eeprom_24LC64;
-extern EEPROM_24xx *eeprom_24AA025E48;
-
-// TODO return success or failure flags
-void eeprom_init (EEPROM_24xx *eeprom, i2c_dev *dev, uint8_t slave_addr);
-
-void eeprom_byte_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte);
-void eeprom_byte_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte);
-
-void eeprom_page_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_t len);
-
-void eeprom_bulk_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
-void eeprom_bulk_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
+void scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end);
+void scsynth_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 
 #ifdef __cplusplus
 }

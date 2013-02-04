@@ -28,6 +28,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/chimaera
 BUILDDIRS += $(BUILD_PATH)/$(d)/zeroconf
 BUILDDIRS += $(BUILD_PATH)/$(d)/dhcpc
 BUILDDIRS += $(BUILD_PATH)/$(d)/rtpmidi
+BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
 BUILDDIRS += $(BUILD_PATH)/$(d)/armfix
 
 ### Local flags: these control how the compiler gets called.
@@ -83,6 +84,7 @@ cSRCS_$(d) += chimaera/chimaera.c
 cSRCS_$(d) += zeroconf/zeroconf.c
 cSRCS_$(d) += dhcpc/dhcpc.c
 cSRCS_$(d) += rtpmidi/rtpmidi.c
+cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += armfix/armfix.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own

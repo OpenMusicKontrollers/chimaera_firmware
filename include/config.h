@@ -82,6 +82,10 @@ struct _Config {
 		uint8_t enabled;
 	} COMPACT dump;
 
+	struct _scsynth {
+		uint8_t enabled;
+	} COMPACT scsynth;
+
 	struct _output {
 		uint8_t enabled;
 		Socket_Config socket;

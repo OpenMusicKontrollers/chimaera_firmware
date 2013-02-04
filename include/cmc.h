@@ -34,8 +34,21 @@
 extern "C" {
 #endif
 
+typedef enum {
+	CMC_ENGINE_UPDATE_ON,
+	CMC_ENGINE_UPDATE_OFF,
+	CMC_ENGINE_UPDATE_SET
+} CMC_Engine_Update_Type; //TODO actually use it
+
 typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t end);
 typedef void (*CMC_Engine_Token_Cb) (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
+typedef void (*CMC_Engine_Update_Cb) (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y); //TODO actuallly use it
+
+struct _CMC_Engine {
+	CMC_Engine_Frame_Cb frame_cb;
+	CMC_Engine_Update_Cb update_cb;
+	uint8_t enabled;
+}; //TODO actually use it
 
 void cmc_init ();
 uint8_t cmc_process (int16_t *rela);

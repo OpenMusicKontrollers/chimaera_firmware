@@ -108,6 +108,10 @@ Config config = {
 	.dump = {
 		.enabled = 0
 	},
+
+	.scsynth = {
+		.enabled = 0
+	},
 	
 	.output = {
 		.enabled = 1,
@@ -189,7 +193,7 @@ static uint8_t
 magic_match ()
 {
 	uint8_t magic;
-	eeprom_byte_read (I2C1, EEPROM_CONFIG_OFFSET, &magic);
+	eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
 
 	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
 }
@@ -198,7 +202,7 @@ uint8_t
 config_load ()
 {
 	if (magic_match ())
-		eeprom_bulk_read (I2C1, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
 
@@ -208,7 +212,7 @@ config_load ()
 uint8_t
 config_save ()
 {
-	eeprom_bulk_write (I2C1, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	return 1;
 }
 
@@ -278,7 +282,7 @@ uint8_t
 range_load (uint8_t pos)
 {
 	if (magic_match ()) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (I2C1, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
 		uint8_t i;
@@ -308,7 +312,7 @@ range_load (uint8_t pos)
 uint8_t
 range_save (uint8_t pos)
 {
-	eeprom_bulk_write (I2C1, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
 
 	return 1;
 }
@@ -487,11 +491,11 @@ groups_load ()
 
 	if (magic_match ())
 	{
-		eeprom_byte_read (I2C1, EEPROM_GROUP_OFFSET_SIZE, &size);
+		eeprom_byte_read (eeprom_24LC64, EEPROM_GROUP_OFFSET_SIZE, &size);
 		if (size)
 		{
 			buf = cmc_group_buf_set (size);
-			eeprom_bulk_read (I2C1, EEPROM_GROUP_OFFSET_DATA, buf, size);
+			eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET_DATA, buf, size);
 		}
 	}
 	else
@@ -507,8 +511,8 @@ groups_save ()
 	uint8_t *buf;
 
 	buf = cmc_group_buf_get (&size);
-	eeprom_byte_write (I2C1, EEPROM_GROUP_OFFSET_SIZE, size);
-	eeprom_bulk_write (I2C1, EEPROM_GROUP_OFFSET_DATA, buf, size);
+	eeprom_byte_write (eeprom_24LC64, EEPROM_GROUP_OFFSET_SIZE, size);
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET_DATA, buf, size);
 
 	return 1;
 }
@@ -1109,6 +1113,30 @@ _dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
+_scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	if (argc == 1) // query
+	{
+		if (config.scsynth.enabled)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+	}
+	else
+	{
+		config.scsynth.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1664,6 +1692,10 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/dump/enabled", "i", _dump_enabled},
 	{"/chimaera/dump/enabled", "iT", _dump_enabled},
 	{"/chimaera/dump/enabled", "iF", _dump_enabled},
+
+	{"/chimaera/scsynth/enabled", "i", _scsynth_enabled},
+	{"/chimaera/scsynth/enabled", "iT", _scsynth_enabled},
+	{"/chimaera/scsynth/enabled", "iF", _scsynth_enabled},
 
 	{"/chimaera/config/enabled", "i", _config_enabled},
 	{"/chimaera/config/enabled", "iT", _config_enabled},

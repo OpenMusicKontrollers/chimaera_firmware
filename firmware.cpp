@@ -48,6 +48,7 @@
 #include <config.h>
 #include <tube.h>
 #include <tuio2.h>
+#include <scsynth.h>
 #include <dump.h>
 #include <zeroconf.h>
 #include <dhcpc.h>
@@ -266,7 +267,7 @@ loop ()
 			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE);
 		}
 	
-		if (config.tuio.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+		if (config.tuio.enabled || config.scsynth.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 		{
 			uint8_t blobs = cmc_process (adc_rela); // touch recognition of current cycle
 
@@ -278,9 +279,14 @@ loop ()
 					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE);
 				}
 
+				if (config.scsynth.enabled)
+				{
+					cmc_engine_update (now, scsynth_engine_frame_cb, scsynth_engine_token_cb);
+					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE);
+				}
+
 				// if (config.rtpmidi.enabled)
 				// if (config.kraken.enabled)
-				// if (config.scsynth.enabled)
 			}
 		}
 
@@ -302,9 +308,6 @@ loop ()
 			buf_o_ptr ^= 1;
 
 		cmc_job = job;
-
-		if (job)
-			debug_int32 (cmc_len);
 	}
 
 	// run osc config server
@@ -474,7 +477,8 @@ setup ()
 		config.comm.mac[0] = config.comm.mac[0] & 0xfc; // globally administered unicast: 0bxxxxxx00
 
 	// init eeprom for I2C1
-	eeprom_init (I2C1, _24LC64_SLAVE_ADDR | 0b000);
+	eeprom_init (eeprom_24LC64, I2C1, 0b000);
+	//eeprom_init (eeprom__24AA025E48, I2C1, 0b001); // TODO MAC EEPROM
 
 	// load configuration from eeprom
 	/* FIXME
@@ -638,6 +642,7 @@ setup ()
 	// set up continuous music controller struct
 	cmc_init ();
 	tuio2_init ();
+	scsynth_init ();
 
 	// load saved groups
 	groups_load ();
