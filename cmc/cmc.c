@@ -359,52 +359,38 @@ cmc_process (int16_t *rela)
 	return res;
 }
 
-uint16_t
-cmc_write_tuio2 (uint8_t *buf, uint64_t now)
+//TODO get an array of cb functions when more than one engine is used
+void
+cmc_engine_update (uint64_t now, CMC_Engine_Frame_Cb frame_cb, CMC_Engine_Token_Cb token_cb)
 {
 	uint8_t j;
 	uint16_t size;
 
-	tuio2_frm_set (cmc.fid, now);
-	for (j=0; j<cmc.I; j++)
-	{
-		CMC_Group *group = cmc.blobs[cmc.old][j].group;
-		fix_0_32_t X = cmc.blobs[cmc.old][j].x;
-		uint16_t tid = 0;
+	if (frame_cb)
+		frame_cb (cmc.fid, now, cmc.I);
 
-		// resize x to group boundary
-		if (group->tid != 0)
+	if (token_cb)
+		for (j=0; j<cmc.I; j++)
 		{
-			X = (X - group->x0)*group->m;
-			tid = group->tid;
+			CMC_Group *group = cmc.blobs[cmc.old][j].group;
+			fix_0_32_t X = cmc.blobs[cmc.old][j].x;
+			uint16_t tid = 0;
+
+			// resize x to group boundary
+			// TODO check for x0 and m, whether a calculation is needed in the first place, e.g. 0, 1
+			if (group->tid != 0)
+			{
+				X = (X - group->x0)*group->m;
+				tid = group->tid;
+			}
+
+			token_cb (j,
+				cmc.blobs[cmc.old][j].sid,
+				cmc.blobs[cmc.old][j].uid,
+				tid,
+				X,
+				cmc.blobs[cmc.old][j].p);
 		}
-
-		tuio2_tok_set (j,
-			cmc.blobs[cmc.old][j].sid,
-			((uint32_t)cmc.blobs[cmc.old][j].uid<<16) | tid,
-			X,
-			cmc.blobs[cmc.old][j].p);
-	}
-
-	uint64_t offset = nOSC_IMMEDIATE;
-	if (config.tuio.offset != nOSC_IMMEDIATE)
-	{
-		timestamp64_t _now, _config, _offset;
-
-		_now.stamp = now;
-		_config.stamp = config.tuio.offset;
-		_offset.fix = _now.fix + _config.fix;
-		offset = _offset.stamp;
-
-		/*
-		fix_32_32_t _now = utime2fix (now);
-		fix_32_32_t _config = utime2fix (config.tuio.offset); //TODO convert this only once
-		fix_32_32_t _offset = _now + _config;
-		offset = ufix2time (_offset);
-		*/
-	}
-	size = tuio2_serialize (buf, cmc.I, offset);
-	return size;
 }
 
 void 

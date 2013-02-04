@@ -28,16 +28,16 @@
 #include "../sntp/sntp_private.h"
 #include "../config/config_private.h"
 
-static uint32_t frame = 0;
+uint32_t frame = 0;
  
-static nOSC_Arg dump_msg [] = {
+nOSC_Arg dump_msg [] = {
 	nosc_int32 (0), // frame number
 	nosc_timestamp (nOSC_IMMEDIATE), // timestamp of sensor array sweep
 	nosc_blob (0, NULL), // 16-bit sensor data (network endianess)
 	nosc_end
 };
 
-static nOSC_Item dump_bndl [] = {
+nOSC_Item dump_bndl [] = {
 	nosc_message(dump_msg, "/dump"),
 	nosc_term
 };
@@ -55,4 +55,10 @@ dump_update (uint64_t now, int32_t size, int16_t *swap)
 	dump_msg[DUMP_TIME].val.t = now;
 
 	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t*)swap); //FIXME do this only once!!!
+}
+
+inline nOSC_Bundle
+dump_bundle_get ()
+{
+	return dump_bndl;
 }

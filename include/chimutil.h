@@ -64,10 +64,9 @@ void timeout_timer_reconfigure ();
 void timeout_timer_start ();
 void timeout_timer_stop ();
 
-void tuio_enable (uint8_t b);
+void output_enable (uint8_t b);
 void config_enable (uint8_t b);
 void sntp_enable (uint8_t b);
-void dump_enable (uint8_t b);
 void debug_enable (uint8_t b);
 void zeroconf_enable (uint8_t b);
 void dhcpc_enable (uint8_t b);

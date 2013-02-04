@@ -75,10 +75,18 @@ struct _Config {
 
 	struct _tuio {
 		uint8_t enabled;
-		Socket_Config socket;
 		uint8_t long_header;
-		uint64_t offset;
 	} COMPACT tuio;
+
+	struct _dump {
+		uint8_t enabled;
+	} COMPACT dump;
+
+	struct _output {
+		uint8_t enabled;
+		Socket_Config socket;
+		uint64_t offset;
+	} COMPACT output;
 
 	struct _config {
 		uint16_t rate;
@@ -91,11 +99,6 @@ struct _Config {
 		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT sntp;
-
-	struct _dump {
-		uint8_t enabled;
-		Socket_Config socket;
-	} COMPACT dump;
 
 	struct _debug {
 		uint8_t enabled;

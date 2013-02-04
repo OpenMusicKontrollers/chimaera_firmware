@@ -79,7 +79,7 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
 	fix_s31_32_t clock_offset;
-	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.tuio.offset with this value by default?
+	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.output.offset with this value by default?
 	clock_offset = 0.5LLK * (fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix);
 
 	if (t0 == 0.0ULLK)
@@ -89,11 +89,26 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 }
 
 void
-sntp_timestamp_refresh (uint64_t *now)
+sntp_timestamp_refresh (uint64_t *now, uint64_t *offset)
 {
 	timestamp64_t uptime, _now;
 
 	uptime.fix = systick_uptime () * 0.0001ULLK; // that many 100us
 	_now.fix = t0 + uptime.fix;
 	*now = _now.stamp;
+
+	if (offset)
+	{
+		if (config.output.offset != nOSC_IMMEDIATE)
+		{
+			timestamp64_t _now, _config, _offset;
+
+			_now.stamp = *now;
+			_config.stamp = config.output.offset;
+			_offset.fix = _now.fix + _config.fix;
+			*offset = _offset.stamp;
+		}
+		else
+			*offset = nOSC_IMMEDIATE;
+	}
 }

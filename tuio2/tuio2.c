@@ -32,6 +32,8 @@ char *frm_str = "/tuio2/frm";
 char *tok_str = "/tuio2/_STxz";
 char *alv_str = "/tuio2/alv";
 
+nOSC_Bundle tuio2_bndl = tuio.bndl;
+
 void
 tuio2_init ()
 {
@@ -73,10 +75,56 @@ tuio2_init ()
 	nosc_message_set_end (tuio.alv, BLOB_MAX);
 }
 
-uint16_t
-tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
+void
+tuio2_long_header_enable (uint8_t on)
 {
-	// unlink at end pos
+	config.tuio.long_header = on;
+
+	if (on)
+	{
+		// use EUI_64
+		//int32_t addr = (EUI_64[0] << 24) | (EUI_64[1] << 16) | (EUI_64[2] << 8) | EUI_64[3];
+		//int32_t inst = (EUI_64[4] << 24) | (EUI_64[5] << 16) | (EUI_64[6] << 8) | EUI_64[7];
+
+		// or use EUI_48 + port
+		uint16_t port = config.output.socket.port[SRC_PORT];
+		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
+		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
+
+		nosc_message_set_string (tuio.frm, 2, config.name);
+		nosc_message_set_int32 (tuio.frm, 3, addr);
+		nosc_message_set_int32 (tuio.frm, 4, inst);
+		nosc_message_set_int32 (tuio.frm, 5, (SENSOR_N << 16) | 1);
+		nosc_message_set_end (tuio.frm, 6);
+	}
+	else // off
+		nosc_message_set_end (tuio.frm, 2);
+}
+
+uint8_t old_end = BLOB_MAX;
+
+inline void
+tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end)
+{
+	tuio.frm[0].val.i = fid;
+	tuio.frm[1].val.t = timestamp;
+
+	// first undo previous unlinking at position old_end
+	if (old_end < BLOB_MAX)
+	{
+		// relink alv message
+		if (old_end > 0)
+			nosc_message_set_int32 (tuio.alv, old_end, 0);
+		else
+			nosc_message_set_int32 (tuio.alv, 0, 0);
+
+		nosc_item_message_set (tuio.bndl, old_end + 1, tuio.tok[old_end], tok_str);
+
+		if (old_end < BLOB_MAX-1)
+			nosc_item_message_set (tuio.bndl, old_end + 2, tuio.tok[old_end+1], tok_str);
+	}
+
+	// then unlink at position end
 	if (end < BLOB_MAX)
 	{
 		// unlink alv message
@@ -91,69 +139,18 @@ tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset)
 		nosc_item_term_set (tuio.bndl, end + 2);
 	}
 
-	// serialize
-	uint16_t size = nosc_bundle_serialize (tuio.bndl, offset, buf);
-
-	// relink at end pos
-	if (end < BLOB_MAX)
-	{
-		// relink alv message
-		if (end > 0)
-			nosc_message_set_int32 (tuio.alv, end, 0);
-		else
-			nosc_message_set_int32 (tuio.alv, 0, 0);
-
-		nosc_item_message_set (tuio.bndl, end + 1, tuio.tok[end], tok_str);
-
-		if (end < BLOB_MAX-1)
-			nosc_item_message_set (tuio.bndl, end + 2, tuio.tok[end+1], tok_str);
-	}
-
-	return size;
+	old_end = end;
 }
 
-void 
-tuio2_frm_set (uint32_t id, uint64_t timestamp)
+inline void
+tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
 {
-	tuio.frm[0].val.i = id;
-	tuio.frm[1].val.t = timestamp;
-}
+	nOSC_Message msg = tuio.tok[tok];
 
-void 
-tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z)
-{
-	nOSC_Message msg = tuio.tok[pos];
-
-	msg[0].val.i = S;
-	msg[1].val.i = T;
+	msg[0].val.i = sid;
+	msg[1].val.i = ((uint32_t)uid << 16) | tid;
 	msg[2].val.f = x;
-	msg[3].val.f = z;
+	msg[3].val.f = y;
 
-	nosc_message_set_int32 (tuio.alv, pos, S);
-}
-
-void
-tuio2_long_header_enable (uint8_t on)
-{
-	config.tuio.long_header = on;
-
-	if (on)
-	{
-		// use EUI_64
-		//int32_t addr = (EUI_64[0] << 24) | (EUI_64[1] << 16) | (EUI_64[2] << 8) | EUI_64[3];
-		//int32_t inst = (EUI_64[4] << 24) | (EUI_64[5] << 16) | (EUI_64[6] << 8) | EUI_64[7];
-
-		// or use EUI_48 + port
-		uint16_t port = config.tuio.socket.port[SRC_PORT];
-		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
-		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
-
-		nosc_message_set_string (tuio.frm, 2, config.name);
-		nosc_message_set_int32 (tuio.frm, 3, addr);
-		nosc_message_set_int32 (tuio.frm, 4, inst);
-		nosc_message_set_int32 (tuio.frm, 5, (SENSOR_N << 16) | 1);
-		nosc_message_set_end (tuio.frm, 6);
-	}
-	else // off
-		nosc_message_set_end (tuio.frm, 2);
+	nosc_message_set_int32 (tuio.alv, tok, sid);
 }

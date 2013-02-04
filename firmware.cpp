@@ -85,6 +85,7 @@ volatile uint8_t zeroconf_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
 uint64_t now;
+uint64_t offset;
 
 static void
 adc_timer_irq ()
@@ -195,7 +196,7 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			return; // IP not part of same subnet as chimaera -> ignore message
 		}
 
-	sntp_timestamp_refresh (&now);
+	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
 
 	sntp_should_listen = 0;
@@ -206,6 +207,8 @@ zeroconf_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	zeroconf_dispatch (buf, len);
 }
+
+nOSC_Item nest_bndl [ENGINE_N+1]; // +1 because of TERMINATOR
 
 uint8_t send_status = 0;
 uint8_t cmc_job = 0;
@@ -248,53 +251,60 @@ loop ()
 	if (calibrating)
 		range_calibrate (adc_rela);
 
-	// dump raw sensor data
-	if (config.dump.enabled)
+	if (!calibrating && config.output.enabled)
 	{
-		//stop_watch_start (&sw_dump_update);
-		sntp_timestamp_refresh (&now);
+		uint8_t job = 0;
 
-		dump_update (now, SENSOR_N*sizeof(int16_t), adc_swap); // 6us
-		//stop_watch_stop (&sw_dump_update);
-
-		//stop_watch_start (&sw_dump_serialize);
-		len = dump_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], nOSC_IMMEDIATE); // 17us FIXME fill in offset here
-		//stop_watch_stop (&sw_dump_serialize);
-		//FIXME  DMAise it aka implement wiz_job infrastructure
-		//stop_watch_start (&sw_dump_send);
-		udp_send (config.dump.socket.sock, buf_o_ptr, len);
-		//stop_watch_stop (&sw_dump_send); // XXX 232us
-	}
-
-	// do touch recognition and interpolation
-	if (config.tuio.enabled && !calibrating) // do nothing while calibrating
-	{
 		if (cmc_job) // start nonblocking sending of last cycles tuio output
-			send_status = udp_send_nonblocking (config.tuio.socket.sock, !buf_o_ptr, cmc_len);
+			send_status = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
 
-		//stop_watch_start (&sw_tuio_process);
-		//uint8_t job = cmc_process (adc_raw[adc_raw_ptr], order); // touch recognition of current cycle
-		uint8_t job = cmc_process (adc_rela); // touch recognition of current cycle
+		sntp_timestamp_refresh (&now, &offset);
 
-		//stop_watch_start (&sw_tuio_serialize);
-		if (job)
+		if (config.dump.enabled)
 		{
-			sntp_timestamp_refresh (&now);
-			cmc_len = cmc_write_tuio2 (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now); // serialization to tuio2 of current cycle blobs
+			dump_update (now, SENSOR_N*sizeof(int16_t), adc_swap); // 6us
+			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE);
+		}
+	
+		if (config.tuio.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+		{
+			uint8_t blobs = cmc_process (adc_rela); // touch recognition of current cycle
+
+			if (blobs) // was there any update?
+			{
+				if (config.tuio.enabled)
+				{
+					cmc_engine_update (now, tuio2_engine_frame_cb, tuio2_engine_token_cb);
+					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE);
+				}
+
+				// if (config.rtpmidi.enabled)
+				// if (config.kraken.enabled)
+				// if (config.scsynth.enabled)
+			}
 		}
 
-		//stop_watch_start (&sw_tuio_send);
+		if (job)
+		{
+			if (job > 1)
+			{
+				nosc_item_term_set (nest_bndl, job);
+				cmc_len = nosc_bundle_serialize (nest_bndl, offset, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+			}
+			else // job == 1, there's no need to send a nested bundle in this case
+				cmc_len = nosc_bundle_serialize (nest_bndl[0].content.bundle.bndl, offset, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+		}
+
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
-			udp_send_block (config.tuio.socket.sock);
+			udp_send_block (config.output.socket.sock);
 
 		if (job) // switch output buffer
 			buf_o_ptr ^= 1;
 
 		cmc_job = job;
 
-		//stop_watch_stop (&sw_tuio_send);
-		//stop_watch_stop (&sw_tuio_serialize);
-		//stop_watch_stop (&sw_tuio_process);
+		if (job)
+			debug_int32 (cmc_len);
 	}
 
 	// run osc config server
@@ -319,7 +329,7 @@ loop ()
 			sntp_should_request = 0;
 			sntp_should_listen = 1;
 
-			sntp_timestamp_refresh (&now);
+			sntp_timestamp_refresh (&now, NULL);
 			len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
 			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 		}
@@ -491,8 +501,8 @@ setup ()
 	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 
 	// initialize wiz820io
-	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
-	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {8, 2, 1, 1, 1, 1, 1, 1};
+	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
+	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	wiz_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
 		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
 
@@ -523,10 +533,9 @@ setup ()
 	adc_timer_reconfigure ();
 
 	// initialize sockets
-	tuio_enable (config.tuio.enabled);
+	output_enable (config.output.enabled);
 	config_enable (config.config.enabled);
 	sntp_enable (config.sntp.enabled);
-	dump_enable (config.dump.enabled);
 	debug_enable (config.debug.enabled);
 	dhcpc_enable (config.dhcpc.enabled);
 	// FIXME when dhcpc fails, then fall back to zeroconf (if enabled)

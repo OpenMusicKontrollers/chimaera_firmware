@@ -99,15 +99,23 @@ Config config = {
 		.gateway = {192, 168, 1, 1},
 		.subnet = {255, 255, 255, 0}
 	},
-	
+
 	.tuio = {
-		.enabled = 0, // enabled by default
+		.enabled = 0,
+		.long_header = 0	
+	},
+
+	.dump = {
+		.enabled = 0
+	},
+	
+	.output = {
+		.enabled = 1,
 		.socket = {
-			.sock = 0,
+			.sock = 1,
 			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
-		.long_header = 0,
 		.offset = nOSC_IMMEDIATE
 	},
 
@@ -115,7 +123,7 @@ Config config = {
 		.rate = 10, // rate in Hz
 		.enabled = 1, // enabled by default
 		.socket = {
-			.sock = 1,
+			.sock = 2,
 			.port = {4444, 4444},
 			.ip = LAN_BROADCAST
 		}
@@ -125,18 +133,9 @@ Config config = {
 		.tau = 4, // delay between SNTP requests in seconds
 		.enabled = 1, // enabled by default
 		.socket = {
-			.sock = 2,
+			.sock = 3,
 			.port = {123, 123},
 			.ip = LAN_HOST
-		}
-	},
-
-	.dump = {
-		.enabled = 0, // disabled by default
-		.socket = {
-			.sock = 3,
-			.port = {5555, 5555},
-			.ip = LAN_BROADCAST
 		}
 	},
 
@@ -883,12 +882,12 @@ _enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t
 } 
 
 static uint8_t
-_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_output_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	if (argc == 1) // query
-		return _enabled_get (config.tuio.enabled, path, fmt, argc, args);
+		return _enabled_get (config.output.enabled, path, fmt, argc, args);
 	else
-		return _enabled_set (tuio_enable, path, fmt, argc, args);
+		return _enabled_set (output_enable, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -907,15 +906,6 @@ _sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 		return _enabled_get (config.sntp.enabled, path, fmt, argc, args);
 	else
 		return _enabled_set (sntp_enable, path, fmt, argc, args);
-}
-
-static uint8_t
-_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	if (argc == 1) // query
-		return _enabled_get (config.dump.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (dump_enable, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -977,9 +967,9 @@ _address (Socket_Config *socket, void (*cb) (uint8_t b), const char *protocol, c
 }
 
 static uint8_t
-_tuio_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_output_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _address (&config.tuio.socket, tuio_enable, "osc", "udp", config.tuio.enabled, path, fmt, argc, args);
+	return _address (&config.output.socket, output_enable, "osc", "udp", config.output.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -992,12 +982,6 @@ static uint8_t
 _sntp_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _address (&config.sntp.socket, sntp_enable, "ntp", "udp", config.sntp.enabled, path, fmt, argc, args);
-}
-
-static uint8_t
-_dump_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	return _address (&config.dump.socket, dump_enable, "osc", "udp", config.dump.enabled, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -1023,16 +1007,14 @@ _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint8_t ip[4];
 	if (str2ip (args[1].val.s, ip)) // TODO check if valid
 	{
-		memcpy (config.tuio.socket.ip, ip, 4);
+		memcpy (config.output.socket.ip, ip, 4);
 		memcpy (config.config.socket.ip, ip, 4);
 		memcpy (config.sntp.socket.ip, ip, 4);
-		memcpy (config.dump.socket.ip, ip, 4);
 		memcpy (config.debug.socket.ip, ip, 4);
 
-		tuio_enable (config.tuio.enabled);
+		output_enable (config.output.enabled);
 		config_enable (config.config.enabled);
 		sntp_enable (config.sntp.enabled);
-		dump_enable (config.dump.enabled);
 		debug_enable (config.debug.enabled);
 	}
 
@@ -1063,9 +1045,9 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	if (argc == 1) // query
 	{
 		if (config.tuio.long_header)
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
 		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF");
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 	}
 	else
 	{
@@ -1079,18 +1061,66 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 }
 
 static uint8_t
-_tuio_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", config.tuio.offset);
+		if (config.tuio.enabled)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 	}
 	else
 	{
-		config.tuio.offset = args[1].val.t;
+		config.tuio.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	if (argc == 1) // query
+	{
+		if (config.dump.enabled)
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
+		else
+			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
+	}
+	else
+	{
+		config.dump.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].val.i;
+
+	if (argc == 1) // query
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTt", config.output.offset);
+	}
+	else
+	{
+		config.output.offset = args[1].val.t;
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
@@ -1616,16 +1646,24 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/comm/subnet", "i", _comm_subnet},
 	{"/chimaera/comm/subnet", "is", _comm_subnet},
 
+	{"/chimaera/output/enabled", "i", _output_enabled},
+	{"/chimaera/output/enabled", "iT", _output_enabled},
+	{"/chimaera/output/enabled", "iF", _output_enabled},
+	{"/chimaera/output/address", "i", _output_address},
+	{"/chimaera/output/address", "is", _output_address},
+	{"/chimaera/output/offset", "i", _output_offset},
+	{"/chimaera/output/offset", "it", _output_offset},
+
 	{"/chimaera/tuio/enabled", "i", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iT", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
-	{"/chimaera/tuio/address", "i", _tuio_address},
-	{"/chimaera/tuio/address", "is", _tuio_address},
 	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
-	{"/chimaera/tuio/offset", "i", _tuio_offset},
-	{"/chimaera/tuio/offset", "it", _tuio_offset},
+
+	{"/chimaera/dump/enabled", "i", _dump_enabled},
+	{"/chimaera/dump/enabled", "iT", _dump_enabled},
+	{"/chimaera/dump/enabled", "iF", _dump_enabled},
 
 	{"/chimaera/config/enabled", "i", _config_enabled},
 	{"/chimaera/config/enabled", "iT", _config_enabled},
@@ -1642,12 +1680,6 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/sntp/address", "is", _sntp_address},
 	{"/chimaera/sntp/tau", "i", _sntp_tau},
 	{"/chimaera/sntp/tau", "ii", _sntp_tau},
-
-	{"/chimaera/dump/enabled", "i", _dump_enabled},
-	{"/chimaera/dump/enabled", "iT", _dump_enabled},
-	{"/chimaera/dump/enabled", "iF", _dump_enabled},
-	{"/chimaera/dump/address", "i", _dump_address},
-	{"/chimaera/dump/address", "is", _dump_address},
 
 	{"/chimaera/debug/enabled", "i", _debug_enabled},
 	{"/chimaera/debug/enabled", "iT", _debug_enabled},

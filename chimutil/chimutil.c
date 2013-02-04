@@ -150,16 +150,16 @@ set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len)
 }
 
 void 
-tuio_enable (uint8_t b)
+output_enable (uint8_t b)
 {
-	config.tuio.enabled = b;
-	if (config.tuio.enabled)
+	config.output.enabled = b;
+	if (config.output.enabled)
 	{
-		udp_begin (config.tuio.socket.sock, config.tuio.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.tuio.socket.sock, config.tuio.socket.ip, config.tuio.socket.port[DST_PORT]);
+		udp_begin (config.output.socket.sock, config.output.socket.port[SRC_PORT], 0);
+		udp_set_remote (config.output.socket.sock, config.output.socket.ip, config.output.socket.port[DST_PORT]);
 	}
 	else
-		udp_end (config.tuio.socket.sock);
+		udp_end (config.output.socket.sock);
 }
 
 void 
@@ -196,19 +196,6 @@ sntp_enable (uint8_t b)
 	}
 	else
 		udp_end (config.sntp.socket.sock);
-}
-
-void 
-dump_enable (uint8_t b)
-{
-	config.dump.enabled = b;
-	if (config.dump.enabled)
-	{
-		udp_begin (config.dump.socket.sock, config.dump.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.dump.socket.sock, config.dump.socket.ip, config.dump.socket.port[DST_PORT]);
-	}
-	else
-		udp_end (config.dump.socket.sock);
 }
 
 void 

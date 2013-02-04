@@ -68,6 +68,8 @@ extern "C" {
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
+#define ENGINE_N 2 // tuio, dump
+
 #define MAGIC 0x03
 
 #define FACTORY_RESET_REG 1

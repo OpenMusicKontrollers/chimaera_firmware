@@ -278,21 +278,15 @@ _dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat,
 inline void
 _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat)
 {
-	uint8_t flag;
-	flag = dat >> 8;
-	_dma_write_sock (sock, addr, &flag, 1);
-	flag = dat & 0xFF;
-	_dma_write_sock (sock, addr+1, &flag, 1);
+	uint16_t _dat = hton (dat);
+	_dma_write_sock (sock, addr, (uint8_t *)&_dat, 2);
 }
 
 inline uint8_t *
 _dma_write_sock_16_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint16_t dat)
 {
-	uint8_t flag;
-	flag = dat >> 8;
-	buf = _dma_write_sock_append (buf, sock, addr, &flag, 1);
-	flag = dat & 0xFF;
-	return _dma_write_sock_append (buf, sock, addr+1, &flag, 1);
+	uint16_t _dat = hton (dat);
+	return _dma_write_sock_append (buf, sock, addr, (uint8_t *)&_dat, 2);
 }
 
 inline void
@@ -305,11 +299,8 @@ _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 inline void
 _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 {
-	uint8_t flag;
-	_dma_read_sock (sock, addr, &flag, 1);
-	*dat = flag << 8;
-	_dma_read_sock (sock, addr+1, &flag, 1);
-	*dat += flag;
+	_dma_read_sock (sock, addr, (uint8_t*)dat, 2);
+	*dat = hton (*dat);
 }
 
 void

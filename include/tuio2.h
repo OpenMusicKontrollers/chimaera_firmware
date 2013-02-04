@@ -32,14 +32,14 @@
 extern "C" {
 #endif
 
+extern nOSC_Bundle tuio2_bndl;
+
 void tuio2_init ();
 
-uint16_t tuio2_serialize (uint8_t *buf, uint8_t end, uint64_t offset);
-
-void tuio2_frm_set (uint32_t id, uint64_t timestamp);
-void tuio2_tok_set (uint8_t pos, uint32_t S, uint32_t T, float x, float z);
-
 void tuio2_long_header_enable (uint8_t on);
+
+void tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end);
+void tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 
 #ifdef __cplusplus
 }

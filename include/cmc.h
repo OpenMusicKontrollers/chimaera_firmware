@@ -34,9 +34,14 @@
 extern "C" {
 #endif
 
+typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t end);
+typedef void (*CMC_Engine_Token_Cb) (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
+
 void cmc_init ();
 uint8_t cmc_process (int16_t *rela);
-uint16_t cmc_write_tuio2 (uint8_t *buf, uint64_t now);
+
+void cmc_engine_update (uint64_t now, CMC_Engine_Frame_Cb frame_cb, CMC_Engine_Token_Cb token_cb);
+//TODO cmc_engine(s)_update when more than one engine is used
 
 void cmc_group_clear ();
 uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
