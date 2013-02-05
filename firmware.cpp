@@ -361,8 +361,9 @@ _micros ()
 extern "C" void
 adc_timer_reconfigure ()
 {
-	uint16_t prescaler = 0;
-	uint16_t reload = 72e6 / config.rate;
+	// this scheme is goof for rates in the range of 20-2000+
+	uint16_t prescaler = 100-1;
+	uint16_t reload = 72e6 / (config.rate * 100);
 	uint16_t compare = reload;
 
 	timer_set_prescaler (adc_timer, prescaler);
