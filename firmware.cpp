@@ -478,8 +478,9 @@ setup ()
 		config.comm.mac[0] = config.comm.mac[0] & 0xfc; // globally administered unicast: 0bxxxxxx00
 
 	// init eeprom for I2C1
-	eeprom_init (eeprom_24LC64, I2C1, 0b000);
-	//eeprom_init (eeprom__24AA025E48, I2C1, 0b001); // TODO MAC EEPROM
+	eeprom_init (I2C1);
+	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
+	//eeprom_slave_init (eeprom__24AA025E48, I2C1, 0b001); // TODO MAC EEPROM
 
 	// load configuration from eeprom
 	/* FIXME

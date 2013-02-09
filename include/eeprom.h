@@ -42,16 +42,19 @@ typedef struct _EEPROM_24xx EEPROM_24xx;
 
 struct _EEPROM_24xx {
 	i2c_dev *dev;
-	uint8_t slave_addr;
+	uint16_t slave_addr;
 	uint8_t page_size;
+	uint8_t address_size;
 	uint32_t storage_size;
+	uint8_t page_write_time; // ms
 };
 
 extern EEPROM_24xx *eeprom_24LC64;
 extern EEPROM_24xx *eeprom_24AA025E48;
 
 // TODO return success or failure flags
-void eeprom_init (EEPROM_24xx *eeprom, i2c_dev *dev, uint8_t slave_addr);
+void eeprom_init (i2c_dev *dev);
+void eeprom_slave_init (EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slav_addr);
 
 void eeprom_byte_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte);
 void eeprom_byte_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte);
