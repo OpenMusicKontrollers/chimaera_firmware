@@ -88,6 +88,12 @@ volatile uint8_t config_should_listen = 0;
 uint64_t now;
 uint64_t offset;
 
+CMC_Engine engines [] = {
+	tuio2_engine,
+	scsynth_engine,
+	{NULL} // terminator
+};
+
 static void
 adc_timer_irq ()
 {

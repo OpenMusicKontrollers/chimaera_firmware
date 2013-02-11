@@ -44,10 +44,12 @@ typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t e
 typedef void (*CMC_Engine_Token_Cb) (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 typedef void (*CMC_Engine_Update_Cb) (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y); //TODO actuallly use it
 
+typedef struct _CMC_Engine CMC_Engine;
+
 struct _CMC_Engine {
+	uint8_t *enabled;
 	CMC_Engine_Frame_Cb frame_cb;
 	CMC_Engine_Update_Cb update_cb;
-	uint8_t enabled;
 }; //TODO actually use it
 
 void cmc_init ();

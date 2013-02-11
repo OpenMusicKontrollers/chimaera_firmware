@@ -23,9 +23,10 @@
 
 #include <chimaera.h>
 #include <chimutil.h>
+#include <config.h>
+#include <cmc.h>
 
 #include "scsynth_private.h"
-#include "config.h"
 
 SCSynth_Msg msgs [1];
 nOSC_Item scsynth_bndl [1+1];
@@ -58,3 +59,26 @@ scsynth_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, 
 
 	nosc_item_message_set (scsynth_bndl, tok, msgs[0], "/n_set");
 }
+
+inline void
+scsynth_engine_update_cb (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+{
+	//TODO
+	scsynth_engine_token_cb (tok, sid, uid, tid, x, y);
+
+	switch (type)
+	{
+		case CMC_ENGINE_UPDATE_ON:
+			break;
+		case CMC_ENGINE_UPDATE_OFF:
+			break;
+		case CMC_ENGINE_UPDATE_SET:
+			break;
+	}
+}
+
+CMC_Engine scsynth_engine = {
+	&config.scsynth.enabled,
+	scsynth_engine_frame_cb,
+	scsynth_engine_update_cb
+};

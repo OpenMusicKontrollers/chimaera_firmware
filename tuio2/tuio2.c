@@ -23,9 +23,10 @@
 
 #include <chimaera.h>
 #include <chimutil.h>
+#include <config.h>
+#include <cmc.h>
 
 #include "tuio2_private.h"
-#include "config.h"
 
 Tuio2 tuio;
 char *frm_str = "/tuio2/frm";
@@ -154,3 +155,26 @@ tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, fl
 
 	nosc_message_set_int32 (tuio.alv, tok, sid);
 }
+
+inline void
+tuio2_engine_update_cb (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+{
+	//TODO
+	tuio2_engine_token_cb (tok, sid, uid, tid, x, y);
+
+	switch (type)
+	{
+		case CMC_ENGINE_UPDATE_ON:
+			break;
+		case CMC_ENGINE_UPDATE_OFF:
+			break;
+		case CMC_ENGINE_UPDATE_SET:
+			break;
+	}
+}
+
+CMC_Engine tuio2_engine = {
+	&config.tuio.enabled,
+	tuio2_engine_frame_cb,
+	tuio2_engine_update_cb,
+};

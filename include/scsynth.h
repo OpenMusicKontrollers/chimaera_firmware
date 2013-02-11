@@ -39,6 +39,8 @@ void scsynth_init ();
 void scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end);
 void scsynth_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 
+extern CMC_Engine scsynth_engine;
+
 #ifdef __cplusplus
 }
 #endif
