@@ -31,6 +31,7 @@
 
 DNS_Query _q;
 DNS_Answer _a;
+const char *localdomain = "local";
 
 void 
 zeroconf_IPv4LL_random (uint8_t *ip)
@@ -88,7 +89,7 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			debug_str (domain);
 
 			// only reply when there is a request for our name
-			if ( strcmp (host, config.name) || strcmp (domain, "local"))
+			if ( strcmp (host, config.name) || strcmp (domain, localdomain))
 				break;
 
 			debug_str ("this is our name");
@@ -111,16 +112,14 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			memcpy (ptr, q, sizeof (DNS_Query));
 			ptr += sizeof (DNS_Query);
 
-			//char *name = "\008chimaera\005local";
 			*ptr++ = strlen (config.name);
 			memcpy (ptr, config.name, strlen (config.name));
 			ptr += strlen (config.name);
-			*ptr++ = 5; // strlen ("local")
-			memcpy (ptr, "local", 5);
-			ptr += 5;
+			*ptr++ = strlen (localdomain);
+			memcpy (ptr, localdomain, strlen (localdomain) + 1);
+			ptr += strlen (localdomain) + 1; // inclusive string terminating '\0'
 
 			/*
-			name[0] = strlen (config.name);
 			char *name = "\x08""chimaera""\x05""local";
 			memcpy (ptr, name, strlen (name) + 1); // copy 0x0 string end, too
 			ptr += strlen (name) + 1;
@@ -219,6 +218,7 @@ zeroconf_dispatch (uint8_t *buf, uint16_t len)
 	debug_str (deb);
 	buf_ptr += sizeof (DNS_Query);
 
+	//TODO iterate over questions and answers
 	switch (qr)
 	{
 		case 0x0:

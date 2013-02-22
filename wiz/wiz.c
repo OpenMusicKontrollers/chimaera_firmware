@@ -476,7 +476,7 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
-	if (len > (CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) ) // return when buffer exceeds given size
+	if ( len > (CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) || (len > SSIZE[sock]) ) // return when buffer exceeds given size
 		return 0;
 
 	// switch DMA memory source to right buffer, input buffer is on SEND by default
@@ -630,6 +630,25 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 }
 
+void
+_wiz_advance_read_ptr (uint8_t sock, uint16_t len)
+{
+	uint16_t ptr = Sn_Rx_RD[sock];
+
+	uint8_t *buf = buf_o[tmp_buf_o_ptr];
+
+	ptr += len;
+	Sn_Rx_RD[sock] = ptr;
+	buf = _dma_write_sock_16_append (buf, sock, SnRX_RD, ptr);
+
+	uint8_t flag;
+	flag = SnCR_RECV;
+	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
+
+	_dma_read_nonblocking_in (buf);
+	_dma_read_nonblocking_out ();
+}
+
 void 
 udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
@@ -637,6 +656,15 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 
 	if ( (len = udp_available (sock)) )
 	{
+		// we cannot handle compound packets if they are too long, ignore them by now, FIXME try to read them separately
+		if ( (len > CHIMAERA_BUFSIZE) || (len > RSIZE[sock]) )
+		{
+			//debug_str ("udp message too long to dispatch");
+			//debug_int32 (len);
+			_wiz_advance_read_ptr (sock, len);
+			return;
+		}
+
 		udp_receive (sock, ptr, len);
 
 		// separate concurrent UDP messages
