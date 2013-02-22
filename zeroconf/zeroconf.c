@@ -88,7 +88,7 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			debug_str (domain);
 
 			// only reply when there is a request for our name
-			if ( strcmp (host, "chimaera") || strcmp (domain, "local"))
+			if ( strcmp (host, config.name) || strcmp (domain, "local"))
 				break;
 
 			debug_str ("this is our name");
@@ -112,9 +112,19 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			ptr += sizeof (DNS_Query);
 
 			//char *name = "\008chimaera\005local";
+			*ptr++ = strlen (config.name);
+			memcpy (ptr, config.name, strlen (config.name));
+			ptr += strlen (config.name);
+			*ptr++ = 5; // strlen ("local")
+			memcpy (ptr, "local", 5);
+			ptr += 5;
+
+			/*
+			name[0] = strlen (config.name);
 			char *name = "\x08""chimaera""\x05""local";
 			memcpy (ptr, name, strlen (name) + 1); // copy 0x0 string end, too
 			ptr += strlen (name) + 1;
+			*/
 
 			memcpy (ptr, a, sizeof (DNS_Answer));
 			ptr += sizeof (DNS_Answer);

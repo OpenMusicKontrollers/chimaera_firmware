@@ -90,8 +90,9 @@ aoi_cmp (const void *a, const void *b)
 	return 1;
 }
 
+//TODO actually use engines
 uint8_t
-cmc_process (int16_t *rela)
+cmc_process (int16_t *rela, CMC_Engine *engines)
 {
 	n_aoi = 0;
 	uint8_t pos;
@@ -180,7 +181,12 @@ cmc_process (int16_t *rela)
 			cmc.blobs[cmc.neu][cmc.J].x = x;
 			cmc.blobs[cmc.neu][cmc.J].p = y;
 			cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
+			/*
 			cmc.blobs[cmc.neu][cmc.J].ignore = 0;
+			cmc.blobs[cmc.neu][cmc.J].hasappeared = 0;
+			cmc.blobs[cmc.neu][cmc.J].hasdisappeared = 0;
+			*/
+			cmc.blobs[cmc.neu][cmc.J].state = CMC_BLOB_INVALID;
 
 			cmc.J++;
 		}
@@ -201,6 +207,7 @@ cmc_process (int16_t *rela)
 			{
 				cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][j].sid;
 				cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][j].group;
+				cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
 			}
 		}
 		else if (cmc.I > cmc.J) // old blobs have disappeared
@@ -219,7 +226,10 @@ cmc_process (int16_t *rela)
 
 				if ( n_less && (diff1 < diff0) )
 				{
-					i += 1;
+					//cmc.blobs[cmc.old][i].hasdisappeared = 1;
+					cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+
+					i += 1; // jump over disappeared blob
 					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
 					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
 
@@ -228,6 +238,7 @@ cmc_process (int16_t *rela)
 				}
 				else
 				{
+					cmc.blobs[cmc.old][i].state = CMC_BLOB_EXISTED;
 					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
 					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
 
@@ -253,9 +264,14 @@ cmc_process (int16_t *rela)
 				if ( n_more && (diff1 < diff0) ) // cmc.blobs[cmc.neu][j] is the new blob
 				{
 					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+					{
 						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
+						//cmc.blobs[cmc.neu][j].hasappeared = 1;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+					}
 					else
-						cmc.blobs[cmc.neu][j].ignore = 1;
+						//cmc.blobs[cmc.neu][j].ignore = 1;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
 					cmc.blobs[cmc.neu][j].group = NULL;
 
 					n_more -= 1;
@@ -264,6 +280,7 @@ cmc_process (int16_t *rela)
 				}
 				else // 1:1 relation
 				{
+					cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
 					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
 					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
 					j += 1;
@@ -275,9 +292,14 @@ cmc_process (int16_t *rela)
 				for (j=cmc.J - n_more; j<cmc.J; j++)
 				{
 					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+					{
 						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
+						//cmc.blobs[cmc.neu][j].hasappeared = 1;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+					}
 					else
-						cmc.blobs[cmc.neu][j].ignore = 1;
+						//cmc.blobs[cmc.neu][j].ignore = 1;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
 					cmc.blobs[cmc.neu][j].group = NULL;
 				}
 		}
@@ -286,10 +308,14 @@ cmc_process (int16_t *rela)
 		uint8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
 		{
-			uint8_t ignore = cmc.blobs[cmc.neu][j].ignore;
+			//uint8_t ignore = cmc.blobs[cmc.neu][j].ignore;
+			uint8_t ignore = cmc.blobs[cmc.neu][j].state == CMC_BLOB_IGNORED;
 
 			if (newJ != j)
 			{
+				//TODO test this new memcpy
+				memmove (&cmc.blobs[cmc.neu][newJ], &cmc.blobs[cmc.neu][j], sizeof(CMC_Blob));
+				/*
 				cmc.blobs[cmc.neu][newJ].sid = cmc.blobs[cmc.neu][j].sid;
 				cmc.blobs[cmc.neu][newJ].uid = cmc.blobs[cmc.neu][j].uid;
 				cmc.blobs[cmc.neu][newJ].group = cmc.blobs[cmc.neu][j].group;
@@ -297,6 +323,9 @@ cmc_process (int16_t *rela)
 				cmc.blobs[cmc.neu][newJ].p = cmc.blobs[cmc.neu][j].p;
 				cmc.blobs[cmc.neu][newJ].above_thresh = cmc.blobs[cmc.neu][j].above_thresh;
 				cmc.blobs[cmc.neu][newJ].ignore = cmc.blobs[cmc.neu][j].ignore;
+				cmc.blobs[cmc.neu][newJ].hasappeared = cmc.blobs[cmc.neu][j].hasappeared;
+				cmc.blobs[cmc.neu][newJ].hasdisappeared = cmc.blobs[cmc.neu][j].hasdisappeared;
+				*/
 			}
 
 			if (!ignore)
@@ -331,7 +360,7 @@ cmc_process (int16_t *rela)
 		idle_word++;
 	}
 
-	// handler idle counters
+	// handle idle counters
 	uint8_t idle = 0;
 	if (idle_bit < config.pacemaker)
 	{
@@ -346,15 +375,47 @@ cmc_process (int16_t *rela)
 			idle_word = 0;
 	}
 
+	// run engines here
+	uint8_t res = changed || idle;
+	if (res)
+	{
+		++(cmc.fid);
+
+		CMC_Engine *engine = engines;
+		while (engine->enabled)
+		{
+			if (*(engine->enabled))
+			{
+				if (engine->frame_cb)
+					engine->frame_cb (cmc.fid, nOSC_IMMEDIATE, cmc.J);
+
+				if (engine->update_cb)
+				{
+					for (i=0; i<cmc.I; i++)
+					{
+						CMC_Blob *tar = &cmc.blobs[cmc.old][i];
+						//if (tar->hasdisappeared)
+						if (tar->state == CMC_BLOB_DISAPPEARED)
+							engine->update_cb (j, CMC_ENGINE_UPDATE_OFF, tar->sid, tar->uid, tar->group->tid, tar->x, tar->p);
+					}
+					for (j=0; j<cmc.J; j++)
+					{
+						CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
+						//CMC_Engine_Update_Type type = tar->hasappeared ? CMC_ENGINE_UPDATE_ON : CMC_ENGINE_UPDATE_SET;
+						CMC_Engine_Update_Type type = tar->state == CMC_BLOB_APPEARED ? CMC_ENGINE_UPDATE_ON : CMC_ENGINE_UPDATE_SET;
+						// TODO X rescaling
+						engine->update_cb (j, type, tar->sid, tar->uid, tar->group->tid, tar->x, tar->p);
+					}
+				}
+			}
+			engine++;
+		}
+	}
+
 	// switch blob buffers
 	cmc.old = !cmc.old;
 	cmc.neu = !cmc.neu;
 	cmc.I = cmc.J;
-
-	// only increase frame count when there were changes or idle overflowed
-	uint8_t res = changed || idle;
-	if (res)
-		++(cmc.fid);
 
 	return res;
 }

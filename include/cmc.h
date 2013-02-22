@@ -53,7 +53,7 @@ struct _CMC_Engine {
 }; //TODO actually use it
 
 void cmc_init ();
-uint8_t cmc_process (int16_t *rela);
+uint8_t cmc_process (int16_t *rela, CMC_Engine *engines);
 
 void cmc_engine_update (uint64_t now, CMC_Engine_Frame_Cb frame_cb, CMC_Engine_Token_Cb token_cb);
 //TODO cmc_engine(s)_update when more than one engine is used

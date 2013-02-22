@@ -275,7 +275,7 @@ loop ()
 	
 		if (config.tuio.enabled || config.scsynth.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 		{
-			uint8_t blobs = cmc_process (adc_rela); // touch recognition of current cycle
+			uint8_t blobs = cmc_process (adc_rela, engines); // touch recognition of current cycle
 
 			if (blobs) // was there any update?
 			{

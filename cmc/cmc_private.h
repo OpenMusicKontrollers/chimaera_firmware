@@ -39,6 +39,14 @@
 extern fix_0_32_t lookup [];
 extern fix_0_32_t lookup_sqrt [];
 
+typedef enum {
+	CMC_BLOB_INVALID,
+	CMC_BLOB_EXISTED,
+	CMC_BLOB_IGNORED,
+	CMC_BLOB_APPEARED,
+	CMC_BLOB_DISAPPEARED
+} CMC_Blob_State;
+
 typedef struct _CMC_Sensor CMC_Sensor;
 typedef struct _CMC_Sensor_State CMC_Sensor_State;
 typedef struct _CMC_Blob CMC_Blob;
@@ -51,7 +59,12 @@ struct _CMC_Blob {
 	fix_0_32_t x, p;
 	uint16_t uid;
 	uint8_t above_thresh;
+	/* TODO test me
 	uint8_t ignore;
+	uint8_t hasappeared;
+	uint8_t hasdisappeared;
+	*/
+	CMC_Blob_State state;
 };
 
 struct _CMC_Group {

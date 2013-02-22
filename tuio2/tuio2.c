@@ -57,6 +57,7 @@ tuio2_init ()
 
 	// long header
 	tuio2_long_header_enable (config.tuio.long_header);
+	tuio2_compact_token_enable (config.tuio.compact_token);
 
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
@@ -100,6 +101,20 @@ tuio2_long_header_enable (uint8_t on)
 	}
 	else // off
 		nosc_message_set_end (tuio.frm, 2);
+}
+
+void
+tuio2_compact_token_enable (uint8_t on)
+{
+	//TODO
+	if (on)
+	{
+		// /tuio2/_STxz sid tid x z
+	}
+	else // off
+	{
+		// /tuio2/tok sid uid tid x y z p
+	}
 }
 
 uint8_t old_end = BLOB_MAX;

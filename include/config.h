@@ -75,7 +75,9 @@ struct _Config {
 
 	struct _tuio {
 		uint8_t enabled;
+		uint8_t version;
 		uint8_t long_header;
+		uint8_t compact_token;
 	} COMPACT tuio;
 
 	struct _dump {

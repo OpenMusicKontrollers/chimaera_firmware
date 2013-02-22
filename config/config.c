@@ -102,7 +102,9 @@ Config config = {
 
 	.tuio = {
 		.enabled = 0,
-		.long_header = 0	
+		.version = 2, //TODO implement
+		.long_header = 0,
+		.compact_token = 1 //TODO implement
 	},
 
 	.dump = {
@@ -1065,75 +1067,56 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 }
 
 static uint8_t
-_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_boolean (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args, uint8_t *boolean)
 {
 	uint16_t size;
 	int32_t id = args[0].val.i;
 
 	if (argc == 1) // query
 	{
-		if (config.tuio.enabled)
+		if (*boolean)
 			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
 		else
 			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
 	}
 	else
 	{
-		config.tuio.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
+		switch (fmt[1])
+		{
+			case nOSC_INT32:
+				*boolean = args[1].val.i;
+				break;
+			case nOSC_TRUE:
+				*boolean = 1;
+				break;
+			case nOSC_FALSE:
+				*boolean = 0;
+				break;
+		}
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
+}
+
+static uint8_t
+_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _boolean (path, fmt, argc, args, &config.tuio.enabled);
 }
 
 static uint8_t
 _dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
-	int32_t id = args[0].val.i;
-
-	if (argc == 1) // query
-	{
-		if (config.dump.enabled)
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
-		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
-	}
-	else
-	{
-		config.dump.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
+	return _boolean (path, fmt, argc, args, &config.dump.enabled);
 }
 
 static uint8_t
 _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
-	int32_t id = args[0].val.i;
-
-	if (argc == 1) // query
-	{
-		if (config.scsynth.enabled)
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTT", id);
-		else
-			size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iTF", id);
-	}
-	else
-	{
-		config.scsynth.enabled = fmt[1] == nOSC_TRUE ? 1 : 0;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], CONFIG_REPLY_PATH, "iT", id);
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
+	return _boolean (path, fmt, argc, args, &config.scsynth.enabled);
 }
 
 static uint8_t
@@ -1683,17 +1666,23 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/output/offset", "it", _output_offset},
 
 	{"/chimaera/tuio/enabled", "i", _tuio_enabled},
+	{"/chimaera/tuio/enabled", "ii", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iT", _tuio_enabled},
 	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
 	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
 	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
+	//{"/chimaera/tuio/compact_token", "i", _tuio_compact_token}, TODO
+	//{"/chimaera/tuio/compact_token", "iT", _tuio_compact_token},
+	//{"/chimaera/tuio/compact_token", "iF", _tuio_compact_token},
 
 	{"/chimaera/dump/enabled", "i", _dump_enabled},
+	{"/chimaera/dump/enabled", "ii", _dump_enabled},
 	{"/chimaera/dump/enabled", "iT", _dump_enabled},
 	{"/chimaera/dump/enabled", "iF", _dump_enabled},
 
 	{"/chimaera/scsynth/enabled", "i", _scsynth_enabled},
+	{"/chimaera/scsynth/enabled", "ii", _scsynth_enabled},
 	{"/chimaera/scsynth/enabled", "iT", _scsynth_enabled},
 	{"/chimaera/scsynth/enabled", "iF", _scsynth_enabled},
 
