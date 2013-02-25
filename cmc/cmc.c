@@ -92,7 +92,7 @@ aoi_cmp (const void *a, const void *b)
 
 //TODO actually use engines
 uint8_t
-cmc_process (int16_t *rela, CMC_Engine *engines)
+cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 {
 	n_aoi = 0;
 	uint8_t pos;
@@ -349,6 +349,13 @@ cmc_process (int16_t *rela, CMC_Engine *engines)
 						tar->sid = ++(cmc.sid);
 
 					tar->group = ptr;
+					tar->fp = tar->p;
+
+					if ( (ptr->tid != 0) && ( (ptr->x0 != 0ulr) || (ptr->m != 1ulk) ) )
+						tar->fx = (tar->x - ptr->x0) * ptr->m;
+					else // tid == 0, base group, no scaling
+						tar->fx = tar->x;
+
 					break; // match found, do not search further
 				}
 			}
@@ -375,7 +382,7 @@ cmc_process (int16_t *rela, CMC_Engine *engines)
 			idle_word = 0;
 	}
 
-	// run engines here
+	// run engines here TODO check loop structure for efficiency
 	uint8_t res = changed || idle;
 	if (res)
 	{
@@ -387,26 +394,31 @@ cmc_process (int16_t *rela, CMC_Engine *engines)
 			if (*(engine->enabled))
 			{
 				if (engine->frame_cb)
-					engine->frame_cb (cmc.fid, nOSC_IMMEDIATE, cmc.J);
+					engine->frame_cb (cmc.fid, now, cmc.I, cmc.J);
 
-				if (engine->update_cb)
-				{
-					for (i=0; i<cmc.I; i++)
-					{
-						CMC_Blob *tar = &cmc.blobs[cmc.old][i];
-						//if (tar->hasdisappeared)
-						if (tar->state == CMC_BLOB_DISAPPEARED)
-							engine->update_cb (j, CMC_ENGINE_UPDATE_OFF, tar->sid, tar->uid, tar->group->tid, tar->x, tar->p);
-					}
+				if (engine->on_cb || engine->set_cb)
 					for (j=0; j<cmc.J; j++)
 					{
 						CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
-						//CMC_Engine_Update_Type type = tar->hasappeared ? CMC_ENGINE_UPDATE_ON : CMC_ENGINE_UPDATE_SET;
-						CMC_Engine_Update_Type type = tar->state == CMC_BLOB_APPEARED ? CMC_ENGINE_UPDATE_ON : CMC_ENGINE_UPDATE_SET;
-						// TODO X rescaling
-						engine->update_cb (j, type, tar->sid, tar->uid, tar->group->tid, tar->x, tar->p);
+						if (tar->state == CMC_BLOB_APPEARED)
+						{
+							if (engine->on_cb)
+								engine->on_cb (tar->sid, tar->uid, tar->group->tid, tar->fx, tar->fp);
+						}
+						else // tar->state == CMC_BLOB_EXISTED
+						{
+							if (engine->set_cb)
+								engine->set_cb (tar->sid, tar->uid, tar->group->tid, tar->fx, tar->fp);
+						}
 					}
-				}
+
+				if (engine->off_cb) //FIXME does this work?
+					for (i=0; i<cmc.I; i++)
+					{
+						CMC_Blob *tar = &cmc.blobs[cmc.old][i];
+						if (tar->state == CMC_BLOB_DISAPPEARED)
+							engine->off_cb (tar->sid, tar->uid, tar->group->tid);
+					}
 			}
 			engine++;
 		}
@@ -418,40 +430,6 @@ cmc_process (int16_t *rela, CMC_Engine *engines)
 	cmc.I = cmc.J;
 
 	return res;
-}
-
-//TODO get an array of cb functions when more than one engine is used
-void
-cmc_engine_update (uint64_t now, CMC_Engine_Frame_Cb frame_cb, CMC_Engine_Token_Cb token_cb)
-{
-	uint8_t j;
-	uint16_t size;
-
-	if (frame_cb)
-		frame_cb (cmc.fid, now, cmc.I);
-
-	if (token_cb)
-		for (j=0; j<cmc.I; j++)
-		{
-			CMC_Group *group = cmc.blobs[cmc.old][j].group;
-			fix_0_32_t X = cmc.blobs[cmc.old][j].x;
-			uint16_t tid = 0;
-
-			// resize x to group boundary
-			// TODO check for x0 and m, whether a calculation is needed in the first place, e.g. 0, 1
-			if (group->tid != 0)
-			{
-				X = (X - group->x0)*group->m;
-				tid = group->tid;
-			}
-
-			token_cb (j,
-				cmc.blobs[cmc.old][j].sid,
-				cmc.blobs[cmc.old][j].uid,
-				tid,
-				X,
-				cmc.blobs[cmc.old][j].p);
-		}
 }
 
 void 

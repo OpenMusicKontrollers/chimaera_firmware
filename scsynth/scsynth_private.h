@@ -27,6 +27,6 @@
 #include <scsynth.h>
 #include <nosc.h>
 
-typedef nOSC_Arg SCSynth_Msg [5+1];
+typedef nOSC_Arg SCSynth_Msg [6+1];
 
 #endif /* SCSYNTH_PRIVATE_H */

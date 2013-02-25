@@ -117,10 +117,11 @@ tuio2_compact_token_enable (uint8_t on)
 	}
 }
 
-uint8_t old_end = BLOB_MAX;
+static uint8_t old_end = BLOB_MAX;
+static uint8_t tok = 0;
 
-inline void
-tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end)
+void
+tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t end)
 {
 	tuio.frm[0].val.i = fid;
 	tuio.frm[1].val.t = timestamp;
@@ -156,10 +157,12 @@ tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end)
 	}
 
 	old_end = end;
+
+	tok = 0; // reset token pointer
 }
 
-inline void
-tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+void
+tuio2_engine_token_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
 {
 	nOSC_Message msg = tuio.tok[tok];
 
@@ -169,27 +172,14 @@ tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, fl
 	msg[3].val.f = y;
 
 	nosc_message_set_int32 (tuio.alv, tok, sid);
-}
 
-inline void
-tuio2_engine_update_cb (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
-{
-	//TODO
-	tuio2_engine_token_cb (tok, sid, uid, tid, x, y);
-
-	switch (type)
-	{
-		case CMC_ENGINE_UPDATE_ON:
-			break;
-		case CMC_ENGINE_UPDATE_OFF:
-			break;
-		case CMC_ENGINE_UPDATE_SET:
-			break;
-	}
+	tok++; // increase token pointer
 }
 
 CMC_Engine tuio2_engine = {
 	&config.tuio.enabled,
 	tuio2_engine_frame_cb,
-	tuio2_engine_update_cb,
+	tuio2_engine_token_cb,
+	NULL,
+	tuio2_engine_token_cb
 };

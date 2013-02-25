@@ -33,16 +33,12 @@ extern "C" {
 #endif
 
 extern nOSC_Bundle tuio2_bndl;
+extern CMC_Engine tuio2_engine;
 
 void tuio2_init ();
 
 void tuio2_long_header_enable (uint8_t on);
 void tuio2_compact_token_enable (uint8_t on);
-
-void tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t end);
-void tuio2_engine_token_cb (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
-
-extern CMC_Engine tuio2_engine;
 
 #ifdef __cplusplus
 }

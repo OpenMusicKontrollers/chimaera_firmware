@@ -38,6 +38,14 @@
 #define LAN_BROADCAST {192, 168, 1, 255}
 #define LAN_HOST {192, 168, 1, 10}
 
+// FIXME set those for Zeroconf
+//#define LAN_BROADCAST {169, 254, 255, 255}
+//#define LAN_HOST {169, 254, 205, 27}
+
+// FIXME set those for DHCP
+//#define LAN_BROADCAST {46, 126, 89, 221}
+//#define LAN_HOST {46, 126, 89, 221}
+
 ADC_Range adc_range [SENSOR_N];
 float Y1 = 0.5;
 
@@ -97,7 +105,8 @@ Config config = {
 		.mac = {(0x1a | 0b00000010) & 0b11111110, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f}, // locally administered unicast MAC
 		.ip = {192, 168, 1, 177},
 		.gateway = {192, 168, 1, 1},
-		.subnet = {255, 255, 255, 0}
+		.subnet = {255, 255, 255, 0},
+		.subnet_check = 0 //TODO make this configurable
 	},
 
 	.tuio = {
@@ -154,7 +163,11 @@ Config config = {
 		}
 	},
 
-	.zeroconf = {
+	.ipv4ll = {
+		.enabled = 0
+	},
+
+	.mdns = {
 		.enabled = 1,
 		.har = {0x01, 0x00, 0x5e, 0x00, 0x00, 0xfb}, // hardware address for mDNS multicast
 		.socket = {
@@ -950,12 +963,6 @@ _address (Socket_Config *socket, void (*cb) (uint8_t b), const char *protocol, c
 		uint8_t ip[4];
 		if (str2addr(args[1].val.s, ip, &port)) // TODO check if valid
 		{
-			debug_int32 (ip[0]);
-			debug_int32 (ip[1]);
-			debug_int32 (ip[2]);
-			debug_int32 (ip[3]);
-			debug_int32 (port);
-
 			socket->port[DST_PORT] = port;
 			memcpy (socket->ip, ip, 4);
 
@@ -1717,9 +1724,9 @@ nOSC_Method config_serv [] = {
 	{"/chimaera/host/address", "is", _host_address},
 
 	//TODO
-	//{"/chimaera/zeroconf/enabled", "i", _zeroconf_enabled},
-	//{"/chimaera/zeroconf/enabled", "iT", _zeroconf_enabled},
-	//{"/chimaera/zeroconf/enabled", "iF", _zeroconf_enabled},
+	//{"/chimaera/mdns/enabled", "i", _mdns_enabled},
+	//{"/chimaera/mdns/enabled", "iT", _mdns_enabled},
+	//{"/chimaera/mdns/enabled", "iF", _mdns_enabled},
 
 	{"/chimaera/peak_thresh", "i", _peak_thresh},
 	{"/chimaera/peak_thresh", "ii", _peak_thresh},

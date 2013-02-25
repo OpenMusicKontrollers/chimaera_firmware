@@ -21,21 +21,16 @@
  *     distribution.
  */
 
-#ifndef SCSYNTH_H_
-#define SCSYNTH_H_
+#ifndef _IPV4LL_H_
+#define _IPV4LL_H_
 
 #include <stdint.h>
-
-#include <netdef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern nOSC_Item scsynth_bndl [];
-extern CMC_Engine scsynth_engine;
-
-void scsynth_init ();
+void IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
 #ifdef __cplusplus
 }

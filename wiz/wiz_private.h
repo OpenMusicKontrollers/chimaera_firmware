@@ -102,40 +102,6 @@
 #define TX_BUF_BASE 0x8000
 #define RX_BUF_BASE 0xC000
 
-typedef struct _ARP_Payload ARP_Payload;
-typedef struct _MACRAW_Header MACRAW_Header;
-
-struct _ARP_Payload {
-	uint16_t htype;
-	uint16_t ptype;
-	uint8_t hlen;
-	uint8_t plen;
-	uint16_t oper;
-	uint8_t sha [6];
-	uint8_t spa [4];
-	uint8_t tha [6];
-	uint8_t tpa [4];
-} __attribute((packed,aligned(2)));
-
-struct _MACRAW_Header {
-	uint8_t dst_mac [6];
-	uint8_t src_mac [6];
-	uint16_t type;
-} __attribute((packed,aligned(2)));
-
-#define MACRAW_HEADER_SIZE sizeof(MACRAW_Header)
-#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
-
-#define MACRAW_TYPE_ARP 0x0806
-
-#define ARP_HTYPE_ETHERNET 0x0001
-#define ARP_PTYPE_IPV4 0x0800
-#define ARP_HLEN_ETHERNET 0x06
-#define ARP_PLEN_IPV4 0x04
-
-#define ARP_OPER_REQUEST 0x0001
-#define ARP_OPER_REPLY 0x0002
-
 #define WIZ_TX 0b01
 #define WIZ_RX 0b10
 #define WIZ_SENDRECV WIZ_TX | WIZ_RX

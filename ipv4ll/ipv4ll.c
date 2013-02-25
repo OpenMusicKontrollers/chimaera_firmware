@@ -21,24 +21,35 @@
  *     distribution.
  */
 
-#ifndef SCSYNTH_H_
-#define SCSYNTH_H_
+#include <stdlib.h>
+#include <string.h>
 
-#include <stdint.h>
+#include <ipv4ll.h>
 
-#include <netdef.h>
+const uint8_t link_local_gateway [] = {169, 254, 0, 0};
+const uint8_t link_local_subnet [] = {255, 255, 0, 0};
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern nOSC_Item scsynth_bndl [];
-extern CMC_Engine scsynth_engine;
-
-void scsynth_init ();
-
-#ifdef __cplusplus
+static void 
+IPv4LL_random (uint8_t *ip)
+{
+	ip[0] = 169;
+	ip[1] = 254;
+	ip[2] = 1 + rand () / (RAND_MAX / 253);
+	ip[3] = rand () / (RAND_MAX / 255);
 }
-#endif
 
-#endif
+void
+IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+{
+	uint8_t link_local_ip [4];
+
+	do {
+		IPv4LL_random (link_local_ip);
+	} while (arp_probe (0, link_local_ip)); // collision?
+
+	arp_announce (0, link_local_ip);
+
+	memcpy (ip, link_local_ip, 4);
+	memcpy (gateway, link_local_gateway, 4);
+	memcpy (subnet, link_local_subnet, 4);
+}

@@ -25,11 +25,14 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/tube
 BUILDDIRS += $(BUILD_PATH)/$(d)/eeprom
 BUILDDIRS += $(BUILD_PATH)/$(d)/chimutil
 BUILDDIRS += $(BUILD_PATH)/$(d)/chimaera
-BUILDDIRS += $(BUILD_PATH)/$(d)/zeroconf
+BUILDDIRS += $(BUILD_PATH)/$(d)/ipv4ll
+BUILDDIRS += $(BUILD_PATH)/$(d)/mdns
+BUILDDIRS += $(BUILD_PATH)/$(d)/dns_sd
 BUILDDIRS += $(BUILD_PATH)/$(d)/dhcpc
 BUILDDIRS += $(BUILD_PATH)/$(d)/rtpmidi
 BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
 BUILDDIRS += $(BUILD_PATH)/$(d)/armfix
+BUILDDIRS += $(BUILD_PATH)/$(d)/arp
 
 ### Local flags: these control how the compiler gets called.
 
@@ -81,11 +84,14 @@ cSRCS_$(d) += tube/tube.c
 cSRCS_$(d) += eeprom/eeprom.c
 cSRCS_$(d) += chimutil/chimutil.c
 cSRCS_$(d) += chimaera/chimaera.c
-cSRCS_$(d) += zeroconf/zeroconf.c
+cSRCS_$(d) += mdns/mdns.c
+cSRCS_$(d) += dns_sd/dns_sd.c
+cSRCS_$(d) += ipv4ll/ipv4ll.c
 cSRCS_$(d) += dhcpc/dhcpc.c
 cSRCS_$(d) += rtpmidi/rtpmidi.c
 cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += armfix/armfix.c
+cSRCS_$(d) += arp/arp.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.

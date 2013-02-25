@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef _ZEROCONF_H_
-#define _ZEROCONF_H_
+#ifndef _ARP_H
+#define _ARP_H
 
 #include <stdint.h>
 
@@ -30,11 +30,8 @@
 extern "C" {
 #endif
 
-void zeroconf_IPv4LL_random (uint8_t *ip);
-void zeroconf_dispatch (uint8_t *buf, uint16_t len);
-
-void zeroconf_publish (const char *name, const char *type, uint16_t port);
-void zeroconf_discover (const char *name, const char *type, uint16_t port);
+uint8_t arp_probe (uint8_t sock, uint8_t *ip);
+void arp_announce (uint8_t sock, uint8_t *ip);
 
 #ifdef __cplusplus
 }

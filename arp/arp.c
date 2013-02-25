@@ -1,0 +1,186 @@
+/*
+ * Copyright (c) 2012 Hanspeter Portner (agenthp@users.sf.net)
+ * 
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ * 
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ * 
+ *     1. The origin of this software must not be misrepresented; you must not
+ *     claim that you wrote the original software. If you use this software
+ *     in a product, an acknowledgment in the product documentation would be
+ *     appreciated but is not required.
+ * 
+ *     2. Altered source versions must be plainly marked as such, and must not be
+ *     misrepresented as being the original software.
+ * 
+ *     3. This notice may not be removed or altered from any source
+ *     distribution.
+ */
+
+#include "arp_private.h"
+
+#include <string.h>
+#include <stdio.h>
+
+#include <wiz.h>
+#include <config.h>
+#include <chimaera.h>
+
+#include <libmaple/systick.h>
+
+uint8_t nil_ip [] = {0x00, 0x00, 0x00, 0x00};
+uint8_t nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+MACRAW_Header header;
+ARP_Payload payload;
+volatile uint8_t arp_collision = 0;
+
+static void
+arp_fill (uint16_t oper, uint8_t *src_mac, uint8_t *src_ip, uint8_t *tar_mac, uint8_t *tar_ip)
+{
+	// fill MACRAW header
+	memcpy (header.dst_mac, tar_mac, 6);
+	memcpy (header.src_mac, src_mac, 6);
+	header.type = hton (MACRAW_TYPE_ARP);
+
+	// fill ARP payload
+	payload.htype = hton (ARP_HTYPE_ETHERNET);
+	payload.ptype = hton (ARP_PTYPE_IPV4);
+	payload.hlen = ARP_HLEN_ETHERNET;
+	payload.plen = ARP_PLEN_IPV4;
+	payload.oper = hton (oper);
+
+	memcpy (payload.sha, src_mac, 6);
+	memcpy (payload.spa, src_ip, 4);
+	memcpy (payload.tha, tar_mac, 6);
+	memcpy (payload.tpa, tar_ip, 4);
+}
+
+static void
+arp_fill_probe (uint8_t *mac, uint8_t *ip)
+{
+	arp_fill (ARP_OPER_REQUEST, mac, nil_ip, broadcast_mac, ip);
+}
+
+static void
+arp_fill_announce (uint8_t *mac, uint8_t *ip)
+{
+	arp_fill (ARP_OPER_REQUEST, mac, ip, broadcast_mac, ip);
+}
+
+static void
+arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
+{
+	uint8_t *ip = data;
+
+	MACRAW_Header *mac_header = (MACRAW_Header *)buf;
+
+	// check whether this is an ethernet ARP packet
+	if (hton (mac_header->type) != MACRAW_TYPE_ARP)
+		return;
+
+	ARP_Payload *arp_reply = (ARP_Payload *)(buf + MACRAW_HEADER_SIZE);
+
+	// check whether this is an IPv4 ARP reply
+	if ((hton (arp_reply->htype) != ARP_HTYPE_ETHERNET) ||
+			(hton (arp_reply->ptype) != ARP_PTYPE_IPV4) ||
+			(arp_reply->hlen != ARP_HLEN_ETHERNET) ||
+			(arp_reply->plen != ARP_PLEN_IPV4) ||
+			(hton (arp_reply->oper) != ARP_OPER_REPLY) )
+		return;
+
+	// check whether the ARP is for us
+	if (strncmp (arp_reply->tha, config.comm.mac, 6))
+		return;
+
+	// check whether the ARP has our requested IP as source -> then there is an ARP probe collision
+	if (!strncmp (arp_reply->spa, ip, 4))
+		arp_collision = 1;
+}
+
+inline uint32_t
+random_ticks (uint8_t minsecs, uint8_t maxsecs)
+{
+	uint8_t span = maxsecs - minsecs;
+	return 10000*(minsecs + (float)rand() / (RAND_MAX / span)); // 1 tick = 100us, 1 sec = 10000ticks //TODO use a define in chimaera.h
+}
+
+uint8_t
+arp_probe (uint8_t sock, uint8_t *ip)
+{
+	uint32_t tick;
+	uint32_t arp_timeout;
+
+	macraw_begin (sock, 1);
+
+	arp_fill_probe (config.comm.mac, ip);
+
+	// initial delay
+	tick = systick_uptime ();
+	arp_timeout = random_ticks (0, ARP_PROBE_WAIT);
+	while (systick_uptime() - tick < arp_timeout)
+		;
+
+	arp_collision = 0;
+	uint8_t i;
+	for (i=ARP_PROBE_NUM; i>0; i--)
+	{
+		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
+		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
+		
+		// delay between probes
+		if (i>1)
+		{
+			tick = systick_uptime ();
+			arp_timeout = random_ticks (ARP_PROBE_MIN, ARP_PROBE_MAX);
+			while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
+				macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+		}
+	}
+
+	// delay before first announce
+	tick = systick_uptime ();
+	arp_timeout = 10000*ARP_ANNOUNCE_WAIT;
+	while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
+		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+
+	macraw_end (sock);
+
+	return arp_collision;
+}
+
+void
+arp_announce (uint8_t sock, uint8_t *ip)
+{
+	uint32_t tick;
+	uint32_t arp_timeout;
+
+	macraw_begin (sock, 1);
+
+	arp_fill_announce (config.comm.mac, ip);
+
+	uint8_t i;
+	for (i=ARP_ANNOUNCE_NUM; i>0; i--)
+	{
+		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
+		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
+
+		// delay between announces
+		if (i>1)
+		{
+			tick = systick_uptime ();
+			arp_timeout = 10000*ARP_ANNOUNCE_INTERVAL;
+			while (systick_uptime() - tick < arp_timeout)
+				;
+		}
+	}
+
+	macraw_end (sock);
+}

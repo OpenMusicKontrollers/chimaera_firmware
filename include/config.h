@@ -71,6 +71,7 @@ struct _Config {
 		uint8_t ip [4];
 		uint8_t gateway [4];
 		uint8_t subnet [4];
+		uint8_t subnet_check;
 	} COMPACT comm;
 
 	struct _tuio {
@@ -111,11 +112,15 @@ struct _Config {
 		Socket_Config socket;
 	} COMPACT debug;
 
-	struct _zeroconf {
+	struct _ipv4ll {
+		uint8_t enabled;
+	} COMPACT ipv4ll;
+
+	struct _mdns {
 		uint8_t enabled;
 		uint8_t har [6];
 		Socket_Config socket;
-	} COMPACT zeroconf;
+	} COMPACT mdns;
 
 	struct _dhcpc {
 		uint8_t enabled;

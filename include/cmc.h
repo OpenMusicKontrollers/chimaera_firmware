@@ -34,29 +34,25 @@
 extern "C" {
 #endif
 
-typedef enum {
-	CMC_ENGINE_UPDATE_ON,
-	CMC_ENGINE_UPDATE_OFF,
-	CMC_ENGINE_UPDATE_SET
-} CMC_Engine_Update_Type; //TODO actually use it
+typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nbob_new);
 
-typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t end);
-typedef void (*CMC_Engine_Token_Cb) (uint8_t tok, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
-typedef void (*CMC_Engine_Update_Cb) (uint8_t tok, CMC_Engine_Update_Type type, uint32_t sid, uint16_t uid, uint16_t tid, float x, float y); //TODO actuallly use it
+typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
+typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t uid, uint16_t tid);
+typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 
 typedef struct _CMC_Engine CMC_Engine;
 
 struct _CMC_Engine {
 	uint8_t *enabled;
 	CMC_Engine_Frame_Cb frame_cb;
-	CMC_Engine_Update_Cb update_cb;
-}; //TODO actually use it
+	CMC_Engine_Blob_On_Cb on_cb;
+	CMC_Engine_Blob_Off_Cb off_cb;
+	CMC_Engine_Blob_Set_Cb set_cb;
+};
 
 void cmc_init ();
-uint8_t cmc_process (int16_t *rela, CMC_Engine *engines);
 
-void cmc_engine_update (uint64_t now, CMC_Engine_Frame_Cb frame_cb, CMC_Engine_Token_Cb token_cb);
-//TODO cmc_engine(s)_update when more than one engine is used
+uint8_t cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines);
 
 void cmc_group_clear ();
 uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);

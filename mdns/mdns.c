@@ -21,7 +21,7 @@
  *     distribution.
  */
 
-#include "zeroconf_private.h"
+#include "mdns_private.h"
 #include <chimaera.h>
 #include <wiz.h>
 
@@ -32,15 +32,6 @@
 DNS_Query _q;
 DNS_Answer _a;
 const char *localdomain = "local";
-
-void 
-zeroconf_IPv4LL_random (uint8_t *ip)
-{
-	ip[0] = 169;
-	ip[1] = 254;
-	ip[2] = 1 + rand () / (RAND_MAX / 253);
-	ip[3] = rand () / (RAND_MAX / 255);
-}
 
 static void
 dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
@@ -66,8 +57,8 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 	question = (DNS_Question *)buf_ptr;
 	uint16_t qtype = hton (question->QTYPE);
 	uint16_t qclass = hton (question->QCLASS);
-	debug_int32 (qtype);
-	debug_int32 (qclass);
+	//debug_int32 (qtype);
+	//debug_int32 (qclass);
 
 	switch (qtype)
 	{
@@ -85,8 +76,8 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			*host = 0x0; host++;
 			*domain = 0x0; domain++; 
 
-			debug_str (host);
-			debug_str (domain);
+			//debug_str (host);
+			//debug_str (domain);
 
 			// only reply when there is a request for our name
 			if ( strcmp (host, config.name) || strcmp (domain, localdomain))
@@ -99,7 +90,10 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 
 			q->ID = hton (query->ID);
 			q->FLAGS = hton ( (1 << QR_BIT) | (1 << AA_BIT) );
+			q->QDCOUNT = hton (0); // number of questions
 			q->ANCOUNT = hton (1); // number of answers
+			q->NSCOUNT = hton (0); // number of authoritative records
+			q->ARCOUNT = hton (0); // number of resource records
 
 			a->RTYPE = hton (0x0001);
 			a->RCLASS = hton (0x8001);
@@ -131,7 +125,7 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			memcpy (ptr, config.comm.ip, 4);
 			ptr += 4;
 
-			udp_send (config.zeroconf.socket.sock, buf_o_ptr, ptr-ref);
+			udp_send (config.mdns.socket.sock, buf_o_ptr, ptr-ref);
 
 			break;
 		}
@@ -166,12 +160,12 @@ dns_question (DNS_Query *query, uint8_t *buf, uint16_t len)
 			*addr = 0x0; addr++;
 			*arpa = 0x0; arpa++;
 
-			debug_int32 (atoi (ip4));
-			debug_int32 (atoi (ip3));
-			debug_int32 (atoi (ip2));
-			debug_int32 (atoi (ip1));
-			debug_str (addr);
-			debug_str (arpa);
+			//debug_int32 (atoi (ip4));
+			//debug_int32 (atoi (ip3));
+			//debug_int32 (atoi (ip2));
+			//debug_int32 (atoi (ip1));
+			//debug_str (addr);
+			//debug_str (arpa);
 
 			break;
 		}
@@ -185,7 +179,7 @@ dns_answer (DNS_Query *query, uint8_t *buf, uint16_t len)
 }
 
 void 
-zeroconf_dispatch (uint8_t *buf, uint16_t len)
+mdns_dispatch (uint8_t *buf, uint16_t len)
 {
 	uint8_t *buf_ptr = buf;
 	DNS_Query *query = (DNS_Query *)buf_ptr;
@@ -215,32 +209,19 @@ zeroconf_dispatch (uint8_t *buf, uint16_t len)
 		query->ANCOUNT,
 		query->NSCOUNT,
 		query->ARCOUNT);
-	debug_str (deb);
+	//debug_str (deb);
 	buf_ptr += sizeof (DNS_Query);
 
 	//TODO iterate over questions and answers
 	switch (qr)
 	{
 		case 0x0:
-			debug_str ("got mDNS Query Question");
+			//debug_str ("got mDNS Query Question");
 			dns_question (query, buf_ptr, len - (buf_ptr-buf));
 			break;
 		case 0x1:
-			debug_str ("got mDNS Query Answer");
+			//debug_str ("got mDNS Query Answer");
 			dns_answer (query, buf_ptr, len - (buf_ptr-buf));
 			break;
 	}
-}
-
-void
-zeroconf_publish (const char *name, const char *type, uint16_t port)
-{
-	// TODO
-	// zeroconf_publish ("chimaera", "_osc._udp", "_tuio2._sub._osc._udp", 3333);
-}
-
-void
-zeroconf_discover (const char *name, const char *type, uint16_t port)
-{
-	// TODO
 }

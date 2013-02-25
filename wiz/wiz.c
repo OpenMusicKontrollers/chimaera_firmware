@@ -304,7 +304,7 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 void
-wiz_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
+wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
 {
 	int status;
 
@@ -362,11 +362,6 @@ wiz_init (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet, gpio_dev
 			flag = 0x0f; // special case
 		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
   }
-
-	wiz_mac_set (mac);
-	wiz_ip_set (ip);
-	wiz_gateway_set (gateway);
-	wiz_subnet_set (subnet);
 }
 
 uint8_t
@@ -399,6 +394,14 @@ void
 wiz_subnet_set (uint8_t *subnet)
 {
 	_dma_write (SUBR, subnet, 4);
+}
+
+void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+{
+	wiz_mac_set (mac);
+	wiz_ip_set (ip);
+	wiz_gateway_set (gateway);
+	wiz_subnet_set (subnet);
 }
 
 void
@@ -438,7 +441,8 @@ udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 	flag = SnCR_OPEN;
 	_dma_write_sock (sock, SnCR, &flag, 1);
 	do _dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_UDP);
+	while (flag != SnSR_UDP)
+		;
 
 	// get write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
@@ -690,7 +694,7 @@ macraw_begin (uint8_t sock, uint8_t mac_filter)
 	uint8_t flag;
 
 	// first close socket
-	udp_end (sock);
+	macraw_end (sock);
 
 	// clear socket interrupt register
 	_dma_write_sock (sock, SnIR, &flag, 1);
@@ -706,10 +710,14 @@ macraw_begin (uint8_t sock, uint8_t mac_filter)
 	flag = SnCR_OPEN;
 	_dma_write_sock (sock, SnCR, &flag, 1);
 	do _dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_MACRAW);
+	while (flag != SnSR_MACRAW)
+		;
 
 	// get write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+
+	// get read pointer
+	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
 }
 
 void
@@ -736,110 +744,37 @@ macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len)
 	udp_receive (sock, ptr, len);
 }
 
-void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *data)
+void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
 
 	if ( (len = macraw_available (sock)) )
 	{
+		// we cannot handle compound packets if they are too long, ignore them by now, FIXME try to read them separately
+		if ( (len > CHIMAERA_BUFSIZE) || (len > RSIZE[sock]) )
+		{
+			//debug_str ("udp message too long to dispatch");
+			//debug_int32 (len);
+			_wiz_advance_read_ptr (sock, len);
+			return;
+		}
+
 		macraw_receive (sock, ptr, len);
 
-		// separate concurrent UDP messages
+		// separate concurrent MACRAW packets
 		uint16_t remaining = len;
 		while (remaining > 0)
 		{
 			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
+			uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
 
-			uint16_t data_size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
-			uint8_t *data = &buf_in_ptr[2];
+			//debug_str ("macraw_dispatch"); // FIXME  remove debug
+			//debug_int32 (len);
+			//debug_int32 (size);
+			cb (buf_in_ptr+2, size-2, user_data);
 
-			cb (data, data_size, data);
-
-			remaining -= 2 + data_size + 4; // -(packet_info + packet_size + CRC)
+			//remaining -= 2 + size + 4; // -(packet_info + packet_size + CRC)
+			remaining -= size; // -(packet_info + packet_size + CRC)
 		}
 	}
-}
-
-static uint8_t arp_collision = 0;
-
-static void
-arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
-{
-	uint8_t *ip = data;
-
-	MACRAW_Header *mac_header = (MACRAW_Header *)buf;
-
-	// check whether this is an ethernet ARP packet
-	if (hton (mac_header->type) != MACRAW_TYPE_ARP)
-		return;
-
-	ARP_Payload *arp_reply = (ARP_Payload *)(buf + MACRAW_HEADER_SIZE);
-
-	// check whether this is an IPv4 ARP reply
-	if ((hton (arp_reply->htype) != ARP_HTYPE_ETHERNET) ||
-			(hton (arp_reply->ptype) != ARP_PTYPE_IPV4) ||
-			(arp_reply->hlen != ARP_HLEN_ETHERNET) ||
-			(arp_reply->plen != ARP_PLEN_IPV4) ||
-			(hton (arp_reply->oper) != ARP_OPER_REPLY) )
-		return;
-
-	// check whether the ARP is for us
-	if (strncmp (arp_reply->tha, config.comm.mac, 6))
-		return;
-
-	// check whether the ARP has our requested IP as source -> then there is an ARP probe collision
-	if (!strncmp (arp_reply->spa, ip, 4))
-		arp_collision = 1;
-}
-
-uint8_t
-arp_probe (uint8_t sock, uint8_t *ip)
-{
-	MACRAW_Header mac_header = {
-		.dst_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, // broadcast
-		// .src_mac to fill
-		.type = hton (MACRAW_TYPE_ARP),
-	};
-
-	memcpy (mac_header.src_mac, config.comm.mac, 6);
-
-	ARP_Payload arp_probe = {
-		.htype = hton (ARP_HTYPE_ETHERNET),
-		.ptype = hton (ARP_PTYPE_IPV4),
-		.hlen = ARP_HLEN_ETHERNET,
-		.plen = ARP_PLEN_IPV4,
-		.oper = hton (ARP_OPER_REQUEST),
-
-		// .sha to fill
-		.spa = {0x00, 0x00, 0x00, 0x00},
-		.tha = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-		// .tpa to fill
-	};
-	
-	debug_int32 (MACRAW_HEADER_SIZE);
-	debug_int32 (ARP_PAYLOAD_SIZE);
-
-	memcpy (arp_probe.sha, config.comm.mac, 6);
-	memcpy (arp_probe.tpa, ip, 4); // IP to probe for
-
-	debug_str ("begin");
-	macraw_begin (sock, 1); // mac_filter enabled
-	debug_str ("memcpy");
-	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &mac_header, MACRAW_HEADER_SIZE);
-	debug_str ("memcpy");
-	memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &arp_probe, ARP_PAYLOAD_SIZE);
-	debug_str ("send");
-	macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
-	debug_str ("end");
-	macraw_end (sock);
-
-	/*
-	uint32_t tick = systick_uptime ();
-	uint32_t arp_timeout = 10000; // 10000 * 100us = 1s
-	arp_collision = 0;
-	while (!arp_collision || (systick_uptime() - tick < arp_timeout) )
-		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
-	*/
-
-	return arp_collision;
 }

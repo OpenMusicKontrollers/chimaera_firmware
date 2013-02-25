@@ -21,24 +21,17 @@
  *     distribution.
  */
 
-#ifndef SCSYNTH_H_
-#define SCSYNTH_H_
+#include <dns_sd.h>
 
-#include <stdint.h>
-
-#include <netdef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern nOSC_Item scsynth_bndl [];
-extern CMC_Engine scsynth_engine;
-
-void scsynth_init ();
-
-#ifdef __cplusplus
+void
+dns_sd_publish (const char *name, const char *type, uint16_t port)
+{
+	// TODO
+	// dns_sd_publish ("chimaera", "_osc._udp", "_tuio2._sub._osc._udp", 3333);
 }
-#endif
 
-#endif
+void
+dns_sd_discover (const char *name, const char *type, uint16_t port)
+{
+	// TODO
+}

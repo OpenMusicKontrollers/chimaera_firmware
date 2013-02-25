@@ -57,6 +57,7 @@ struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
 	fix_0_32_t x, p;
+	float fx, fp;
 	uint16_t uid;
 	uint8_t above_thresh;
 	/* TODO test me

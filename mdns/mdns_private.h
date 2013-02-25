@@ -21,7 +21,10 @@
  *     distribution.
  */
 
-#include <zeroconf.h>
+#ifndef _MDNS_PRIVATE_H
+#define _MDNS_PRIVATE_H
+
+#include <mdns.h>
 
 typedef struct _DNS_Query DNS_Query;
 typedef struct _DNS_Question DNS_Question;
@@ -76,3 +79,4 @@ struct _DNS_Answer {
 	uint16_t RLEN;
 } __attribute((packed,aligned(2)));
 
+#endif

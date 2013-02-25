@@ -25,6 +25,10 @@
 
 #include <string.h>
 
+#include <wiz.h>
+
+#include <libmaple/systick.h>
+
 static uint32_t xid = 0x3903F326;
 
 DHCPC dhcpc = {
@@ -50,6 +54,15 @@ static uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
 
 static BOOTP_Option dhcp_request_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_request),
+	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, dhcp_request_ip),
+	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, dhcp_server_identifier),
+	BOOTP_OPTION_END
+};
+
+static uint8_t dhcp_message_type_decline [1] = {DHCPDECLINE};
+
+static BOOTP_Option dhcp_decline_options [] = {
+	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, dhcp_message_type_decline),
 	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, dhcp_request_ip),
 	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, dhcp_server_identifier),
 	BOOTP_OPTION_END
@@ -126,12 +139,31 @@ dhcpc_request (uint8_t *buf, uint16_t secs)
 	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
 
+uint16_t
+dhcpc_decline (uint8_t *buf, uint16_t secs)
+{
+	dhcp_packet.bootp.xid = htonl (xid);
+	dhcp_packet.bootp.secs = hton (secs);
+
+	memcpy (dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
+	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+
+	dhcp_packet.options = dhcp_decline_options;
+
+	memcpy (dhcp_request_ip, dhcpc.ip, 4);
+	memcpy (dhcp_server_identifier, dhcpc.server_id, 4);
+
+	dhcpc.state = DISCOVER;
+
+	return _dhcp_packet_serialize (&dhcp_packet, buf);
+}
+
 void
 dhcpc_dispatch (uint8_t *buf, uint16_t size)
 {
 	DHCP_Packet *recv = (DHCP_Packet *)buf;
 
-	// check for magic_cokie
+	// check for magic_cookie
 	if (strncmp (recv->magic_cookie, dhcp_packet.magic_cookie, 4))
 		return;
 
@@ -192,4 +224,102 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 		}
 		buf_ptr += 2 + len;
 	}
+}
+
+static void
+dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	dhcpc_dispatch (buf, len);
+}
+
+uint8_t
+dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+{
+	uint8_t nil_ip [4] = {0, 0, 0, 0};
+	wiz_ip_set (nil_ip);
+
+	dhcpc.state = DISCOVER;
+	dhcpc.delay = 4;
+	dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+
+	uint16_t secs;
+	uint16_t len;
+	while ( (dhcpc.state != CLAIMED) && (dhcpc.state != TIMEOUT))
+		switch (dhcpc.state)
+		{
+			case DISCOVER:
+				secs = systick_uptime() / 10000 + 1;
+				len = dhcpc_discover (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
+				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				break;
+			case OFFER:
+				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
+				{
+					dhcpc.state = DISCOVER;
+					dhcpc.delay *= 2;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+
+					if (dhcpc.delay > 64) // maximal number of retries reached
+						dhcpc.state = TIMEOUT;
+
+					break;
+				}
+
+				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+
+				if (dhcpc.state == REQUEST) // reset timeout for REQUEST
+				{
+					dhcpc.delay = 4;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+				}
+				break;
+			case REQUEST:
+				secs = systick_uptime() / 10000 + 1;
+				len = dhcpc_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
+				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				break;
+			case ACK:
+				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
+				{
+					dhcpc.state = REQUEST;
+					dhcpc.delay *= 2;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+
+					if (dhcpc.delay > 64) // maximal number of retries reached
+						dhcpc.state = TIMEOUT;
+
+					break;
+				}
+
+				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+				break;
+			case DECLINE:
+				//TODO properly test this
+				secs = systick_uptime() / 10000 + 1;
+				len = dhcpc_decline (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
+				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+
+				dhcpc.delay = 4;
+				dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+				break;
+			case LEASE:
+				if (arp_probe (0, dhcpc.ip)) // collision
+				{
+					// decline IP because of ARP collision
+					dhcpc.state = DECLINE;
+				}
+				else
+				{
+					arp_announce (0, dhcpc.ip);
+					dhcpc.state = CLAIMED;
+					memcpy (ip, dhcpc.ip, 4);
+					memcpy (gateway, dhcpc.gateway_ip, 4);
+					memcpy (subnet, dhcpc.subnet_mask, 4);
+				}
+				break;
+		}
+
+	return dhcpc.state == CLAIMED;
+	//FIXME lease renewal
+	//FIXME lease time timeout
 }

@@ -21,21 +21,17 @@
  *     distribution.
  */
 
-#ifndef SCSYNTH_H_
-#define SCSYNTH_H_
+#ifndef _DNS_SD_H_
+#define _DNS_SD_H_
 
 #include <stdint.h>
-
-#include <netdef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern nOSC_Item scsynth_bndl [];
-extern CMC_Engine scsynth_engine;
-
-void scsynth_init ();
+void dns_sd_publish (const char *name, const char *type, uint16_t port);
+void dns_sd_discover (const char *name, const char *type, uint16_t port);
 
 #ifdef __cplusplus
 }

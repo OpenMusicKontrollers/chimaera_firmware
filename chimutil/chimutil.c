@@ -212,24 +212,18 @@ debug_enable (uint8_t b)
 }
 
 void 
-zeroconf_enable (uint8_t b)
+mdns_enable (uint8_t b)
 {
 	//FIXME handle timer
-	config.zeroconf.enabled = b;
-	if (config.zeroconf.enabled)
+	config.mdns.enabled = b;
+	if (config.mdns.enabled)
 	{
-		udp_set_remote_har (config.zeroconf.socket.sock, config.zeroconf.har);
-		udp_set_remote (config.zeroconf.socket.sock, config.zeroconf.socket.ip, config.zeroconf.socket.port[DST_PORT]);
-		udp_begin (config.zeroconf.socket.sock, config.zeroconf.socket.port[SRC_PORT], 1);
+		udp_set_remote_har (config.mdns.socket.sock, config.mdns.har);
+		udp_set_remote (config.mdns.socket.sock, config.mdns.socket.ip, config.mdns.socket.port[DST_PORT]);
+		udp_begin (config.mdns.socket.sock, config.mdns.socket.port[SRC_PORT], 1);
 	}
 	else
-		udp_end (config.zeroconf.socket.sock);
-}
-
-static void
-dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
-{
-	dhcpc_dispatch (buf, len);
+		udp_end (config.mdns.socket.sock);
 }
 
 void 
@@ -241,46 +235,6 @@ dhcpc_enable (uint8_t b)
 	{
 		udp_set_remote (config.dhcpc.socket.sock, config.dhcpc.socket.ip, config.dhcpc.socket.port[DST_PORT]);
 		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);
-
-		uint8_t nil_ip [4] = {0, 0, 0, 0};
-		wiz_ip_set (nil_ip);
-
-		uint16_t secs;
-		uint16_t len;
-		while (dhcpc.state != LEASE)
-			switch (dhcpc.state)
-			{
-				case DISCOVER:
-					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_discover (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
-					break;
-				case OFFER:
-					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
-					break;
-				case REQUEST:
-					secs = systick_uptime () / 10000 + 1;
-					len = dhcpc_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-					udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
-					break;
-				case ACK:
-					udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
-					break;
-				case LEASE: // we never get here
-					break;
-			}
-
-		memcpy (config.comm.ip, dhcpc.ip, 4);
-		memcpy (config.comm.gateway, dhcpc.gateway_ip, 4);
-		memcpy (config.comm.subnet, dhcpc.subnet_mask, 4);
-
-		wiz_ip_set (config.comm.ip);
-		wiz_gateway_set (config.comm.gateway);
-		wiz_subnet_set (config.comm.subnet);
-
-		//TODO timeout
-		//TODO lease renewal
-		//TODO ARP PROBE
 	}
 	else
 		udp_end (config.dhcpc.socket.sock);

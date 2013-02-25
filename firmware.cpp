@@ -50,8 +50,11 @@
 #include <tuio2.h>
 #include <scsynth.h>
 #include <dump.h>
-#include <zeroconf.h>
+#include <ipv4ll.h>
+#include <mdns.h>
+#include <dns_sd.h>
 #include <dhcpc.h>
+#include <arp.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 gpio_dev *mux_gpio_dev [MUX_LENGTH];
@@ -82,7 +85,7 @@ volatile uint8_t adc_raw_ptr = 1;
 volatile uint8_t mux_counter = MUX_MAX;
 volatile uint8_t sntp_should_request = 0;
 volatile uint8_t sntp_should_listen = 0;
-volatile uint8_t zeroconf_should_listen = 0;
+volatile uint8_t mdns_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
 uint64_t now;
@@ -114,9 +117,9 @@ config_timer_irq ()
 }
 
 static void
-zeroconf_timer_irq ()
+mdns_timer_irq ()
 {
-	zeroconf_should_listen = 1;
+	mdns_should_listen = 1;
 }
 
 extern "C" void
@@ -181,13 +184,17 @@ config_bndl_end_cb ()
 static void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	uint8_t i;
-	for (i=0; i<4; i++)
-		if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
-		{
-			debug_str ("sender IP not part of subnet");
-			return; // IP not part of same subnet as chimaera -> ignore message
-		}
+	if (config.comm.subnet_check)
+	{
+		//TODO make a prober function out of this and put it into chimutil
+		uint8_t i;
+		for (i=0; i<4; i++)
+			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
+			{
+				debug_str ("sender IP not part of subnet");
+				return; // IP not part of same subnet as chimaera -> ignore message
+			}
+	}
 
 	nosc_method_dispatch (config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
 }
@@ -195,13 +202,16 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	uint8_t i;
-	for (i=0; i<4; i++)
-		if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
-		{
-			debug_str ("sender IP not part of subnet");
-			return; // IP not part of same subnet as chimaera -> ignore message
-		}
+	if (config.comm.subnet_check)
+	{
+		uint8_t i;
+		for (i=0; i<4; i++)
+			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
+			{
+				debug_str ("sender IP not part of subnet");
+				return; // IP not part of same subnet as chimaera -> ignore message
+			}
+	}
 
 	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
@@ -210,9 +220,9 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 }
 
 static void
-zeroconf_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	zeroconf_dispatch (buf, len);
+	mdns_dispatch (buf, len);
 }
 
 nOSC_Item nest_bndl [ENGINE_N+1]; // +1 because of TERMINATOR
@@ -275,21 +285,15 @@ loop ()
 	
 		if (config.tuio.enabled || config.scsynth.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 		{
-			uint8_t blobs = cmc_process (adc_rela, engines); // touch recognition of current cycle
+			uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
 			if (blobs) // was there any update?
 			{
 				if (config.tuio.enabled)
-				{
-					cmc_engine_update (now, tuio2_engine_frame_cb, tuio2_engine_token_cb);
 					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE);
-				}
 
 				if (config.scsynth.enabled)
-				{
-					cmc_engine_update (now, scsynth_engine_frame_cb, scsynth_engine_token_cb);
 					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE);
-				}
 
 				// if (config.rtpmidi.enabled)
 				// if (config.kraken.enabled)
@@ -345,10 +349,10 @@ loop ()
 	}
 
 	// run ZEROCONF server
-	if (config.zeroconf.enabled && zeroconf_should_listen)
+	if (config.mdns.enabled && mdns_should_listen)
 	{
-		udp_dispatch (config.zeroconf.socket.sock, buf_o_ptr, zeroconf_cb);
-		zeroconf_should_listen = 0;
+		udp_dispatch (config.mdns.socket.sock, buf_o_ptr, mdns_cb);
+		mdns_should_listen = 0;
 	}
 
 	adc_dma_block ();
@@ -415,7 +419,7 @@ config_timer_reconfigure ()
 
 	timer_set_mode (config_timer, TIMER_CH2, TIMER_OUTPUT_COMPARE);
 	timer_set_compare (config_timer, TIMER_CH2, compare);
-	timer_attach_interrupt (config_timer, TIMER_CH2, zeroconf_timer_irq);
+	timer_attach_interrupt (config_timer, TIMER_CH2, mdns_timer_irq);
 
 	timer_generate_update (config_timer);
 
@@ -515,22 +519,23 @@ setup ()
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
-	wiz_init (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet,
-		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
+	wiz_init (PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
+	wiz_mac_set (config.comm.mac);
 
 	// wait for link up before proceeding
 	while (!wiz_link_up ()) // TODO monitor this and go to sleep mode when link is down
 		;
 
-	/*
-	debug_enable (config.debug.enabled); //TODO remove me
-	// arp probe
-	debug_str ("probe");
-	uint8_t link_local_ip [4];
-	zeroconf_IPv4LL_random (link_local_ip);
-	uint8_t ret = arp_probe (0, link_local_ip);
-	debug_int32 (ret);
-	*/
+	uint8_t claimed = 0;
+	if (config.dhcpc.enabled)
+	{
+		dhcpc_enable (config.dhcpc.enabled);
+		claimed = dhcpc_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+	}
+	if (!claimed && config.ipv4ll.enabled)
+		IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+
+	wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
 
 	// initialize timers
 	adc_timer = TIMER1;
@@ -549,37 +554,7 @@ setup ()
 	config_enable (config.config.enabled);
 	sntp_enable (config.sntp.enabled);
 	debug_enable (config.debug.enabled);
-	dhcpc_enable (config.dhcpc.enabled);
-	// FIXME when dhcpc fails, then fall back to zeroconf (if enabled)
-	zeroconf_enable (config.zeroconf.enabled);
-	// FIXME when zeroconf not enabled, fall back to fixed IP
-
-	// set up link local IP
-	// FIXME ARP PROBE
-	// FIXME move to zeroconf_enable
-	/*
-	uint8_t link_local_ip [4];
-	uint8_t success;
-	do
-	{
-		zeroconf_IPv4LL_random (link_local_ip);
-
-		debug_int32 (link_local_ip[0]);
-		debug_int32 (link_local_ip[1]);
-		debug_int32 (link_local_ip[2]);
-		debug_int32 (link_local_ip[3]);
-
-		//udp_ip_set (link_local_ip);
-		//udp_gateway_set (gateway_ip);
-		udp_set_remote (config.dump.socket.sock, link_local_ip, config.dump.socket.port[DST_PORT]); 
-		success = udp_probe (config.dump.socket.sock, buf_o_ptr);
-
-		debug_int32 (success);
-	} while (success); // when ARP timed out (and there is no success), we've found an unused IP
-	udp_ip_set (link_local_ip);
-	link_local_ip[3] = 1;
-	udp_gateway_set (link_local_ip);
-	*/
+	mdns_enable (config.mdns.enabled);
 
 	// set up ADCs
 	adc_disable (ADC1);
