@@ -31,8 +31,8 @@
  * static variabled
  */
 
-static nOSC_Arg dispatch_msg [OSC_ARGS_MAX+1];
-static nOSC_Arg vararg_msg [OSC_ARGS_MAX+1];
+static nOSC_Arg dispatch_msg [OSC_ARGS_MAX];
+static nOSC_Arg vararg_msg [OSC_ARGS_MAX];
 
 static const char *bundle_str = "#bundle";
 
@@ -146,7 +146,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				break;
 			case nOSC_FLOAT:
 				nosc_message_set_float (msg, pos, 0.0);
-				msg[pos].val.i = ref_ntohl (buf_ptr);
+				msg[pos].i = ref_ntohl (buf_ptr);
 				buf_ptr += 4;
 				break;
 			case nOSC_STRING:
@@ -182,7 +182,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 
 			case nOSC_DOUBLE:
 				nosc_message_set_double (msg, pos, 0.0);
-				msg[pos].val.h = ref_ntohll (buf_ptr);
+				msg[pos].h = ref_ntohll (buf_ptr);
 				buf_ptr += 8;
 				break;
 			case nOSC_INT64:
@@ -220,6 +220,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 uint16_t
 nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 {
+	//FIXME handle empty bundles and empty messages
+
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
 
@@ -235,7 +237,7 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 		switch (itm->type)
 		{
 			case nOSC_MESSAGE:
-				msg_size = nosc_message_serialize (itm->content.message.msg, itm->content.message.path, buf_ptr+4);
+				msg_size = nosc_message_serialize (itm->content.message.msg, itm->content.message.path, itm->content.message.fmt, buf_ptr+4);
 				break;
 			case nOSC_BUNDLE:
 				msg_size = nosc_bundle_serialize (itm->content.bundle.bndl, itm->content.bundle.tt, buf_ptr+4);
@@ -255,102 +257,86 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 inline void
 nosc_message_set_int32 (nOSC_Message msg, uint8_t pos, int32_t i)
 {
-	msg[pos].type = nOSC_INT32;
-	msg[pos].val.i = i;
+	msg[pos].i = i;
 }
 
 inline void
 nosc_message_set_float (nOSC_Message msg, uint8_t pos, float f)
 {
-	msg[pos].type = nOSC_FLOAT;
-	msg[pos].val.f = f;
+	msg[pos].f = f;
 }
 
 inline void
 nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s)
 {
-	msg[pos].type = nOSC_STRING;
-	msg[pos].val.s = s;
+	msg[pos].s = s;
 }
 
 inline void
 nosc_message_set_blob (nOSC_Message msg, uint8_t pos, int32_t size, uint8_t *data)
 {
-	msg[pos].type = nOSC_BLOB;
-	msg[pos].val.b.size = size;
-	msg[pos].val.b.data = data;
+	msg[pos].b.size = size;
+	msg[pos].b.data = data;
 }
 
 inline void
 nosc_message_set_true (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].type = nOSC_TRUE;
+	msg[pos].i = 1;
 }
 
 inline void
 nosc_message_set_false (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].type = nOSC_FALSE;
+	msg[pos].i = 0;
 }
 
 inline void
 nosc_message_set_nil (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].type = nOSC_NIL;
+	msg[pos].i = INT32_MIN;
 }
 
 inline void
 nosc_message_set_infty (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].type = nOSC_INFTY;
+	msg[pos].i = INT32_MAX;
 }
 
 inline void
 nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d)
 {
-	msg[pos].type = nOSC_DOUBLE;
-	msg[pos].val.d = d;
+	msg[pos].d = d;
 }
 
 inline void
 nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h)
 {
-	msg[pos].type = nOSC_INT64;
-	msg[pos].val.h = h;
+	msg[pos].h = h;
 }
 
 inline void
 nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t)
 {
-	msg[pos].type = nOSC_TIMESTAMP;
-	msg[pos].val.t = t;
+	msg[pos].t = t;
 }
 
 inline void
 nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m)
 {
-	msg[pos].type = nOSC_MIDI;
-	memcpy (msg[pos].val.m, m, 4);
+	memcpy (msg[pos].m, m, 4);
 }
 
 inline void
 nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S)
 {
-	msg[pos].type = nOSC_SYMBOL;
-	msg[pos].val.S = S;
+	msg[pos].S = S;
 }
 
 inline void
 nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c)
 {
-	msg[pos].type = nOSC_CHAR;
-	msg[pos].val.c = c;
-}
-
-inline void
-nosc_message_set_end (nOSC_Message msg, uint8_t pos)
-{
-	msg[pos].type = nOSC_END;
+	msg[pos].c = c;
 }
 
 /*
@@ -358,7 +344,7 @@ nosc_message_set_end (nOSC_Message msg, uint8_t pos)
  */
 
 uint16_t
-nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
+nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, uint8_t *buf)
 {
 	uint8_t i, rem;
 	uint16_t len;
@@ -380,9 +366,8 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 	// write format
 	uint8_t *fmt = buf_ptr;
 	*buf_ptr++ = ',';
-	for (arg=msg; arg->type!=nOSC_END; arg++)
-		*buf_ptr++ = arg->type;
-	*buf_ptr++ = '\0';
+	memcpy (buf_ptr, types, strlen (types) + 1); // including erminating '\0'
+	buf_ptr += strlen (types) + 1;
 	len = buf_ptr - fmt;
 	if (rem=len%4)
 	{
@@ -391,18 +376,20 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 	}
 
 	// write arguments
-	for (arg=msg; arg->type!=nOSC_END; arg++)
-		switch (arg->type)
+	arg = msg;
+	for (i=0; i<strlen(types); i++)
+	{
+		switch (types[i])
 		{
 			case nOSC_INT32:
 			case nOSC_FLOAT:
-				ref_htonl (buf_ptr, arg->val.i);
+				ref_htonl (buf_ptr, arg->i);
 				buf_ptr += 4;
 				break;
 
 			case nOSC_STRING:
-				len = strlen (arg->val.s) + 1;
-				memcpy (buf_ptr, arg->val.s, len);
+				len = strlen (arg->s) + 1;
+				memcpy (buf_ptr, arg->s, len);
 				buf_ptr += len;
 				if (rem=len%4)
 				{
@@ -412,11 +399,11 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				break;
 
 			case nOSC_BLOB:
-				ref_htonl (buf_ptr, arg->val.b.size);
+				ref_htonl (buf_ptr, arg->b.size);
 				buf_ptr += 4;
-				memcpy (buf_ptr, arg->val.b.data, arg->val.b.size);
-				buf_ptr += arg->val.b.size;
-				if (rem=arg->val.b.size%4)
+				memcpy (buf_ptr, arg->b.data, arg->b.size);
+				buf_ptr += arg->b.size;
+				if (rem=arg->b.size%4)
 				{
 					memset (buf_ptr, '\0', 4-rem);
 					buf_ptr += 4-rem;
@@ -433,18 +420,18 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 			case nOSC_INT64:
 			case nOSC_TIMESTAMP:
 			{
-				ref_htonll (buf_ptr, arg->val.h);
+				ref_htonll (buf_ptr, arg->h);
 				buf_ptr += 8;
 				break;
 			}
 
 			case nOSC_MIDI:
-				memcpy (buf_ptr, arg->val.m, 4);
+				memcpy (buf_ptr, arg->m, 4);
 				buf_ptr += 4;
 				break;
 			case nOSC_SYMBOL:
-				len = strlen (arg->val.S) + 1;
-				memcpy (buf_ptr, arg->val.S, len);
+				len = strlen (arg->S) + 1;
+				memcpy (buf_ptr, arg->S, len);
 				buf_ptr += len;
 				if (rem=len%4)
 				{
@@ -454,10 +441,12 @@ nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf)
 				break;
 			case nOSC_CHAR:
 				memset (buf_ptr, '\0', 3);
-				buf_ptr[3] = arg->val.c;
+				buf_ptr[3] = arg->c;
 				buf_ptr += 4;
 				break;
 		}
+		arg++;
+	}
 
 	return buf_ptr - buf;
 }
@@ -472,7 +461,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 
   const char *p;
 	uint8_t pos;
-  for (p = fmt; *p != '\0'; p++)
+  for (p = fmt; *p != nOSC_END; p++)
 	{
 		pos = p - fmt;
 
@@ -530,19 +519,18 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 	}
   va_end (args);
 
-	nosc_message_set_end (msg, pos+1);
-
-	uint16_t size = nosc_message_serialize (msg, path, buf);
+	uint16_t size = nosc_message_serialize (msg, path, fmt, buf);
 
 	return size;
 }
 
 inline void
-nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path)
+nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt)
 {
 	itm[pos].type = nOSC_MESSAGE;
 	itm[pos].content.message.msg = msg;
 	itm[pos].content.message.path = path;
+	itm[pos].content.message.fmt = fmt;
 }
 
 inline void

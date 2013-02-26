@@ -27,13 +27,13 @@
 #include <tuio2.h>
 #include <nosc.h>
 
-typedef nOSC_Arg Tuio2_Tok [4 + 1];
+typedef nOSC_Arg Tuio2_Tok [4];
 typedef struct _Tuio2 Tuio2;
 
 struct _Tuio2 {
-	nOSC_Arg frm [6 + 1];
+	nOSC_Arg frm [6];
 	Tuio2_Tok tok [BLOB_MAX];
-	nOSC_Arg alv [BLOB_MAX + 1];
+	nOSC_Arg alv [BLOB_MAX];
 
 	nOSC_Item bndl [BLOB_MAX + 2 + 1];
 };

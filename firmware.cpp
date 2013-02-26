@@ -279,7 +279,7 @@ loop ()
 
 		if (config.dump.enabled)
 		{
-			dump_update (now, SENSOR_N*sizeof(int16_t), adc_swap); // 6us
+			dump_update (now); // 6us
 			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE);
 		}
 	
@@ -624,6 +624,7 @@ setup ()
 
 	// set up continuous music controller struct
 	cmc_init ();
+	dump_init (sizeof(adc_swap), adc_swap);
 	tuio2_init ();
 	scsynth_init ();
 

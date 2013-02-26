@@ -201,107 +201,119 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 		idle_word = 0;
 		idle_bit = 0;
 
-		if (cmc.I == cmc.J) // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
+		switch ( (cmc.J > cmc.I) - (cmc.J < cmc.I) ) // == signum (cmc.J-cmc.I)
 		{
-			for (j=0; j<cmc.J; j++)
+			case -1: // old blobs have disappeared
 			{
-				cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][j].sid;
-				cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][j].group;
-				cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
-			}
-		}
-		else if (cmc.I > cmc.J) // old blobs have disappeared
-		{
-			uint8_t n_less = cmc.I - cmc.J; // how many blobs have disappeared
-			i = 0;
-			for (j=0; j<cmc.J; )
-			{
-				fix_0_32_t diff0, diff1;
-
-				if (n_less)
+				uint8_t n_less = cmc.I - cmc.J; // how many blobs have disappeared
+				i = 0;
+				for (j=0; j<cmc.J; )
 				{
-					diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
-					diff1 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i+1].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i+1].x : cmc.blobs[cmc.old][i+1].x - cmc.blobs[cmc.neu][j].x;
-				}
+					fix_0_32_t diff0, diff1;
 
-				if ( n_less && (diff1 < diff0) )
-				{
-					//cmc.blobs[cmc.old][i].hasdisappeared = 1;
-					cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
-
-					i += 1; // jump over disappeared blob
-					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-
-					i += 1;
-					j += 1;
-				}
-				else
-				{
-					cmc.blobs[cmc.old][i].state = CMC_BLOB_EXISTED;
-					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-
-					i += 1;
-					j += 1;
-				}
-			}
-		}
-		else // cmc.J > cmc.I // news blobs have appeared
-		{
-			uint8_t n_more = cmc.J - cmc.I; // how many blobs have appeared
-			j = 0;
-			for (i=0; i<cmc.I; )
-			{
-				fix_0_32_t diff0, diff1;
-				
-				if (n_more) // only calculate differences when there are still new blobs to be found
-				{
-					diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
-					diff1 = cmc.blobs[cmc.neu][j+1].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j+1].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j+1].x;
-				}
-
-				if ( n_more && (diff1 < diff0) ) // cmc.blobs[cmc.neu][j] is the new blob
-				{
-					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+					if (n_less)
 					{
-						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
-						//cmc.blobs[cmc.neu][j].hasappeared = 1;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+						diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
+						diff1 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i+1].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i+1].x : cmc.blobs[cmc.old][i+1].x - cmc.blobs[cmc.neu][j].x;
+					}
+
+					if ( n_less && (diff1 < diff0) )
+					{
+						cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+
+						n_less--; // decrease counter to potentially skip diff calculation in next iteration
+						i++; // jump over disappeared blob
+						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
+						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
+
+						i++;
+						j++;
 					}
 					else
-						//cmc.blobs[cmc.neu][j].ignore = 1;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
-					cmc.blobs[cmc.neu][j].group = NULL;
+					{
+						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
+						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
 
-					n_more -= 1;
-					j += 1;
-					// do not increase i
+						i++;
+						j++;
+					}
 				}
-				else // 1:1 relation
+
+				if (cmc.J == 0) // treat special case not covered by loop above
+					for (i=0; i<cmc.I; i++)
+						cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+
+				break;
+			}
+
+			case 0: // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
+			{
+				for (j=0; j<cmc.J; j++)
 				{
+					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][j].sid;
+					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][j].group;
 					cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
-					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-					j += 1;
-					i += 1;
 				}
+
+				break;
 			}
 
-			if (n_more)
-				for (j=cmc.J - n_more; j<cmc.J; j++)
+			case 1: // new blobs have appeared
+			{
+				uint8_t n_more = cmc.J - cmc.I; // how many blobs have appeared
+				j = 0;
+				for (i=0; i<cmc.I; )
 				{
-					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+					fix_0_32_t diff0, diff1;
+					
+					if (n_more) // only calculate differences when there are still new blobs to be found
 					{
-						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
-						//cmc.blobs[cmc.neu][j].hasappeared = 1;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+						diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
+						diff1 = cmc.blobs[cmc.neu][j+1].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j+1].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j+1].x;
 					}
-					else
-						//cmc.blobs[cmc.neu][j].ignore = 1;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
-					cmc.blobs[cmc.neu][j].group = NULL;
+
+					if ( n_more && (diff1 < diff0) ) // cmc.blobs[cmc.neu][j] is the new blob
+					{
+						if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+						{
+							cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
+							cmc.blobs[cmc.neu][j].group = NULL;
+							cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+						}
+						else
+							cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+
+						n_more--;
+						j++;
+						// do not increase i
+					}
+					else // 1:1 relation
+					{
+						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
+						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
+						j++;
+						i++;
+					}
 				}
+
+				if (n_more)
+					for (j=cmc.J - n_more; j<cmc.J; j++)
+					{
+						if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+						{
+							cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
+							cmc.blobs[cmc.neu][j].group = NULL;
+							cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+						}
+						else
+							cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+					}
+
+				break;
+			}
 		}
 
 		// overwrite blobs that are to be ignored
@@ -312,21 +324,7 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 			uint8_t ignore = cmc.blobs[cmc.neu][j].state == CMC_BLOB_IGNORED;
 
 			if (newJ != j)
-			{
-				//TODO test this new memcpy
 				memmove (&cmc.blobs[cmc.neu][newJ], &cmc.blobs[cmc.neu][j], sizeof(CMC_Blob));
-				/*
-				cmc.blobs[cmc.neu][newJ].sid = cmc.blobs[cmc.neu][j].sid;
-				cmc.blobs[cmc.neu][newJ].uid = cmc.blobs[cmc.neu][j].uid;
-				cmc.blobs[cmc.neu][newJ].group = cmc.blobs[cmc.neu][j].group;
-				cmc.blobs[cmc.neu][newJ].x = cmc.blobs[cmc.neu][j].x;
-				cmc.blobs[cmc.neu][newJ].p = cmc.blobs[cmc.neu][j].p;
-				cmc.blobs[cmc.neu][newJ].above_thresh = cmc.blobs[cmc.neu][j].above_thresh;
-				cmc.blobs[cmc.neu][newJ].ignore = cmc.blobs[cmc.neu][j].ignore;
-				cmc.blobs[cmc.neu][newJ].hasappeared = cmc.blobs[cmc.neu][j].hasappeared;
-				cmc.blobs[cmc.neu][newJ].hasdisappeared = cmc.blobs[cmc.neu][j].hasdisappeared;
-				*/
-			}
 
 			if (!ignore)
 				newJ++;
@@ -412,7 +410,7 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 						}
 					}
 
-				if (engine->off_cb) //FIXME does this work?
+				if (engine->off_cb && (cmc.I > cmc.J) )
 					for (i=0; i<cmc.I; i++)
 					{
 						CMC_Blob *tar = &cmc.blobs[cmc.old][i];

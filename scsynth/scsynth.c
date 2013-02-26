@@ -28,23 +28,45 @@
 
 #include "scsynth_private.h"
 
-SCSynth_Msg msgs [1];
-nOSC_Item scsynth_bndl [1+1];
+SCSynth_On_Msg on_msg[1];
+SCSynth_Off_Msg off_msg[1];
+SCSynth_Free_Msg free_msg[1];
+SCSynth_Set_Msg set_msgs [BLOB_MAX];
+nOSC_Item free_bndl [2];
+
+nOSC_Item scsynth_bndl [BLOB_MAX+2];
 static uint8_t tok = 0;
+
+char *inst_str = "chiminst";
+char *gate_str = "gate";
+
+char *on_str = "/s_new";
+char *free_str = "/n_free";
+char *set_str = "/n_set";
+
+char *on_fmt = "siiisi";
+char *off_fmt = "isi";
+char *free_fmt = "i";
+char *set_fmt = "iifif";
+
+uint64_t tt;
 
 void
 scsynth_init ()
 {
-	//TODO
+	// nothing to do
 }
 
 void
 scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nblob_new)
 {
-	//nosc_item_term_set (scsynth_bndl, nblob_new + (nblob_new-nblob_old));
-	nosc_item_term_set (scsynth_bndl, nblob_new); // FIXME 
+	uint8_t end;
 
-	tok = 0; // reset token pointer
+	end = nblob_old > nblob_new ? 2*nblob_old : nblob_new;
+	nosc_item_term_set (scsynth_bndl, end);
+
+	tt = timestamp;
+	tok = 0;
 }
 
 void
@@ -52,21 +74,19 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y
 {
 	uint32_t id = 1000 + sid%1000;
 
-	nOSC_Message msg = msgs[tok];
+	nOSC_Message msg = on_msg[0];
 
-	nosc_message_set_string (msg, 0, "chiminst");
+	nosc_message_set_string (msg, 0, inst_str); // TODO make this configurable
 	nosc_message_set_int32 (msg, 1, id);
 	nosc_message_set_int32 (msg, 2, 0); // add to HEAD
 	nosc_message_set_int32 (msg, 3, 1); // group
 
-	nosc_message_set_string (msg, 4, "gate");
+	nosc_message_set_string (msg, 4, gate_str);
 	nosc_message_set_int32 (msg, 5, 1);
 
-	nosc_message_set_end (msg, 6);
+	nosc_item_message_set (scsynth_bndl, tok, msg, on_str, on_fmt);
 
-	nosc_item_message_set (scsynth_bndl, tok, msgs[tok], "/s_new");
-
-	//tok++; // increase token pointer FIXME
+	tok++;
 }
 
 void
@@ -74,24 +94,25 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
 {
 	uint32_t id = 1000 + sid%1000;
 
-	nOSC_Message msg = msgs[tok];
+	nOSC_Message msg = off_msg[0];
 
-	/*
 	nosc_message_set_int32 (msg, 0, id);
 
-	nosc_message_set_string (msg, 1, "gate");
+	nosc_message_set_string (msg, 1, gate_str);
 	nosc_message_set_int32 (msg, 2, 0);
 
-	nosc_message_set_end (msg, 3);
+	nosc_item_message_set (scsynth_bndl, tok, msg, set_str, off_fmt);
 
-	nosc_item_message_set (scsynth_bndl, tok, msgs[tok], "/n_set");
-	*/
+	tok++;
 
+	msg = free_msg[0];
 	nosc_message_set_int32 (msg, 0, id);
-	nosc_message_set_end (msg, 1);
-	nosc_item_message_set (scsynth_bndl, tok, msgs[tok], "/n_free");
+	nosc_item_message_set (free_bndl, 0, msg, free_str, free_fmt);
 
-	//tok++; // increase token pointer FIXME
+	uint64_t offset = tt + (2ULL << 32); // + 2 seconds
+	nosc_item_bundle_set (scsynth_bndl, tok, free_bndl, offset);
+
+	tok++;
 }
 
 void
@@ -99,7 +120,7 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 {
 	uint32_t id = 1000 + sid%1000;
 
-	nOSC_Message msg = msgs[tok];
+	nOSC_Message msg = set_msgs[tok];
 
 	nosc_message_set_int32 (msg, 0, id);
 
@@ -109,11 +130,9 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 	nosc_message_set_int32 (msg, 3, 1);
 	nosc_message_set_float (msg, 4, y);
 
-	nosc_message_set_end (msg, 5);
+	nosc_item_message_set (scsynth_bndl, tok, msg, set_str, set_fmt);
 
-	nosc_item_message_set (scsynth_bndl, tok, msgs[tok], "/n_set");
-
-	//tok++; // increase token pointer FIXME
+	tok++;
 }
 
 CMC_Engine scsynth_engine = {

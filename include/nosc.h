@@ -38,8 +38,7 @@ extern "C" {
  * Definitions
  */
 
-typedef union _nOSC_Union nOSC_Union;
-typedef struct _nOSC_Arg nOSC_Arg;
+typedef union _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
 typedef struct _nOSC_Item nOSC_Item;
 typedef nOSC_Item *nOSC_Bundle;
@@ -77,7 +76,7 @@ struct _nOSC_Blob {
 	uint8_t *data;
 };
 
-union _nOSC_Union {
+union _nOSC_Arg {
 	// 8 bytes
 	int64_t h;
 	double d;
@@ -95,56 +94,33 @@ union _nOSC_Union {
 	char c;
 };
 
-struct _nOSC_Arg {
-	nOSC_Type type;
-	nOSC_Union val;
-} __attribute__((packed,aligned(4))); // if not it gets aligned to sizeof(nOSC_Union)=8 by GCC, which is a silly waste of ram
-
-#define nosc_int32(x)			(nOSC_Arg){.type=nOSC_INT32, .val={.i=(x)}}
-#define nosc_float(x)			(nOSC_Arg){.type=nOSC_FLOAT, .val={.f=(x)}}
-#define nosc_string(x)		(nOSC_Arg){.type=nOSC_STRING, .val={.s=(x)}}
-#define nosc_blob(s,x)		(nOSC_Arg){.type=nOSC_BLOB, .val={.b={.size=(s), .data=(x)}}}
-
-#define nosc_true					(nOSC_Arg){.type=nOSC_TRUE}
-#define nosc_false				(nOSC_Arg){.type=nOSC_FALSE}
-#define nosc_nil					(nOSC_Arg){.type=nOSC_NIL}
-#define nosc_infty				(nOSC_Arg){.type=nOSC_INFTY}
-
-#define nosc_double(x)		(nOSC_Arg){.type=nOSC_DOUBLE, .val={.d=(x)}}
-#define nosc_int64(x)			(nOSC_Arg){.type=nOSC_INT64, .val={.h=(x)}}
-#define nosc_timestamp(x)	(nOSC_Arg){.type=nOSC_TIMESTAMP, .val={.t=(x)}}
-
-#define nosc_midi(x)			(nOSC_Arg){.type=nOSC_MIDI, .val={.m={(x)[0],(x)[1],(x)[2],(x)[3]}}}
-#define nosc_symbol(x)		(nOSC_Arg){.type=nOSC_SYMBOL, .val={.S=(x)}}
-#define nosc_char(x)			(nOSC_Arg){.type=nOSC_CHAR, .val={.c=(x)}}
-
-#define nosc_end					(nOSC_Arg){.type=nOSC_END}
-
 typedef enum _nOSC_Item_Type {
-	nOSC_MESSAGE = 1,
-	nOSC_BUNDLE = 2,
-	nOSC_TERM = 0
+	nOSC_MESSAGE = 'M',
+	nOSC_BUNDLE = 'B',
+	nOSC_TERM = '\0'
 } nOSC_Item_Type;
 
 struct _nOSC_Item {
 	nOSC_Item_Type type;
 	union {
 		struct {
-			nOSC_Item *bndl;
+			nOSC_Bundle bndl;
 			uint64_t tt;
+			//char *fmt;
 		} bundle;
 		struct {
 			nOSC_Message msg;
 			char *path;
+			char *fmt;
 		} message;
 	} content;
 } __attribute__((packed,aligned(4)));
 
-#define nosc_message(m,p)	(nOSC_Item){.type=nOSC_MESSAGE, .content={.message={.msg=m, .path=p}}}
+#define nosc_message(m,p,f)	(nOSC_Item){.type=nOSC_MESSAGE, .content={.message={.msg=m, .path=p, .fmt=f}}}
 #define nosc_bundle(b,t)	(nOSC_Item){.type=nOSC_BUNDLE, .content={.bundle={.bndl=b, .tt=t}}}
 #define nosc_term (nOSC_Item){.type=nOSC_TERM}
 
-void nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path);
+void nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt);
 void nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp);
 void nosc_item_term_set (nOSC_Item *itm, uint8_t pos);
 
@@ -158,7 +134,9 @@ struct _nOSC_Method {
  * Constants
  */
 
-#define nOSC_IMMEDIATE 1ULL
+#define nOSC_IMMEDIATE	1ULL
+#define nOSC_Nil				INT32_MIN
+#define nOSC_Infty			INT32_MAX
 
 /*
  * Method functions
@@ -194,9 +172,7 @@ void nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m);
 void nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S);
 void nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c);
 
-void nosc_message_set_end (nOSC_Message msg, uint8_t pos);
-
-uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, uint8_t *buf);
+uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
 uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);
 
 #ifdef __cplusplus

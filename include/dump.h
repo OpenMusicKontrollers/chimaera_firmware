@@ -34,9 +34,11 @@ extern "C" {
 
 extern nOSC_Item dump_bndl [];
 
+void dump_init (int32_t size, int16_t *swap);
+
 uint16_t dump_serialize (uint8_t *buf, uint64_t offset);
 
-void dump_update (uint64_t now, int32_t size, int16_t *swap);
+void dump_update (uint64_t now);
 
 #ifdef __cplusplus
 }
