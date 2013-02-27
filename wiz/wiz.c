@@ -480,7 +480,7 @@ udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 uint8_t 
 udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
-	if ( len > (CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) || (len > SSIZE[sock]) ) // return when buffer exceeds given size
+	if ( !len || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) || (len > SSIZE[sock]) ) // return when buffer exceeds given size
 		return 0;
 
 	// switch DMA memory source to right buffer, input buffer is on SEND by default

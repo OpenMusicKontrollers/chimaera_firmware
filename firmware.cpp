@@ -225,7 +225,8 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	mdns_dispatch (buf, len);
 }
 
-nOSC_Item nest_bndl [ENGINE_N+1]; // +1 because of TERMINATOR
+nOSC_Item nest_bndl [ENGINE_N];
+char nest_fmt [ENGINE_N+1];
 
 uint8_t send_status = 0;
 uint8_t cmc_job = 0;
@@ -280,7 +281,7 @@ loop ()
 		if (config.dump.enabled)
 		{
 			dump_update (now); // 6us
-			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE);
+			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
 		}
 	
 		if (config.tuio.enabled || config.scsynth.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
@@ -290,10 +291,10 @@ loop ()
 			if (blobs) // was there any update?
 			{
 				if (config.tuio.enabled)
-					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE);
+					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE, tuio2_fmt);
 
 				if (config.scsynth.enabled)
-					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE);
+					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
 
 				// if (config.rtpmidi.enabled)
 				// if (config.kraken.enabled)
@@ -304,11 +305,13 @@ loop ()
 		{
 			if (job > 1)
 			{
-				nosc_item_term_set (nest_bndl, job);
-				cmc_len = nosc_bundle_serialize (nest_bndl, offset, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+				memset (nest_fmt, nOSC_BUNDLE, job);
+				nest_fmt[job] = nOSC_TERM;
+
+				cmc_len = nosc_bundle_serialize (nest_bndl, offset, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 			}
 			else // job == 1, there's no need to send a nested bundle in this case
-				cmc_len = nosc_bundle_serialize (nest_bndl[0].content.bundle.bndl, offset, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+				cmc_len = nosc_bundle_serialize (nest_bndl[0].bundle.bndl, offset, nest_bndl[0].bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 		}
 
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output

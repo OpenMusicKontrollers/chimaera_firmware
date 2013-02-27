@@ -350,25 +350,24 @@ nOSC_Item _s [] = {
 	nosc_message (_sa, "/A", "f"),
 	nosc_message (_sb, "/B", "f"),
 	nosc_message (_sc, "/C", "f"),
-	nosc_message (_st, "/thresh", "i"),
-	nosc_term
+	nosc_message (_st, "/thresh", "i")
 };
 
 nOSC_Item _n [] = {
 	nosc_message (_na, "/A", "f"),
 	nosc_message (_nb, "/B", "f"),
 	nosc_message (_nc, "/C", "f"),
-	nosc_message (_nt, "/thresh", "i"),
-	nosc_term
+	nosc_message (_nt, "/thresh", "i")
 };
 
 nOSC_Item calib_out [] = {
 	nosc_message (_i, "/i", "i"),
 	nosc_message (_m, "/mean", "i"),
-	nosc_bundle (_s, nOSC_IMMEDIATE),
-	nosc_bundle (_n, nOSC_IMMEDIATE),
-	nosc_term
+	nosc_bundle (_s, nOSC_IMMEDIATE, "MMMM"),
+	nosc_bundle (_n, nOSC_IMMEDIATE, "MMMM")
 };
+
+char *calib_fmt = "MMBB";
 
 uint8_t
 range_print ()
@@ -389,7 +388,7 @@ range_print ()
 		nosc_message_set_float (_nc, 0, adc_range[i].B[POLE_NORTH].fix);
 		nosc_message_set_int32 (_nt, 0, adc_range[i].thresh[POLE_NORTH]);
 
-		uint16_t size = nosc_bundle_serialize (calib_out, nOSC_IMMEDIATE, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+		uint16_t size = nosc_bundle_serialize (calib_out, nOSC_IMMEDIATE, calib_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 		udp_send (config.config.socket.sock, buf_o_ptr, size);
 	}
 

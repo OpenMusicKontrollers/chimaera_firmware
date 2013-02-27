@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 extern nOSC_Item dump_bndl [];
+extern char *dump_fmt;
 
 void dump_init (int32_t size, int16_t *swap);
 

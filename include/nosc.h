@@ -40,7 +40,7 @@ extern "C" {
 
 typedef union _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
-typedef struct _nOSC_Item nOSC_Item;
+typedef union _nOSC_Item nOSC_Item;
 typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Method nOSC_Method;
@@ -82,7 +82,7 @@ union _nOSC_Arg {
 	double d;
 	uint64_t t;
 	nOSC_Blob b;
-	
+
 	// 4 bytes
 	int32_t i;
 	float f;
@@ -100,29 +100,25 @@ typedef enum _nOSC_Item_Type {
 	nOSC_TERM = '\0'
 } nOSC_Item_Type;
 
-struct _nOSC_Item {
-	nOSC_Item_Type type;
-	union {
-		struct {
-			nOSC_Bundle bndl;
-			uint64_t tt;
-			//char *fmt;
-		} bundle;
-		struct {
-			nOSC_Message msg;
-			char *path;
-			char *fmt;
-		} message;
-	} content;
+union _nOSC_Item {
+	struct {
+		nOSC_Bundle bndl;
+		uint64_t tt;
+		char *fmt;
+	} bundle;
+
+	struct {
+		nOSC_Message msg;
+		char *path;
+		char *fmt;
+	} message;
 } __attribute__((packed,aligned(4)));
 
-#define nosc_message(m,p,f)	(nOSC_Item){.type=nOSC_MESSAGE, .content={.message={.msg=m, .path=p, .fmt=f}}}
-#define nosc_bundle(b,t)	(nOSC_Item){.type=nOSC_BUNDLE, .content={.bundle={.bndl=b, .tt=t}}}
-#define nosc_term (nOSC_Item){.type=nOSC_TERM}
+#define nosc_message(m,p,f)	(nOSC_Item){.message={.msg=m, .path=p, .fmt=f}}
+#define nosc_bundle(b,t,f)	(nOSC_Item){.bundle={.bndl=b, .tt=t, .fmt=f}}
 
 void nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt);
-void nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp);
-void nosc_item_term_set (nOSC_Item *itm, uint8_t pos);
+void nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp, char *fmt);
 
 struct _nOSC_Method {
 	char *path;
@@ -148,7 +144,7 @@ void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_
  * Bundle functions
  */
 
-uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf);
+uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t *buf);
 
 /*
  * Message functions

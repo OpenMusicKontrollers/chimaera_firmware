@@ -21,6 +21,8 @@
  *     distribution.
  */
 
+#include <string.h>
+
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
@@ -32,9 +34,11 @@ SCSynth_On_Msg on_msg[1];
 SCSynth_Off_Msg off_msg[1];
 SCSynth_Free_Msg free_msg[1];
 SCSynth_Set_Msg set_msgs [BLOB_MAX];
-nOSC_Item free_bndl [2];
+nOSC_Item free_bndl [1];
 
-nOSC_Item scsynth_bndl [BLOB_MAX+2];
+nOSC_Item scsynth_bndl [SCSYNTH_MAX]; // because of free_bndl
+char scsynth_fmt [SCSYNTH_MAX+1];
+static uint8_t set_tok = 0;
 static uint8_t tok = 0;
 
 char *inst_str = "chiminst";
@@ -49,12 +53,16 @@ char *off_fmt = "isi";
 char *free_fmt = "i";
 char *set_fmt = "iifif";
 
+char *free_bndl_fmt = "M";
+
 uint64_t tt;
 
 void
 scsynth_init ()
 {
 	// nothing to do
+	memset (scsynth_fmt, nOSC_MESSAGE, SCSYNTH_MAX);
+	scsynth_fmt[SCSYNTH_MAX] = nOSC_TERM;
 }
 
 void
@@ -62,11 +70,14 @@ scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, ui
 {
 	uint8_t end;
 
-	end = nblob_old > nblob_new ? 2*nblob_old : nblob_new;
-	nosc_item_term_set (scsynth_bndl, end);
+	end = nblob_old > nblob_new ? nblob_new + 2*(nblob_old-nblob_new) : nblob_new; // +1 because of free
+
+	memset (scsynth_fmt, nOSC_MESSAGE, end);
+	scsynth_fmt[end] = nOSC_TERM;
 
 	tt = timestamp;
 	tok = 0;
+	set_tok = 0;
 }
 
 void
@@ -110,7 +121,8 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
 	nosc_item_message_set (free_bndl, 0, msg, free_str, free_fmt);
 
 	uint64_t offset = tt + (2ULL << 32); // + 2 seconds
-	nosc_item_bundle_set (scsynth_bndl, tok, free_bndl, offset);
+	nosc_item_bundle_set (scsynth_bndl, tok, free_bndl, offset, free_bndl_fmt);
+	scsynth_fmt[tok] = nOSC_BUNDLE;
 
 	tok++;
 }
@@ -120,7 +132,7 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 {
 	uint32_t id = 1000 + sid%1000;
 
-	nOSC_Message msg = set_msgs[tok];
+	nOSC_Message msg = set_msgs[set_tok];
 
 	nosc_message_set_int32 (msg, 0, id);
 
@@ -132,6 +144,7 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 
 	nosc_item_message_set (scsynth_bndl, tok, msg, set_str, set_fmt);
 
+	set_tok++;
 	tok++;
 }
 

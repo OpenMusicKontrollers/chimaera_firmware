@@ -21,6 +21,8 @@
  *     distribution.
  */
 
+#include <string.h>
+
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
@@ -28,7 +30,6 @@
 
 #include "tuio2_private.h"
 
-Tuio2 tuio;
 char *frm_str = "/tuio2/frm";
 char *tok_str = "/tuio2/_STxz";
 char *alv_str = "/tuio2/alv";
@@ -38,25 +39,34 @@ char *frm_fmt_long = "itsiii";
 char *tok_fmt = "iiff";
 char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
-nOSC_Bundle tuio2_bndl = tuio.bndl;
+nOSC_Arg frm [6];
+Tuio2_Tok tok [BLOB_MAX];
+nOSC_Arg alv [BLOB_MAX];
+
+nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
+char tuio2_fmt [TUIO2_MAX+1];
 
 void
 tuio2_init ()
 {
 	uint8_t i;
 
+	// initialize bundle format
+	memset (tuio2_fmt, nOSC_MESSAGE, TUIO2_MAX);
+	tuio2_fmt[TUIO2_MAX] = nOSC_TERM;
+
 	// initialize bundle
-	nosc_item_message_set (tuio.bndl, 0, tuio.frm, frm_str, frm_fmt_short);
+	nosc_item_message_set (tuio2_bndl, 0, frm, frm_str, frm_fmt_short);
 
 	for (i=0; i<BLOB_MAX; i++)
-		nosc_item_message_set (tuio.bndl, i+1, tuio.tok[i], tok_str, tok_fmt);
+		nosc_item_message_set (tuio2_bndl, i+1, tok[i], tok_str, tok_fmt);
 
-	nosc_item_message_set (tuio.bndl, BLOB_MAX + 1, tuio.alv, alv_str, alv_fmt);
+	nosc_item_message_set (tuio2_bndl, BLOB_MAX + 1, alv, alv_str, alv_fmt);
 	for (i=0; i<BLOB_MAX; i++)
 
 	// initialize frame
-	nosc_message_set_int32 (tuio.frm, 0, 0);
-	nosc_message_set_timestamp (tuio.frm, 1, nOSC_IMMEDIATE);
+	nosc_message_set_int32 (frm, 0, 0);
+	nosc_message_set_timestamp (frm, 1, nOSC_IMMEDIATE);
 
 	// long header
 	tuio2_long_header_enable (config.tuio.long_header);
@@ -65,7 +75,7 @@ tuio2_init ()
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
 	{
-		nOSC_Message msg = tuio.tok[i];
+		nOSC_Message msg = tok[i];
 
 		nosc_message_set_int32 (msg, 0, 0);
 		nosc_message_set_int32 (msg, 1, 0);
@@ -76,7 +86,7 @@ tuio2_init ()
 	// initialize alv
 	for (i=0; i<BLOB_MAX; i++)
 	{
-		nosc_message_set_int32 (tuio.alv, i, 0);
+		nosc_message_set_int32 (alv, i, 0);
 		alv_fmt[i] = nOSC_INT32;
 	}
 	alv_fmt[BLOB_MAX] = nOSC_END;
@@ -98,15 +108,15 @@ tuio2_long_header_enable (uint8_t on)
 		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
 		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
 
-		nosc_message_set_string (tuio.frm, 2, config.name);
-		nosc_message_set_int32 (tuio.frm, 3, addr);
-		nosc_message_set_int32 (tuio.frm, 4, inst);
-		nosc_message_set_int32 (tuio.frm, 5, (SENSOR_N << 16) | 1);
+		nosc_message_set_string (frm, 2, config.name);
+		nosc_message_set_int32 (frm, 3, addr);
+		nosc_message_set_int32 (frm, 4, inst);
+		nosc_message_set_int32 (frm, 5, (SENSOR_N << 16) | 1);
 
-		nosc_item_message_set (tuio.bndl, 0, tuio.frm, frm_str, frm_fmt_long);
+		nosc_item_message_set (tuio2_bndl, 0, frm, frm_str, frm_fmt_long);
 	}
 	else // off
-		nosc_item_message_set (tuio.bndl, 0, tuio.frm, frm_str, frm_fmt_short);
+		nosc_item_message_set (tuio2_bndl, 0, frm, frm_str, frm_fmt_short);
 }
 
 void
@@ -124,13 +134,13 @@ tuio2_compact_token_enable (uint8_t on)
 }
 
 static uint8_t old_end = BLOB_MAX;
-static uint8_t tok = 0;
+static uint8_t counter = 0;
 
 void
 tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t end)
 {
-	tuio.frm[0].i = fid;
-	tuio.frm[1].t = timestamp;
+	frm[0].i = fid;
+	frm[1].t = timestamp;
 
 	// first undo previous unlinking at position old_end
 	if (old_end < BLOB_MAX)
@@ -138,10 +148,12 @@ tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint
 		// relink alv message
 		alv_fmt[old_end] = nOSC_INT32;
 
-		nosc_item_message_set (tuio.bndl, old_end + 1, tuio.tok[old_end], tok_str, tok_fmt);
+		nosc_item_message_set (tuio2_bndl, old_end + 1, tok[old_end], tok_str, tok_fmt);
 
 		if (old_end < BLOB_MAX-1)
-			nosc_item_message_set (tuio.bndl, old_end + 2, tuio.tok[old_end+1], tok_str, tok_fmt);
+			nosc_item_message_set (tuio2_bndl, old_end + 2, tok[old_end+1], tok_str, tok_fmt);
+
+		tuio2_fmt[old_end+2] = nOSC_MESSAGE;
 	}
 
 	// then unlink at position end
@@ -151,30 +163,31 @@ tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint
 		alv_fmt[end] = nOSC_END;
 
 		// prepend alv message
-		nosc_item_message_set (tuio.bndl, end + 1, tuio.bndl[BLOB_MAX+1].content.message.msg, tuio.bndl[BLOB_MAX+1].content.message.path, tuio.bndl[BLOB_MAX+1].content.message.fmt);
+		//nosc_item_message_set (tuio2_bndl, end + 1, tuio2_bndl[BLOB_MAX+1].message.msg, tuio2_bndl[BLOB_MAX+1].message.path, tuio2_bndl[BLOB_MAX+1].message.fmt); TODO remove me
+		nosc_item_message_set (tuio2_bndl, end + 1, alv, alv_str, alv_fmt);
 
 		// unlink bundle
-		nosc_item_term_set (tuio.bndl, end + 2);
+		tuio2_fmt[end+2] = nOSC_TERM;
 	}
 
 	old_end = end;
 
-	tok = 0; // reset token pointer
+	counter = 0; // reset token pointer
 }
 
 void
 tuio2_engine_token_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
 {
-	nOSC_Message msg = tuio.tok[tok];
+	nOSC_Message msg = tok[counter];
 
 	msg[0].i = sid;
 	msg[1].i = ((uint32_t)uid << 16) | tid;
 	msg[2].f = x;
 	msg[3].f = y;
 
-	nosc_message_set_int32 (tuio.alv, tok, sid);
+	nosc_message_set_int32 (alv, counter, sid);
 
-	tok++; // increase token pointer
+	counter++; // increase token pointer
 }
 
 CMC_Engine tuio2_engine = {

@@ -32,7 +32,8 @@
 extern "C" {
 #endif
 
-extern nOSC_Bundle tuio2_bndl;
+extern nOSC_Item tuio2_bndl [];
+extern char tuio2_fmt [];
 extern CMC_Engine tuio2_engine;
 
 void tuio2_init ();

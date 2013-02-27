@@ -63,54 +63,6 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 }
 
 void
-nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end)
-{
-	if (!strncmp (buf, bundle_str, 8))
-	{
-		int32_t msg_size;
-		uint8_t *buf_ptr = buf;
-
-		buf_ptr += 8; // skip "#bundle"
-
-		if (start) // call start callback with bundle timestamp if existent
-		{
-			uint64_t timestamp = ref_ntohll (buf_ptr);
-			start (timestamp);
-		}
-
-		buf_ptr += 8; // skip timestamp
-
-		while (buf_ptr-buf < size)
-		{
-			msg_size = ref_ntohl (buf_ptr);
-			buf_ptr += 4;
-
-			// bundles may be nested
-			nosc_method_dispatch (meth, buf_ptr, msg_size, start, end);
-			buf_ptr += msg_size;
-		}
-
-		// call bundle end callback if existent
-		if (end)
-			end ();
-	}
-	else if (buf[0] == '/') // check whether we are a message
-	{
-		char *path;
-		char *fmt;
-		_nosc_message_deserialize (buf, size, &path, &fmt);
-		_nosc_method_message_dispatch (meth, path, fmt);
-	}
-	// else THIS IS NO OSC MESSAGE, IGNORE IT
-}
-
-void
-_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, uint64_t *timestamp)
-{
-	//FIXME
-}
-
-void
 _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 {
 	nOSC_Message msg = dispatch_msg;
@@ -213,15 +165,61 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	}
 }
 
+void
+nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end)
+{
+	if (!strncmp (buf, bundle_str, 8))
+	{
+		int32_t msg_size;
+		uint8_t *buf_ptr = buf;
+
+		buf_ptr += 8; // skip "#bundle"
+
+		if (start) // call start callback with bundle timestamp if existent
+		{
+			uint64_t timestamp = ref_ntohll (buf_ptr);
+			start (timestamp);
+		}
+
+		buf_ptr += 8; // skip timestamp
+
+		while (buf_ptr-buf < size)
+		{
+			msg_size = ref_ntohl (buf_ptr);
+			buf_ptr += 4;
+
+			// bundles may be nested
+			nosc_method_dispatch (meth, buf_ptr, msg_size, start, end);
+			buf_ptr += msg_size;
+		}
+
+		// call bundle end callback if existent
+		if (end)
+			end ();
+	}
+	else if (buf[0] == '/') // check whether we are a message
+	{
+		char *path;
+		char *fmt;
+		_nosc_message_deserialize (buf, size, &path, &fmt);
+		_nosc_method_message_dispatch (meth, path, fmt);
+	}
+	// else THIS IS NO OSC MESSAGE, IGNORE IT
+}
+
+void
+_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, uint64_t *timestamp)
+{
+	//FIXME
+}
+
 /*
  * Bundle
  */
 
 uint16_t
-nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
+nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t *buf)
 {
-	//FIXME handle empty bundles and empty messages
-
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
 
@@ -231,23 +229,33 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, uint8_t *buf)
 	ref_htonll (buf_ptr, timestamp);
 	buf_ptr += 8;
 
-	nOSC_Item *itm;
-	for (itm=bund; itm->type!=nOSC_TERM; itm++)
+	char *type;
+	nOSC_Item *itm = bund;
+	for (type=fmt; *type!=nOSC_TERM; type++)
 	{
-		switch (itm->type)
+		switch (*type)
 		{
 			case nOSC_MESSAGE:
-				msg_size = nosc_message_serialize (itm->content.message.msg, itm->content.message.path, itm->content.message.fmt, buf_ptr+4);
+				msg_size = nosc_message_serialize (itm->message.msg, itm->message.path, itm->message.fmt, buf_ptr+4);
 				break;
 			case nOSC_BUNDLE:
-				msg_size = nosc_bundle_serialize (itm->content.bundle.bndl, itm->content.bundle.tt, buf_ptr+4);
+				msg_size = nosc_bundle_serialize (itm->bundle.bndl, itm->bundle.tt, itm->bundle.fmt, buf_ptr+4);
 				break;
 		}
-		ref_htonl (buf_ptr, msg_size);
-		buf_ptr += msg_size + 4;
+
+		if (msg_size) // only advance buf_ptr when msg_size > 0
+		{
+			ref_htonl (buf_ptr, msg_size);
+			buf_ptr += msg_size + 4;
+		}
+
+		itm++;
 	}
 
-	return buf_ptr - buf;
+	if (buf_ptr - buf > 16) // there's content after the header
+		return buf_ptr - buf;
+	else
+		return 0; // there's no content after the header
 }
 
 /*
@@ -354,6 +362,8 @@ nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, u
 	uint8_t *buf_ptr = buf;
 
 	// write path
+	if (!path) // handle special case
+		*buf_ptr++ = '/';
 	len = strlen (path) + 1;
 	memcpy (buf_ptr, path, len);
 	buf_ptr += len;
@@ -527,22 +537,15 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 inline void
 nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt)
 {
-	itm[pos].type = nOSC_MESSAGE;
-	itm[pos].content.message.msg = msg;
-	itm[pos].content.message.path = path;
-	itm[pos].content.message.fmt = fmt;
+	itm[pos].message.msg = msg;
+	itm[pos].message.path = path;
+	itm[pos].message.fmt = fmt;
 }
 
 inline void
-nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp)
+nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp, char *fmt)
 {
-	itm[pos].type = nOSC_BUNDLE;
-	itm[pos].content.bundle.bndl = bundle;
-	itm[pos].content.bundle.tt = timestamp;
-}
-
-inline void
-nosc_item_term_set (nOSC_Item *itm, uint8_t pos)
-{
-	itm[pos].type = nOSC_TERM;
+	itm[pos].bundle.bndl = bundle;
+	itm[pos].bundle.tt = timestamp;
+	itm[pos].bundle.fmt = fmt;
 }

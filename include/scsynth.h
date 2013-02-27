@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 extern nOSC_Item scsynth_bndl [];
+extern char scsynth_fmt [];
 extern CMC_Engine scsynth_engine;
 
 void scsynth_init ();

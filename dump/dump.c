@@ -32,11 +32,11 @@ uint32_t frame = 0;
 nOSC_Arg dump_msg [3];
 
 nOSC_Item dump_bndl [] = {
-	nosc_message(dump_msg, "/dump", "itb"),
-	nosc_term
+	nosc_message(dump_msg, "/dump", "itb")
 };
+char *dump_fmt = "M";
 
-void
+inline void
 dump_init (int32_t size, int16_t *swap)
 {
 	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t *)swap);
@@ -45,7 +45,7 @@ dump_init (int32_t size, int16_t *swap)
 inline uint16_t
 dump_serialize (uint8_t *buf, uint64_t offset)
 {
-	return nosc_bundle_serialize (dump_bndl, offset, buf);
+	return nosc_bundle_serialize (dump_bndl, offset, dump_fmt, buf);
 }
 
 inline void

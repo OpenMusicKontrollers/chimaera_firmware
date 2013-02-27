@@ -27,15 +27,8 @@
 #include <tuio2.h>
 #include <nosc.h>
 
+#define TUIO2_MAX (BLOB_MAX+2)
+
 typedef nOSC_Arg Tuio2_Tok [4];
-typedef struct _Tuio2 Tuio2;
-
-struct _Tuio2 {
-	nOSC_Arg frm [6];
-	Tuio2_Tok tok [BLOB_MAX];
-	nOSC_Arg alv [BLOB_MAX];
-
-	nOSC_Item bndl [BLOB_MAX + 2 + 1];
-};
 
 #endif /* TUIO2_PRIVATE_H */
