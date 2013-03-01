@@ -40,7 +40,7 @@
 static gpio_dev *ss_dev;
 static uint8_t ss_bit;
 static uint8_t tmp_buf_o_ptr = 0;
-static uint8_t tmp_buf_i_ptr = INPUT_BUF_SEND;
+uint8_t *tmp_buf_i = buf_i_o;
 
 static uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
 static uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
@@ -67,18 +67,23 @@ static uint16_t Sn_Rx_RD[8];
 inline void
 _spi_dma_run (uint16_t len, uint8_t io_flags)
 {
-	// when only sending, we don't need to read RX
 	if (io_flags & WIZ_RX)
 	{
+		spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 		dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
 		dma_enable (DMA1, DMA_CH4); // Rx
 	}
+	else
+		spi_rx_dma_disable (SPI2);
 
 	if (io_flags & WIZ_TX)
 	{
+		spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
 		dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
 		dma_enable (DMA1, DMA_CH5); // Tx
 	}
+	else
+		spi_tx_dma_disable (SPI2);
 }
 
 inline uint8_t
@@ -89,7 +94,7 @@ _spi_dma_block (uint8_t io_flags)
 	uint8_t isr_tx;
 	uint8_t spi_sr;
 
-	if (io_flags == WIZ_SENDRECV)
+	if (io_flags == WIZ_TXRX)
 	{
 		do
 		{
@@ -118,7 +123,7 @@ _spi_dma_block (uint8_t io_flags)
 		dma_disable (DMA1, DMA_CH5); // Tx
 		dma_disable (DMA1, DMA_CH4); // Rx
 	}
-	else if (io_flags == WIZ_SENDONLY)
+	else if (io_flags & WIZ_TX)
 	{
 		do
 		{
@@ -128,13 +133,27 @@ _spi_dma_block (uint8_t io_flags)
 			if (isr_tx & 0x8) // TX DMA transfer error
 				ret = 0;
 
-			// SPI_SR_OVR is set when not reading RX
-
-			if (spi_sr & SPI_SR_MODF)
+			if (spi_sr & SPI_SR_MODF) // SPI mode fault
 				ret = 0;
-		} while (!(isr_tx & 0x2) && !(spi_sr & SPI_SR_TXE) && (spi_sr & SPI_SR_BSY) && ret); // TX DMA transfer complete
+		} while (!(isr_tx & 0x2) && ret); // TX DMA transfer complete
+
+		do {
+			spi_sr = SPI2_BASE->SR;
+		} while (!(spi_sr & SPI_SR_TXE) && ret); // wait for TXE==1
+
+		do {
+			spi_sr = SPI2_BASE->SR;
+		} while ((spi_sr & SPI_SR_BSY) && ret); // wait for BSY==0
+
+		do
+		{
+			spi_sr = SPI2_BASE->DR;
+			spi_sr = SPI2_BASE->SR;
+		} while (spi_sr & SPI_SR_OVR); // clear OVR flag
 
 		dma_clear_isr_bits (DMA1, DMA_CH5);
+		dma_clear_isr_bits (DMA1, DMA_CH4);
+
 		dma_disable (DMA1, DMA_CH5); // Tx
 	}
 
@@ -156,9 +175,9 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen, WIZ_SENDONLY);
-	while (!_spi_dma_block (WIZ_SENDONLY))
-		_spi_dma_run (buflen, WIZ_SENDONLY);
+	_spi_dma_run (buflen, WIZ_TX);
+	while (!_spi_dma_block (WIZ_TX))
+		_spi_dma_run (buflen, WIZ_TX);
 
 	resetSS ();
 }
@@ -197,14 +216,14 @@ _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (nonblocklen, WIZ_SENDONLY);
+	_spi_dma_run (nonblocklen, WIZ_TX);
 }
 
 inline void
 _dma_write_nonblocking_out ()
 {
-	while (!_spi_dma_block (WIZ_SENDONLY))
-		_spi_dma_run (nonblocklen, WIZ_SENDONLY);
+	while (!_spi_dma_block (WIZ_TX))
+		_spi_dma_run (nonblocklen, WIZ_TX);
 	resetSS ();
 }
 
@@ -213,14 +232,14 @@ _dma_read_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (nonblocklen, WIZ_SENDRECV);
+	_spi_dma_run (nonblocklen, WIZ_TXRX);
 }
 
 inline void
 _dma_read_nonblocking_out ()
 {
-	while (!_spi_dma_block (WIZ_SENDRECV))
-		_spi_dma_run (nonblocklen, WIZ_SENDRECV);
+	while (!_spi_dma_block (WIZ_TXRX))
+		_spi_dma_run (nonblocklen, WIZ_TXRX);
 	resetSS ();
 }
 
@@ -239,12 +258,12 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 
 	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
-	_spi_dma_run (buflen, WIZ_SENDRECV);
-	while (!_spi_dma_block (WIZ_SENDRECV))
-		_spi_dma_run (buflen, WIZ_SENDRECV);
+	_spi_dma_run (buflen, WIZ_TXRX);
+	while (!_spi_dma_block (WIZ_TXRX))
+		_spi_dma_run (buflen, WIZ_TXRX);
 	resetSS ();
 
-	memcpy (dat, &buf_i[tmp_buf_i_ptr][SPI_CMD_SIZE], len);
+	memcpy (dat, &tmp_buf_i[SPI_CMD_SIZE], len);
 }
 
 inline uint8_t *
@@ -311,8 +330,10 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	ss_dev = dev;
 	ss_bit = bit;
 
+	tmp_buf_i = buf_i_o;
+
 	// set up dma for SPI2RX
-	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
+	spi2_rx_tube.tube_dst = tmp_buf_i;
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	//dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
@@ -579,9 +600,9 @@ udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	}
 
-	tmp_buf_i_ptr = INPUT_BUF_RECV;
+	tmp_buf_i = buf_i_i;
 
-	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
+	spi2_rx_tube.tube_dst = tmp_buf_i;
 	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
@@ -624,12 +645,12 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 
 	// remove 4byte padding between chunks
 	if (size)
-		memmove (buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + size, buf_i[tmp_buf_i_ptr] + SPI_CMD_SIZE + size + SPI_CMD_SIZE, len-size);
+		memmove (tmp_buf_i + SPI_CMD_SIZE + size, tmp_buf_i + SPI_CMD_SIZE + size + SPI_CMD_SIZE, len-size);
 
 	// switch back to RECV buffer
-	tmp_buf_i_ptr = INPUT_BUF_SEND;
+	tmp_buf_i = buf_i_o;
 
-	spi2_rx_tube.tube_dst = buf_i[tmp_buf_i_ptr];
+	spi2_rx_tube.tube_dst = tmp_buf_i;
 	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 }
@@ -675,7 +696,7 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 		uint16_t remaining = len;
 		while (remaining > 0)
 		{
-			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
+			uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE + len - remaining;
 
 			uint8_t *ip = &buf_in_ptr[0];
 			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
@@ -765,7 +786,7 @@ void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *us
 		uint16_t remaining = len;
 		while (remaining > 0)
 		{
-			uint8_t *buf_in_ptr = buf_i[INPUT_BUF_RECV] + SPI_CMD_SIZE + len - remaining;
+			uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE + len - remaining;
 			uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
 
 			//debug_str ("macraw_dispatch"); // FIXME  remove debug

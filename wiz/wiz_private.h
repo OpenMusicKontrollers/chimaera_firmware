@@ -102,10 +102,10 @@
 #define TX_BUF_BASE 0x8000
 #define RX_BUF_BASE 0xC000
 
-#define WIZ_TX 0b01
-#define WIZ_RX 0b10
-#define WIZ_SENDRECV WIZ_TX | WIZ_RX
-//#define WIZ_SENDONLY WIZ_TX FIXME
-#define WIZ_SENDONLY WIZ_SENDRECV
+enum {
+	WIZ_TX		= 0b01,
+	WIZ_RX		= 0b10,
+	WIZ_TXRX	= 0b11
+};
 
 #endif // UDP_PRIVATE_H

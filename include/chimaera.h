@@ -58,7 +58,7 @@ extern "C" {
 #define UDP_PWDN 0
 #define UDP_INT 27
 
-#define CHIMAERA_BUFSIZE 512 //TODO this can be increased up to 2k
+#define CHIMAERA_BUFSIZE 0x280 //FIXME increase to 0x400
 
 #define ADC_DMA_PRIORITY 0x2
 #define SPI_RX_DMA_PRIORITY 0x3
@@ -89,8 +89,9 @@ extern "C" {
 #define UID_BASE  ((const uint8_t *)0x1FFFF7E8)
 
 extern uint8_t buf_o_ptr;
-extern uint8_t buf_o[2][CHIMAERA_BUFSIZE]; // general purpose output buffer
-extern uint8_t buf_i[2][CHIMAERA_BUFSIZE]; // general purpose input buffer
+extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
+extern uint8_t buf_i_o [];
+extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 extern uint8_t calibrating;
 
