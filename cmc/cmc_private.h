@@ -36,8 +36,8 @@
 #define POLE_NORTH 1
 #define POLE_SOUTH 0
 
-extern fix_0_32_t lookup [];
-extern fix_0_32_t lookup_sqrt [];
+extern const fix_0_32_t lookup [];
+extern const fix_0_32_t lookup_sqrt [];
 
 typedef enum {
 	CMC_BLOB_INVALID,
@@ -60,11 +60,6 @@ struct _CMC_Blob {
 	float fx, fp;
 	uint16_t uid;
 	uint8_t above_thresh;
-	/* TODO test me
-	uint8_t ignore;
-	uint8_t hasappeared;
-	uint8_t hasdisappeared;
-	*/
 	CMC_Blob_State state;
 };
 

@@ -49,10 +49,9 @@ EEPROM_24xx _24AA025E48 = {
 EEPROM_24xx *eeprom_24LC64 = &_24LC64;
 EEPROM_24xx *eeprom_24AA025E48 = &_24AA025E48;
 
-static i2c_msg write_msg;
-static uint8_t write_msg_data [0x22]; // = address_size + page_size
-
-static i2c_msg read_msg;
+i2c_msg write_msg;
+uint8_t write_msg_data [0x22]; // = address_size + page_size
+i2c_msg read_msg;
 
 inline void
 _set_address (EEPROM_24xx *eeprom, uint16_t addr)

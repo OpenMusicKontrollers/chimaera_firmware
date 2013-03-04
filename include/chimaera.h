@@ -58,7 +58,7 @@ extern "C" {
 #define UDP_PWDN 0
 #define UDP_INT 27
 
-#define CHIMAERA_BUFSIZE 0x280 //FIXME increase to 0x400
+#define CHIMAERA_BUFSIZE 0x300 //FIXME increase to 0x400
 
 #define ADC_DMA_PRIORITY 0x2
 #define SPI_RX_DMA_PRIORITY 0x3

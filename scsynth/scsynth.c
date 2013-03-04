@@ -38,22 +38,22 @@ nOSC_Item free_bndl [1];
 
 nOSC_Item scsynth_bndl [SCSYNTH_MAX]; // because of free_bndl
 char scsynth_fmt [SCSYNTH_MAX+1];
-static uint8_t set_tok = 0;
-static uint8_t tok = 0;
+uint8_t set_tok = 0;
+uint8_t sc_tok = 0;
 
-char *inst_str = "chiminst";
-char *gate_str = "gate";
+char *inst_str = "chiminst"; // TODO read from config
+const char *gate_str = "gate";
 
-char *on_str = "/s_new";
-char *free_str = "/n_free";
-char *set_str = "/n_set";
+const char *on_str = "/s_new";
+const char *free_str = "/n_free";
+const char *set_str = "/n_set";
 
-char *on_fmt = "siiisi";
-char *off_fmt = "isi";
-char *free_fmt = "i";
-char *set_fmt = "iifif";
+const char *on_fmt = "siiisi";
+const char *off_fmt = "isi";
+const char *free_fmt = "i";
+const char *set_fmt = "iifif";
 
-char *free_bndl_fmt = "M";
+const char *free_bndl_fmt = "M";
 
 uint64_t tt;
 
@@ -70,13 +70,14 @@ scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, ui
 {
 	uint8_t end;
 
+	// FIXME there is a bug somewhere here
 	end = nblob_old > nblob_new ? nblob_new + 2*(nblob_old-nblob_new) : nblob_new; // +1 because of free
 
 	memset (scsynth_fmt, nOSC_MESSAGE, end);
 	scsynth_fmt[end] = nOSC_TERM;
 
 	tt = timestamp;
-	tok = 0;
+	sc_tok = 0;
 	set_tok = 0;
 }
 
@@ -92,12 +93,12 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y
 	nosc_message_set_int32 (msg, 2, 0); // add to HEAD
 	nosc_message_set_int32 (msg, 3, 1); // group
 
-	nosc_message_set_string (msg, 4, gate_str);
+	nosc_message_set_string (msg, 4, (char *)gate_str);
 	nosc_message_set_int32 (msg, 5, 1);
 
-	nosc_item_message_set (scsynth_bndl, tok, msg, on_str, on_fmt);
+	nosc_item_message_set (scsynth_bndl, sc_tok, msg, (char *)on_str, (char *)on_fmt);
 
-	tok++;
+	sc_tok++;
 }
 
 void
@@ -109,22 +110,22 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
 
 	nosc_message_set_int32 (msg, 0, id);
 
-	nosc_message_set_string (msg, 1, gate_str);
+	nosc_message_set_string (msg, 1, (char *)gate_str);
 	nosc_message_set_int32 (msg, 2, 0);
 
-	nosc_item_message_set (scsynth_bndl, tok, msg, set_str, off_fmt);
+	nosc_item_message_set (scsynth_bndl, sc_tok, msg, (char *)set_str, (char *)off_fmt);
 
-	tok++;
+	sc_tok++;
 
 	msg = free_msg[0];
 	nosc_message_set_int32 (msg, 0, id);
-	nosc_item_message_set (free_bndl, 0, msg, free_str, free_fmt);
+	nosc_item_message_set (free_bndl, 0, msg, (char *)free_str, (char *)free_fmt);
 
 	uint64_t offset = tt + (2ULL << 32); // + 2 seconds
-	nosc_item_bundle_set (scsynth_bndl, tok, free_bndl, offset, free_bndl_fmt);
-	scsynth_fmt[tok] = nOSC_BUNDLE;
+	nosc_item_bundle_set (scsynth_bndl, sc_tok, free_bndl, offset, (char *)free_bndl_fmt);
+	scsynth_fmt[sc_tok] = nOSC_BUNDLE;
 
-	tok++;
+	sc_tok++;
 }
 
 void
@@ -142,10 +143,10 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 	nosc_message_set_int32 (msg, 3, 1);
 	nosc_message_set_float (msg, 4, y);
 
-	nosc_item_message_set (scsynth_bndl, tok, msg, set_str, set_fmt);
+	nosc_item_message_set (scsynth_bndl, sc_tok, msg, (char *)set_str, (char *)set_fmt);
 
 	set_tok++;
-	tok++;
+	sc_tok++;
 }
 
 CMC_Engine scsynth_engine = {

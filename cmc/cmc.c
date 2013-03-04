@@ -36,9 +36,17 @@
 #define s2d2 0.70710678118655r // sqrt(2) / 2
 #define os8 0.35355339059327r // 1 / sqrt(8)
 
-static uint16_t idle_word = 0;
-static uint8_t idle_bit = 0;
+uint16_t idle_word = 0;
+uint8_t idle_bit = 0;
 CMC cmc;
+
+#define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
+
+uint8_t n_aoi;
+uint8_t aoi[64]; //TODO how big?
+
+uint8_t n_peaks;
+uint8_t peaks[BLOB_MAX];
 
 void
 cmc_init ()
@@ -66,14 +74,6 @@ cmc_init ()
 	cmc.old = 0;
 	cmc.neu = 1;
 }
-
-#define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
-
-uint8_t n_aoi;
-uint8_t aoi[64]; //TODO how big?
-
-uint8_t n_peaks;
-uint8_t peaks[BLOB_MAX];
 
 static int
 aoi_cmp (const void *a, const void *b)

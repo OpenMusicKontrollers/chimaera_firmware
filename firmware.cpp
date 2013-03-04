@@ -196,7 +196,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 			}
 	}
 
-	nosc_method_dispatch (config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
+	nosc_method_dispatch ((nOSC_Method *)config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
 }
 
 static void

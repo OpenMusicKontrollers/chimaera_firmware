@@ -37,19 +37,24 @@
 #define INPUT_BUF_SEND 0
 #define INPUT_BUF_RECV 1
 
-static gpio_dev *ss_dev;
-static uint8_t ss_bit;
-static uint8_t tmp_buf_o_ptr = 0;
+gpio_dev *ss_dev;
+uint8_t ss_bit;
+uint8_t tmp_buf_o_ptr = 0;
 uint8_t *tmp_buf_i = buf_i_o;
 
-static uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
-static uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
+uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
+uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 
-static uint16_t SBASE [WIZ_MAX_SOCK_NUM];
-static uint16_t RBASE [WIZ_MAX_SOCK_NUM];
+uint16_t SBASE [WIZ_MAX_SOCK_NUM];
+uint16_t RBASE [WIZ_MAX_SOCK_NUM];
 
-static uint16_t SMASK [WIZ_MAX_SOCK_NUM];
-static uint16_t RMASK [WIZ_MAX_SOCK_NUM];
+uint16_t SMASK [WIZ_MAX_SOCK_NUM];
+uint16_t RMASK [WIZ_MAX_SOCK_NUM];
+
+uint16_t Sn_Tx_WR[8];
+uint16_t Sn_Rx_RD[8];
+
+uint16_t nonblocklen;
 
 inline void setSS ()
 {
@@ -60,9 +65,6 @@ inline void resetSS ()
 {
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
-
-static uint16_t Sn_Tx_WR[8];
-static uint16_t Sn_Rx_RD[8];
 
 inline void
 _spi_dma_run (uint16_t len, uint8_t io_flags)
@@ -208,8 +210,6 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 
 	return buf;
 }
-
-static uint16_t nonblocklen;
 
 inline void
 _dma_write_nonblocking_in (uint8_t *buf)

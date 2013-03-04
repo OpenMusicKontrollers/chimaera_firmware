@@ -31,10 +31,10 @@
  * static variabled
  */
 
-static nOSC_Arg dispatch_msg [OSC_ARGS_MAX];
-static nOSC_Arg vararg_msg [OSC_ARGS_MAX];
+nOSC_Arg dispatch_msg [OSC_ARGS_MAX];
+nOSC_Arg vararg_msg [OSC_ARGS_MAX];
 
-static const char *bundle_str = "#bundle";
+const char *bundle_str = "#bundle";
 
 /*
  * Method
@@ -302,13 +302,13 @@ nosc_message_set_false (nOSC_Message msg, uint8_t pos)
 inline void
 nosc_message_set_nil (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].i = INT32_MIN;
+	msg[pos].i = nOSC_Nil;
 }
 
 inline void
 nosc_message_set_infty (nOSC_Message msg, uint8_t pos)
 {
-	msg[pos].i = INT32_MAX;
+	msg[pos].i = nOSC_Infty;
 }
 
 inline void

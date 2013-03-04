@@ -33,7 +33,6 @@
 extern "C" {
 #endif
 
-#define CONFIG_REPLY_PATH "/reply"
 #define SRC_PORT 0
 #define DST_PORT 1
 #define NAME_LENGTH 16
@@ -143,7 +142,7 @@ struct _Config {
 
 extern Config config;
 
-extern nOSC_Method config_serv [];
+extern const nOSC_Method config_serv [];
 
 uint8_t config_load ();
 uint8_t config_save ();

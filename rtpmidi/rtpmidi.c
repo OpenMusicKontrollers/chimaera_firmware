@@ -29,7 +29,7 @@
 
 uint16_t sequence_number = 0;
 
-static RTP_Header rtp_header = {
+RTP_Header rtp_header = {
 	.V_P_X_CC = 0b00000000,
 	.M_PT = 0b00000000,
 	.sequence_number = 0x0000,
@@ -37,11 +37,11 @@ static RTP_Header rtp_header = {
 	.SSRC = 0x00000000
 };
 
-static RTP_MIDI_Session rtp_midi_session = {
+RTP_MIDI_Session rtp_midi_session = {
 	.rate = 48000
 };
 
-static RTP_MIDI_Header rtp_midi_header = {
+RTP_MIDI_Header rtp_midi_header = {
 	.B_J_Z_P_LEN1 = 0b00000000,
 	.LEN2 = 0b00000000
 };

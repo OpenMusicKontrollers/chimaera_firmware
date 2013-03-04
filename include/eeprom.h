@@ -21,12 +21,6 @@
  *     distribution.
  */
 
-/*
- * This library is for the Microchip 24LC64
- * 64K I2C Serial EEPROM
- *
- */
-
 #ifndef _EEPROM_H_
 #define _EEPROM_H_
 

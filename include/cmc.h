@@ -35,7 +35,6 @@ extern "C" {
 #endif
 
 typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nbob_new);
-
 typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
 typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t uid, uint16_t tid);
 typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
@@ -59,7 +58,7 @@ uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
 uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
 uint8_t cmc_group_del (uint16_t tid);
 
-uint8_t *cmc_group_buf_get (uint8_t *size);
+uint8_t *cmc_group_buf_get (uint8_t *size); //TODO this is ugly code, solve differently
 uint8_t *cmc_group_buf_set (uint8_t size);
 
 #ifdef __cplusplus
