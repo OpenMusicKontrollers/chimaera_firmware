@@ -117,8 +117,23 @@ union _nOSC_Item {
 #define nosc_message(m,p,f)	(nOSC_Item){.message={.msg=m, .path=p, .fmt=f}}
 #define nosc_bundle(b,t,f)	(nOSC_Item){.bundle={.bndl=b, .tt=t, .fmt=f}}
 
-void nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt);
-void nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp, char *fmt);
+#define nosc_item_message_set(ITM,POS,MSG,PATH,FMT) \
+({ \
+	nOSC_Item *itm = (nOSC_Item *)(ITM); \
+	uint8_t pos = (uint8_t)(POS); \
+	itm[pos].message.msg = (nOSC_Message)(MSG); \
+	itm[pos].message.path = (char *)PATH; \
+	itm[pos].message.fmt = (char *)FMT; \
+})
+
+#define nosc_item_bundle_set(ITM,POS,BNDL,TIMESTAMP,FMT) \
+({ \
+	nOSC_Item *itm = (nOSC_Item *)(ITM); \
+	uint8_t pos = (uint8_t)(POS); \
+	itm[pos].bundle.bndl = (nOSC_Item *)BNDL; \
+	itm[pos].bundle.tt = (uint64_t)TIMESTAMP; \
+	itm[pos].bundle.fmt = (char *)FMT; \
+})
 
 struct _nOSC_Method {
 	char *path;
@@ -150,23 +165,27 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt,
  * Message functions
  */
 
-void nosc_message_set_int32 (nOSC_Message msg, uint8_t pos, int32_t i);
-void nosc_message_set_float (nOSC_Message msg, uint8_t pos, float f);
-void nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s);
-void nosc_message_set_blob (nOSC_Message msg, uint8_t pos, int32_t size, uint8_t *data);
+#define nosc_message_set_int32(MSG,POS,I) (((nOSC_Message)(MSG))[POS].i = (int32_t)(I))
+#define nosc_message_set_float(MSG,POS,F) (((nOSC_Message)(MSG))[POS].f = (float)(F))
+#define nosc_message_set_string(MSG,POS,S) (((nOSC_Message)(MSG))[POS].s = (char *)(S))
+#define nosc_message_set_blob(MSG,POS,S,P) \
+({ \
+	((nOSC_Message)(MSG))[POS].b.size = (int32_t)(S); \
+	((nOSC_Message)(MSG))[POS].b.data = (uint8_t *)(P); \
+})
 
-void nosc_message_set_true (nOSC_Message msg, uint8_t pos);
-void nosc_message_set_false (nOSC_Message msg, uint8_t pos);
-void nosc_message_set_nil (nOSC_Message msg, uint8_t pos);
-void nosc_message_set_infty (nOSC_Message msg, uint8_t pos);
+#define nosc_message_set_true(MSG,POS) (((nOSC_Message)(MSG))[POS].i = 0)
+#define nosc_message_set_false(MSG,POS) (((nOSC_Message)(MSG))[POS].i = 1)
+#define nosc_message_set_nil(MSG,POS) (((nOSC_Message)(MSG))[POS].i = nOSC_Nil)
+#define nosc_message_set_infty(MSG,POS) (((nOSC_Message)(MSG))[POS].i = nOSC_Infty)
 
-void nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d);
-void nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h);
-void nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t);
+#define nosc_message_set_double(MSG,POS,D) (((nOSC_Message)(MSG))[POS].d = (double)(D))
+#define nosc_message_set_int64(MSG,POS,H) (((nOSC_Message)(MSG))[POS].h = (int64_t)(H))
+#define nosc_message_set_timestamp(MSG,POS,T) (((nOSC_Message)(MSG))[POS].t = (uint64_t)(T))
 
-void nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m);
-void nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S);
-void nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c);
+#define nosc_message_set_midi(MSG,POS,M) (memcpy (((nOSC_Message)(MSG))[(POS)].m, (uint8_t *)(M), 4))
+#define nosc_message_set_symbol(MSG,POS,_S) (((nOSC_Message)(MSG))[POS].S = (char *)(_S))
+#define nosc_message_set_char(MSG,POS,C) (((nOSC_Message)(MSG))[POS].c = (char)(C))
 
 uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
 uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);

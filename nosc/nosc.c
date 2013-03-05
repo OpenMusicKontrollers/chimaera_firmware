@@ -259,95 +259,6 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t 
 }
 
 /*
- * Message
- */
-
-inline void
-nosc_message_set_int32 (nOSC_Message msg, uint8_t pos, int32_t i)
-{
-	msg[pos].i = i;
-}
-
-inline void
-nosc_message_set_float (nOSC_Message msg, uint8_t pos, float f)
-{
-	msg[pos].f = f;
-}
-
-inline void
-nosc_message_set_string (nOSC_Message msg, uint8_t pos, char *s)
-{
-	msg[pos].s = s;
-}
-
-inline void
-nosc_message_set_blob (nOSC_Message msg, uint8_t pos, int32_t size, uint8_t *data)
-{
-	msg[pos].b.size = size;
-	msg[pos].b.data = data;
-}
-
-inline void
-nosc_message_set_true (nOSC_Message msg, uint8_t pos)
-{
-	msg[pos].i = 1;
-}
-
-inline void
-nosc_message_set_false (nOSC_Message msg, uint8_t pos)
-{
-	msg[pos].i = 0;
-}
-
-inline void
-nosc_message_set_nil (nOSC_Message msg, uint8_t pos)
-{
-	msg[pos].i = nOSC_Nil;
-}
-
-inline void
-nosc_message_set_infty (nOSC_Message msg, uint8_t pos)
-{
-	msg[pos].i = nOSC_Infty;
-}
-
-inline void
-nosc_message_set_double (nOSC_Message msg, uint8_t pos, double d)
-{
-	msg[pos].d = d;
-}
-
-inline void
-nosc_message_set_int64 (nOSC_Message msg, uint8_t pos, int64_t h)
-{
-	msg[pos].h = h;
-}
-
-inline void
-nosc_message_set_timestamp (nOSC_Message msg, uint8_t pos, uint64_t t)
-{
-	msg[pos].t = t;
-}
-
-inline void
-nosc_message_set_midi (nOSC_Message msg, uint8_t pos, uint8_t *m)
-{
-	memcpy (msg[pos].m, m, 4);
-}
-
-inline void
-nosc_message_set_symbol (nOSC_Message msg, uint8_t pos, char *S)
-{
-	msg[pos].S = S;
-}
-
-inline void
-nosc_message_set_char (nOSC_Message msg, uint8_t pos, char c)
-{
-	msg[pos].c = c;
-}
-
-/*
  * (de)serialization
  */
 
@@ -532,20 +443,4 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 	uint16_t size = nosc_message_serialize (msg, path, fmt, buf);
 
 	return size;
-}
-
-inline void
-nosc_item_message_set (nOSC_Item *itm, uint8_t pos, nOSC_Message msg, char *path, char *fmt)
-{
-	itm[pos].message.msg = msg;
-	itm[pos].message.path = path;
-	itm[pos].message.fmt = fmt;
-}
-
-inline void
-nosc_item_bundle_set (nOSC_Item *itm, uint8_t pos, nOSC_Item *bundle, uint64_t timestamp, char *fmt)
-{
-	itm[pos].bundle.bndl = bundle;
-	itm[pos].bundle.tt = timestamp;
-	itm[pos].bundle.fmt = fmt;
 }
