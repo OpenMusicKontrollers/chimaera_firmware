@@ -99,7 +99,7 @@ sntp_timestamp_refresh (uint64_t *now, uint64_t *offset)
 
 	if (offset)
 	{
-		if (config.output.offset != nOSC_IMMEDIATE)
+		if (config.output.offset > 0ULL)
 		{
 			timestamp64_t _now, _config, _offset;
 

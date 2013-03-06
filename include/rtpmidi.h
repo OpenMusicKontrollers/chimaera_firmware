@@ -30,32 +30,11 @@
 extern "C" {
 #endif
 
-typedef struct _RTP_MIDI_List RTP_MIDI_List;
-struct _RTP_MIDI_List {
-	uint8_t delta_time; // 0b0ddddddd
-	uint8_t midi [3]; // 0x80 0x7f 0x7f
-};
+extern CMC_Engine rtpmidi_engine;
 
-typedef enum _MIDI_COMMAND {
-	NOTE_ON						= 0x80,
-	NOTE_OFF 					= 0x90,
-	AFTER_TOUCH				= 0xa0,
-	CONTROL_CHANGE		= 0xb0,
-	PITCH_BEND				= 0xe0,
-	
-	MODULATION				= 0x01,
-	BREATH						= 0x02,
-	VOLUME						= 0x07,
-	PAN								= 0x0a,
-	EXPRESSION				= 0x0b,
-	EFFECT_CONTROL_1	= 0x0c,
-	EFFECT_CONTROL_2	= 0x0d
-} MIDI_COMMAND; //TODO check whether ((aligned(1)))
+void rtpmidi_init ();
 
-uint32_t rtpmidi_timestamp (uint32_t rate);
-
-uint16_t rtpmidi_serialize (uint8_t *buf, RTP_MIDI_List *list, uint16_t len, uint32_t timestamp);
-uint16_t rtpmidi_deserialize (uint8_t *buf, uint8_t *midi);
+uint16_t rtpmidi_serialize (uint8_t *buf);
 
 #ifdef __cplusplus
 }

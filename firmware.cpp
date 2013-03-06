@@ -55,6 +55,7 @@
 #include <dns_sd.h>
 #include <dhcpc.h>
 #include <arp.h>
+#include <rtpmidi.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
 gpio_dev *mux_gpio_dev [MUX_LENGTH];
@@ -94,6 +95,7 @@ uint64_t offset;
 CMC_Engine engines [] = {
 	tuio2_engine,
 	scsynth_engine,
+	rtpmidi_engine,
 	{NULL} // terminator
 };
 
@@ -284,7 +286,7 @@ loop ()
 			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
 		}
 	
-		if (config.tuio.enabled || config.scsynth.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+		if (config.tuio.enabled || config.scsynth.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 		{
 			uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
@@ -296,7 +298,9 @@ loop ()
 				if (config.scsynth.enabled)
 					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
 
-				// if (config.rtpmidi.enabled)
+				if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
+					cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+
 				// if (config.kraken.enabled)
 			}
 		}
@@ -313,6 +317,9 @@ loop ()
 			else // job == 1, there's no need to send a nested bundle in this case
 				cmc_len = nosc_bundle_serialize (nest_bndl[0].bundle.bndl, offset, nest_bndl[0].bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 		}
+
+		if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
+			job = 1;
 
 		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 			udp_send_block (config.output.socket.sock);
@@ -630,6 +637,7 @@ setup ()
 	dump_init (sizeof(adc_swap), adc_swap);
 	tuio2_init ();
 	scsynth_init ();
+	rtpmidi_init ();
 
 	// load saved groups
 	groups_load ();

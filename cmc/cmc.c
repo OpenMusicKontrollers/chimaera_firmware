@@ -90,7 +90,6 @@ aoi_cmp (const void *a, const void *b)
 	return 1;
 }
 
-//TODO actually use engines
 uint8_t
 cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 {
@@ -221,14 +220,9 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 					{
 						cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
 
-						n_less--; // decrease counter to potentially skip diff calculation in next iteration
-						i++; // jump over disappeared blob
-						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
-
+						n_less--;
 						i++;
-						j++;
+						// do not increase j
 					}
 					else
 					{
@@ -241,9 +235,9 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 					}
 				}
 
-				if (cmc.J == 0) // treat special case not covered by loop above
-					for (i=0; i<cmc.I; i++)
-						cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+				// if (n_less)
+				for (i=cmc.I - n_less; i<cmc.I; i++)
+					cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
 
 				break;
 			}
@@ -299,18 +293,18 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 					}
 				}
 
-				if (n_more)
-					for (j=cmc.J - n_more; j<cmc.J; j++)
+				//if (n_more)
+				for (j=cmc.J - n_more; j<cmc.J; j++)
+				{
+					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
 					{
-						if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
-						{
-							cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
-							cmc.blobs[cmc.neu][j].group = NULL;
-							cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
-						}
-						else
-							cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
+						cmc.blobs[cmc.neu][j].group = NULL;
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
 					}
+					else
+						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+				}
 
 				break;
 			}

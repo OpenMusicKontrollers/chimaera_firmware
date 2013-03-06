@@ -25,10 +25,12 @@
 #define RTPMIDI_PRIVATE_H
 
 #include <rtpmidi.h>
+#include <armfix.h>
 
 typedef struct _RTP_Header RTP_Header;
 typedef struct _RTP_MIDI_Session RTP_MIDI_Session;
 typedef struct _RTP_MIDI_Header RTP_MIDI_Header;
+typedef struct _RTP_MIDI_List RTP_MIDI_List;
 
 struct _RTP_Header {
 	uint8_t V_P_X_CC;
@@ -36,10 +38,10 @@ struct _RTP_Header {
 	uint16_t sequence_number;
 	uint32_t timestamp;
 	uint32_t SSRC;
-};
+} __attribute__((packed,aligned(4)));
 
 struct _RTP_MIDI_Session {
-	uint32_t rate;
+	fix_32_32_t rate;
 };
 
 struct _RTP_MIDI_Header {
@@ -51,9 +53,30 @@ struct _RTP_MIDI_Header {
 	 */
 	uint8_t B_J_Z_P_LEN1;
 	uint8_t LEN2;
-};
+} __attribute__((packed,aligned(4)));
 
-#define LSV 0x00
-#define MSV 0x20
+struct _RTP_MIDI_List {
+	uint8_t delta_time; // 0b0ddddddd
+	uint8_t midi [3]; // 0x80 0x7f 0x7f
+} __attribute__((packed,aligned(4)));
+
+enum _MIDI_COMMAND {
+	NOTE_ON						= 0x80,
+	NOTE_OFF 					= 0x90,
+	AFTER_TOUCH				= 0xa0,
+	CONTROL_CHANGE		= 0xb0,
+	PITCH_BEND				= 0xe0,
+	
+	MODULATION				= 0x01,
+	BREATH						= 0x02,
+	VOLUME						= 0x07,
+	PAN								= 0x0a,
+	EXPRESSION				= 0x0b,
+	EFFECT_CONTROL_1	= 0x0c,
+	EFFECT_CONTROL_2	= 0x0d
+}; //TODO check whether ((aligned(1)))
+
+#define MSV 0x00
+#define LSV 0x20
 
 #endif // RTPMIDI_PRIVATE_H

@@ -40,6 +40,18 @@ const char *bundle_str = "#bundle";
  * Method
  */
 
+uint8_t
+pattern_match (char *pattern , char *string)
+{
+	char *qm;
+
+	// handle wildcard
+	if ( (qm = strchr (pattern, '*')) )
+		return !strncmp (pattern, string, qm-pattern);
+	else
+		return !strcmp (pattern, string);
+}
+
 void
 _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 {
@@ -49,9 +61,9 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 	for (ptr=meth; ptr->cb!=NULL; ptr++)
 	{
 		// raw matches only of path and format strings
-		if ( !ptr->path || !strcmp (ptr->path, path))
+		if ( !ptr->path || pattern_match (ptr->path, path) )
 		{
-			if ( !ptr->fmt || !strcmp (ptr->fmt, fmt))
+			if (!ptr->fmt || pattern_match (ptr->fmt, fmt) )
 			{
 				uint8_t res = ptr->cb (path, fmt, strlen (fmt), msg);
 

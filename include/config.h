@@ -86,6 +86,10 @@ struct _Config {
 
 	struct _scsynth {
 		uint8_t enabled;
+		char instrument[NAME_LENGTH];
+		uint16_t offset; //TODO int32_t?
+		uint16_t modulo; //TODO int32_t?
+		uint8_t prealloc;
 	} COMPACT scsynth;
 
 	struct _output {
@@ -128,7 +132,7 @@ struct _Config {
 
 	struct _rtpmidi {
 		uint8_t enabled;
-		Socket_Config socket;
+		//Socket_Config socket;
 	} COMPACT rtpmidi;
 
 	struct _cmc {

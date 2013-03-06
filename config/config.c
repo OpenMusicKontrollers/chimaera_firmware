@@ -130,7 +130,11 @@ Config config = {
 	},
 
 	.scsynth = {
-		.enabled = 0
+		.enabled = 0,
+		.instrument = {'c', 'h', 'i', 'm', 'i', 'n', 's', 't', '\0'},
+		.offset = 1000,
+		.modulo = 8,
+		.prealloc = 1
 	},
 	
 	.output = {
@@ -140,7 +144,7 @@ Config config = {
 			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
-		.offset = nOSC_IMMEDIATE
+		.offset = 0ULL
 	},
 
 	.config = {
@@ -197,11 +201,11 @@ Config config = {
 
 	.rtpmidi = {
 		.enabled = 0,
-		.socket = {
-			.sock = 7,
-			.port = {7777, 7777},
-			.ip = LAN_BROADCAST
-		}
+		//.socket = {
+		//	.sock = 7,
+		//	.port = {7777, 7777},
+		//	.ip = LAN_BROADCAST
+		//}
 	},
 
 	.cmc = {
@@ -1120,6 +1124,57 @@ _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	return _boolean (path, fmt, argc, args, &config.scsynth.enabled);
 }
 
+//TODO make arbitrary function to read/write string
+static uint8_t
+_scsynth_instrument (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	if (argc == 1) // query
+	{
+		size = CONFIG_SUCCESS ("is", id, config.scsynth.instrument);
+	}
+	else
+	{
+		if (strlen (args[1].s) < NAME_LENGTH)
+		{
+			strcpy (config.scsynth.instrument, args[1].s);
+			size = CONFIG_SUCCESS ("i", id);
+		}
+		else
+			size = CONFIG_FAIL ("is", id, "name is too long");
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
+_scsynth_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range16 (&config.scsynth.offset, 0x0000, 0xffff, path, fmt, argc, args);
+}
+
+static uint8_t
+_scsynth_modulo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range16 (&config.scsynth.modulo, 0x0000, 0xffff, path, fmt, argc, args);
+}
+
+static uint8_t
+_scsynth_prealloc (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _boolean (path, fmt, argc, args, &config.scsynth.prealloc);
+}
+
+static uint8_t
+_rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _boolean (path, fmt, argc, args, &config.rtpmidi.enabled);
+}
+
 static uint8_t
 _output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
@@ -1509,6 +1564,7 @@ _uid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
+/*
 static uint8_t
 _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
@@ -1638,6 +1694,7 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 	return 1;
 }
+*/
 
 static uint8_t
 _non (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
@@ -1654,89 +1711,53 @@ _non (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 const nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
 
-	{"/chimaera/name", "i", _name},
-	{"/chimaera/name", "is", _name},
+	{"/chimaera/name", "i*", _name},
 
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
 
-	{"/chimaera/comm/mac", "i", _comm_mac},
-	{"/chimaera/comm/mac", "is", _comm_mac},
-	{"/chimaera/comm/ip", "i", _comm_ip},
-	{"/chimaera/comm/ip", "is", _comm_ip},
-	{"/chimaera/comm/gateway", "i", _comm_gateway},
-	{"/chimaera/comm/gateway", "is", _comm_gateway},
-	{"/chimaera/comm/subnet", "i", _comm_subnet},
-	{"/chimaera/comm/subnet", "is", _comm_subnet},
+	{"/chimaera/comm/mac", "i*", _comm_mac},
+	{"/chimaera/comm/ip", "i*", _comm_ip},
+	{"/chimaera/comm/gateway", "i*", _comm_gateway},
+	{"/chimaera/comm/subnet", "i*", _comm_subnet},
 
-	{"/chimaera/output/enabled", "i", _output_enabled},
-	{"/chimaera/output/enabled", "iT", _output_enabled},
-	{"/chimaera/output/enabled", "iF", _output_enabled},
-	{"/chimaera/output/address", "i", _output_address},
-	{"/chimaera/output/address", "is", _output_address},
-	{"/chimaera/output/offset", "i", _output_offset},
-	{"/chimaera/output/offset", "it", _output_offset},
-	{"/chimaera/output/offset", "if", _output_offset},
-	{"/chimaera/output/offset", "id", _output_offset},
+	{"/chimaera/output/enabled", "i*", _output_enabled},
+	{"/chimaera/output/address", "i*", _output_address},
+	{"/chimaera/output/offset", "i*", _output_offset},
 
-	{"/chimaera/tuio/enabled", "i", _tuio_enabled},
-	{"/chimaera/tuio/enabled", "ii", _tuio_enabled},
-	{"/chimaera/tuio/enabled", "iT", _tuio_enabled},
-	{"/chimaera/tuio/enabled", "iF", _tuio_enabled},
-	{"/chimaera/tuio/long_header", "i", _tuio_long_header},
-	{"/chimaera/tuio/long_header", "iT", _tuio_long_header},
-	{"/chimaera/tuio/long_header", "iF", _tuio_long_header},
-	//{"/chimaera/tuio/compact_token", "i", _tuio_compact_token}, TODO
-	//{"/chimaera/tuio/compact_token", "iT", _tuio_compact_token},
-	//{"/chimaera/tuio/compact_token", "iF", _tuio_compact_token},
+	{"/chimaera/tuio/enabled", "i*", _tuio_enabled},
+	{"/chimaera/tuio/long_header", "i*", _tuio_long_header},
+	//{"/chimaera/tuio/compact_token", "i*", _tuio_compact_token}, TODO
 
-	{"/chimaera/dump/enabled", "i", _dump_enabled},
-	{"/chimaera/dump/enabled", "ii", _dump_enabled},
-	{"/chimaera/dump/enabled", "iT", _dump_enabled},
-	{"/chimaera/dump/enabled", "iF", _dump_enabled},
+	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
-	{"/chimaera/scsynth/enabled", "i", _scsynth_enabled},
-	{"/chimaera/scsynth/enabled", "ii", _scsynth_enabled},
-	{"/chimaera/scsynth/enabled", "iT", _scsynth_enabled},
-	{"/chimaera/scsynth/enabled", "iF", _scsynth_enabled},
+	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
+	{"/chimaera/scsynth/instrument", "i*", _scsynth_instrument},
+	{"/chimaera/scsynth/offset", "i*", _scsynth_offset},
+	{"/chimaera/scsynth/modulo", "i*", _scsynth_modulo},
+	{"/chimaera/scsynth/prealloc", "i*", _scsynth_prealloc},
 
-	{"/chimaera/config/enabled", "i", _config_enabled},
-	{"/chimaera/config/enabled", "iT", _config_enabled},
-	{"/chimaera/config/enabled", "iF", _config_enabled},
-	{"/chimaera/config/address", "i", _config_address},
-	{"/chimaera/config/address", "is", _config_address},
-	{"/chimaera/config/rate", "i", _config_rate},
-	{"/chimaera/config/rate", "ii", _config_rate},
+	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
 
-	{"/chimaera/sntp/enabled", "i", _sntp_enabled},
-	{"/chimaera/sntp/enabled", "iT", _sntp_enabled},
-	{"/chimaera/sntp/enabled", "iF", _sntp_enabled},
-	{"/chimaera/sntp/address", "i", _sntp_address},
-	{"/chimaera/sntp/address", "is", _sntp_address},
-	{"/chimaera/sntp/tau", "i", _sntp_tau},
-	{"/chimaera/sntp/tau", "ii", _sntp_tau},
+	{"/chimaera/config/enabled", "i*", _config_enabled},
+	{"/chimaera/config/address", "i*", _config_address},
+	{"/chimaera/config/rate", "i*", _config_rate},
 
-	{"/chimaera/debug/enabled", "i", _debug_enabled},
-	{"/chimaera/debug/enabled", "iT", _debug_enabled},
-	{"/chimaera/debug/enabled", "iF", _debug_enabled},
-	{"/chimaera/debug/address", "i", _debug_address},
-	{"/chimaera/debug/address", "is", _debug_address},
+	{"/chimaera/sntp/enabled", "i*", _sntp_enabled},
+	{"/chimaera/sntp/address", "i*", _sntp_address},
+	{"/chimaera/sntp/tau", "i*", _sntp_tau},
 
-	{"/chimaera/dhcpc/enabled", "i", _dhcpc_enabled},
-	{"/chimaera/dhcpc/enabled", "iT", _dhcpc_enabled},
-	{"/chimaera/dhcpc/enabled", "iF", _dhcpc_enabled},
-	//{"/chimaera/dhcpc/socket", "i", _dhcpc_socket},
-	//{"/chimaera/dhcpc/socket", "iiiiiii", _dhcpc_socket},
+	{"/chimaera/debug/enabled", "i*", _debug_enabled},
+	{"/chimaera/debug/address", "i*", _debug_address},
+
+	{"/chimaera/dhcpc/enabled", "i*", _dhcpc_enabled},
 
 	{"/chimaera/host/address", "is", _host_address},
 
 	//TODO
-	//{"/chimaera/mdns/enabled", "i", _mdns_enabled},
-	//{"/chimaera/mdns/enabled", "iT", _mdns_enabled},
-	//{"/chimaera/mdns/enabled", "iF", _mdns_enabled},
+	//{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
 
-	{"/chimaera/peak_thresh", "i", _peak_thresh},
-	{"/chimaera/peak_thresh", "ii", _peak_thresh},
+	{"/chimaera/peak_thresh", "i*", _peak_thresh},
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/add", "iiiff", _group_add},
@@ -1745,15 +1766,11 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 
-	{"/chimaera/rate", "i", _rate},
-	{"/chimaera/rate", "ii", _rate},
-	{"/chimaera/rate", "iI", _rate},
+	{"/chimaera/rate", "i*", _rate},
 
-	{"/chimaera/reset", "i", _reset},
-	{"/chimaera/reset", "ii", _reset},
+	{"/chimaera/reset", "i*", _reset},
 
-	{"/chimaera/factory", "i", _factory},
-	{"/chimaera/factory", "ii", _factory},
+	{"/chimaera/factory", "i*", _factory},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
@@ -1761,16 +1778,16 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/mid", "if", _calibration_mid},
 	{"/chimaera/calibration/max", "i", _calibration_max},
 	{"/chimaera/calibration/print", "i", _calibration_print},
-	{"/chimaera/calibration/save", "i", _calibration_save},
-	{"/chimaera/calibration/save", "ii", _calibration_save},
-	{"/chimaera/calibration/load", "i", _calibration_load},
-	{"/chimaera/calibration/load", "ii", _calibration_load},
+	{"/chimaera/calibration/save", "i*", _calibration_save},
+	{"/chimaera/calibration/load", "i*", _calibration_load},
 
 	{"/chimaera/uid", "i", _uid},
 
 	//TODO remove
+	/*
 	{"/chimaera/test", "i", _test},
 	{"/chimaera/echo", NULL, _echo},
+	*/
 
 	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 
