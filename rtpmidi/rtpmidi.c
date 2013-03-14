@@ -124,35 +124,35 @@ rtpmidi_engine_frame_cb (uint32_t fid, uint64_t tstamp, uint8_t nblob_old, uint8
 }
 
 void
-rtpmidi_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t key = sid % 0x7f;
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_ON + tid;
+	itm->midi[0] = NOTE_ON + gid;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x7f;
 	nlist++;
 }
 
 void
-rtpmidi_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
+rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
 	uint8_t key = sid % 0x7f;
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_OFF + tid;
+	itm->midi[0] = NOTE_OFF + gid;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x00;
 	nlist++;
 }
 
 void
-rtpmidi_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t key = sid % 0x7f;
@@ -161,21 +161,21 @@ rtpmidi_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = PITCH_BEND + tid;
+	itm->midi[0] = PITCH_BEND + gid;
 	itm->midi[1] = bend & 0x7f;
 	itm->midi[2] = bend >> 7;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE + tid;
+	itm->midi[0] = CONTROL_CHANGE + gid;
 	itm->midi[1] = VOLUME | LSV;
 	itm->midi[2] = eff & 0x7f;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE + tid;
+	itm->midi[0] = CONTROL_CHANGE + gid;
 	itm->midi[1] = VOLUME | MSV;
 	itm->midi[2] = eff >> 7;
 	nlist++;

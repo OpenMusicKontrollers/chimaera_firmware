@@ -34,6 +34,7 @@
 #include <wiz.h>
 #include <eeprom.h>
 #include <cmc.h>
+#include <scsynth.h>
 
 const char *success_str = "/success";
 const char *fail_str = "/fail";
@@ -121,8 +122,7 @@ Config config = {
 	.tuio = {
 		.enabled = 0,
 		.version = 2, //TODO implement
-		.long_header = 0,
-		.compact_token = 1 //TODO implement
+		.long_header = 0
 	},
 
 	.dump = {
@@ -134,7 +134,8 @@ Config config = {
 		.instrument = {'c', 'h', 'i', 'm', 'i', 'n', 's', 't', '\0'},
 		.offset = 1000,
 		.modulo = 8,
-		.prealloc = 1
+		.prealloc = 1,
+		.addaction = SCSYNTH_ADD_TO_HEAD
 	},
 	
 	.output = {
@@ -513,17 +514,13 @@ range_update ()
 uint8_t
 groups_load ()
 {
-	uint8_t size;
+	uint16_t size;
 	uint8_t *buf;
 
 	if (magic_match ())
 	{
-		eeprom_byte_read (eeprom_24LC64, EEPROM_GROUP_OFFSET_SIZE, &size);
-		if (size)
-		{
-			buf = cmc_group_buf_set (size);
-			eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET_DATA, buf, size);
-		}
+		buf = cmc_group_buf_get (&size);
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 	}
 	else
 		groups_save ();
@@ -534,12 +531,11 @@ groups_load ()
 uint8_t
 groups_save ()
 {
-	uint8_t size;
+	uint16_t size;
 	uint8_t *buf;
 
 	buf = cmc_group_buf_get (&size);
-	eeprom_byte_write (eeprom_24LC64, EEPROM_GROUP_OFFSET_SIZE, size);
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET_DATA, buf, size);
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 
 	return 1;
 }
@@ -1170,6 +1166,12 @@ _scsynth_prealloc (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 }
 
 static uint8_t
+_scsynth_addaction (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range8 (&config.scsynth.addaction, 0, 4, path, fmt, argc, args);
+}
+
+static uint8_t
 _rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _boolean (path, fmt, argc, args, &config.rtpmidi.enabled);
@@ -1328,15 +1330,20 @@ _group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
-_group_add (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_group_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	if (cmc_group_add (args[1].i, args[2].i, args[3].f, args[4].f))
-		size = CONFIG_SUCCESS ("i", id);
+	char *name;
+	uint16_t pid;
+	float x0;
+	float x1;
+
+	if (cmc_group_get (args[1].i, &name, &pid, &x0, &x1))
+		size = CONFIG_SUCCESS ("isiff", id, name, pid, x0, x1);
 	else
-		size = CONFIG_FAIL ("is", id, "group already existing or maximal number of groups reached");
+		size = CONFIG_FAIL ("is", id, group_err_str);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1348,22 +1355,7 @@ _group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	if (cmc_group_set (args[1].i, args[2].i, args[3].f, args[4].f))
-		size = CONFIG_SUCCESS ("i", id);
-	else
-		size = CONFIG_FAIL ("is", id, group_err_str);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint8_t
-_group_del (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (cmc_group_del (args[1].i))
+	if (cmc_group_set (args[1].i, args[2].s, args[3].i, args[4].f, args[5].f))
 		size = CONFIG_SUCCESS ("i", id);
 	else
 		size = CONFIG_FAIL ("is", id, group_err_str);
@@ -1727,7 +1719,6 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/tuio/enabled", "i*", _tuio_enabled},
 	{"/chimaera/tuio/long_header", "i*", _tuio_long_header},
-	//{"/chimaera/tuio/compact_token", "i*", _tuio_compact_token}, TODO
 
 	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
@@ -1736,6 +1727,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/scsynth/offset", "i*", _scsynth_offset},
 	{"/chimaera/scsynth/modulo", "i*", _scsynth_modulo},
 	{"/chimaera/scsynth/prealloc", "i*", _scsynth_prealloc},
+	{"/chimaera/scsynth/addaction", "i*", _scsynth_addaction},
 
 	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
 
@@ -1760,9 +1752,9 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/peak_thresh", "i*", _peak_thresh},
 
 	{"/chimaera/group/clear", "i", _group_clear},
-	{"/chimaera/group/add", "iiiff", _group_add},
-	{"/chimaera/group/set", "iiiff", _group_set},
-	{"/chimaera/group/del", "ii", _group_del},
+	{"/chimaera/group/get", "ii", _group_get},
+	{"/chimaera/group/set", "iisiff", _group_set},
+
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 

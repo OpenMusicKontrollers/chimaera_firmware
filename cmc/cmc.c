@@ -48,6 +48,8 @@ uint8_t aoi[64]; //TODO how big?
 uint8_t n_peaks;
 uint8_t peaks[BLOB_MAX];
 
+const char *none_str = "none";
+
 void
 cmc_init ()
 {
@@ -68,8 +70,7 @@ cmc_init ()
 		cmc.n[i] = 0;
 	}
 
-	cmc.n_groups = 0;
-	cmc_group_add (0, CMC_BOTH, 0.0, 1.0);
+	cmc_group_clear ();
 
 	cmc.old = 0;
 	cmc.neu = 1;
@@ -175,16 +176,11 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 		if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
 		{
 			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-			cmc.blobs[cmc.neu][cmc.J].uid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+			cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
 			cmc.blobs[cmc.neu][cmc.J].group = NULL;
 			cmc.blobs[cmc.neu][cmc.J].x = x;
 			cmc.blobs[cmc.neu][cmc.J].p = y;
 			cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
-			/*
-			cmc.blobs[cmc.neu][cmc.J].ignore = 0;
-			cmc.blobs[cmc.neu][cmc.J].hasappeared = 0;
-			cmc.blobs[cmc.neu][cmc.J].hasdisappeared = 0;
-			*/
 			cmc.blobs[cmc.neu][cmc.J].state = CMC_BLOB_INVALID;
 
 			cmc.J++;
@@ -330,22 +326,22 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 		{
 			CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
 
-			uint8_t g;
-			for (g=0; g<cmc.n_groups; g++)
+			uint8_t gid;
+			for (gid=0; gid<GROUP_MAX; gid++)
 			{
-				CMC_Group *ptr = &cmc.groups[g];
+				CMC_Group *ptr = &cmc.groups[gid];
 
-				if ( ( (tar->uid & ptr->uid) == tar->uid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+				if ( ( (tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
 				{
 					if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
-						tar->sid = ++(cmc.sid);
+						tar->sid = ++(cmc.sid); //TODO also set state
 
 					tar->group = ptr;
 					tar->fp = tar->p;
 
-					if ( (ptr->tid != 0) && ( (ptr->x0 != 0ulr) || (ptr->m != 1ulk) ) )
+					if ( (ptr->x0 != 0ULR) || (ptr->m != 1ULK) )
 						tar->fx = (tar->x - ptr->x0) * ptr->m;
-					else // tid == 0, base group, no scaling
+					else // no scaling
 						tar->fx = tar->x;
 
 					break; // match found, do not search further
@@ -395,12 +391,12 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 						if (tar->state == CMC_BLOB_APPEARED)
 						{
 							if (engine->on_cb)
-								engine->on_cb (tar->sid, tar->uid, tar->group->tid, tar->fx, tar->fp);
+								engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->fx, tar->fp);
 						}
 						else // tar->state == CMC_BLOB_EXISTED
 						{
 							if (engine->set_cb)
-								engine->set_cb (tar->sid, tar->uid, tar->group->tid, tar->fx, tar->fp);
+								engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->fx, tar->fp);
 						}
 					}
 
@@ -409,7 +405,7 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 					{
 						CMC_Blob *tar = &cmc.blobs[cmc.old][i];
 						if (tar->state == CMC_BLOB_DISAPPEARED)
-							engine->off_cb (tar->sid, tar->uid, tar->group->tid);
+							engine->off_cb (tar->sid, tar->group->gid, tar->pid);
 					}
 			}
 			engine++;
@@ -427,98 +423,58 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 void 
 cmc_group_clear ()
 {
-	cmc.n_groups = 0;
-	cmc_group_add (0, CMC_BOTH, 0.0, 1.0);
+	uint8_t gid;
+	for (gid=0; gid<GROUP_MAX; gid++)
+	{
+		CMC_Group *grp = &cmc.groups[gid];
+
+		grp->gid = gid;
+		grp->pid = CMC_BOTH;
+		strcpy (grp->name, none_str);
+		grp->x0 = 0.0ULR;
+		grp->x1 = 1.0ULR;
+		grp->m = 1.0ULK;
+	}
 }
 
 uint8_t
-cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1)
+cmc_group_get (uint16_t gid, char **name, uint16_t *pid, float *x0, float *x1)
 {
-	uint8_t i;
-	for (i=cmc.n_groups; i>0; i--)
-	{
-		CMC_Group *grp = &cmc.groups[i-1];
-		CMC_Group *grp2 = &cmc.groups[i];
+	CMC_Group *grp = &cmc.groups[gid];
 
-		grp2->tid = grp->tid;
-		grp2->uid = grp->uid;
-		grp2->x0 = grp->x0;
-		grp2->x1 = grp->x1;
-		grp2->m = grp->m;
-	}
+	*name = grp->name;
+	*pid = grp->pid;
+	*x0 = grp->x0;
+	*x1 = grp->x1;
 
-	CMC_Group *grp = &cmc.groups[0];
+	return 1;
+}
 
-	grp->tid = tid; //TODO check whether this id already exists
-	grp->uid = uid;
+uint8_t
+cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x1)
+{
+	CMC_Group *grp = &cmc.groups[gid];
+
+	grp->pid = pid;
+	strcpy (grp->name, name);
 	grp->x0 = x0;
 	grp->x1 = x1;
-	grp->m = 1.0ur/(x1-x0);
-
-	cmc.n_groups++;
+	grp->m = 1.0ULK/(x1-x0);
 
 	return 1;
 }
 
-uint8_t
-cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1)
+char *
+cmc_group_name_get (uint16_t gid)
 {
-	uint8_t i;
-	for (i=0; i<cmc.n_groups; i++)
-	{
-		CMC_Group *grp = &cmc.groups[i];
-
-		if (grp->tid == tid)
-		{
-			grp->uid = uid;
-			grp->x0 = x0;
-			grp->x1 = x1;
-			grp->m = 1.0uk/(x1-x0);
-
-			break;
-		}
-	}
-
-	return 1;
-}
-
-uint8_t 
-cmc_group_del (uint16_t tid)
-{
-	uint8_t i, j;
-	for (i=j=0; i<cmc.n_groups; i++,j++)
-	{
-		CMC_Group *grp = &cmc.groups[i];
-
-		if (grp->tid == tid)
-			j++; // overwrite it
-
-		if (i != j)
-		{
-			CMC_Group *grp2 = &cmc.groups[j];
-			grp->tid = grp2->tid;
-			grp->uid = grp2->uid;
-			grp->x0 = grp2->x0;
-			grp->x1 = grp2->x1;
-			grp->m = grp2->m;
-		}
-	}
-
-	cmc.n_groups -= j-i;
-
-	return 1;
+	CMC_Group *grp = &cmc.groups[gid];
+	return grp->name;
 }
 
 uint8_t *
-cmc_group_buf_get (uint8_t *size)
+cmc_group_buf_get (uint16_t *size)
 {
-	*size = cmc.n_groups * sizeof (CMC_Group);
-	return (uint8_t *)cmc.groups;
-}
-
-uint8_t *
-cmc_group_buf_set (uint8_t size)
-{
-	cmc.n_groups = size / sizeof (CMC_Group);
+	if (size)
+		*size = GROUP_MAX * sizeof (CMC_Group);
 	return (uint8_t *)cmc.groups;
 }

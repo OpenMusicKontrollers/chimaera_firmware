@@ -26,17 +26,16 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
-#include <cmc.h>
 
 #include "tuio2_private.h"
 
 const char *frm_str = "/tuio2/frm";
-const char *tok_str = "/tuio2/_STxz";
+const char *tok_str = "/tuio2/tok";
 const char *alv_str = "/tuio2/alv";
 
 const char *frm_fmt_short = "it";
 const char *frm_fmt_long = "itsiii";
-const char *tok_fmt = "iiff";
+const char *tok_fmt = "iiifff";
 char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
 nOSC_Arg frm [6];
@@ -73,17 +72,18 @@ tuio2_init ()
 
 	// long header
 	tuio2_long_header_enable (config.tuio.long_header);
-	tuio2_compact_token_enable (config.tuio.compact_token);
 
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
 	{
 		nOSC_Message msg = tok[i];
 
-		nosc_message_set_int32 (msg, 0, 0);
-		nosc_message_set_int32 (msg, 1, 0);
-		nosc_message_set_float (msg, 2, 0.0);
-		nosc_message_set_float (msg, 3, 0.0);
+		nosc_message_set_int32 (msg, 0, 0);			// sid
+		nosc_message_set_int32 (msg, 1, 0);			// tuid
+		nosc_message_set_int32 (msg, 2, 0);			// gid
+		nosc_message_set_float (msg, 3, 0.0);		// x
+		nosc_message_set_float (msg, 4, 0.0);		// y
+		nosc_message_set_float (msg, 5, 0.0);		// angle
 	}
 
 	// initialize alv
@@ -120,20 +120,6 @@ tuio2_long_header_enable (uint8_t on)
 	}
 	else // off
 		nosc_item_message_set (tuio2_bndl, 0, frm, (char *)frm_str, (char *)frm_fmt_short);
-}
-
-void
-tuio2_compact_token_enable (uint8_t on)
-{
-	//TODO
-	if (on)
-	{
-		// /tuio2/_STxz sid tid x z
-	}
-	else // off
-	{
-		// /tuio2/tok sid uid tid x y z p
-	}
 }
 
 void
@@ -176,14 +162,16 @@ tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint
 }
 
 void
-tuio2_engine_token_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg = tok[counter];
 
 	msg[0].i = sid;
-	msg[1].i = ((uint32_t)uid << 16) | tid;
-	msg[2].f = x;
-	msg[3].f = y;
+	msg[1].i = pid;
+	msg[2].i = gid;
+	msg[3].f = x;
+	msg[4].f = y;
+	//msg[5].f = 0; // not used
 
 	nosc_message_set_int32 (alv, counter, sid);
 

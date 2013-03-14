@@ -49,7 +49,7 @@ extern "C" {
 
 #define SENSOR_N (MUX_MAX*ADC_LENGTH)
 #define BLOB_MAX 8
-#define GROUP_MAX 16
+#define GROUP_MAX 4
 
 #define OSC_ARGS_MAX 12
 
@@ -76,8 +76,7 @@ extern "C" {
 #define FACTORY_RESET_VAL 666
 
 #define EEPROM_CONFIG_OFFSET 0x0000
-#define EEPROM_GROUP_OFFSET_DATA 0x00e0
-#define EEPROM_GROUP_OFFSET_SIZE EEPROM_GROUP_OFFSET_DATA-0x1
+#define EEPROM_GROUP_OFFSET 0x00e0
 #define EEPROM_RANGE_OFFSET 0x01a0
 #define EEPROM_RANGE_SIZE 0x0a20 // sizeof(ADC_Range)*144
 #define EEPROM_RANGE_MAX 2 // we have palce for three slots: 0, 1 and 2

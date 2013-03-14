@@ -29,6 +29,6 @@
 
 #define TUIO2_MAX (BLOB_MAX+2)
 
-typedef nOSC_Arg Tuio2_Tok [4];
+typedef nOSC_Arg Tuio2_Tok [6];
 
 #endif /* TUIO2_PRIVATE_H */

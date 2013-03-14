@@ -77,7 +77,6 @@ struct _Config {
 		uint8_t enabled;
 		uint8_t version;
 		uint8_t long_header;
-		uint8_t compact_token;
 	} COMPACT tuio;
 
 	struct _dump {
@@ -90,6 +89,7 @@ struct _Config {
 		uint16_t offset; //TODO int32_t?
 		uint16_t modulo; //TODO int32_t?
 		uint8_t prealloc;
+		uint8_t addaction;
 	} COMPACT scsynth;
 
 	struct _output {

@@ -35,9 +35,9 @@ extern "C" {
 #endif
 
 typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nbob_new);
-typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
-typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t uid, uint16_t tid);
-typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y);
+typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
+typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t gid, uint16_t pid);
+typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 
 typedef struct _CMC_Engine CMC_Engine;
 
@@ -54,12 +54,11 @@ void cmc_init ();
 uint8_t cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines);
 
 void cmc_group_clear ();
-uint8_t cmc_group_add (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_set (uint16_t tid, uint16_t uid, float x0, float x1);
-uint8_t cmc_group_del (uint16_t tid);
+uint8_t cmc_group_get (uint16_t gid, char **name, uint16_t *pid, float *x0, float *x1);
+uint8_t cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x1);
 
-uint8_t *cmc_group_buf_get (uint8_t *size); //TODO this is ugly code, solve differently
-uint8_t *cmc_group_buf_set (uint8_t size);
+char *cmc_group_name_get (uint16_t gid);
+uint8_t *cmc_group_buf_get (uint16_t *size); //TODO this is ugly code, solve differently
 
 #ifdef __cplusplus
 }

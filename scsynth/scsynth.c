@@ -42,15 +42,21 @@ uint8_t set_tok = 0;
 uint8_t sc_tok = 0;
 
 const char *gate_str = "gate";
+const char *out_str = "out";
 
 const char *on_str = "/s_new";
 const char *free_str = "/n_free";
 const char *set_str = "/n_set";
 
-const char *on_fmt = "siiisi";
+//const char *x_str = "x";
+//const char *z_str = "z";
+//const char *p_str = "p";
+
+const char *on_fmt = "siiisisi";
 const char *off_fmt = "isi";
 const char *free_fmt = "i";
-const char *set_fmt = "iifif";
+const char *set_fmt = "iififii"; //TODO make this configurable
+//const char *set_fmt = "isfsfsi";
 
 const char *free_bndl_fmt = "M";
 
@@ -73,7 +79,7 @@ scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, ui
 }
 
 void
-scsynth_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id = config.scsynth.offset + sid%config.scsynth.modulo;
 	nOSC_Message msg;
@@ -81,12 +87,15 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y
 	if (!config.scsynth.prealloc) // we need to create a synth first
 	{
 		msg = on_msg[0];
-		nosc_message_set_string (msg, 0, config.scsynth.instrument);
+		//nosc_message_set_string (msg, 0, config.scsynth.instrument);
+		nosc_message_set_string (msg, 0, cmc_group_name_get (gid));
 		nosc_message_set_int32 (msg, 1, id);
-		nosc_message_set_int32 (msg, 2, 0); // add to HEAD
-		nosc_message_set_int32 (msg, 3, 1); // group
+		nosc_message_set_int32 (msg, 2, config.scsynth.addaction);
+		nosc_message_set_int32 (msg, 3, gid); // group id
 		nosc_message_set_string (msg, 4, (char *)gate_str);
 		nosc_message_set_int32 (msg, 5, 1);
+		nosc_message_set_string (msg, 6, (char *)out_str);
+		nosc_message_set_int32 (msg, 7, gid);
 		nosc_item_message_set (scsynth_bndl, sc_tok, msg, (char *)on_str, (char *)on_fmt);
 	}
 	else // synth has already been preallocated software-side
@@ -104,7 +113,7 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y
 }
 
 void
-scsynth_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
+scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint32_t id = config.scsynth.offset + sid%config.scsynth.modulo;
 	nOSC_Message msg;
@@ -135,7 +144,7 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t uid, uint16_t tid)
 }
 
 void
-scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float y)
+scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id = config.scsynth.offset + sid%config.scsynth.modulo;
 	nOSC_Message msg;
@@ -143,9 +152,14 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t uid, uint16_t tid, float x, float 
 	msg = set_msgs[set_tok];
 	nosc_message_set_int32 (msg, 0, id);
 	nosc_message_set_int32 (msg, 1, 0);
+	//nosc_message_set_string (msg, 1, x_str); //TODO make this configurable
 	nosc_message_set_float (msg, 2, x);
 	nosc_message_set_int32 (msg, 3, 1);
+	//nosc_message_set_string (msg, 3, z_str);
 	nosc_message_set_float (msg, 4, y);
+	nosc_message_set_int32 (msg, 5, 2);
+	//nosc_message_set_string (msg, 5, p_str);
+	nosc_message_set_int32 (msg, 6, pid);
 	nosc_item_message_set (scsynth_bndl, sc_tok, msg, (char *)set_str, (char *)set_fmt);
 	scsynth_fmt[sc_tok] = nOSC_MESSAGE;
 
