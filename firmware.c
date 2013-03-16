@@ -32,8 +32,8 @@
 /*
  * libmaple headers
  */
-#include <wirish/wirish.h>
-#include <libmaple/i2c.h> // i2c for eeprom
+#include <libmaple/i2c.h> // I2C for eeprom
+#include <libmaple/spi.h> // SPI for w5200
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 #include <libmaple/bkp.h> // backup register
@@ -56,10 +56,9 @@
 #include <dhcpc.h>
 #include <arp.h>
 #include <rtpmidi.h>
+#include <wiz.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
-gpio_dev *mux_gpio_dev [MUX_LENGTH];
-uint8_t mux_gpio_bit [MUX_LENGTH];
 
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
@@ -75,10 +74,6 @@ uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
 
-HardwareSPI spi(2);
-
-uint8_t first = 1;
-
 volatile uint8_t adc_dma_done = 0;
 volatile uint8_t adc_dma_err = 0;
 volatile uint8_t adc_time_up = 1;
@@ -90,14 +85,7 @@ volatile uint8_t mdns_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
 uint64_t now;
-uint64_t offset;
-
-CMC_Engine engines [] = {
-	tuio2_engine,
-	scsynth_engine,
-	rtpmidi_engine,
-	{NULL} // terminator
-};
+CMC_Engine *engines [ENGINE_N];
 
 static void
 adc_timer_irq ()
@@ -124,13 +112,13 @@ mdns_timer_irq ()
 	mdns_should_listen = 1;
 }
 
-extern "C" void
+void
 __irq_adc (void)
 {
-	gpio_write_bit (mux_gpio_dev[0], mux_gpio_bit[0], mux_counter & 0b0001);
-	gpio_write_bit (mux_gpio_dev[1], mux_gpio_bit[1], mux_counter & 0b0010);
-	gpio_write_bit (mux_gpio_dev[2], mux_gpio_bit[2], mux_counter & 0b0100);
-	gpio_write_bit (mux_gpio_dev[3], mux_gpio_bit[3], mux_counter & 0b1000);
+	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
+	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
+	pin_write_bit (mux_sequence[2], mux_counter & 0b0100);
+	pin_write_bit (mux_sequence[3], mux_counter & 0b1000);
 
 	if (mux_counter < MUX_MAX)
 	{
@@ -151,20 +139,18 @@ adc_dma_irq ()
 	adc_dma_done = 1;
 }
 
-inline void
-adc_dma_run ()
-{
-	adc_dma_done = 0;
-	mux_counter = 0;
-	__irq_adc ();
+#define adc_dma_run \
+{ \
+	adc_dma_done = 0; \
+	mux_counter = 0; \
+	__irq_adc (); \
 }
 
-inline void
-adc_dma_block ()
-{
-	while (!adc_dma_done)
-		;
-	adc_raw_ptr ^= 1; // toggle
+#define adc_dma_block \
+{ \
+	while (!adc_dma_done) \
+		; \
+	adc_raw_ptr ^= 1; \
 }
 
 //TODO move to config.c
@@ -227,158 +213,160 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	mdns_dispatch (buf, len);
 }
 
-nOSC_Item nest_bndl [ENGINE_N];
-char nest_fmt [ENGINE_N+1];
-
-uint8_t send_status = 0;
-uint8_t cmc_job = 0;
-uint16_t cmc_len = 0;
-uint16_t len = 0;
-
-Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
-
-Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
-Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
-Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
-
-Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
-Stop_Watch sw_tuio_serialize = {.id = "tuio_serialize", .thresh=2000};
-Stop_Watch sw_tuio_send = {.id = "tuio_send", .thresh=2000};
-
-inline void
+void
 loop ()
 {
-	if (config.rate)
+	nOSC_Item nest_bndl [ENGINE_N];
+	char nest_fmt [ENGINE_N+1];
+
+	uint8_t send_status = 0;
+	uint8_t cmc_job = 0;
+	uint16_t cmc_len = 0;
+	uint16_t len = 0;
+
+	uint8_t first = 1;
+	uint64_t offset;
+
+	/*
+	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
+
+	Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
+	Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
+	Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
+
+	Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
+	Stop_Watch sw_tuio_serialize = {.id = "tuio_serialize", .thresh=2000};
+	Stop_Watch sw_tuio_send = {.id = "tuio_send", .thresh=2000};
+	*/
+
+	while (1) // endless loop
 	{
-		adc_time_up = 0;
-		timer_resume (adc_timer);
-	}
-
-	adc_dma_run ();
-
-	if (first) // in the first round there is no data
-	{
-		adc_dma_block ();
-		first = 0;
-		return;
-	}
-
-	// fill adc_rela
-	//stop_watch_start (&sw_adc_fill);
-	adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
-	//stop_watch_stop (&sw_adc_fill);
-
-	if (calibrating)
-		range_calibrate (adc_rela);
-
-	if (!calibrating && config.output.enabled)
-	{
-		uint8_t job = 0;
-
-		if (cmc_job) // start nonblocking sending of last cycles tuio output
-			send_status = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
-
-		sntp_timestamp_refresh (&now, &offset);
-
-		if (config.dump.enabled)
+		if (config.rate)
 		{
-			dump_update (now); // 6us
-			nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
+			adc_time_up = 0;
+			timer_resume (adc_timer);
 		}
-	
-		if (config.tuio.enabled || config.scsynth.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+
+		adc_dma_run;
+
+		if (first) // in the first round there is no data
 		{
-			uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
+			adc_dma_block;
+			first = 0;
+			continue;
+		}
 
-			if (blobs) // was there any update?
+		// fill adc_rela
+		//stop_watch_start (&sw_adc_fill);
+		adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
+		//stop_watch_stop (&sw_adc_fill);
+
+		if (calibrating)
+			range_calibrate (adc_rela);
+
+		if (!calibrating && config.output.enabled)
+		{
+			uint8_t job = 0;
+
+			if (cmc_job) // start nonblocking sending of last cycles tuio output
+				send_status = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
+
+			sntp_timestamp_refresh (&now, &offset);
+
+			if (config.dump.enabled)
 			{
-				if (config.tuio.enabled)
-					nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE, tuio2_fmt);
+				dump_update (now); // 6us
+				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
+			}
+		
+			if (config.tuio.enabled || config.scsynth.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+			{
+				uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
-				if (config.scsynth.enabled)
-					nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
+				if (blobs) // was there any update?
+				{
+					if (config.tuio.enabled)
+						nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE, tuio2_fmt);
 
-				if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
-					cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+					if (config.scsynth.enabled)
+						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
 
-				// if (config.kraken.enabled)
+					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
+						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+
+					// if (config.kraken.enabled)
+				}
+			}
+
+			if (job)
+			{
+				if (job > 1)
+				{
+					memset (nest_fmt, nOSC_BUNDLE, job);
+					nest_fmt[job] = nOSC_TERM;
+
+					cmc_len = nosc_bundle_serialize (nest_bndl, offset, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+				}
+				else // job == 1, there's no need to send a nested bundle in this case
+					cmc_len = nosc_bundle_serialize (nest_bndl[0].bundle.bndl, offset, nest_bndl[0].bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+			}
+
+			if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
+				job = 1;
+
+			if (cmc_job && send_status) // block for end of sending of last cycles tuio output
+				udp_send_block (config.output.socket.sock);
+
+			if (job) // switch output buffer
+				buf_o_ptr ^= 1;
+
+			cmc_job = job;
+		}
+
+		// run osc config server
+		if (config.config.enabled && config_should_listen)
+		{
+			udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
+			config_should_listen = 0;
+		}
+		
+		// run sntp client
+		if (config.sntp.enabled)
+		{
+			// listen for sntp request answer
+			if (sntp_should_listen)
+			{
+				udp_dispatch (config.sntp.socket.sock, buf_o_ptr, sntp_cb);
+			}
+
+			// send sntp request
+			if (sntp_should_request)
+			{
+				sntp_should_request = 0;
+				sntp_should_listen = 1;
+
+				sntp_timestamp_refresh (&now, NULL);
+				len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
+				udp_send (config.sntp.socket.sock, buf_o_ptr, len);
 			}
 		}
 
-		if (job)
+		// run ZEROCONF server
+		if (config.mdns.enabled && mdns_should_listen)
 		{
-			if (job > 1)
-			{
-				memset (nest_fmt, nOSC_BUNDLE, job);
-				nest_fmt[job] = nOSC_TERM;
-
-				cmc_len = nosc_bundle_serialize (nest_bndl, offset, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
-			}
-			else // job == 1, there's no need to send a nested bundle in this case
-				cmc_len = nosc_bundle_serialize (nest_bndl[0].bundle.bndl, offset, nest_bndl[0].bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+			udp_dispatch (config.mdns.socket.sock, buf_o_ptr, mdns_cb);
+			mdns_should_listen = 0;
 		}
 
-		if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
-			job = 1;
+		adc_dma_block;
 
-		if (cmc_job && send_status) // block for end of sending of last cycles tuio output
-			udp_send_block (config.output.socket.sock);
-
-		if (job) // switch output buffer
-			buf_o_ptr ^= 1;
-
-		cmc_job = job;
-	}
-
-	// run osc config server
-	if (config.config.enabled && config_should_listen)
-	{
-		udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
-		config_should_listen = 0;
-	}
-	
-	// run sntp client
-	if (config.sntp.enabled)
-	{
-		// listen for sntp request answer
-		if (sntp_should_listen)
-		{
-			udp_dispatch (config.sntp.socket.sock, buf_o_ptr, sntp_cb);
-		}
-
-		// send sntp request
-		if (sntp_should_request)
-		{
-			sntp_should_request = 0;
-			sntp_should_listen = 1;
-
-			sntp_timestamp_refresh (&now, NULL);
-			len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
-			udp_send (config.sntp.socket.sock, buf_o_ptr, len);
-		}
-	}
-
-	// run ZEROCONF server
-	if (config.mdns.enabled && mdns_should_listen)
-	{
-		udp_dispatch (config.mdns.socket.sock, buf_o_ptr, mdns_cb);
-		mdns_should_listen = 0;
-	}
-
-	adc_dma_block ();
-
-	if (config.rate)
-		while (!adc_time_up)
-			;
+		if (config.rate)
+			while (!adc_time_up)
+				;
+	} // endless loop
 }
 
-extern "C" inline uint32_t
-_micros ()
-{
-	return micros ();
-}
-
-extern "C" void
+void
 adc_timer_reconfigure ()
 {
 	// this scheme is goof for rates in the range of 20-2000+
@@ -396,7 +384,7 @@ adc_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER1_CC, ADC_TIMER_PRIORITY);
 }
 
-extern "C" void 
+void 
 sntp_timer_reconfigure ()
 {
 	uint16_t prescaler = 0xffff; 
@@ -413,7 +401,7 @@ sntp_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER2, SNTP_TIMER_PRIORITY);
 }
 
-extern "C" void
+void
 config_timer_reconfigure ()
 {
 	uint16_t prescaler = 72e6 / 0xffff;
@@ -444,43 +432,41 @@ udp_irq (void)
 }
 */
 
-inline void
+void
 setup ()
 {
 	uint8_t i;
+	uint8_t p;
 
-	SerialUSB.end (); // we don't need USB communication, so we disable it
+	engines[0] = &tuio2_engine;
+	engines[1] = &scsynth_engine;
+	engines[2] = &rtpmidi_engine;
 
-  pinMode (BOARD_BUTTON_PIN, INPUT);
-  pinMode (BOARD_LED_PIN, OUTPUT);
+	pin_set_mode (BOARD_BUTTON_PIN, GPIO_INPUT_FLOATING);
+	pin_set_mode (BOARD_LED_PIN, GPIO_OUTPUT_PP);
 
 	// enable wiz820io module
-	pinMode (UDP_PWDN, OUTPUT);
-	digitalWrite (UDP_PWDN, 0); // enable wiz820io
+	pin_set_mode (UDP_PWDN, GPIO_OUTPUT_PP);
+	pin_write_bit (UDP_PWDN, 0);
 
 	//TODO
-	//pinMode (UDP_INT, INPUT);
+	//pin_set_mode (UDP_INT, GPIO_INPUT_FLOATING);
 	//attachInterrupt (UDP_INT, udp_irq, FALLING);
-
-	// systick 
-	systick_disable ();
-	systick_init ((SYSTICK_RELOAD_VAL + 1)/10 - 1); // systick every 100us = every 7200 cycles on a maple mini @72MHz
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
-	{
-		uint8_t pin = mux_sequence[i];
-		pinMode (pin, OUTPUT);
-		mux_gpio_dev[i] = PIN_MAP[pin].gpio_device;
-		mux_gpio_bit[i] = PIN_MAP[pin].gpio_bit;
-	}
+		pin_set_mode (mux_sequence[i], GPIO_OUTPUT_PP);
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
-		pinMode (adc1_sequence[i], INPUT_ANALOG);
-		pinMode (adc2_sequence[i], INPUT_ANALOG);
+		pin_set_mode (adc1_sequence[i], GPIO_INPUT_ANALOG);
+		pin_set_mode (adc2_sequence[i], GPIO_INPUT_ANALOG);
 	}
+
+	// systick 
+	systick_disable ();
+	systick_init ((SYSTICK_RELOAD_VAL + 1)/10 - 1); // systick every 100us = every 7200 cycles on a maple mini @72MHz
 
 	// create EUI-32 and EUI-48 from unique identifier
 	eui_init ();
@@ -517,10 +503,8 @@ setup ()
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
 
-	// set up SPI for usage with wiz820io
-  spi.begin (SPI_18MHZ, MSBFIRST, 0);
-	pinMode (BOARD_SPI2_NSS_PIN, OUTPUT);
-	digitalWrite (BOARD_SPI2_NSS_PIN, HIGH); // disable peripheral
+	pin_set_mode (BOARD_SPI2_NSS_PIN, GPIO_OUTPUT_PP);
+	pin_write_bit (BOARD_SPI2_NSS_PIN, 1); // disable peripheral
 	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode, we don't use this
 
 	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
@@ -596,14 +580,14 @@ setup ()
   adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
 
 	// fill raw sequence array with corresponding ADC channels
-	for (uint8_t i=0; i<ADC_DUAL_LENGTH; i++)
+	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
 		adc1_raw_sequence[i] = PIN_MAP[adc1_sequence[i]].adc_channel;
 		adc2_raw_sequence[i] = PIN_MAP[adc2_sequence[i]].adc_channel;
 	}
 
-	for (uint8_t p=0; p<MUX_MAX; p++)
-		for (uint8_t i=0; i<ADC_LENGTH; i++)
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_LENGTH; i++)
 			order[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
 
 	// set channels in register
@@ -643,19 +627,14 @@ setup ()
 	groups_load ();
 }
 
-__attribute__ ((constructor)) void
-premain ()
-{
-  init ();
-}
+void cpp_setup ();
 
 int
 main (void)
 {
+	cpp_setup ();
   setup ();
-
-  while (true)
-    loop ();
+	loop ();
 
   return 0;
 }

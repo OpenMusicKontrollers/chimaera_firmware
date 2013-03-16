@@ -21,13 +21,25 @@
  *     distribution.
  */
 
-#ifndef DUMP_PRIVATE_H
-#define DUMP_PRIVATE_H
+/*
+ * wirish headers
+ */
+#include <wirish/wirish.h>
 
-#include <dump.h>
+HardwareSPI spi(2);
 
-#define DUMP_FRAME 0
-#define DUMP_TIME 1
-#define DUMP_BLOB 2
+__attribute__ ((constructor)) void
+premain ()
+{
+  init (); // board init
+}
 
-#endif /* DUMP_PRIVATE_H */
+extern "C" void
+cpp_setup ()
+{
+	// we don't need USB communication, so we disable it
+	SerialUSB.end ();
+
+	// set up SPI for usage with wiz820io
+  spi.begin (SPI_18MHZ, MSBFIRST, 0);
+}

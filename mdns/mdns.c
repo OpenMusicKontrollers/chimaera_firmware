@@ -22,8 +22,10 @@
  */
 
 #include "mdns_private.h"
+
 #include <chimaera.h>
 #include <wiz.h>
+#include <config.h>
 
 #include <string.h>
 #include <stdlib.h>

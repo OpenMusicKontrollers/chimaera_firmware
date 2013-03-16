@@ -26,10 +26,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Endian stuff
  */
@@ -59,9 +55,5 @@ extern "C" {
 #define ref_ntoh(ptr)		(ntoh(*((uint16_t *)(ptr))))
 #define ref_ntohl(ptr)	(ntohl(*((uint32_t *)(ptr))))
 #define ref_ntohll(ptr)	(ntohll(*((uint64_t *)(ptr))))
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

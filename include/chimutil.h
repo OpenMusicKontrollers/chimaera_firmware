@@ -24,19 +24,9 @@
 #ifndef _CHIMUTIL_H_
 #define _CHIMUTIL_H_
 
-#include <chimaera.h>
-#include <wiz.h>
+#include <stdint.h>
 
 #include <libmaple/adc.h>
-#include <libmaple/timer.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern timer_dev *adc_timer;
-extern timer_dev *sntp_timer;
-extern timer_dev *config_timer;
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
@@ -48,21 +38,9 @@ void debug_timestamp (uint64_t t);
 
 void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
 
-void adc_timer_pause ();
 void adc_timer_reconfigure ();
-void adc_timer_resume ();
-
-void sntp_timer_pause ();
 void sntp_timer_reconfigure ();
-void sntp_timer_resume ();
-
-void config_timer_pause ();
 void config_timer_reconfigure ();
-void config_timer_resume ();
-
-void timeout_timer_reconfigure ();
-void timeout_timer_start ();
-void timeout_timer_stop ();
 
 void output_enable (uint8_t b);
 void config_enable (uint8_t b);
@@ -89,9 +67,5 @@ extern uint8_t EUI_48 [6];
 extern uint8_t EUI_64 [8];
 extern char EUI_96_STR [96/8*2+1];
 void eui_init ();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

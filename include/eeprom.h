@@ -28,10 +28,6 @@
 
 #include <libmaple/i2c.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef struct _EEPROM_24xx EEPROM_24xx;
 
 struct _EEPROM_24xx {
@@ -57,9 +53,5 @@ void eeprom_page_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8
 
 void eeprom_bulk_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
 void eeprom_bulk_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

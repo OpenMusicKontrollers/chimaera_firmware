@@ -28,10 +28,6 @@
 
 #include <libmaple/gpio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define WIZ_UDP_HDR_SIZE 8
 #define WIZ_SEND_OFFSET 4
 
@@ -94,9 +90,5 @@ uint8_t macraw_send (uint8_t sock, uint8_t ptr, uint16_t len);
 uint16_t macraw_available (uint8_t sock);
 void macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len);
 void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *data);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

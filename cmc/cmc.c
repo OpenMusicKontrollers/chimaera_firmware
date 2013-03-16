@@ -92,7 +92,7 @@ aoi_cmp (const void *a, const void *b)
 }
 
 uint8_t
-cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
+cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 {
 	n_aoi = 0;
 	uint8_t pos;
@@ -376,9 +376,10 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 	{
 		++(cmc.fid);
 
-		CMC_Engine *engine = engines;
-		while (engine->enabled)
+		uint8_t e;
+		for (e=0; e<ENGINE_N; e++)
 		{
+			CMC_Engine *engine = engines[e];
 			if (*(engine->enabled))
 			{
 				if (engine->frame_cb)
@@ -408,7 +409,6 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine *engines)
 							engine->off_cb (tar->sid, tar->group->gid, tar->pid);
 					}
 			}
-			engine++;
 		}
 	}
 

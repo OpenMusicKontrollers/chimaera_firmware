@@ -26,15 +26,7 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 uint8_t arp_probe (uint8_t sock, uint8_t *ip);
 void arp_announce (uint8_t sock, uint8_t *ip);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

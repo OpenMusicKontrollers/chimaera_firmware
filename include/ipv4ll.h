@@ -26,14 +26,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

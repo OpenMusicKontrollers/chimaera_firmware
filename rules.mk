@@ -92,6 +92,7 @@ cSRCS_$(d) += rtpmidi/rtpmidi.c
 cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += armfix/armfix.c
 cSRCS_$(d) += arp/arp.c
+cSRCS_$(d) += firmware.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.
@@ -99,7 +100,7 @@ cSRCS_$(d) += arp/arp.c
 # We can't call our main file main.cpp, or libmaple's build system
 # will get confused and try to build it without our CXXFLAGS. So call
 # it something else. Annoying! Hopefully LeafLabs will fix it soon.
-cppSRCS_$(d) := firmware.cpp
+cppSRCS_$(d) := chimaerish.cpp
 
 # sSRCS_$(d) are the assembly sources. We don't have any.
 sSRCS_$(d) :=

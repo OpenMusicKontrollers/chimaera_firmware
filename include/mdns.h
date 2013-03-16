@@ -26,14 +26,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void mdns_dispatch (uint8_t *buf, uint16_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

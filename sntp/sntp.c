@@ -25,9 +25,10 @@
 
 #include <libmaple/systick.h>
 
-#include <chimutil.h>
-
 #include "sntp_private.h"
+
+#include <chimutil.h>
+#include <config.h>
 
 fix_32_32_t t0 = 0.0ULLK;
 

@@ -26,10 +26,6 @@
 
 #include <chimaera.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum _DHCPC_State {
 	DISCOVER, OFFER, REQUEST, ACK, LEASE, TIMEOUT, CLAIMED, DECLINE 
 } DHCPC_State;
@@ -58,9 +54,5 @@ void dhcpc_dispatch (uint8_t *buf, uint16_t size);
 uint8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
 extern DHCPC dhcpc;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // DHCPC_H

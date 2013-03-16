@@ -28,10 +28,6 @@
 
 #include <netdef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef sat unsigned short fract			fix_0_8_t;		// size: 1
 typedef sat unsigned fract						fix_0_16_t;		// size: 2
 typedef sat unsigned long fract				fix_0_32_t;		// size: 4
@@ -51,9 +47,5 @@ typedef sat short accum								fix_s7_8_t;		// size: 2
 typedef sat accum											fix_s15_16_t;	// size: 4
 typedef sat long accum								fix_s31_32_t;	// size: 8
 //typedef sat long long accum						fix_s31_32_t; // size: 8
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

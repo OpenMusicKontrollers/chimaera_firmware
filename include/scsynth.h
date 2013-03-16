@@ -28,10 +28,6 @@
 
 #include <netdef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum _SCSynth_Add_Action {
 	SCSYNTH_ADD_TO_HEAD = 0,
 	SCSYNTH_ADD_TO_TAIL = 1,
@@ -45,9 +41,5 @@ extern char scsynth_fmt [];
 extern CMC_Engine scsynth_engine;
 
 void scsynth_init ();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

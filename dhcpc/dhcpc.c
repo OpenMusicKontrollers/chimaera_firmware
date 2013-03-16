@@ -21,13 +21,14 @@
  *     distribution.
  */
 
-#include "dhcpc_private.h"
-
 #include <string.h>
 
-#include <wiz.h>
+#include "dhcpc_private.h"
 
 #include <libmaple/systick.h>
+
+#include <wiz.h>
+#include <config.h>
 
 uint32_t xid = 0x3903F326;
 

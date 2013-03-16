@@ -27,10 +27,7 @@
 #include <stdint.h>
 
 #include <netdef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <nosc.h>
 
 extern nOSC_Item dump_bndl [];
 extern char *dump_fmt;
@@ -40,9 +37,5 @@ void dump_init (int32_t size, int16_t *swap);
 uint16_t dump_serialize (uint8_t *buf, uint64_t offset);
 
 void dump_update (uint64_t now);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

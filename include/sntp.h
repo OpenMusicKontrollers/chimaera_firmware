@@ -28,18 +28,10 @@
 
 #include <netdef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void sntp_timestamp_refresh (uint64_t *now, uint64_t *offset);
 
 uint16_t sntp_request (uint8_t *buf, uint64_t t3);
 
 void sntp_dispatch (uint8_t *buf, uint64_t t4);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

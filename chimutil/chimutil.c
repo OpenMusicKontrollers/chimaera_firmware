@@ -33,12 +33,10 @@
 #include <tube.h>
 #include <armfix.h>
 #include <dhcpc.h>
+#include <config.h>
+#include <wiz.h>
 
 volatile uint8_t mem2mem_dma_done = 0;
-
-timer_dev *adc_timer;
-timer_dev *sntp_timer;
-timer_dev *config_timer;
 
 void
 _mem2mem_dma_irq (void)

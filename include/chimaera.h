@@ -26,18 +26,13 @@
 
 #include <stdint.h>
 
-#include <netdef.h>
-#include <nosc.h>
-#include <cmc.h>
-
-// ugly hack to have access to PIN_MAP from plain C
+// hack to have access to PIN_MAP from plain C
 #include <wirish/wirish_types.h>
 extern const stm32_pin_info PIN_MAP [];
 #include <board/board.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define pin_set_mode(PIN, MODE) (gpio_set_mode (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE)))
+#define pin_write_bit(PIN, VAL) (gpio_write_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (VAL)))
 
 #define MUX_LENGTH 4
 #define MUX_MAX 16
@@ -94,8 +89,8 @@ extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 extern uint8_t calibrating;
 
-#ifdef __cplusplus
-}
-#endif
+extern timer_dev *adc_timer;
+extern timer_dev *sntp_timer;
+extern timer_dev *config_timer;
 
 #endif

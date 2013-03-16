@@ -23,9 +23,9 @@
 
 #include <string.h>
 
-#include <chimutil.h>
-
 #include "nosc_private.h"
+
+#include <chimaera.h>
 
 /*
  * static variabled

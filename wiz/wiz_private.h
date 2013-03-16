@@ -34,7 +34,7 @@
 #define IR		 0x0015
 #define IMR		 0x0016
 #define RTR		 0x0017
-#define RCR		 0x0019
+//#define RCR		 0x0019 //TODO name conflict in libmaple/timer.h
 #define PATR	 0x001C
 #define PTIMER 0x0028
 #define PMAGIC 0x0029
@@ -108,4 +108,4 @@ enum {
 	WIZ_TXRX	= 0b11
 };
 
-#endif // UDP_PRIVATE_H
+#endif // WIZ_PRIVATE_H

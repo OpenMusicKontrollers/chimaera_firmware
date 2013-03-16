@@ -24,20 +24,12 @@
 #ifndef RTPMIDI_H
 #define RTPMIDI_H
 
-#include <chimaera.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cmc.h>
 
 extern CMC_Engine rtpmidi_engine;
 
 void rtpmidi_init ();
 
 uint16_t rtpmidi_serialize (uint8_t *buf);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // RTPMIDI_H

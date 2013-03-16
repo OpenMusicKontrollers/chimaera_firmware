@@ -27,10 +27,7 @@
 #include <stdint.h>
 
 #include <netdef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cmc.h>
 
 extern nOSC_Item tuio2_bndl [];
 extern char tuio2_fmt [];
@@ -39,9 +36,5 @@ extern CMC_Engine tuio2_engine;
 void tuio2_init ();
 
 void tuio2_long_header_enable (uint8_t on);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

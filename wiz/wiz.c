@@ -21,12 +21,13 @@
  *     distribution.
  */
 
-#include <tube.h>
-#include <chimutil.h>
+#include <string.h>
 
 #include "wiz_private.h"
 
-#include <string.h>
+#include <tube.h>
+#include <chimaera.h>
+#include <netdef.h>
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>

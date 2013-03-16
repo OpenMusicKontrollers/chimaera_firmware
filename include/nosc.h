@@ -30,10 +30,6 @@
 
 #include <netdef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Definitions
  */
@@ -189,9 +185,5 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt,
 
 uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
 uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
