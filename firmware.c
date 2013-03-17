@@ -140,18 +140,14 @@ adc_dma_irq ()
 }
 
 #define adc_dma_run \
-{ \
 	adc_dma_done = 0; \
 	mux_counter = 0; \
-	__irq_adc (); \
-}
+	__irq_adc ();
 
 #define adc_dma_block \
-{ \
 	while (!adc_dma_done) \
 		; \
-	adc_raw_ptr ^= 1; \
-}
+	adc_raw_ptr ^= 1;
 
 //TODO move to config.c
 static void
@@ -627,14 +623,10 @@ setup ()
 	groups_load ();
 }
 
-void cpp_setup ();
-
-int
-main (void)
+void
+main ()
 {
 	cpp_setup ();
   setup ();
 	loop ();
-
-  return 0;
 }

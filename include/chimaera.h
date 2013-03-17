@@ -93,4 +93,6 @@ extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;
 extern timer_dev *config_timer;
 
+void cpp_setup ();
+
 #endif
