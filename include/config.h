@@ -150,25 +150,30 @@ uint8_t config_save ();
 
 void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap, uint8_t relative);
 
-typedef struct _ADC_Range ADC_Range;
-typedef union _ADC_Union ADC_Union;
+/* rev4 */
+typedef struct _Range Range;
+typedef struct _Curve Curve;
 
-union _ADC_Union {
-	uint16_t uint;
-	fix_s7_8_t fix;
+struct _Range {
+	uint16_t qui [SENSOR_N];
+	uint16_t thresh [SENSOR_N];
+	fix_16_16_t as_1 [SENSOR_N];
+	fix_16_16_t bmin;
+	fix_0_32_t sc_1; // = 1.0 / (bmax - bmin)
 };
 
-struct _ADC_Range {
-	uint16_t mean;
-
-	ADC_Union A[2]; // apart from A, here we store b0 while calibrarting
-	ADC_Union B[2]; // apart from B, here we store b1 while calibrating
-	ADC_Union C[2]; // apart from C, here we store b2 while calibrating
-
-	uint16_t thresh [2]; // apart from thresh, here we store the maximal sensor values while calibrating
+struct _Curve {
+	fix_s15_16_t A;
+	fix_s15_16_t B;
+	fix_s15_16_t C;
 };
 
-extern ADC_Range adc_range[SENSOR_N]; //TODO instead of a array of struct, better convert to a single struct of arrays
+extern Range range;
+extern Curve curve;
+
+float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
+
+/* rev4 */
 
 uint8_t range_load (uint8_t pos);
 uint8_t range_save (uint8_t pos);

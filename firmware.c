@@ -58,7 +58,7 @@
 #include <rtpmidi.h>
 #include <wiz.h>
 
-uint8_t mux_sequence [MUX_LENGTH] = {19, 20, 21, 22}; // digital out pins to switch MUX channels
+uint8_t mux_sequence [MUX_LENGTH] = {18, 17, 14, 13}; // digital out pins to switch MUX channels
 
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
@@ -70,7 +70,8 @@ int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__ ((aligned (4)));; /
 int16_t adc_rela[SENSOR_N];
 int16_t adc_swap[SENSOR_N];
 
-uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+//uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
+uint8_t mux_order [MUX_MAX] = {0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0};
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
 

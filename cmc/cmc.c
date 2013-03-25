@@ -102,15 +102,16 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 		uint16_t aval = abs (val);
 		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
 		uint8_t newpos = pos+1;
-		if ( (aval > THRESH_MIN) && (aval*4 > adc_range[newpos].thresh[pole]) ) // thresh0 == thresh1 / 4
+		if ( (aval > THRESH_MIN) && (aval*4 > range.thresh[pos]) ) // thresh0 == thresh1 / 4
 		{
 			aoi[n_aoi++] = newpos;
 
 			cmc.n[newpos] = pole;
-			cmc.a[newpos] = aval > adc_range[newpos].thresh[pole];
-			cmc.v[newpos] = adc_range[newpos].A[pole].fix * lookup_sqrt[aval]
-										+ adc_range[newpos].B[pole].fix * lookup[aval]
-										+ adc_range[newpos].C[pole].fix;
+			cmc.a[newpos] = aval > range.thresh[pos];
+
+			//TODO merge this two functions into a single one
+			fix_16_16_t b = (fix_16_16_t)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
+			cmc.v[newpos] = (b - range.bmin) * range.sc_1; // rescale to [0,1]
 		}
 	}
 
@@ -163,17 +164,23 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 		fix_s_31_t y1 = cmc.v[P];
 		fix_s_31_t y2 = cmc.v[P+1];
 
+		//TODO do curvefit instead of simple sqrt
+		//y0 = A*y0 + B*sqrt(y0) + C;
+		y0 = sqrt (y0);
+		y1 = sqrt (y1);
+		y2 = sqrt (y2);
+
 		// parabolic interpolation
 		//fix_s_31_t divisor = y0 - y1 + y2 - y1;
 		fix_s31_32_t divisor = y0 - 2*y1 + y2;
 		fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
 
-		fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
+		//fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
 
-		//fix_s31_32_t dividend = -0.125r*y0*y0 + y0*y1 - 2*y1*y1 + 0.25r*y0*y2 + y1*y2 - 0.125r*y2*y2;
-		//fix_0_32_t y = dividend / divisor;
+		fix_s31_32_t dividend = -y0*y0*0.125LR + y0*y1 - y1*y1*2 + y0*y2*0.25LR + y1*y2 - y2*y2*0.125LR;
+		fix_0_32_t y = dividend / divisor;
 
-		if ( (x > 0.r) && (y > 0.0r) ) //FIXME why can this happen in the first place?
+		if ( (x > 0.0LR) && (y > 0.0LR) ) //FIXME why can this happen in the first place?
 		{
 			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 			cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it

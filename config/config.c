@@ -56,17 +56,17 @@ const char *group_err_str = "group not found";
 //#define LAN_BROADCAST {46, 126, 89, 221}
 //#define LAN_HOST {46, 126, 89, 221}
 
-ADC_Range adc_range [SENSOR_N];
-float Y1 = 0.5;
+float Y1 = 0.7;
 
-static uint16_t
-By (fix_s7_8_t A, fix_s7_8_t B, fix_s7_8_t C)
+static fix_16_16_t
+By (fix_s15_16_t A, fix_s15_16_t B, fix_s15_16_t C)
 {
 	float a = A;
 	float b = B;
 	float c = C;
-	float y = 0.0;
-	return ADC_HALF_BITDEPTH * (a*a - 2.0*b*c + 2.0*b*y - a*sqrt(a*a - 4.0*b*c + 4.0*b*y)) / (2.0*b*b);
+	float y = Y1;
+	float _b = (a*a - 2.0*b*c + 2.0*b*y - a*sqrt(a*a - 4.0*b*c + 4.0*b*y)) / (2.0*b*b);
+	return (fix_16_16_t)_b*0x7ff;
 }
 
 static void
@@ -84,6 +84,7 @@ curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, f
   *B = (1.0/(sqrtB0 - sqrtB2) + Y1/(-sqrtB0 + sqrtB1)) / (sqrtB1 - sqrtB2);
   *C = (B0*(sqrtB1 - sqrtB2*Y1) + sqrtB0*(-B1 + B2*Y1)) / ((sqrtB0 - sqrtB1)*(sqrtB0 - sqrtB2)*(sqrtB1 - sqrtB2));
 
+	/*
 	debug_str ("curvefit");
 	debug_float (Y1);
 	debug_int32 (b0);
@@ -98,6 +99,23 @@ curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, f
 	debug_float (*A);
 	debug_float (*B);
 	debug_float (*C);
+	*/
+}
+
+/* rev 4 */
+Range range;
+Curve curve;
+/* rev 4 */
+
+float
+_as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
+{
+	float _qui = (float)qui;
+	float _out_s = (float)out_s;
+	float _out_n = (float)out_n;
+	float _b = (float)b;
+
+	return _qui / _b * (_out_s - _out_n) / (_out_s + _out_n);
 }
 
 Config config = {
@@ -258,7 +276,7 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 				for (i=0; i<ADC_LENGTH; i++)
 				{
 					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i] - adc_range[pos].mean;
+					int16_t val = raw[p][i] - range.qui[pos];
 
 					rela[pos] = val; 
 					swap[pos] = hton (val);
@@ -271,7 +289,7 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 				for (i=0; i<ADC_LENGTH; i++)
 				{
 					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i] - adc_range[pos].mean;
+					int16_t val = raw[p][i] - range.qui[pos];
 
 					rela[pos] = val; 
 				}
@@ -311,25 +329,15 @@ uint8_t
 range_load (uint8_t pos)
 {
 	if (magic_match ()) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
 		uint8_t i;
 		for (i=0; i<SENSOR_N; i++)
 		{
-			adc_range[i].mean = 0x7ff; // this is the ideal mean
-
-			adc_range[i].A[POLE_SOUTH].fix = 1.0hk;
-			adc_range[i].A[POLE_NORTH].fix = 1.0hk;
-
-			adc_range[i].B[POLE_SOUTH].fix = 0.0hk;
-			adc_range[i].B[POLE_NORTH].fix = 0.0hk;
-
-			adc_range[i].C[POLE_SOUTH].fix = 0.0hk;
-			adc_range[i].C[POLE_NORTH].fix = 0.0hk;
-
-			adc_range[i].thresh[POLE_SOUTH] = 0;
-			adc_range[i].thresh[POLE_NORTH] = 0;
+			range.thresh[i] = 0;
+			range.qui[i] = 0x7ff;
+			range.as_1[i] = 1ULK;
 		}
 
 		range_save (pos);
@@ -341,11 +349,12 @@ range_load (uint8_t pos)
 uint8_t
 range_save (uint8_t pos)
 {
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&adc_range, sizeof (adc_range));
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 
 	return 1;
 }
 
+/*
 nOSC_Arg _p [1];
 nOSC_Arg _i [1];
 nOSC_Arg _m [1];
@@ -408,6 +417,10 @@ range_print ()
 
 	return 1;
 }
+*/
+
+uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
+uint8_t zeroing = 0;
 
 void
 range_calibrate (int16_t *raw)
@@ -415,17 +428,21 @@ range_calibrate (int16_t *raw)
 	uint8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		adc_range[i].mean += raw[i];
-		adc_range[i].mean /= 2;
+		if (zeroing)
+		{
+			range.qui[i] += raw[i];
+			range.qui[i] /= 2;
+		}
 
-		if (raw[i] > adc_range[i].thresh[POLE_SOUTH])
-			adc_range[i].thresh[POLE_SOUTH] = raw[i];
+		if (raw[i] > arr[POLE_SOUTH][i])
+			arr[POLE_SOUTH][i] = raw[i];
 
-		if (raw[i] < adc_range[i].thresh[POLE_NORTH])
-			adc_range[i].thresh[POLE_NORTH] = raw[i];
+		if (raw[i] < arr[POLE_NORTH][i])
+			arr[POLE_NORTH][i] = raw[i];
 	}
 }
 
+// calibrate quiescent current
 void
 range_update_quiescent ()
 {
@@ -433,82 +450,66 @@ range_update_quiescent ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		// reset thresh to quiescent value
-		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
-		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+		// reset array to quiescent value
+		arr[POLE_SOUTH][i] = range.qui[i];
+		arr[POLE_NORTH][i] = range.qui[i];
 	}
 }
 
+// calibrate threshold
 void
 range_update_b0 ()
 {
 	uint8_t i;
+	uint16_t thresh_s, thresh_n;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		adc_range[i].A[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
-		adc_range[i].A[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
+		thresh_s = arr[POLE_SOUTH][i] - range.qui[i];
+		thresh_n = range.qui[i] - arr[POLE_NORTH][i];
+
+		range.thresh[i] = (thresh_s + thresh_n) / 2;
 
 		// reset thresh to quiescent value
-		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
-		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+		arr[POLE_SOUTH][i] = range.qui[i];
+		arr[POLE_NORTH][i] = range.qui[i];
 	}
 }
 
+float m_bmin;
+float m_bmax;
+
+// calibrate amplification and sensitivity
 void
 range_update_b1 ()
 {
 	uint8_t i;
+	uint16_t b = (float)0x7ff * Y1;
+	float as;
+	float bmin, bmax_s, bmax_n;
+
+	m_bmin = 0;
+	m_bmax = 0;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		adc_range[i].B[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
-		adc_range[i].B[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
+		as = _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
+		range.as_1[i] = 1.0 / as;
+
+		bmin = (float)range.thresh[i] * range.as_1[i];
+		bmax_s = ((float)arr[POLE_SOUTH][i] - (float)range.qui[i]) / as / Y1;
+		bmax_n = ((float)range.qui[i] - (float)arr[POLE_NORTH][i]) / as / Y1;
+
+		m_bmin += bmin;
+		m_bmax += (bmax_s + bmax_n) / 2.0;
 
 		// reset thresh to quiescent value
-		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
-		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
+		arr[POLE_SOUTH][i] = range.qui[i];
+		arr[POLE_NORTH][i] = range.qui[i];
 	}
-}
 
-void
-range_update_b2 ()
-{
-	uint8_t i;
-
-	for (i=0; i<SENSOR_N; i++)
-	{
-		adc_range[i].C[POLE_SOUTH].uint = adc_range[i].thresh[POLE_SOUTH] - adc_range[i].mean;
-		adc_range[i].C[POLE_NORTH].uint = adc_range[i].mean - adc_range[i].thresh[POLE_NORTH];
-
-		// reset thresh to quiescent value
-		adc_range[i].thresh[POLE_SOUTH] = adc_range[i].mean;
-		adc_range[i].thresh[POLE_NORTH] = adc_range[i].mean;
-	}
-}
-
-void
-range_update ()
-{
-	uint8_t i;
-
-	// calculate maximal SOUTH and NORTH pole values
-	for (i=0; i<SENSOR_N; i++)
-	{
-		ADC_Union *b0 = adc_range[i].A;
-		ADC_Union *b1 = adc_range[i].B;
-		ADC_Union *b2 = adc_range[i].C;
-
-		ADC_Union *A = adc_range[i].A;
-		ADC_Union *B = adc_range[i].B;
-		ADC_Union *C = adc_range[i].C;
-
-		curvefit (b0[POLE_SOUTH].uint, b1[POLE_SOUTH].uint, b2[POLE_SOUTH].uint, &A[POLE_SOUTH].fix, &B[POLE_SOUTH].fix, &C[POLE_SOUTH].fix);
-		curvefit (b0[POLE_NORTH].uint, b1[POLE_NORTH].uint, b2[POLE_NORTH].uint, &A[POLE_NORTH].fix, &B[POLE_NORTH].fix, &C[POLE_NORTH].fix);
-
-		adc_range[i].thresh[POLE_SOUTH] = By (A[POLE_SOUTH].fix, B[POLE_SOUTH].fix, C[POLE_SOUTH].fix);
-		adc_range[i].thresh[POLE_NORTH] = By (A[POLE_NORTH].fix, B[POLE_NORTH].fix, C[POLE_NORTH].fix);
-	}
+	m_bmin /= (float)SENSOR_N;
+	m_bmax /= (float)SENSOR_N;
 }
 
 uint8_t
@@ -1404,13 +1405,14 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	uint8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		adc_range[i].mean = ADC_HALF_BITDEPTH;
-
-		adc_range[i].thresh[POLE_SOUTH] = ADC_HALF_BITDEPTH;
-		adc_range[i].thresh[POLE_NORTH] = ADC_HALF_BITDEPTH;
+		range.qui[i] = ADC_HALF_BITDEPTH;
+		
+		arr[POLE_SOUTH][i] = range.qui[i];
+		arr[POLE_NORTH][i] = range.qui[i];
 	}
 
 	// enable calibration
+	zeroing = 1;
 	calibrating = 1;
 
 	size = CONFIG_SUCCESS ("i", id);
@@ -1426,7 +1428,15 @@ _calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	int32_t id = args[0].i;
 
 	// update new range
+	zeroing = 0;
 	range_update_quiescent ();
+
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
+		udp_send (config.config.socket.sock, buf_o_ptr, size);
+	}
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1443,6 +1453,13 @@ _calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	// update new range
 	range_update_b0 ();
 
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/thresh", "ii", i, range.thresh[i]);
+		udp_send (config.config.socket.sock, buf_o_ptr, size);
+	}
+
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -1455,29 +1472,29 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	uint16_t size;
 	int32_t id = args[0].i;
 
+	float m_sc_1 = 0;
+
 	Y1 = args[1].f;
 
 	// update new range
 	range_update_b1 ();
 
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	uint8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sens_amp", "if", i, (float)range.as_1[i]);
+		udp_send (config.config.socket.sock, buf_o_ptr, size);
+	}
 
-	return 1;
-}
-
-static uint8_t
-_calibration_max (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	// disable calibration
 	calibrating = 0;
 
-	// update new range
-	range_update_b2 ();
-	range_update ();
+	m_sc_1 = 1.0 / (m_bmax - m_bmin);
+
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sens_amp", "ifff", i, m_bmin, m_bmax, m_sc_1);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	range.bmin = m_bmin;
+	range.sc_1 = m_sc_1;
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1536,7 +1553,7 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	int32_t id = args[0].i;
 
 	// print calibration in RAM
-	range_print ();
+	//range_print (); FIXME
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1768,7 +1785,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
 	{"/chimaera/calibration/min", "i", _calibration_min},
 	{"/chimaera/calibration/mid", "if", _calibration_mid},
-	{"/chimaera/calibration/max", "i", _calibration_max},
 	{"/chimaera/calibration/print", "i", _calibration_print},
 	{"/chimaera/calibration/save", "i*", _calibration_save},
 	{"/chimaera/calibration/load", "i*", _calibration_load},
