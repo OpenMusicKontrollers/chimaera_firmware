@@ -55,6 +55,8 @@ uint16_t seq_num;
 uint32_t timestamp;
 fix_32_32_t last_tt;
 
+uint8_t rtpmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a hash instead
+
 void
 rtpmidi_init ()
 {
@@ -124,14 +126,18 @@ rtpmidi_engine_frame_cb (uint32_t fid, uint64_t tstamp, uint8_t nblob_old, uint8
 }
 
 void
-rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
 {
 	RTP_MIDI_List *itm;
-	uint8_t key = sid % 0x7f;
+	uint8_t ch = gid % 0xf;
+	uint8_t pos = sid % BLOB_MAX;
+	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
+	uint8_t key = X;
+	rtpmidi_keys[pos] = key;
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_ON + gid;
+	itm->midi[0] = NOTE_ON | ch;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x7f;
 	nlist++;
@@ -141,42 +147,48 @@ void
 rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
-	uint8_t key = sid % 0x7f;
+	uint8_t ch = gid % 0xf;
+	uint8_t pos = sid % BLOB_MAX;
+	uint8_t key = rtpmidi_keys[pos];
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_OFF + gid;
+	itm->midi[0] = NOTE_OFF | ch;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x00;
 	nlist++;
 }
 
 void
-rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
 {
 	RTP_MIDI_List *itm;
-	uint8_t key = sid % 0x7f;
-	uint16_t bend = (x*48 - key)*0x1fff + 0x2000;
-	uint16_t eff = y*0x3fff;
+	uint8_t ch = gid % 0xf;
+	uint8_t pos = sid % BLOB_MAX;
+	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
+	uint8_t key = rtpmidi_keys[pos];
+	uint16_t bend = (X - key) * 170.65LLK + 0x2000; // := (X - key) / 48LLK * 0x1fff + 0x2000;
+
+	uint16_t eff = (fix_16_16_t)y * 0x3fff;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = PITCH_BEND + gid;
+	itm->midi[0] = PITCH_BEND | ch;
 	itm->midi[1] = bend & 0x7f;
 	itm->midi[2] = bend >> 7;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE + gid;
-	itm->midi[1] = VOLUME | LSV;
+	itm->midi[0] = CONTROL_CHANGE | ch;
+	itm->midi[1] = config.oscmidi.effect | LSV;
 	itm->midi[2] = eff & 0x7f;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE + gid;
-	itm->midi[1] = VOLUME | MSV;
+	itm->midi[0] = CONTROL_CHANGE | ch;
+	itm->midi[1] = config.oscmidi.effect | MSV;
 	itm->midi[2] = eff >> 7;
 	nlist++;
 }

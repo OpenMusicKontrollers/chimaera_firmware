@@ -35,6 +35,7 @@
 #include <eeprom.h>
 #include <cmc.h>
 #include <scsynth.h>
+#include <midi.h>
 
 const char *success_str = "/success";
 const char *fail_str = "/fail";
@@ -229,6 +230,12 @@ Config config = {
 		//	.port = {7777, 7777},
 		//	.ip = LAN_BROADCAST
 		//}
+	},
+
+	.oscmidi = {
+		.enabled = 0,
+		.offset = 24,
+		.effect = VOLUME
 	},
 
 	.cmc = {
@@ -1190,6 +1197,24 @@ _rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 }
 
 static uint8_t
+_oscmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _boolean (path, fmt, argc, args, &config.oscmidi.enabled);
+}
+
+static uint8_t
+_oscmidi_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range8 (&config.oscmidi.offset, 0, 0x7f, path, fmt, argc, args);
+}
+
+static uint8_t
+_oscmidi_effect (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range8 (&config.oscmidi.effect, 0, 0x7f, path, fmt, argc, args);
+}
+
+static uint8_t
 _output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1751,6 +1776,10 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/scsynth/addaction", "i*", _scsynth_addaction},
 
 	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
+
+	{"/chimaera/oscmidi/enabled", "i*", _oscmidi_enabled},
+	{"/chimaera/oscmidi/offset", "i*", _oscmidi_offset},
+	{"/chimaera/oscmidi/effect", "i*", _oscmidi_effect},
 
 	{"/chimaera/config/enabled", "i*", _config_enabled},
 	{"/chimaera/config/address", "i*", _config_address},

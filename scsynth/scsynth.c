@@ -79,7 +79,7 @@ scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, ui
 }
 
 void
-scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
 {
 	uint32_t id = config.scsynth.offset + sid%config.scsynth.modulo;
 	nOSC_Message msg;
@@ -144,7 +144,7 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 }
 
 void
-scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
 {
 	uint32_t id = config.scsynth.offset + sid%config.scsynth.modulo;
 	nOSC_Message msg;
@@ -153,10 +153,10 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 	nosc_message_set_int32 (msg, 0, id);
 	nosc_message_set_int32 (msg, 1, 0);
 	//nosc_message_set_string (msg, 1, x_str); //TODO make this configurable
-	nosc_message_set_float (msg, 2, x);
+	nosc_message_set_float (msg, 2, (float)x);
 	nosc_message_set_int32 (msg, 3, 1);
 	//nosc_message_set_string (msg, 3, z_str);
-	nosc_message_set_float (msg, 4, y);
+	nosc_message_set_float (msg, 4, (float)y);
 	nosc_message_set_int32 (msg, 5, 2);
 	//nosc_message_set_string (msg, 5, p_str);
 	nosc_message_set_int32 (msg, 6, pid);

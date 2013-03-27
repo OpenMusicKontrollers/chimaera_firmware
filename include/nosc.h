@@ -179,7 +179,13 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt,
 #define nosc_message_set_int64(MSG,POS,H) (((nOSC_Message)(MSG))[POS].h = (int64_t)(H))
 #define nosc_message_set_timestamp(MSG,POS,T) (((nOSC_Message)(MSG))[POS].t = (uint64_t)(T))
 
-#define nosc_message_set_midi(MSG,POS,M) (memcpy (((nOSC_Message)(MSG))[(POS)].m, (uint8_t *)(M), 4))
+#define nosc_message_set_midi(MSG,POS,M0,M1,M2,M3) \
+({ \
+	((nOSC_Message)(MSG))[POS].m[0] = (M0); \
+	((nOSC_Message)(MSG))[POS].m[1] = (M1); \
+	((nOSC_Message)(MSG))[POS].m[2] = (M2); \
+	((nOSC_Message)(MSG))[POS].m[3] = (M3); \
+})
 #define nosc_message_set_symbol(MSG,POS,_S) (((nOSC_Message)(MSG))[POS].S = (char *)(_S))
 #define nosc_message_set_char(MSG,POS,C) (((nOSC_Message)(MSG))[POS].c = (char)(C))
 

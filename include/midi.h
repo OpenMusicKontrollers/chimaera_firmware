@@ -21,43 +21,26 @@
  *     distribution.
  */
 
-#ifndef RTPMIDI_PRIVATE_H
-#define RTPMIDI_PRIVATE_H
+#ifndef MIDI_H
+#define MIDI_H
 
-#include <rtpmidi.h>
-#include <armfix.h>
+enum _MIDI_COMMAND {
+	NOTE_OFF 					= 0x80,
+	NOTE_ON						= 0x90,
+	AFTER_TOUCH				= 0xa0,
+	CONTROL_CHANGE		= 0xb0,
+	PITCH_BEND				= 0xe0,
+	
+	MODULATION				= 0x01,
+	BREATH						= 0x02,
+	VOLUME						= 0x07,
+	PAN								= 0x0a,
+	EXPRESSION				= 0x0b,
+	EFFECT_CONTROL_1	= 0x0c,
+	EFFECT_CONTROL_2	= 0x0d
+}; //TODO check whether ((aligned(1)))
 
-typedef struct _RTP_Header RTP_Header;
-typedef struct _RTP_MIDI_Session RTP_MIDI_Session;
-typedef struct _RTP_MIDI_Header RTP_MIDI_Header;
-typedef struct _RTP_MIDI_List RTP_MIDI_List;
+#define MSV 0x00
+#define LSV 0x20
 
-struct _RTP_Header {
-	uint8_t V_P_X_CC;
-	uint8_t M_PT;
-	uint16_t sequence_number;
-	uint32_t timestamp;
-	uint32_t SSRC;
-} __attribute__((packed,aligned(4)));
-
-struct _RTP_MIDI_Session {
-	fix_32_32_t rate;
-};
-
-struct _RTP_MIDI_Header {
-	/*
-	 B: 0: LEN is 4bits, 1: LEN is 12bits
-	 J: 0: no journal, 1: journal
-	 Z: 0: delta_0 existent, 1: delta_0 absent
-	 LEN: number of octets in MIDI list
-	 */
-	uint8_t B_J_Z_P_LEN1;
-	uint8_t LEN2;
-} __attribute__((packed,aligned(4)));
-
-struct _RTP_MIDI_List {
-	uint8_t delta_time; // 0b0ddddddd
-	uint8_t midi [3]; // 0x80 0x7f 0x7f
-} __attribute__((packed,aligned(4)));
-
-#endif // RTPMIDI_PRIVATE_H
+#endif /* MIDI_H */

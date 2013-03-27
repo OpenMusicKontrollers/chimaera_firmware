@@ -76,21 +76,6 @@ cmc_init ()
 	cmc.neu = 1;
 }
 
-static int
-aoi_cmp (const void *a, const void *b)
-{
-	const uint8_t *A = a;
-	const uint8_t *B = b;
-
-	if (*A == *B)
-		return 0;
-	
-	if (*A < *B)
-		return -1;
-	
-	return 1;
-}
-
 uint8_t
 cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 {
@@ -130,9 +115,9 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 	fix_0_32_t max = cmc.v[aoi[0]];
 	uint8_t peak = aoi[0];
 	uint8_t up = 1;
-	for (a=1; a<n_aoi; a++) //FIXME does not work for nearby blobs in rev4!!!
+	for (a=1; a<n_aoi; a++)
 	{
-		if (aoi[a] - aoi[a-1] > 1) // new aoi
+		if (aoi[a] - aoi[a-1] > 1) // new aoi //FIXME does not work for nearby blobs in rev4!!!
 		{
 			up = 1;
 			peak = aoi[a];
@@ -357,12 +342,9 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 						tar->sid = ++(cmc.sid); //TODO also set state
 
 					tar->group = ptr;
-					tar->fp = tar->p;
 
-					if ( (ptr->x0 != 0ULR) || (ptr->m != 1ULK) )
-						tar->fx = (tar->x - ptr->x0) * ptr->m;
-					else // no scaling
-						tar->fx = tar->x;
+					if ( (ptr->x0 != 0ULR) || (ptr->m != 1ULK) ) // we need scaling
+						tar->x = (tar->x - ptr->x0) * ptr->m;
 
 					break; // match found, do not search further
 				}
@@ -412,12 +394,12 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 						if (tar->state == CMC_BLOB_APPEARED)
 						{
 							if (engine->on_cb)
-								engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->fx, tar->fp);
+								engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 						}
 						else // tar->state == CMC_BLOB_EXISTED
 						{
 							if (engine->set_cb)
-								engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->fx, tar->fp);
+								engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 						}
 					}
 

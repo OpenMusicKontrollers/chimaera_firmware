@@ -25,6 +25,7 @@
 #define RTPMIDI_H
 
 #include <cmc.h>
+#include <midi.h>
 
 extern CMC_Engine rtpmidi_engine;
 

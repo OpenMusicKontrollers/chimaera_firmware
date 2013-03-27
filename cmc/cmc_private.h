@@ -54,7 +54,6 @@ struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
 	fix_0_32_t x, p;
-	float fx, fp;
 	uint16_t pid;
 	uint8_t above_thresh;
 	CMC_Blob_State state;
@@ -62,7 +61,7 @@ struct _CMC_Blob {
 
 struct _CMC_Group {
 	fix_0_32_t x0, x1;
-	fix_16_16_t m;
+	fix_16_16_t m; //TODO make fix_32_32_t ?
 	uint16_t gid; //TODO make uint8_t
 	uint16_t pid; //TODO make uint8_t
 	char name[8]; //TODO how big?

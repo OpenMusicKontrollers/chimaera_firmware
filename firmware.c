@@ -56,6 +56,7 @@
 #include <dhcpc.h>
 #include <arp.h>
 #include <rtpmidi.h>
+#include <oscmidi.h>
 #include <wiz.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {18, 17, 14, 13}; // digital out pins to switch MUX channels
@@ -276,7 +277,7 @@ loop ()
 				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
 			}
 		
-			if (config.tuio.enabled || config.scsynth.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 			{
 				uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
@@ -287,6 +288,9 @@ loop ()
 
 					if (config.scsynth.enabled)
 						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
+
+					if (config.oscmidi.enabled)
+						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, nOSC_IMMEDIATE, oscmidi_fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
@@ -437,7 +441,8 @@ setup ()
 
 	engines[0] = &tuio2_engine;
 	engines[1] = &scsynth_engine;
-	engines[2] = &rtpmidi_engine;
+	engines[2] = &oscmidi_engine;
+	engines[3] = &rtpmidi_engine;
 
 	pin_set_mode (BOARD_BUTTON_PIN, GPIO_INPUT_FLOATING);
 	pin_set_mode (BOARD_LED_PIN, GPIO_OUTPUT_PP);
@@ -618,6 +623,7 @@ setup ()
 	dump_init (sizeof(adc_swap), adc_swap);
 	tuio2_init ();
 	scsynth_init ();
+	oscmidi_init ();
 	rtpmidi_init ();
 
 	// load saved groups

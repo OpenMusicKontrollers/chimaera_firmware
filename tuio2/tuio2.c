@@ -162,15 +162,15 @@ tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint
 }
 
 void
-tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
 {
 	nOSC_Message msg = tok[counter];
 
 	msg[0].i = sid;
 	msg[1].i = pid;
 	msg[2].i = gid;
-	msg[3].f = x;
-	msg[4].f = y;
+	msg[3].f = (float)x;
+	msg[4].f = (float)y;
 	//msg[5].f = 0; // not used
 
 	nosc_message_set_int32 (alv, counter, sid);

@@ -159,7 +159,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				break;
 
 			case nOSC_MIDI:
-				nosc_message_set_midi (msg, pos, buf_ptr);
+				nosc_message_set_midi (msg, pos, buf_ptr[0], buf_ptr[1], buf_ptr[2], buf_ptr[3]);
 				buf_ptr += 4;
 				break;
 			case nOSC_SYMBOL:
@@ -440,7 +440,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
         break;
 
 			case nOSC_MIDI:
-				nosc_message_set_midi (msg, pos, va_arg (args, uint8_t *));
+				nosc_message_set_midi (msg, pos, va_arg (args, int), va_arg (args, int), va_arg (args, int), va_arg (args, int));
 				break;
 			case nOSC_SYMBOL:
 				nosc_message_set_symbol (msg, pos, va_arg (args, char *));

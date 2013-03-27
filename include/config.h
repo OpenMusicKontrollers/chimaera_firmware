@@ -132,6 +132,13 @@ struct _Config {
 		//Socket_Config socket;
 	} COMPACT rtpmidi;
 
+	struct _oscmidi {
+		uint8_t enabled;
+		uint8_t offset;
+		uint8_t effect;
+		//Socket_Config socket;
+	} COMPACT oscmidi;
+
 	struct _cmc {
 		uint8_t peak_thresh;
 	} cmc;

@@ -54,7 +54,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define UDP_PWDN 12
 #define UDP_INT 27
 
-#define CHIMAERA_BUFSIZE 0x300 //FIXME increase to 0x400
+#define CHIMAERA_BUFSIZE 0x400
 
 #define ADC_DMA_PRIORITY 0x2
 #define SPI_RX_DMA_PRIORITY 0x3
@@ -64,7 +64,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define ENGINE_N 3 // tuio, dump, scsynth
+#define ENGINE_N 4 // tuio, scsynth, oscmidi, rtpmidi
 
 #define MAGIC 0x03
 

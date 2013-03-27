@@ -21,43 +21,16 @@
  *     distribution.
  */
 
-#ifndef RTPMIDI_PRIVATE_H
-#define RTPMIDI_PRIVATE_H
+#ifndef OSCMIDI_H
+#define OSCMIDI_H
 
-#include <rtpmidi.h>
-#include <armfix.h>
+#include <cmc.h>
+#include <midi.h>
 
-typedef struct _RTP_Header RTP_Header;
-typedef struct _RTP_MIDI_Session RTP_MIDI_Session;
-typedef struct _RTP_MIDI_Header RTP_MIDI_Header;
-typedef struct _RTP_MIDI_List RTP_MIDI_List;
+extern nOSC_Item oscmidi_bndl [];
+extern char *oscmidi_fmt;
+extern CMC_Engine oscmidi_engine;
 
-struct _RTP_Header {
-	uint8_t V_P_X_CC;
-	uint8_t M_PT;
-	uint16_t sequence_number;
-	uint32_t timestamp;
-	uint32_t SSRC;
-} __attribute__((packed,aligned(4)));
+void oscmidi_init ();
 
-struct _RTP_MIDI_Session {
-	fix_32_32_t rate;
-};
-
-struct _RTP_MIDI_Header {
-	/*
-	 B: 0: LEN is 4bits, 1: LEN is 12bits
-	 J: 0: no journal, 1: journal
-	 Z: 0: delta_0 existent, 1: delta_0 absent
-	 LEN: number of octets in MIDI list
-	 */
-	uint8_t B_J_Z_P_LEN1;
-	uint8_t LEN2;
-} __attribute__((packed,aligned(4)));
-
-struct _RTP_MIDI_List {
-	uint8_t delta_time; // 0b0ddddddd
-	uint8_t midi [3]; // 0x80 0x7f 0x7f
-} __attribute__((packed,aligned(4)));
-
-#endif // RTPMIDI_PRIVATE_H
+#endif // OSCMIDI_H
