@@ -109,9 +109,12 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 			cmc.n[newpos] = pole;
 			cmc.a[newpos] = aval > range.thresh[pos];
 
-			//TODO merge this two functions into a single one
-			fix_16_16_t b = (fix_16_16_t)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
-			cmc.v[newpos] = (b - range.bmin) * range.sc_1; // rescale to [0,1]
+			//fix_16_16_t b = (fix_16_16_t)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
+			//cmc.v[newpos] = (b - range.bmin) * range.sc_1; // rescale to [0,1]
+
+			// this is the same as the above, just in one function
+			fix_32_32_t y = (aval * (fix_32_32_t)range.as_1_sc_1[pos]) - range.bmin_sc_1;
+			cmc.v[newpos] = y;
 		}
 	}
 
@@ -127,7 +130,7 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 	fix_0_32_t max = cmc.v[aoi[0]];
 	uint8_t peak = aoi[0];
 	uint8_t up = 1;
-	for (a=1; a<n_aoi; a++)
+	for (a=1; a<n_aoi; a++) //FIXME does not work for nearby blobs in rev4!!!
 	{
 		if (aoi[a] - aoi[a-1] > 1) // new aoi
 		{
@@ -160,27 +163,37 @@ cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
 		uint8_t P = peaks[p];
 		//fit parabola
 
-		fix_s_31_t y0 = cmc.v[P-1];
-		fix_s_31_t y1 = cmc.v[P];
-		fix_s_31_t y2 = cmc.v[P+1];
+		fix_s31_32_t y0 = cmc.v[P-1];
+		fix_s31_32_t y1 = cmc.v[P];
+		fix_s31_32_t y2 = cmc.v[P+1];
 
-		//TODO do curvefit instead of simple sqrt
-		//y0 = A*y0 + B*sqrt(y0) + C;
-		y0 = sqrt (y0);
-		y1 = sqrt (y1);
-		y2 = sqrt (y2);
+		// lookup square root
+		fix_s31_32_t sqrt0 = lookup_sqrt[(uint16_t)(y0<<11)];
+		fix_s31_32_t sqrt1 = lookup_sqrt[(uint16_t)(y1<<11)];
+		fix_s31_32_t sqrt2 = lookup_sqrt[(uint16_t)(y2<<11)];
+
+		y0 = curve.A * sqrt0 + curve.B * y0; // + curve.C;
+		y1 = curve.A * sqrt1 + curve.B * y1; // + curve.C;
+		y2 = curve.A * sqrt2 + curve.B * y2; // + curve.C;
 
 		// parabolic interpolation
-		//fix_s_31_t divisor = y0 - y1 + y2 - y1;
-		fix_s31_32_t divisor = y0 - 2*y1 + y2;
-		fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+		//fix_s31_32_t divisor = y0 - 2*y1 + y2;
+		fix_s31_32_t divisor = y0 - (y1<<1) + y2;
+		fix_s31_32_t divisor_1 = 1.0LLK / divisor; // only one division
 
-		//fix_0_32_t y = y1; // this is better, simpler and faster than any interpolation (just KISS)
+		//fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+		fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
 
-		fix_s31_32_t dividend = -y0*y0*0.125LR + y0*y1 - y1*y1*2 + y0*y2*0.25LR + y1*y2 - y2*y2*0.125LR;
-		fix_0_32_t y = dividend / divisor;
+		//fix_0_32_t y = y1; // dummy
 
-		if ( (x > 0.0LR) && (y > 0.0LR) ) //FIXME why can this happen in the first place?
+		//fix_s31_32_t dividend = -y0*y0*0.125LR + y0*y1 - y1*y1*2 + y0*y2*0.25LR + y1*y2 - y2*y2*0.125LR; // 10 multiplications, 5 additions/subtractions
+		//fix_s31_32_t dividend = y0*(y1 - 0.125LR*y0 + 0.25LR*y2) + y2*(y1 - 0.125LR*y2) - y1*y1*2; // 7 multiplications, 5 additions/subtractions
+		fix_s31_32_t dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
+
+		//fix_0_32_t y = dividend / divisor;
+		fix_0_32_t y = dividend * divisor_1; // multiplication instead of division
+
+		if ( (x > 0ULR) && (y > 0ULR) ) //FIXME why can this happen in the first place?
 		{
 			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 			cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it

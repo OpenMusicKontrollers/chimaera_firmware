@@ -52,6 +52,8 @@ void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 void udp_begin (uint8_t sock, uint16_t port, uint8_t multicast);
 void udp_end (uint8_t sock);
 
+void udp_update_read_write_pointers (uint8_t sock);
+
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);
 
@@ -61,9 +63,9 @@ uint8_t udp_send_block (uint8_t sock);
 
 uint16_t udp_available (uint8_t sock);
 
-void udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
+uint8_t udp_receive (uint8_t sock, uint8_t ptr, uint16_t len);
 uint16_t udp_receive_nonblocking (uint8_t sock, uint8_t ptr, uint16_t len);
-void udp_receive_block (uint8_t sock, uint16_t wrap, uint16_t len);
+uint8_t udp_receive_block (uint8_t sock, uint16_t wrap, uint16_t len);
 
 void udp_dispatch (uint8_t sock, uint8_t ptr, UDP_Dispatch_Cb cb);
 
@@ -88,7 +90,7 @@ void macraw_begin (uint8_t sock, uint8_t mac_filter);
 void macraw_end (uint8_t sock);
 uint8_t macraw_send (uint8_t sock, uint8_t ptr, uint16_t len);
 uint16_t macraw_available (uint8_t sock);
-void macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len);
+uint8_t macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len);
 void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *data);
 
 #endif

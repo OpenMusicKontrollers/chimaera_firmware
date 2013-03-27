@@ -25,6 +25,7 @@
 #define _CHIMAERA_H_
 
 #include <stdint.h>
+#include <armfix.h>
 
 // hack to have access to PIN_MAP from plain C
 #include <wirish/wirish_types.h>
@@ -86,6 +87,8 @@ extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i_o [];
 extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
+
+extern const fix_0_32_t lookup_sqrt [];
 
 extern uint8_t calibrating;
 

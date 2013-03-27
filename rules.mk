@@ -64,16 +64,13 @@ ASFLAGS_$(d) :=
 # You can add any additional rules you want here. We don't have
 # any extra rules to add.
 
-### Custom targets
-
-cmc/cmc_lookup.c:
-	./cmc/cmc_lookup.py > $@
+$(USER_MODULES)/lookup.c: lookup.py
+	python $< > $@
 
 ### Source files
 
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
-cSRCS_$(d) += cmc/cmc_lookup.c
 cSRCS_$(d) += wiz/wiz.c
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
@@ -92,6 +89,7 @@ cSRCS_$(d) += rtpmidi/rtpmidi.c
 cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += armfix/armfix.c
 cSRCS_$(d) += arp/arp.c
+cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own

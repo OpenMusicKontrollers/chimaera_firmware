@@ -58,6 +58,7 @@ const char *group_err_str = "group not found";
 
 float Y1 = 0.7;
 
+/*
 static fix_16_16_t
 By (fix_s15_16_t A, fix_s15_16_t B, fix_s15_16_t C)
 {
@@ -84,27 +85,30 @@ curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, f
   *B = (1.0/(sqrtB0 - sqrtB2) + Y1/(-sqrtB0 + sqrtB1)) / (sqrtB1 - sqrtB2);
   *C = (B0*(sqrtB1 - sqrtB2*Y1) + sqrtB0*(-B1 + B2*Y1)) / ((sqrtB0 - sqrtB1)*(sqrtB0 - sqrtB2)*(sqrtB1 - sqrtB2));
 
-	/*
-	debug_str ("curvefit");
-	debug_float (Y1);
-	debug_int32 (b0);
-	debug_int32 (b1);
-	debug_int32 (b2);
-	debug_float (B0);
-	debug_float (B1);
-	debug_float (B2);
-	debug_float (sqrtB0);
-	debug_float (sqrtB1);
-	debug_float (sqrtB2);
-	debug_float (*A);
-	debug_float (*B);
-	debug_float (*C);
-	*/
+	//debug_str ("curvefit");
+	//debug_float (Y1);
+	//debug_int32 (b0);
+	//debug_int32 (b1);
+	//debug_int32 (b2);
+	//debug_float (B0);
+	//debug_float (B1);
+	//debug_float (B2);
+	//debug_float (sqrtB0);
+	//debug_float (sqrtB1);
+	//debug_float (sqrtB2);
+	//debug_float (*A);
+	//debug_float (*B);
+	//debug_float (*C);
 }
+*/
 
 /* rev 4 */
 Range range;
-Curve curve;
+Curve curve = { //FIXME make this configurable
+	.A = 0.7700LLK,
+	.B = 0.2289LLK,
+	.C = 0.0000LLK
+};
 /* rev 4 */
 
 float
@@ -337,7 +341,8 @@ range_load (uint8_t pos)
 		{
 			range.thresh[i] = 0;
 			range.qui[i] = 0x7ff;
-			range.as_1[i] = 1ULK;
+			range.as_1_sc_1[i] = 1ULR;
+			range.bmin_sc_1 = 0ULR;
 		}
 
 		range_save (pos);
@@ -476,40 +481,46 @@ range_update_b0 ()
 	}
 }
 
-float m_bmin;
-float m_bmax;
-
 // calibrate amplification and sensitivity
 void
 range_update_b1 ()
 {
 	uint8_t i;
 	uint16_t b = (float)0x7ff * Y1;
-	float as;
+	float as_1;
 	float bmin, bmax_s, bmax_n;
+	float sc_1;
 
-	m_bmin = 0;
-	m_bmax = 0;
+	float m_bmin = 0;
+	float m_bmax = 0;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		as = _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
-		range.as_1[i] = 1.0 / as;
+		as_1 = 1.0 / _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
 
-		bmin = (float)range.thresh[i] * range.as_1[i];
-		bmax_s = ((float)arr[POLE_SOUTH][i] - (float)range.qui[i]) / as / Y1;
-		bmax_n = ((float)range.qui[i] - (float)arr[POLE_NORTH][i]) / as / Y1;
+		bmin = (float)range.thresh[i] * as_1;
+		bmax_s = ((float)arr[POLE_SOUTH][i] - (float)range.qui[i]) * as_1 / Y1;
+		bmax_n = ((float)range.qui[i] - (float)arr[POLE_NORTH][i]) * as_1 / Y1;
 
 		m_bmin += bmin;
 		m_bmax += (bmax_s + bmax_n) / 2.0;
+	}
+
+	m_bmin /= (float)SENSOR_N;
+	m_bmax /= (float)SENSOR_N;
+
+	sc_1 = 1.0 / (m_bmax - m_bmin);
+	range.bmin_sc_1 = m_bmin * sc_1;
+
+	for (i=0; i<SENSOR_N; i++)
+	{
+		as_1 = 1.0 / _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
+		range.as_1_sc_1[i] = as_1 * sc_1;
 
 		// reset thresh to quiescent value
 		arr[POLE_SOUTH][i] = range.qui[i];
 		arr[POLE_NORTH][i] = range.qui[i];
 	}
-
-	m_bmin /= (float)SENSOR_N;
-	m_bmax /= (float)SENSOR_N;
 }
 
 uint8_t
@@ -1472,8 +1483,6 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	float m_sc_1 = 0;
-
 	Y1 = args[1].f;
 
 	// update new range
@@ -1482,19 +1491,14 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	uint8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sens_amp", "if", i, (float)range.as_1[i]);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sc_1_sc_1", "if", i, (float)range.as_1_sc_1[i]);
 		udp_send (config.config.socket.sock, buf_o_ptr, size);
 	}
 
 	calibrating = 0;
 
-	m_sc_1 = 1.0 / (m_bmax - m_bmin);
-
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sens_amp", "ifff", i, m_bmin, m_bmax, m_sc_1);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/bmin_sc_1", "f", (float)range.bmin_sc_1);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	range.bmin = m_bmin;
-	range.sc_1 = m_sc_1;
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);

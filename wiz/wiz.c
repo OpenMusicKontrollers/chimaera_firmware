@@ -212,36 +212,38 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 	return buf;
 }
 
-inline void
+inline uint8_t
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
 	_spi_dma_run (nonblocklen, WIZ_TX);
+	return 1;
 }
 
-inline void
+inline uint8_t
 _dma_write_nonblocking_out ()
 {
-	while (!_spi_dma_block (WIZ_TX))
-		_spi_dma_run (nonblocklen, WIZ_TX);
+	uint8_t res = _spi_dma_block (WIZ_TX);
 	resetSS ();
+	return res;
 }
 
-inline void
+inline uint8_t
 _dma_read_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
 	setSS ();
 	_spi_dma_run (nonblocklen, WIZ_TXRX);
+	return 1;
 }
 
-inline void
+inline uint8_t
 _dma_read_nonblocking_out ()
 {
-	while (!_spi_dma_block (WIZ_TXRX))
-		_spi_dma_run (nonblocklen, WIZ_TXRX);
+	uint8_t res = _spi_dma_block (WIZ_TXRX);
 	resetSS ();
+	return res;
 }
 
 inline void
@@ -466,6 +468,12 @@ udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 	while (flag != SnSR_UDP)
 		;
 
+	udp_update_read_write_pointers (sock);
+}
+
+void
+udp_update_read_write_pointers (uint8_t sock)
+{
 	// get write pointer
 	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 
@@ -541,17 +549,21 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	flag = SnCR_SEND;
 	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
 
-	_dma_write_nonblocking_in (buf);
-
-	return 1;
+	return _dma_write_nonblocking_in (buf);
 }
 
 uint8_t 
 udp_send_block (uint8_t sock)
 {
-	_dma_write_nonblocking_out ();
+	uint8_t success = _dma_write_nonblocking_out ();
 
-	uint8_t success = 1;
+	if (!success)
+	{
+		//FIXME do something else?
+		_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+		return success;
+	}
+
 	uint8_t ir;
 	uint8_t flag;
 	do
@@ -579,11 +591,11 @@ udp_available (uint8_t sock)
 	return len;
 }
 
-void
+uint8_t
 udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 {
 	uint16_t wrap = udp_receive_nonblocking (sock, buf_ptr, len);
-	udp_receive_block (sock, wrap, len);
+	return udp_receive_block (sock, wrap, len);
 }
 
 uint16_t
@@ -639,10 +651,17 @@ udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	return size;
 }
 
-void
+uint8_t
 udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 {
-	_dma_read_nonblocking_out ();
+	uint8_t success = _dma_read_nonblocking_out ();
+
+	if (!success)
+	{
+		//FIXME do something else?
+		_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
+		return success;
+	}
 
 	// remove 4byte padding between chunks
 	if (size)
@@ -654,6 +673,8 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 	spi2_rx_tube.tube_dst = tmp_buf_i;
 	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+
+	return success;
 }
 
 void
@@ -691,7 +712,8 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 			return;
 		}
 
-		udp_receive (sock, ptr, len);
+		if (!udp_receive (sock, ptr, len))
+			return;
 
 		// separate concurrent UDP messages
 		uint16_t remaining = len;
@@ -760,10 +782,10 @@ macraw_available (uint8_t sock)
 	return udp_available (sock);
 }
 
-void
+uint8_t
 macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len)
 {
-	udp_receive (sock, ptr, len);
+	return udp_receive (sock, ptr, len);
 }
 
 void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *user_data)
@@ -781,7 +803,8 @@ void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *us
 			return;
 		}
 
-		macraw_receive (sock, ptr, len);
+		if (!macraw_receive (sock, ptr, len))
+			return;
 
 		// separate concurrent MACRAW packets
 		uint16_t remaining = len;

@@ -1,2 +1,2 @@
 build/
-cmc/cmc_lookup.c
+lookup.c

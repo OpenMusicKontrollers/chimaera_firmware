@@ -157,15 +157,14 @@ typedef struct _Curve Curve;
 struct _Range {
 	uint16_t qui [SENSOR_N];
 	uint16_t thresh [SENSOR_N];
-	fix_16_16_t as_1 [SENSOR_N];
-	fix_16_16_t bmin;
-	fix_0_32_t sc_1; // = 1.0 / (bmax - bmin)
+	fix_0_32_t as_1_sc_1 [SENSOR_N];
+	fix_0_32_t bmin_sc_1;
 };
 
 struct _Curve {
-	fix_s15_16_t A;
-	fix_s15_16_t B;
-	fix_s15_16_t C;
+	fix_s31_32_t A;
+	fix_s31_32_t B;
+	fix_s31_32_t C;
 };
 
 extern Range range;

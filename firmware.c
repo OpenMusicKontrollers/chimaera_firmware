@@ -312,7 +312,7 @@ loop ()
 				job = 1;
 
 			if (cmc_job && send_status) // block for end of sending of last cycles tuio output
-				udp_send_block (config.output.socket.sock);
+				udp_send_block (config.output.socket.sock); //FIXME check return status
 
 			if (job) // switch output buffer
 				buf_o_ptr ^= 1;

@@ -42,4 +42,5 @@ cpp_setup ()
 
 	// set up SPI for usage with wiz820io
   spi.begin (SPI_18MHZ, MSBFIRST, 0);
+  //spi.begin (SPI_9MHZ, MSBFIRST, 0);
 }
