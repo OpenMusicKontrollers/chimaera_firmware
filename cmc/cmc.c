@@ -41,7 +41,7 @@ CMC cmc;
 #define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
 
 uint8_t n_aoi;
-uint8_t aoi[64]; //TODO how big?
+uint8_t aoi[BLOB_MAX*7]; //TODO how big? BLOB_MAX * 5,7,9 ?
 
 uint8_t n_peaks;
 uint8_t peaks[BLOB_MAX];
@@ -107,34 +107,29 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	 * find maxima
 	 */
 
-	// search for peaks
+	// detect peaks
 	n_peaks = 0;
-	uint8_t a;
-	fix_0_32_t max = cmc.v[aoi[0]];
-	uint8_t peak = aoi[0];
 	uint8_t up = 1;
+	uint8_t a;
 	for (a=1; a<n_aoi; a++)
 	{
-		if (aoi[a] - aoi[a-1] > 1) // new aoi //FIXME does not work for nearby blobs in rev4!!!
-		{
-			up = 1;
-			peak = aoi[a];
-			max = cmc.v[peak];
-			continue;
-		}
+		uint8_t p0 = aoi[a-1];
+		uint8_t p1 = aoi[a];
 
 		if (up)
 		{
-			if (cmc.v[aoi[a]] >= max)
+			if (cmc.v[p1] < cmc.v[p0])
 			{
-				peak = aoi[a];
-				max = cmc.v[peak];
-			}
-			else // < max
-			{
-				peaks[n_peaks++] = peak;
+				peaks[n_peaks++] = p0;
 				up = 0;
 			}
+			// else up := 1
+		}
+		else // !up
+		{
+			if (cmc.v[p1] > cmc.v[p0])
+				up = 1;
+			// else up := 0
 		}
 	}
 
