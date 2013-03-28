@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include "rtpmidi_private.h"
-#include "../sntp/sntp_private.h"
 
 //TODO implement RTCP (Real Time Control Protocol)
 
@@ -53,7 +52,7 @@ uint8_t nlist = 0;
 uint16_t seq_offset;
 uint16_t seq_num;
 uint32_t timestamp;
-fix_32_32_t last_tt;
+nOSC_Timestamp last_tt;
 
 uint8_t rtpmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a hash instead
 
@@ -105,22 +104,20 @@ rtpmidi_serialize (uint8_t *buf)
 }
 
 void
-rtpmidi_engine_frame_cb (uint32_t fid, uint64_t tstamp, uint8_t nblob_old, uint8_t nblob_new)
+rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint8_t nblob_old, uint8_t nblob_new)
 {
 	seq_num = seq_offset + fid;
 
-	timestamp64_t tt;
-	fix_32_32_t dt;
+	nOSC_Timestamp dt;
 	uint32_t df;
 
 	if (last_tt > 0ULLK)
 	{
-		tt.stamp = tstamp;
-		dt = tt.fix - last_tt;
+		dt = tstamp - last_tt;
 		df = dt * rtp_midi_session.rate;
 		timestamp += df;
 	}
-	last_tt = tt.fix;
+	last_tt = tstamp;
 
 	nlist = 0;
 }

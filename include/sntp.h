@@ -27,11 +27,12 @@
 #include <stdint.h>
 
 #include <netdef.h>
+#include <nosc.h>
 
-void sntp_timestamp_refresh (uint64_t *now, uint64_t *offset);
+void sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset);
 
-uint16_t sntp_request (uint8_t *buf, uint64_t t3);
+uint16_t sntp_request (uint8_t *buf, nOSC_Timestamp t3);
 
-void sntp_dispatch (uint8_t *buf, uint64_t t4);
+void sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4);
 
 #endif

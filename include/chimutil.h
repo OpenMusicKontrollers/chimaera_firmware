@@ -28,13 +28,15 @@
 
 #include <libmaple/adc.h>
 
+#include <nosc.h>
+
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
 void debug_str (const char *str);
 void debug_int32 (int32_t i);
 void debug_float (float f);
 void debug_double (double d);
-void debug_timestamp (uint64_t t);
+void debug_timestamp (nOSC_Timestamp t);
 
 void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
 

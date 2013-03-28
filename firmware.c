@@ -86,7 +86,7 @@ volatile uint8_t sntp_should_listen = 0;
 volatile uint8_t mdns_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
-uint64_t now;
+nOSC_Timestamp now;
 CMC_Engine *engines [ENGINE_N];
 
 static void
@@ -153,7 +153,7 @@ adc_dma_irq ()
 
 //TODO move to config.c
 static void
-config_bndl_start_cb (uint64_t timestamp)
+config_bndl_start_cb (nOSC_Timestamp timestamp)
 {
 	//TODO only for testing
 	debug_str ("bndl_start");
@@ -223,7 +223,7 @@ loop ()
 	uint16_t len = 0;
 
 	uint8_t first = 1;
-	uint64_t offset;
+	nOSC_Timestamp offset;
 
 	/*
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
@@ -274,7 +274,7 @@ loop ()
 			if (config.dump.enabled)
 			{
 				dump_update (now); // 6us
-				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, nOSC_IMMEDIATE, dump_fmt);
+				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, offset, dump_fmt);
 			}
 		
 			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
@@ -284,13 +284,13 @@ loop ()
 				if (blobs) // was there any update?
 				{
 					if (config.tuio.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, nOSC_IMMEDIATE, tuio2_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, offset, tuio2_fmt);
 
 					if (config.scsynth.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, nOSC_IMMEDIATE, scsynth_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, offset, scsynth_fmt);
 
 					if (config.oscmidi.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, nOSC_IMMEDIATE, oscmidi_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, offset, oscmidi_fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);

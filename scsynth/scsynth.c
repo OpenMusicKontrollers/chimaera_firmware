@@ -60,7 +60,7 @@ const char *set_fmt = "iififii"; //TODO make this configurable
 
 const char *free_bndl_fmt = "M";
 
-uint64_t tt;
+nOSC_Timestamp tt;
 
 void
 scsynth_init ()
@@ -70,7 +70,7 @@ scsynth_init ()
 }
 
 void
-scsynth_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nblob_new)
+scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t nblob_new)
 {
 	scsynth_fmt[0] = nOSC_TERM;
 	tt = timestamp;
@@ -134,7 +134,7 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 		nosc_message_set_int32 (msg, 0, id);
 		nosc_item_message_set (free_bndl, 0, msg, (char *)free_str, (char *)free_fmt);
 
-		uint64_t offset = tt + (2ULL << 32); // + 2 seconds TODO make this configurable
+		nOSC_Timestamp offset = tt + 2ULLK; // TODO make this configurable
 		nosc_item_bundle_set (scsynth_bndl, sc_tok, free_bndl, offset, (char *)free_bndl_fmt);
 		scsynth_fmt[sc_tok] = nOSC_BUNDLE;
 

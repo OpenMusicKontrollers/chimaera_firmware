@@ -29,11 +29,13 @@
 #include <stdarg.h>
 
 #include <netdef.h>
+#include <armfix.h>
 
 /*
  * Definitions
  */
 
+typedef fix_32_32_t nOSC_Timestamp;
 typedef union _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
 typedef union _nOSC_Item nOSC_Item;
@@ -42,7 +44,7 @@ typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Method nOSC_Method;
 
 typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args);
-typedef void (*nOSC_Bundle_Start_Cb) (uint64_t timestamp);
+typedef void (*nOSC_Bundle_Start_Cb) (nOSC_Timestamp timestamp);
 typedef void (*nOSC_Bundle_End_Cb) ();
 
 typedef enum _nOSC_Type {
@@ -76,7 +78,7 @@ union _nOSC_Arg {
 	// 8 bytes
 	int64_t h;
 	double d;
-	uint64_t t;
+	nOSC_Timestamp t;
 	nOSC_Blob b;
 
 	// 4 bytes
@@ -99,7 +101,7 @@ typedef enum _nOSC_Item_Type {
 union _nOSC_Item {
 	struct {
 		nOSC_Bundle bndl;
-		uint64_t tt;
+		nOSC_Timestamp tt;
 		char *fmt;
 	} bundle;
 
@@ -127,7 +129,7 @@ union _nOSC_Item {
 	nOSC_Item *itm = (nOSC_Item *)(ITM); \
 	uint8_t pos = (uint8_t)(POS); \
 	itm[pos].bundle.bndl = (nOSC_Item *)BNDL; \
-	itm[pos].bundle.tt = (uint64_t)TIMESTAMP; \
+	itm[pos].bundle.tt = (nOSC_Timestamp)TIMESTAMP; \
 	itm[pos].bundle.fmt = (char *)FMT; \
 })
 
@@ -141,7 +143,7 @@ struct _nOSC_Method {
  * Constants
  */
 
-#define nOSC_IMMEDIATE	1ULL
+#define nOSC_IMMEDIATE	(1ULLK >> 32)
 #define nOSC_Nil				INT32_MIN
 #define nOSC_Infty			INT32_MAX
 
@@ -155,7 +157,7 @@ void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_
  * Bundle functions
  */
 
-uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t *buf);
+uint16_t nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf);
 
 /*
  * Message functions
@@ -177,7 +179,7 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt,
 
 #define nosc_message_set_double(MSG,POS,D) (((nOSC_Message)(MSG))[POS].d = (double)(D))
 #define nosc_message_set_int64(MSG,POS,H) (((nOSC_Message)(MSG))[POS].h = (int64_t)(H))
-#define nosc_message_set_timestamp(MSG,POS,T) (((nOSC_Message)(MSG))[POS].t = (uint64_t)(T))
+#define nosc_message_set_timestamp(MSG,POS,T) (((nOSC_Message)(MSG))[POS].t = (nOSC_Timestamp)(T))
 
 #define nosc_message_set_midi(MSG,POS,M0,M1,M2,M3) \
 ({ \

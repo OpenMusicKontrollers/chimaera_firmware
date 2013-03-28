@@ -28,12 +28,12 @@
 
 #include <sntp.h>
 #include <armfix.h>
+#include <nosc.h>
 
 typedef union _timestamp64_t timestamp64_t;
 typedef struct _sntp_t sntp_t;
 
 union _timestamp64_t {
-	uint64_t stamp;
 	fix_32_32_t fix;
 	struct {
 		uint32_t frac;
@@ -61,6 +61,6 @@ struct _sntp_t {
 	timestamp64_t transmit_timestamp;
 };
 
-extern fix_32_32_t t0;
+extern nOSC_Timestamp t0;
 
 #endif

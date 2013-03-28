@@ -92,7 +92,7 @@ struct _Config {
 	struct _output {
 		uint8_t enabled;
 		Socket_Config socket;
-		uint64_t offset;
+		nOSC_Timestamp offset;
 	} COMPACT output;
 
 	struct _config {

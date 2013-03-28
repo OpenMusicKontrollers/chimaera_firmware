@@ -52,7 +52,7 @@ oscmidi_init ()
 }
 
 void
-oscmidi_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t nblob_new)
+oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t nblob_new)
 {
 	nosc_message_set_timestamp (midi_msg, 0, timestamp);
 	oscmidi_tok = 1;

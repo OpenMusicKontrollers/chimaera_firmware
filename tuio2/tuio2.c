@@ -123,7 +123,7 @@ tuio2_long_header_enable (uint8_t on)
 }
 
 void
-tuio2_engine_frame_cb (uint32_t fid, uint64_t timestamp, uint8_t nblob_old, uint8_t end)
+tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t end)
 {
 	frm[0].i = fid;
 	frm[1].t = timestamp;

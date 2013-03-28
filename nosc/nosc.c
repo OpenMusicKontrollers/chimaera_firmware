@@ -154,7 +154,8 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 				buf_ptr += 8;
 				break;
 			case nOSC_TIMESTAMP:
-				nosc_message_set_timestamp (msg, pos, ref_ntohll (buf_ptr));
+				nosc_message_set_timestamp (msg, pos, 0ULLK);
+				msg[pos].h = ref_ntohll (buf_ptr);
 				buf_ptr += 8;
 				break;
 
@@ -189,8 +190,9 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundl
 
 		if (start) // call start callback with bundle timestamp if existent
 		{
-			uint64_t timestamp = ref_ntohll (buf_ptr);
-			start (timestamp);
+			nOSC_Arg arg;
+			arg.h = ref_ntohll (buf_ptr);
+			start (arg.t);
 		}
 
 		buf_ptr += 8; // skip timestamp
@@ -220,7 +222,7 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundl
 }
 
 void
-_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, uint64_t *timestamp)
+_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, nOSC_Timestamp *timestamp)
 {
 	//FIXME
 }
@@ -230,7 +232,7 @@ _nosc_bundle_deserialize (uint8_t *buf, uint16_t size, uint64_t *timestamp)
  */
 
 uint16_t
-nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t *buf)
+nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
@@ -238,7 +240,9 @@ nosc_bundle_serialize (nOSC_Bundle bund, uint64_t timestamp, char *fmt, uint8_t 
 	memcpy (buf_ptr, bundle_str, 8);
 	buf_ptr += 8;
 
-	ref_htonll (buf_ptr, timestamp);
+	nOSC_Arg arg;
+	arg.t = timestamp;
+	ref_htonll (buf_ptr, arg.h);
 	buf_ptr += 8;
 
 	char *type;
@@ -436,7 +440,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 				nosc_message_set_int64 (msg, pos, va_arg (args, int64_t));
 				break;
 			case nOSC_TIMESTAMP:
-				nosc_message_set_timestamp (msg, pos, va_arg (args, uint64_t));
+				nosc_message_set_timestamp (msg, pos, va_arg (args, nOSC_Timestamp));
         break;
 
 			case nOSC_MIDI:

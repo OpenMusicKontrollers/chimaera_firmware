@@ -22,8 +22,6 @@
  */
 
 #include "cmc_private.h"
-#include "../config/config_private.h"
-#include "../sntp/sntp_private.h"
 
 #include <math.h>
 #include <string.h>
@@ -77,7 +75,7 @@ cmc_init ()
 }
 
 uint8_t
-cmc_process (uint64_t now, int16_t *rela, CMC_Engine **engines)
+cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 {
 	n_aoi = 0;
 	uint8_t pos;

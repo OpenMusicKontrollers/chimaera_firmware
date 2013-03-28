@@ -43,13 +43,13 @@ dump_init (int32_t size, int16_t *swap)
 }
 
 inline uint16_t
-dump_serialize (uint8_t *buf, uint64_t offset)
+dump_serialize (uint8_t *buf, nOSC_Timestamp offset)
 {
 	return nosc_bundle_serialize (dump_bndl, offset, dump_fmt, buf);
 }
 
 inline void
-dump_update (uint64_t now)
+dump_update (nOSC_Timestamp now)
 {
 	nosc_message_set_int32 (dump_msg, DUMP_FRAME, ++frame);
 	nosc_message_set_timestamp (dump_msg, DUMP_TIME, now);

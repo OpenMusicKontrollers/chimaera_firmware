@@ -23,7 +23,6 @@
 
 #include "config_private.h"
 #include "../cmc/cmc_private.h"
-#include "../sntp/sntp_private.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -168,7 +167,7 @@ Config config = {
 			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
-		.offset = 0ULL
+		.offset = 0ULLK
 	},
 
 	.config = {
@@ -1219,32 +1218,25 @@ _output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
-	timestamp64_t oset;
 
-	//TODO export a function timestamp2dbl to chimutil
 	if (argc == 1) // query
 	{
-		oset.stamp = config.output.offset;
-		double d = oset.osc.sec + (double)oset.osc.frac * pow(2.0, -32);
-		size = CONFIG_SUCCESS ("id", id, d); //TODO output double/float?
+		size = CONFIG_SUCCESS ("id", id, (double)config.output.offset); // output timestamp, double, float?
 	}
 	else
 	{
 		switch (fmt[1])
 		{
 			case nOSC_TIMESTAMP:
-				oset.stamp = args[1].t;
+				config.output.offset = args[1].t;
 				break;
 			case nOSC_FLOAT:
-				oset.osc.sec = floor(args[1].f);
-				oset.osc.frac = (args[1].f-oset.osc.sec) * pow(2.0, 32);
+				config.output.offset = args[1].f;
 				break;
 			case nOSC_DOUBLE:
-				oset.osc.sec = floor(args[1].d);
-				oset.osc.frac = (args[1].d-oset.osc.sec) * pow(2.0, 32);
+				config.output.offset = args[1].d;
 				break;
 		}
-		config.output.offset = oset.stamp;
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
@@ -1634,13 +1626,13 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	debug_int32 (sizeof (nOSC_Arg));
 	debug_int32 (sizeof (nOSC_Item));
 	debug_int32 (sizeof (nOSC_Method));
+	debug_int32 (sizeof (nOSC_Timestamp));
 	debug_int32 (sizeof (int32_t));
 	debug_int32 (sizeof (float));
 	debug_int32 (sizeof (char *));
 	debug_int32 (sizeof (nOSC_Blob));
 	debug_int32 (sizeof (int64_t));
 	debug_int32 (sizeof (double));
-	debug_int32 (sizeof (uint64_t));
 	debug_int32 (sizeof (uint8_t [4]));
 	debug_int32 (sizeof (char *));
 	debug_int32 (sizeof (char));

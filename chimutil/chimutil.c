@@ -106,7 +106,7 @@ debug_double (double d)
 }
 
 void
-debug_timestamp (uint64_t t)
+debug_timestamp (nOSC_Timestamp t)
 {
 	if (!config.debug.enabled)
 		return;

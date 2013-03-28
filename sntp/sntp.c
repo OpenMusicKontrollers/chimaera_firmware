@@ -30,10 +30,10 @@
 #include <chimutil.h>
 #include <config.h>
 
-fix_32_32_t t0 = 0.0ULLK;
+nOSC_Timestamp t0 = 0ULLK;
 
 uint16_t 
-sntp_request (uint8_t *buf, uint64_t t3)
+sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 {
 	uint16_t len = sizeof (sntp_t);
 
@@ -42,7 +42,7 @@ sntp_request (uint8_t *buf, uint64_t t3)
 	sntp_t *request = (sntp_t *) buf;
 
 	timestamp64_t T3;
-	T3.stamp = t3;
+	T3.fix = t3;
 
 	request->li_vn_mode = (0x0<<6) + (0x4<<3) + 0x3;
 	request->transmit_timestamp.ntp.sec = htonl (T3.osc.sec);
@@ -52,7 +52,7 @@ sntp_request (uint8_t *buf, uint64_t t3)
 }
 
 void
-sntp_dispatch (uint8_t *buf, uint64_t t4)
+sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 {
 	sntp_t *answer = (sntp_t *)buf;
 
@@ -69,7 +69,7 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	t3.osc.sec = ntohl (answer->transmit_timestamp.ntp.sec);
 	t3.osc.frac = ntohl (answer->transmit_timestamp.ntp.frac);
 
-	_t4.stamp = t4;
+	_t4.fix = t4;
 
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
@@ -83,32 +83,21 @@ sntp_dispatch (uint8_t *buf, uint64_t t4)
 	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.output.offset with this value by default?
 	clock_offset = 0.5LLK * (fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix);
 
-	if (t0 == 0.0ULLK)
+	if (t0 == 0ULLK)
 		t0 = t3.fix;
 	else
 		t0 += clock_offset;
 }
 
 void
-sntp_timestamp_refresh (uint64_t *now, uint64_t *offset)
+sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
-	timestamp64_t uptime, _now;
-
-	uptime.fix = systick_uptime () * 0.0001ULLK; // that many 100us
-	_now.fix = t0 + uptime.fix;
-	*now = _now.stamp;
+	*now = t0 + systick_uptime() * 0.0001ULLK; // that many 100us
 
 	if (offset)
 	{
-		if (config.output.offset > 0ULL)
-		{
-			timestamp64_t _now, _config, _offset;
-
-			_now.stamp = *now;
-			_config.stamp = config.output.offset;
-			_offset.fix = _now.fix + _config.fix;
-			*offset = _offset.stamp;
-		}
+		if (config.output.offset > 0ULLK)
+			*offset = *now + config.output.offset;
 		else
 			*offset = nOSC_IMMEDIATE;
 	}
