@@ -38,7 +38,6 @@ typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid
 typedef struct _CMC_Engine CMC_Engine;
 
 struct _CMC_Engine {
-	uint8_t *enabled;
 	CMC_Engine_Frame_Cb frame_cb;
 	CMC_Engine_Blob_On_Cb on_cb;
 	CMC_Engine_Blob_Off_Cb off_cb;
@@ -55,5 +54,9 @@ uint8_t cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x
 
 char *cmc_group_name_get (uint16_t gid);
 uint8_t *cmc_group_buf_get (uint16_t *size); //TODO this is ugly code, solve differently
+
+extern CMC_Engine *engines [];
+
+void cmc_engines_update ();
 
 #endif

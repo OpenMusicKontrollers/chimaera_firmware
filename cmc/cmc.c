@@ -29,16 +29,16 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
-#include <../sntp/sntp_private.h>
 
-#define s2d2 0.70710678118655r // sqrt(2) / 2
-#define os8 0.35355339059327r // 1 / sqrt(8)
+// engines
+#include <tuio2.h>
+#include <scsynth.h>
+#include <oscmidi.h>
+#include <rtpmidi.h>
 
 uint16_t idle_word = 0;
 uint8_t idle_bit = 0;
 CMC cmc;
-
-#define THRESH_MIN 30 // absolute minimum threshold FIXME make this configurable
 
 uint8_t n_aoi;
 uint8_t aoi[BLOB_MAX*7]; //TODO how big? BLOB_MAX * 5,7,9 ?
@@ -47,6 +47,8 @@ uint8_t n_peaks;
 uint8_t peaks[BLOB_MAX];
 
 const char *none_str = "none";
+
+CMC_Engine *engines [ENGINE_MAX+1];
 
 void
 cmc_init ()
@@ -77,6 +79,10 @@ cmc_init ()
 uint8_t
 cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 {
+	/*
+	 * find areas of interest
+	 */
+
 	n_aoi = 0;
 	uint8_t pos;
 	for (pos=0; pos<SENSOR_N; pos++)
@@ -85,7 +91,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		uint16_t aval = abs (val);
 		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
 		uint8_t newpos = pos+1;
-		if ( (aval > THRESH_MIN) && (aval*4 > range.thresh[pos]) ) // thresh0 == thresh1 / 4
+		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 2, TODO make this configurable?
 		{
 			aoi[n_aoi++] = newpos;
 
@@ -104,10 +110,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	uint8_t changed = 1; //TODO actually check for changes
 
 	/*
-	 * find maxima
+	 * detect peaks
 	 */
 
-	// detect peaks
 	n_peaks = 0;
 	uint8_t up = 1;
 	uint8_t a;
@@ -133,7 +138,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		}
 	}
 
-	// handle found peaks to create blobs
+	/*
+	 * handle peaks
+	 */
 	cmc.J = 0;
 	uint8_t p;
 	for (p=0; p<n_peaks; p++)
@@ -304,11 +311,12 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			}
 		}
 
-		// overwrite blobs that are to be ignored
+		/*
+		 * overwrite blobs that are to be ignored
+		 */
 		uint8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
 		{
-			//uint8_t ignore = cmc.blobs[cmc.neu][j].ignore;
 			uint8_t ignore = cmc.blobs[cmc.neu][j].state == CMC_BLOB_IGNORED;
 
 			if (newJ != j)
@@ -319,7 +327,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		}
 		cmc.J = newJ;
 
-		// relate blobs to groups
+		/*
+		 * relate blobs to groups
+		 */
 		for (j=0; j<cmc.J; j++)
 		{
 			CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
@@ -350,7 +360,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		idle_word++;
 	}
 
-	// handle idle counters
+	/*
+	 * (not)advance idle counters
+	 */
 	uint8_t idle = 0;
 	if (idle_bit < config.pacemaker)
 	{
@@ -365,49 +377,55 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			idle_word = 0;
 	}
 
-	// run engines here TODO check loop structure for efficiency
+	/*
+	 * handle output engines
+	 * FIXME check loop structure for efficiency
+	 */
 	uint8_t res = changed || idle;
 	if (res)
 	{
 		++(cmc.fid);
 
 		uint8_t e;
-		for (e=0; e<ENGINE_N; e++)
+		for (e=0; e<ENGINE_MAX; e++)
 		{
-			CMC_Engine *engine = engines[e];
-			if (*(engine->enabled))
-			{
-				if (engine->frame_cb)
-					engine->frame_cb (cmc.fid, now, cmc.I, cmc.J);
+			CMC_Engine *engine;
+			
+			if ( !(engine = engines[e]) ) // terminator reached
+				break;
 
-				if (engine->on_cb || engine->set_cb)
-					for (j=0; j<cmc.J; j++)
-					{
-						CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
-						if (tar->state == CMC_BLOB_APPEARED)
-						{
-							if (engine->on_cb)
-								engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
-						}
-						else // tar->state == CMC_BLOB_EXISTED
-						{
-							if (engine->set_cb)
-								engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
-						}
-					}
+			if (engine->frame_cb)
+				engine->frame_cb (cmc.fid, now, cmc.I, cmc.J);
 
-				if (engine->off_cb && (cmc.I > cmc.J) )
-					for (i=0; i<cmc.I; i++)
+			if (engine->on_cb || engine->set_cb)
+				for (j=0; j<cmc.J; j++)
+				{
+					CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
+					if (tar->state == CMC_BLOB_APPEARED)
 					{
-						CMC_Blob *tar = &cmc.blobs[cmc.old][i];
-						if (tar->state == CMC_BLOB_DISAPPEARED)
-							engine->off_cb (tar->sid, tar->group->gid, tar->pid);
+						if (engine->on_cb)
+							engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 					}
-			}
+					else // tar->state == CMC_BLOB_EXISTED
+					{
+						if (engine->set_cb)
+							engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+					}
+				}
+
+			if (engine->off_cb && (cmc.I > cmc.J) )
+				for (i=0; i<cmc.I; i++)
+				{
+					CMC_Blob *tar = &cmc.blobs[cmc.old][i];
+					if (tar->state == CMC_BLOB_DISAPPEARED)
+						engine->off_cb (tar->sid, tar->group->gid, tar->pid);
+				}
 		}
 	}
 
-	// switch blob buffers
+	/*
+	 * switch blob buffers
+	 */
 	cmc.old = !cmc.old;
 	cmc.neu = !cmc.neu;
 	cmc.I = cmc.J;
@@ -472,4 +490,24 @@ cmc_group_buf_get (uint16_t *size)
 	if (size)
 		*size = GROUP_MAX * sizeof (CMC_Group);
 	return (uint8_t *)cmc.groups;
+}
+
+void
+cmc_engines_update ()
+{
+	uint8_t ptr = 0;
+
+	if (config.tuio.enabled)
+		engines[ptr++] = &tuio2_engine;
+
+	if (config.scsynth.enabled)
+		engines[ptr++] = &scsynth_engine;
+
+	if (config.oscmidi.enabled)
+		engines[ptr++] = &oscmidi_engine;
+
+	if (config.rtpmidi.enabled)
+		engines[ptr++] = &rtpmidi_engine;
+
+	engines[ptr] = NULL;
 }

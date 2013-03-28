@@ -1073,19 +1073,25 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 static uint8_t
 _tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_bool (path, fmt, argc, args, &config.tuio.enabled);
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.tuio.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 static uint8_t
 _dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_bool (path, fmt, argc, args, &config.dump.enabled);
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.dump.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 static uint8_t
 _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_bool (path, fmt, argc, args, &config.scsynth.enabled);
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.scsynth.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 //TODO make arbitrary function to read/write string
@@ -1142,13 +1148,17 @@ _scsynth_addaction (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 static uint8_t
 _rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 static uint8_t
 _oscmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 static uint8_t

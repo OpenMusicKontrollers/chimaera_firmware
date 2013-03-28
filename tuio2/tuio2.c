@@ -179,7 +179,6 @@ tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, f
 }
 
 CMC_Engine tuio2_engine = {
-	&config.tuio.enabled,
 	tuio2_engine_frame_cb,
 	tuio2_engine_token_cb,
 	NULL,

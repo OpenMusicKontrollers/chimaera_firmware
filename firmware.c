@@ -87,7 +87,6 @@ volatile uint8_t mdns_should_listen = 0;
 volatile uint8_t config_should_listen = 0;
 
 nOSC_Timestamp now;
-CMC_Engine *engines [ENGINE_N];
 
 static void
 adc_timer_irq ()
@@ -214,8 +213,8 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 void
 loop ()
 {
-	nOSC_Item nest_bndl [ENGINE_N];
-	char nest_fmt [ENGINE_N+1];
+	nOSC_Item nest_bndl [ENGINE_MAX];
+	char nest_fmt [ENGINE_MAX+1];
 
 	uint8_t send_status = 0;
 	uint8_t cmc_job = 0;
@@ -439,11 +438,6 @@ setup ()
 	uint8_t i;
 	uint8_t p;
 
-	engines[0] = &tuio2_engine;
-	engines[1] = &scsynth_engine;
-	engines[2] = &oscmidi_engine;
-	engines[3] = &rtpmidi_engine;
-
 	pin_set_mode (BOARD_BUTTON_PIN, GPIO_INPUT_FLOATING);
 	pin_set_mode (BOARD_LED_PIN, GPIO_OUTPUT_PP);
 
@@ -490,6 +484,9 @@ setup ()
 	else
 		config_load ();
 	*/
+
+	// rebuild engines stack
+	cmc_engines_update ();
 
 	// read MAC from MAC EEPROM
 	uint8_t MAC [6];

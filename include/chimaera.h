@@ -64,7 +64,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define ENGINE_N 4 // tuio, scsynth, oscmidi, rtpmidi
+#define ENGINE_MAX 4 // tuio, scsynth, oscmidi, rtpmidi
 
 #define MAGIC 0x03
 

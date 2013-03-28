@@ -111,7 +111,6 @@ oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, f
 }
 
 CMC_Engine oscmidi_engine = {
-	&config.oscmidi.enabled,
 	oscmidi_engine_frame_cb,
 	oscmidi_engine_on_cb,
 	oscmidi_engine_off_cb,

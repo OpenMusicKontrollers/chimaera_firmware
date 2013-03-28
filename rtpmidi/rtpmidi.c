@@ -191,7 +191,6 @@ rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, f
 }
 
 CMC_Engine rtpmidi_engine = {
-	&config.rtpmidi.enabled,
 	rtpmidi_engine_frame_cb,
 	rtpmidi_engine_on_cb,
 	rtpmidi_engine_off_cb,
