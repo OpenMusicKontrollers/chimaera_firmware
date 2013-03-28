@@ -477,18 +477,10 @@ setup ()
 	uint32_t *seed = (uint32_t *)&EUI_32[0];
 	srand (*seed);
 
-	// create "unique" ethernet MAC from EUI_48
-	uint8_t locally_administered = 0; // FIXME make this configurable
-	memcpy (config.comm.mac, EUI_48, 6);
-	if (locally_administered)
-		config.comm.mac[0] = (config.comm.mac[0] | 0x02) & 0xfe; // locally administered unicast: 0bxxxxxx10
-	else
-		config.comm.mac[0] = config.comm.mac[0] & 0xfc; // globally administered unicast: 0bxxxxxx00
-
 	// init eeprom for I2C1
 	eeprom_init (I2C1);
 	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
-	//eeprom_slave_init (eeprom__24AA025E48, I2C1, 0b001); // TODO MAC EEPROM
+	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load configuration from eeprom
 	/* FIXME
@@ -498,6 +490,11 @@ setup ()
 	else
 		config_load ();
 	*/
+
+	// read MAC from MAC EEPROM
+	uint8_t MAC [6];
+	if (!config.comm.locally)
+		eeprom_bulk_read (eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
 
 	// load calibrated sensor ranges from eeprom
 	range_load (config.calibration);

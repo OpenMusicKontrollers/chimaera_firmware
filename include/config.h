@@ -63,6 +63,7 @@ struct _Config {
 	char name[NAME_LENGTH];
 
 	struct _comm {
+		uint8_t locally; // locally administered MAC flag
 		uint8_t mac [6];
 		uint8_t ip [4];
 		uint8_t gateway [4];

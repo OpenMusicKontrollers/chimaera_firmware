@@ -134,6 +134,7 @@ Config config = {
 	},
 
 	.comm = {
+		.locally = 0,
 		.mac = {(0x1a | 0b00000010) & 0b11111110, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f}, // locally administered unicast MAC
 		.ip = {192, 168, 1, 177},
 		.gateway = {192, 168, 1, 1},
@@ -559,6 +560,38 @@ groups_save ()
 }
 
 static uint8_t
+_check_bool (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args, uint8_t *boolean)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	if (argc == 1) // query
+	{
+		size = CONFIG_SUCCESS ("ii", id, *boolean ? 1 : 0);
+	}
+	else
+	{
+		switch (fmt[1])
+		{
+			case nOSC_INT32:
+				*boolean = args[1].i ? 1 : 0;
+				break;
+			case nOSC_TRUE:
+				*boolean = 1;
+				break;
+			case nOSC_FALSE:
+				*boolean = 0;
+				break;
+		}
+		size = CONFIG_SUCCESS ("i", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint8_t
 _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -770,6 +803,12 @@ addr2str (const char *protocol, const char *transport, uint8_t *ip, uint16_t por
 	sprintf (str, "%s.%s://%i.%i.%i.%i:%i",
 		protocol, transport,
 		ip[0], ip[1], ip[2], ip[3], port);
+}
+
+static uint8_t
+_comm_locally (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_bool (path, fmt, argc, args, &config.comm.locally);
 }
 
 static uint8_t
@@ -1021,14 +1060,6 @@ _debug_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return _address (&config.debug.socket, debug_enable, "osc", "udp", config.debug.enabled, path, fmt, argc, args);
 }
 
-/*
-static uint8_t
-_dhcpc_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	return _address (&config.dhcpc.socket, dhcpc_enable, "bootp", "udp", config.dhcpc.enabled, path, fmt, argc, args);
-}
-*/
-
 static uint8_t
 _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
@@ -1089,53 +1120,21 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 }
 
 static uint8_t
-_boolean (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args, uint8_t *boolean)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (argc == 1) // query
-	{
-		size = CONFIG_SUCCESS ("ii", id, *boolean ? 1 : 0);
-	}
-	else
-	{
-		switch (fmt[1])
-		{
-			case nOSC_INT32:
-				*boolean = args[1].i ? 1 : 0;
-				break;
-			case nOSC_TRUE:
-				*boolean = 1;
-				break;
-			case nOSC_FALSE:
-				*boolean = 0;
-				break;
-		}
-		size = CONFIG_SUCCESS ("i", id);
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint8_t
 _tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.tuio.enabled);
+	return _check_bool (path, fmt, argc, args, &config.tuio.enabled);
 }
 
 static uint8_t
 _dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.dump.enabled);
+	return _check_bool (path, fmt, argc, args, &config.dump.enabled);
 }
 
 static uint8_t
 _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.scsynth.enabled);
+	return _check_bool (path, fmt, argc, args, &config.scsynth.enabled);
 }
 
 //TODO make arbitrary function to read/write string
@@ -1180,7 +1179,7 @@ _scsynth_modulo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args
 static uint8_t
 _scsynth_prealloc (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.scsynth.prealloc);
+	return _check_bool (path, fmt, argc, args, &config.scsynth.prealloc);
 }
 
 static uint8_t
@@ -1192,13 +1191,13 @@ _scsynth_addaction (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 static uint8_t
 _rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.rtpmidi.enabled);
+	return _check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
 }
 
 static uint8_t
 _oscmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _boolean (path, fmt, argc, args, &config.oscmidi.enabled);
+	return _check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
 }
 
 static uint8_t
@@ -1746,6 +1745,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
 
+	{"/chimaera/comm/locally", "i*", _comm_locally},
 	{"/chimaera/comm/mac", "i*", _comm_mac},
 	{"/chimaera/comm/ip", "i*", _comm_ip},
 	{"/chimaera/comm/gateway", "i*", _comm_gateway},
