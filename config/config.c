@@ -58,58 +58,7 @@ const char *group_err_str = "group not found";
 
 float Y1 = 0.7;
 
-/*
-static fix_16_16_t
-By (fix_s15_16_t A, fix_s15_16_t B, fix_s15_16_t C)
-{
-	float a = A;
-	float b = B;
-	float c = C;
-	float y = Y1;
-	float _b = (a*a - 2.0*b*c + 2.0*b*y - a*sqrt(a*a - 4.0*b*c + 4.0*b*y)) / (2.0*b*b);
-	return (fix_16_16_t)_b*0x7ff;
-}
-
-static void
-curvefit (uint16_t b0, uint16_t b1, uint16_t b2, fix_s7_8_t *A, fix_s7_8_t *B, fix_s7_8_t *C)
-{
-	float B0 = lookup[b0];
-	float B1 = lookup[b1];
-	float B2 = lookup[b2];
-
-	float sqrtB0 = lookup_sqrt[b0];
-	float sqrtB1 = lookup_sqrt[b1];
-	float sqrtB2 = lookup_sqrt[b2];
-
-	*A = (B1 + B0*(-1.0 + Y1) - B2*Y1) / (B0*(sqrtB1 - sqrtB2) + B1*sqrtB2 - sqrtB1*B2 + sqrtB0*(-B1 + B2));
-  *B = (1.0/(sqrtB0 - sqrtB2) + Y1/(-sqrtB0 + sqrtB1)) / (sqrtB1 - sqrtB2);
-  *C = (B0*(sqrtB1 - sqrtB2*Y1) + sqrtB0*(-B1 + B2*Y1)) / ((sqrtB0 - sqrtB1)*(sqrtB0 - sqrtB2)*(sqrtB1 - sqrtB2));
-
-	//debug_str ("curvefit");
-	//debug_float (Y1);
-	//debug_int32 (b0);
-	//debug_int32 (b1);
-	//debug_int32 (b2);
-	//debug_float (B0);
-	//debug_float (B1);
-	//debug_float (B2);
-	//debug_float (sqrtB0);
-	//debug_float (sqrtB1);
-	//debug_float (sqrtB2);
-	//debug_float (*A);
-	//debug_float (*B);
-	//debug_float (*C);
-}
-*/
-
-/* rev 4 */
 Range range;
-Curve curve = { //FIXME make this configurable
-	.A = 0.7700LLK,
-	.B = 0.2289LLK,
-	.C = 0.0000LLK
-};
-/* rev 4 */
 
 float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
@@ -238,8 +187,10 @@ Config config = {
 		.effect = VOLUME
 	},
 
-	.cmc = {
-		.peak_thresh = 5,
+	.curve = {
+		.A = 0.7700LLK,
+		.B = 0.2289LLK,
+		.C = 0.0000LLK
 	},
 
 	.rate = 2000, // update rate in Hz
@@ -1338,9 +1289,25 @@ _factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
-_peak_thresh (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_curve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_range8 (&config.cmc.peak_thresh, 3, 9, path, fmt, argc, args);
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	if (argc == 1) // query
+	{
+		size = CONFIG_SUCCESS ("ifff", id, (float)config.curve.A, (float)config.curve.B, (float)config.curve.C);
+	}
+	else
+	{
+		config.curve.A = args[1].f;
+		config.curve.B = args[2].f;
+		config.curve.B = args[3].f;
+
+		size = CONFIG_SUCCESS ("i", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
 static uint8_t
@@ -1791,7 +1758,8 @@ const nOSC_Method config_serv [] = {
 	//TODO
 	//{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
 
-	{"/chimaera/peak_thresh", "i*", _peak_thresh},
+	{"/chimaera/curve", "i", _curve},
+	{"/chimaera/curve", "ifff", _curve},
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/get", "ii", _group_get},

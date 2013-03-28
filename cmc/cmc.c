@@ -155,9 +155,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		fix_s31_32_t sqrt1 = lookup_sqrt[(uint16_t)(y1<<11)];
 		fix_s31_32_t sqrt2 = lookup_sqrt[(uint16_t)(y2<<11)];
 
-		y0 = curve.A * sqrt0 + curve.B * y0; // + curve.C;
-		y1 = curve.A * sqrt1 + curve.B * y1; // + curve.C;
-		y2 = curve.A * sqrt2 + curve.B * y2; // + curve.C;
+		y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
+		y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+		y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
 
 		// parabolic interpolation
 		//fix_s31_32_t divisor = y0 - 2*y1 + y2;

@@ -140,9 +140,11 @@ struct _Config {
 		//Socket_Config socket;
 	} COMPACT oscmidi;
 
-	struct _cmc {
-		uint8_t peak_thresh;
-	} cmc;
+	struct _curve {
+		fix_s31_32_t A;
+		fix_s31_32_t B;
+		fix_s31_32_t C;
+	} COMPACT curve;
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
 	uint8_t pacemaker;
@@ -160,7 +162,6 @@ void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t
 
 /* rev4 */
 typedef struct _Range Range;
-typedef struct _Curve Curve;
 
 struct _Range {
 	uint16_t qui [SENSOR_N];
@@ -169,14 +170,7 @@ struct _Range {
 	fix_0_32_t bmin_sc_1;
 };
 
-struct _Curve {
-	fix_s31_32_t A;
-	fix_s31_32_t B;
-	fix_s31_32_t C;
-};
-
 extern Range range;
-extern Curve curve;
 
 float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
