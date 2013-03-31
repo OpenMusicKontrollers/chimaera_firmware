@@ -91,7 +91,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		uint16_t aval = abs (val);
 		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
 		uint8_t newpos = pos+1;
-		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 2, TODO make this configurable?
+		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 4, TODO make this configurable?
 		{
 			aoi[n_aoi++] = newpos;
 
