@@ -158,7 +158,7 @@ extern const nOSC_Method config_serv [];
 uint8_t config_load ();
 uint8_t config_save ();
 
-void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap, uint8_t relative);
+void adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative);
 
 /* rev4 */
 typedef struct _Range Range;

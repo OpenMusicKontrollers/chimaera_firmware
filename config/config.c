@@ -225,8 +225,10 @@ config_save ()
 	return 1;
 }
 
+#define ADC_AVG 2 //FIXME move to chimaera.h
+
 void
-adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swap, uint8_t relative)
+adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
 {
 	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
 	if (relative)
@@ -240,6 +242,11 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 					uint8_t pos = order[p][i];
 					int16_t val = raw[p][i] - range.qui[pos];
 
+#ifdef RUNNING_AVERAGE
+					sum[pos] -= sum[pos] >> ADC_AVG;
+					val = (sum[pos] += val) >> ADC_AVG;
+#endif // RUNNING_AVERAGE
+
 					rela[pos] = val; 
 					swap[pos] = hton (val);
 				}
@@ -252,6 +259,11 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 				{
 					uint8_t pos = order[p][i];
 					int16_t val = raw[p][i] - range.qui[pos];
+
+#ifdef RUNNING_AVERAGE
+					sum[pos] -= sum[pos] >> ADC_AVG;
+					val = (sum[pos] += val) >> ADC_AVG;
+#endif // RUNNING_AVERAGE
 
 					rela[pos] = val; 
 				}
@@ -268,6 +280,11 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 					uint8_t pos = order[p][i];
 					int16_t val = raw[p][i];
 
+#ifdef RUNNING_AVERAGE
+					sum[pos] -= sum[pos] >> ADC_AVG;
+					val = (sum[pos] += val) >> ADC_AVG;
+#endif // RUNNING_AVERAGE
+
 					rela[pos] = val; 
 					swap[pos] = hton (val);
 				}
@@ -280,6 +297,11 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *rela, int16_t *swa
 				{
 					uint8_t pos = order[p][i];
 					int16_t val = raw[p][i];
+
+#ifdef RUNNING_AVERAGE
+					sum[pos] -= sum[pos] >> ADC_AVG;
+					val = (sum[pos] += val) >> ADC_AVG;
+#endif // RUNNING_AVERAGE
 
 					rela[pos] = val; 
 				}

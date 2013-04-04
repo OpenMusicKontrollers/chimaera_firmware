@@ -50,6 +50,9 @@ CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 # We'll also want our local include directory
 CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 
+# custom preprocessor flags
+CFLAGS_$(d) += -DRUNNING_AVERAGE
+
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a
 # demo (look in getter.cpp for how it's used).

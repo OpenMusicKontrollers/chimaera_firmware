@@ -89,13 +89,12 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	{
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
-		uint8_t pole = val < 0 ? POLE_NORTH : POLE_SOUTH;
-		uint8_t newpos = pos+1;
 		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 4, TODO make this configurable?
 		{
+			uint8_t newpos = pos+1;
 			aoi[n_aoi++] = newpos;
 
-			cmc.n[newpos] = pole;
+			cmc.n[newpos] = val < 0 ? POLE_NORTH : POLE_SOUTH;
 			cmc.a[newpos] = aval > range.thresh[pos];
 
 			//fix_16_16_t b = (fix_16_16_t)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
@@ -103,7 +102,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 			// this is the same as the above, just in one function
 			fix_32_32_t y = (aval * (fix_32_32_t)range.as_1_sc_1[pos]) - range.bmin_sc_1;
-			cmc.v[newpos] = y;
+			cmc.v[newpos] = y; //FIXME get rid of cmc structure.
 		}
 	}
 

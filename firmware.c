@@ -68,6 +68,7 @@ uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 
 int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__ ((aligned (4)));; // the dma temporary data array.
+int16_t adc_sum[SENSOR_N];
 int16_t adc_rela[SENSOR_N];
 int16_t adc_swap[SENSOR_N];
 
@@ -255,7 +256,7 @@ loop ()
 
 		// fill adc_rela
 		//stop_watch_start (&sw_adc_fill);
-		adc_fill (adc_raw[adc_raw_ptr], order, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
+		adc_fill (adc_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
 		//stop_watch_stop (&sw_adc_fill);
 
 		if (calibrating)
