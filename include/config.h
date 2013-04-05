@@ -146,6 +146,11 @@ struct _Config {
 		fix_s31_32_t C;
 	} COMPACT curve;
 
+	struct _movingaverage {
+		uint8_t enabled;
+		uint8_t bitshift;
+	} COMPACT movingaverage;
+
 	uint16_t rate; // the maximal update rate the chimaera should run at
 	uint8_t pacemaker;
 	uint8_t calibration;

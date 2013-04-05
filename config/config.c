@@ -193,6 +193,11 @@ Config config = {
 		.C = 0.0000LLK
 	},
 
+	.movingaverage = {
+		.enabled = 1,
+		.bitshift = 3 // moving average over 8(2³) samples
+	},
+
 	.rate = 2000, // update rate in Hz
 	.pacemaker = 0x0b, // pacemaker rate 2^11=2048
 	.calibration = 0, // use slot 0 as standard calibration
@@ -225,86 +230,141 @@ config_save ()
 	return 1;
 }
 
-#define ADC_AVG 2 //FIXME move to chimaera.h
-
 void
 adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
 {
 	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
-	if (relative)
+
+	if (config.movingaverage.enabled)
 	{
-		if (config.dump.enabled)
+		uint8_t bitshift = config.movingaverage.bitshift;
+
+		if (relative)
 		{
-			uint8_t p, i;
-			for (p=0; p<MUX_MAX; p++)
-				for (i=0; i<ADC_LENGTH; i++)
-				{
-					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i] - range.qui[pos];
+			if (config.dump.enabled)
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i] - range.qui[pos];
 
-#ifdef RUNNING_AVERAGE
-					sum[pos] -= sum[pos] >> ADC_AVG;
-					val = (sum[pos] += val) >> ADC_AVG;
-#endif // RUNNING_AVERAGE
+						sum[pos] -= sum[pos] >> bitshift;
+						val = (sum[pos] += val) >> bitshift;
 
-					rela[pos] = val; 
-					swap[pos] = hton (val);
-				}
+						rela[pos] = val; 
+						swap[pos] = hton (val);
+					}
+			}
+			else // !config.dump.enabled
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i] - range.qui[pos];
+
+						sum[pos] -= sum[pos] >> bitshift;
+						val = (sum[pos] += val) >> bitshift;
+
+						rela[pos] = val; 
+					}
+			}
 		}
-		else // !config.dump.enabled
+		else // absolute
 		{
-			uint8_t p, i;
-			for (p=0; p<MUX_MAX; p++)
-				for (i=0; i<ADC_LENGTH; i++)
-				{
-					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i] - range.qui[pos];
+			if (config.dump.enabled)
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i];
 
-#ifdef RUNNING_AVERAGE
-					sum[pos] -= sum[pos] >> ADC_AVG;
-					val = (sum[pos] += val) >> ADC_AVG;
-#endif // RUNNING_AVERAGE
+						sum[pos] -= sum[pos] >> bitshift;
+						val = (sum[pos] += val) >> bitshift;
 
-					rela[pos] = val; 
-				}
+						rela[pos] = val; 
+						swap[pos] = hton (val);
+					}
+			}
+			else // !config.dump.enabled
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i];
+
+						sum[pos] -= sum[pos] >> bitshift;
+						val = (sum[pos] += val) >> bitshift;
+
+						rela[pos] = val; 
+					}
+			}
 		}
 	}
-	else // absolute
+	else // !movingaverage
 	{
-		if (config.dump.enabled)
+		if (relative)
 		{
-			uint8_t p, i;
-			for (p=0; p<MUX_MAX; p++)
-				for (i=0; i<ADC_LENGTH; i++)
-				{
-					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i];
+			if (config.dump.enabled)
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i] - range.qui[pos];
 
-#ifdef RUNNING_AVERAGE
-					sum[pos] -= sum[pos] >> ADC_AVG;
-					val = (sum[pos] += val) >> ADC_AVG;
-#endif // RUNNING_AVERAGE
+						rela[pos] = val; 
+						swap[pos] = hton (val);
+					}
+			}
+			else // !config.dump.enabled
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i] - range.qui[pos];
 
-					rela[pos] = val; 
-					swap[pos] = hton (val);
-				}
+						rela[pos] = val; 
+					}
+			}
 		}
-		else // !config.dump.enabled
+		else // absolute
 		{
-			uint8_t p, i;
-			for (p=0; p<MUX_MAX; p++)
-				for (i=0; i<ADC_LENGTH; i++)
-				{
-					uint8_t pos = order[p][i];
-					int16_t val = raw[p][i];
+			if (config.dump.enabled)
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i];
 
-#ifdef RUNNING_AVERAGE
-					sum[pos] -= sum[pos] >> ADC_AVG;
-					val = (sum[pos] += val) >> ADC_AVG;
-#endif // RUNNING_AVERAGE
+						rela[pos] = val; 
+						swap[pos] = hton (val);
+					}
+			}
+			else // !config.dump.enabled
+			{
+				uint8_t p, i;
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_LENGTH; i++)
+					{
+						uint8_t pos = order[p][i];
+						int16_t val = raw[p][i];
 
-					rela[pos] = val; 
-				}
+						rela[pos] = val; 
+					}
+			}
 		}
 	}
 }
@@ -413,17 +473,27 @@ range_calibrate (int16_t *raw)
 	uint8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
+		uint16_t avg;
+
 		if (zeroing)
 		{
+			// moving average over 16 samples
+			range.qui[i] -= range.qui[i] >> 4;
 			range.qui[i] += raw[i];
-			range.qui[i] /= 2;
 		}
 
-		if (raw[i] > arr[POLE_SOUTH][i])
-			arr[POLE_SOUTH][i] = raw[i];
+		//TODO is this the best way to get a mean of min and max?
+		if (raw[i] > (avg = arr[POLE_SOUTH][i] >> 4) )
+		{
+			arr[POLE_SOUTH][i] -= avg;
+			arr[POLE_SOUTH][i] += raw[i];
+		}
 
-		if (raw[i] < arr[POLE_NORTH][i])
-			arr[POLE_NORTH][i] = raw[i];
+		if (raw[i] < (avg =arr[POLE_NORTH][i] >> 4) )
+		{
+			arr[POLE_NORTH][i] -= avg;
+			arr[POLE_NORTH][i] += raw[i];
+		}
 	}
 }
 
@@ -435,9 +505,12 @@ range_update_quiescent ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
+		// final average over last 16 samples
+		range.qui[i] >>= 4;
+
 		// reset array to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i];
-		arr[POLE_NORTH][i] = range.qui[i];
+		arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }
 
@@ -450,14 +523,17 @@ range_update_b0 ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
+		arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr[POLE_NORTH][i] >>= 4;
+
 		thresh_s = arr[POLE_SOUTH][i] - range.qui[i];
 		thresh_n = range.qui[i] - arr[POLE_NORTH][i];
 
 		range.thresh[i] = (thresh_s + thresh_n) / 2;
 
 		// reset thresh to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i];
-		arr[POLE_NORTH][i] = range.qui[i];
+		arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }
 
@@ -476,6 +552,9 @@ range_update_b1 ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
+		arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr[POLE_NORTH][i] >>= 4;
+
 		as_1 = 1.0 / _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
 
 		bmin = (float)range.thresh[i] * as_1;
@@ -498,8 +577,8 @@ range_update_b1 ()
 		range.as_1_sc_1[i] = as_1 * sc_1;
 
 		// reset thresh to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i];
-		arr[POLE_NORTH][i] = range.qui[i];
+		arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }
 
@@ -1343,6 +1422,48 @@ _curve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
+_movingaverage_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_bool (path, fmt, argc, args, &config.movingaverage.enabled);
+}
+
+static uint8_t
+_movingaverage_samples (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	if (argc == 1) // query
+	{
+		size = CONFIG_SUCCESS ("ii", id, 1U << config.movingaverage.bitshift);
+	}
+	else
+		switch (args[1].i)
+		{
+			case 2:
+				config.movingaverage.bitshift = 1;
+				size = CONFIG_SUCCESS ("i", id);
+				break;
+			case 4:
+				config.movingaverage.bitshift = 2;
+				size = CONFIG_SUCCESS ("i", id);
+				break;
+			case 8:
+				config.movingaverage.bitshift = 3;
+				size = CONFIG_SUCCESS ("i", id);
+				break;
+			case 16:
+				config.movingaverage.bitshift = 4;
+				size = CONFIG_SUCCESS ("i", id);
+				break;
+			default:
+				size = CONFIG_FAIL ("is", id, "valid sample windows are 2, 4, 8 and 16");
+		}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+}
+
+static uint8_t
 _group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1431,7 +1552,8 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	uint8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		range.qui[i] = ADC_HALF_BITDEPTH;
+		// moving average over 16 samples
+		range.qui[i] = ADC_HALF_BITDEPTH << 4;
 		
 		arr[POLE_SOUTH][i] = range.qui[i];
 		arr[POLE_NORTH][i] = range.qui[i];
@@ -1792,6 +1914,9 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/curve", "i", _curve},
 	{"/chimaera/curve", "ifff", _curve},
+
+	{"/chimaera/movingaverage/enabled", "i*", _movingaverage_enabled},
+	{"/chimaera/movingaverage/samples", "i*", _movingaverage_samples},
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/get", "ii", _group_get},

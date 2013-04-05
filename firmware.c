@@ -72,7 +72,6 @@ int16_t adc_sum[SENSOR_N];
 int16_t adc_rela[SENSOR_N];
 int16_t adc_swap[SENSOR_N];
 
-//uint8_t mux_order [MUX_MAX] = { 11, 10, 9, 8, 7, 6, 5, 4, 0, 1, 2, 3, 12, 13, 14, 15 };
 uint8_t mux_order [MUX_MAX] = {0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0};
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
@@ -115,7 +114,7 @@ mdns_timer_irq ()
 }
 
 void
-__irq_adc (void)
+__irq_adc ()
 {
 	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
 	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
@@ -225,9 +224,9 @@ loop ()
 	uint8_t first = 1;
 	nOSC_Timestamp offset;
 
-	/*
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
 
+	/*
 	Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
 	Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
 	Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
@@ -255,9 +254,9 @@ loop ()
 		}
 
 		// fill adc_rela
-		//stop_watch_start (&sw_adc_fill);
+		stop_watch_start (&sw_adc_fill);
 		adc_fill (adc_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
-		//stop_watch_stop (&sw_adc_fill);
+		stop_watch_stop (&sw_adc_fill);
 
 		if (calibrating)
 			range_calibrate (adc_rela);
