@@ -224,9 +224,9 @@ loop ()
 	uint8_t first = 1;
 	nOSC_Timestamp offset;
 
+#ifdef BENCHMARK
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
 
-	/*
 	Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
 	Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
 	Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
@@ -234,7 +234,7 @@ loop ()
 	Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
 	Stop_Watch sw_tuio_serialize = {.id = "tuio_serialize", .thresh=2000};
 	Stop_Watch sw_tuio_send = {.id = "tuio_send", .thresh=2000};
-	*/
+#endif // BENCHMARK
 
 	while (1) // endless loop
 	{
@@ -254,9 +254,13 @@ loop ()
 		}
 
 		// fill adc_rela
+#ifdef BENCHMARK
 		stop_watch_start (&sw_adc_fill);
-		adc_fill (adc_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap)
+#endif // BENCHMARK
+		adc_fill (adc_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
+#ifdef BENCHMARK
 		stop_watch_stop (&sw_adc_fill);
+#endif // BENCHMARK
 
 		if (calibrating)
 			range_calibrate (adc_rela);

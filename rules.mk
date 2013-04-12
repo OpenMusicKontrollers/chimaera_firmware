@@ -51,7 +51,7 @@ CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 
 # custom preprocessor flags
-CFLAGS_$(d) += -DNONE
+CFLAGS_$(d) += #-DBENCHMARK
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a
