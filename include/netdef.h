@@ -30,6 +30,7 @@
  * Endian stuff
  */
 
+/*
 #define swap16(x) \
 ({ \
     uint16_t __x = (x); \
@@ -37,7 +38,31 @@
 	(((uint16_t)(__x) & (uint16_t)0x00ffU) << 8) | \
 	(((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) )); \
 })
+*/
+
+#define swap16(x) \
+({ \
+	uint16_t y; \
+	asm volatile ("\trev16	%[Y], %[X]\n" \
+		: [Y]"=r" (y) \
+		: [X]"r" (x) \
+	); \
+	(uint16_t)y; \
+})
+
 #define swap32		__builtin_bswap32
+/*
+#define swap32(x) \
+({ \
+	uint32_t y; \
+	asm volatile ("\trev	%[Y], %[X]\n" \
+		: [Y]"=r" (y) \
+		: [X]"r" (x) \
+	); \
+	(uint32_t)y; \
+})
+*/
+
 #define swap64		__builtin_bswap64
 
 #define hton		swap16
