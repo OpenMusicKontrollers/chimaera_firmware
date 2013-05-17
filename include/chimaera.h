@@ -51,8 +51,8 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define ADC_CR1_DUALMOD_BIT 16
 
-#define UDP_PWDN 12
-#define UDP_INT 27
+#define UDP_PWDN PB11
+#define UDP_INT PA8
 
 #define CHIMAERA_BUFSIZE 0x400
 

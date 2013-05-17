@@ -59,10 +59,10 @@
 #include <oscmidi.h>
 #include <wiz.h>
 
-uint8_t mux_sequence [MUX_LENGTH] = {18, 17, 14, 13}; // digital out pins to switch MUX channels
+uint8_t mux_sequence [MUX_LENGTH] = {PA15, PB3, PB4, PB5}; // digital out pins to switch MUX channels
 
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {11, 9, 7, 5, 3}; // analog input pins read out by the ADC 
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {10, 8, 6, 4, 4}; // analog input pins read out by the ADC 
+uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA0, PA2, PA4, PA6, PB0}; // analog input pins read out by the ADC 
+uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA1, PA3, PA5, PA7, PB1}; // analog input pins read out by the ADC 
 
 uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
@@ -478,7 +478,7 @@ setup ()
 	// init eeprom for I2C1
 	eeprom_init (I2C1);
 	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
-	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
+	//eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load configuration from eeprom
 	/* FIXME
@@ -494,8 +494,10 @@ setup ()
 
 	// read MAC from MAC EEPROM
 	uint8_t MAC [6];
+	/*
 	if (!config.comm.locally)
 		eeprom_bulk_read (eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
+	*/
 
 	// load calibrated sensor ranges from eeprom
 	range_load (config.calibration);
