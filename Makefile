@@ -1,6 +1,6 @@
 # LIB_MAPLE_HOME needs to be defined in your environment 
 
-export BOARD ?= 48F1
+export BOARD ?= 48F3
 export MEMORY_TARGET ?= jtag
 export USER_MODULES := $(shell pwd)
 

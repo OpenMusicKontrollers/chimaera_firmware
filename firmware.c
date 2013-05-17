@@ -124,7 +124,7 @@ __irq_adc ()
 	if (mux_counter < MUX_MAX)
 	{
 		mux_counter++;
-		ADC1->regs->CR2 |= ADC_CR2_SWSTART;
+		ADC1->regs->CR |= ADC_CR_ADSTART;
 	}
 }
 
@@ -442,11 +442,11 @@ setup ()
 	uint8_t i;
 	uint8_t p;
 
-	pin_set_mode (BOARD_BUTTON_PIN, GPIO_INPUT_FLOATING);
-	pin_set_mode (BOARD_LED_PIN, GPIO_OUTPUT_PP);
+	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
+	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 
 	// enable wiz820io module
-	pin_set_mode (UDP_PWDN, GPIO_OUTPUT_PP);
+	pin_set_modef (UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit (UDP_PWDN, 0);
 
 	//TODO
@@ -455,13 +455,13 @@ setup ()
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
-		pin_set_mode (mux_sequence[i], GPIO_OUTPUT_PP);
+		pin_set_modef (mux_sequence[i], GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
-		pin_set_mode (adc1_sequence[i], GPIO_INPUT_ANALOG);
-		pin_set_mode (adc2_sequence[i], GPIO_INPUT_ANALOG);
+		pin_set_modef (adc1_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+		pin_set_modef (adc2_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
 	}
 
 	// systick 
@@ -505,7 +505,7 @@ setup ()
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
 
-	pin_set_mode (BOARD_SPI2_NSS_PIN, GPIO_OUTPUT_PP);
+	pin_set_modef (BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit (BOARD_SPI2_NSS_PIN, 1); // disable peripheral
 	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode, we don't use this
 
@@ -556,11 +556,8 @@ setup ()
 	adc_disable (ADC1);
 	adc_disable (ADC2);
 
-	adc_set_extsel (ADC1, ADC_EXT_EV_SWSTART);
-	adc_set_extsel (ADC2, ADC_EXT_EV_SWSTART);
-
-	adc_set_exttrig (ADC1, 1);
-	adc_set_exttrig (ADC2, 1);
+	adc_set_exttrig (ADC1, ADC_EXTTRIG_MODE_SOFTWARE);
+	adc_set_exttrig (ADC2, ADC_EXTTRIG_MODE_SOFTWARE);
 
 	/*
 	ADC_SMPR_1_5
@@ -572,11 +569,8 @@ setup ()
 	ADC_SMPR_71_5
 	ADC_SMPR_239_5
 	*/
-	adc_set_sample_rate (ADC1, ADC_SMPR_55_5); //TODO make this configurable
-	adc_set_sample_rate (ADC2, ADC_SMPR_55_5);
-
-	ADC1->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
-	ADC2->regs->CR1 |= ADC_CR1_SCAN;  // Set scan mode (read channels given in SQR3-1 registers in one burst)
+	adc_set_sample_rate (ADC1, ADC_SMPR_61_5); //TODO make this configurable
+	adc_set_sample_rate (ADC2, ADC_SMPR_61_5);
 
   adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted 
   adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
@@ -596,11 +590,13 @@ setup ()
 	set_adc_sequence (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
 	set_adc_sequence (ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
 
-	ADC1->regs->CR1 |= ADC_CR1_EOCIE; // enable interrupt
-	nvic_irq_enable (NVIC_ADC_1_2);
+	ADC1->regs->IER |= ADC_IER_EOC; // enable interrupt
+	nvic_irq_enable (NVIC_ADC1_2);
 
-	ADC1->regs->CR1 |= 6U << ADC_CR1_DUALMOD_BIT; // 6: regular simultaneous dual mode
-  ADC1->regs->CR2 |= ADC_CR2_DMA; // use DMA (write analog values directly into DMA buffer)
+	//ADC1->regs->CFGR |= ADC_CFGR_DMACFG; FIXME what does this do?
+  ADC1->regs->CFGR |= ADC_CFGR_DMAEN; // use DMA (write analog values directly into DMA buffer)
+	ADC12_BASE->CCR &= ~ADC_CCR_DUAL;
+	ADC12_BASE->CCR |= ADC_MODE_DUAL_REGULAR_ONLY;
 
 	adc_enable (ADC1);
 	adc_enable (ADC2);
