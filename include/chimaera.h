@@ -34,12 +34,14 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define pin_set_mode(PIN, MODE) (gpio_set_mode (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE)))
 #define pin_set_modef(PIN, MODE, FLAGS) (gpio_set_modef (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE), (FLAGS)))
+#define pin_set_af(PIN, AF) (gpio_set_af (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (AF)))
 #define pin_write_bit(PIN, VAL) (gpio_write_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (VAL)))
 
 #define MUX_LENGTH 4
 #define MUX_MAX 16
 #define ADC_LENGTH 9 // the number of channels to be converted per ADC  
-#define ADC_DUAL_LENGTH 5 // the number of channels to be converted per ADC 
+#define ADC_DUAL_LENGTH 4 // the number of channels to be converted per ADC 
+#define ADC_SING_LENGTH 1 // the number of channels to be converted per ADC 
 
 #define ADC_BITDEPTH 0xfff
 #define ADC_HALF_BITDEPTH 0x7ff

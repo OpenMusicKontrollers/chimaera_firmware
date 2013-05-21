@@ -31,7 +31,7 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <wiz.h>
-#include <eeprom.h>
+//#include <eeprom.h>
 #include <cmc.h>
 #include <scsynth.h>
 #include <midi.h>
@@ -45,7 +45,8 @@ const char *group_err_str = "group not found";
 #define CONFIG_FAIL(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], fail_str, __VA_ARGS__))
 
 #define GLOB_BROADCAST {255, 255, 255, 255}
-#define LAN_BROADCAST {192, 168, 1, 255}
+//#define LAN_BROADCAST {192, 168, 1, 255}
+#define LAN_BROADCAST GLOB_BROADCAST // FIXME
 #define LAN_HOST {192, 168, 1, 10}
 
 // FIXME set those for Zeroconf
@@ -98,7 +99,7 @@ Config config = {
 	},
 
 	.dump = {
-		.enabled = 0
+		.enabled = 1
 	},
 
 	.scsynth = {
@@ -132,7 +133,7 @@ Config config = {
 
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
-		.enabled = 1, // enabled by default
+		.enabled = 0, // enabled by default
 		.socket = {
 			.sock = 3,
 			.port = {123, 123},
@@ -207,7 +208,7 @@ static uint8_t
 magic_match ()
 {
 	uint8_t magic;
-	eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
+	//eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
 
 	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
 }
@@ -216,7 +217,7 @@ uint8_t
 config_load ()
 {
 	if (magic_match ())
-		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+		;//eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
 
@@ -226,15 +227,16 @@ config_load ()
 uint8_t
 config_save ()
 {
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+	//eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	return 1;
 }
 
 void
-adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
+adc_fill (int16_t raw12[16][8], int16_t raw3[16][1], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
 {
 	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
 
+	/*
 	if (config.movingaverage.enabled)
 	{
 		uint8_t bitshift = config.movingaverage.bitshift;
@@ -367,13 +369,14 @@ adc_fill (int16_t raw[16][10], uint8_t order[16][9], int16_t *sum, int16_t *rela
 			}
 		}
 	}
+	*/
 }
 
 uint8_t
 range_load (uint8_t pos)
 {
 	if (magic_match ()) // EEPROM and FLASH config versions match
-		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
+		;//eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
 		uint8_t i;
@@ -394,7 +397,7 @@ range_load (uint8_t pos)
 uint8_t
 range_save (uint8_t pos)
 {
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
+	//eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 
 	return 1;
 }
@@ -591,7 +594,7 @@ groups_load ()
 	if (magic_match ())
 	{
 		buf = cmc_group_buf_get (&size);
-		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
+		//eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 	}
 	else
 		groups_save ();
@@ -606,7 +609,7 @@ groups_save ()
 	uint8_t *buf;
 
 	buf = cmc_group_buf_get (&size);
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
+	//eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 
 	return 1;
 }
@@ -1388,10 +1391,10 @@ _factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	// FIXME does not work as intended without VBAT powered up, needs a change on the PCB
-	bkp_init ();
-	bkp_enable_writes ();
-	bkp_write (FACTORY_RESET_REG, FACTORY_RESET_VAL);
-	bkp_disable_writes ();
+	//bkp_init ();
+	//bkp_enable_writes ();
+	//bkp_write (FACTORY_RESET_REG, FACTORY_RESET_VAL);
+	//bkp_disable_writes ();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();

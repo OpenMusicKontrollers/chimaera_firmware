@@ -27,6 +27,9 @@
 #include <wiz.h>
 
 #define MR		 0x0000
+
+#define MR_RST	(1U << 7)
+
 #define GAR		 0x0001
 #define SUBR	 0x0005
 #define SHAR	 0x0009

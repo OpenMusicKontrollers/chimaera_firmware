@@ -26,7 +26,8 @@
 
 #include <libmaple/dma.h>
 
-extern dma_tube_config adc_tube;
+extern dma_tube_config adc_tube12;
+extern dma_tube_config adc_tube3;
 extern dma_tube_config spi2_rx_tube;
 extern dma_tube_config spi2_tx_tube;
 extern dma_tube_config mem2mem_tube;

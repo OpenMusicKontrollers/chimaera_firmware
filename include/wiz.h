@@ -31,7 +31,6 @@
 #define WIZ_UDP_HDR_SIZE 8
 #define WIZ_SEND_OFFSET 4
 
-#define WIZ_RESET 7 // Reset BIT
 #define WIZ_MAX_SOCK_NUM 8
 
 typedef void (*UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
@@ -53,6 +52,7 @@ void udp_begin (uint8_t sock, uint16_t port, uint8_t multicast);
 void udp_end (uint8_t sock);
 
 void udp_update_read_write_pointers (uint8_t sock);
+void udp_reset_read_write_pointers (uint8_t sock);
 
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);

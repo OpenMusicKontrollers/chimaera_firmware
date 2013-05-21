@@ -13,3 +13,6 @@ all: sketch
 
 flash:	build/48F1.bin
 	python2 $(LIB_MAPLE_HOME)/support/stm32loader.py -p /dev/ttyUSB0 -evw $<
+
+DfuSeDl:	build/48F3.bin
+	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<

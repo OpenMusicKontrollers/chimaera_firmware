@@ -28,8 +28,8 @@
 #include <libmaple/adc.h>
 #include <libmaple/spi.h>
 
-dma_tube_config adc_tube = {
-	.tube_src = &ADC1_BASE->DR,
+dma_tube_config adc_tube12 = {
+	.tube_src = &ADC12_BASE->CDR,
 	.tube_src_size = DMA_SIZE_32BITS,
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_32BITS,
@@ -39,13 +39,23 @@ dma_tube_config adc_tube = {
 	.tube_req_src = DMA_REQ_SRC_ADC1
 };
 
+dma_tube_config adc_tube3 = {
+	.tube_src = &ADC3_BASE->DR,
+	.tube_src_size = DMA_SIZE_16BITS,
+	.tube_dst = NULL, //set me
+	.tube_dst_size = DMA_SIZE_16BITS,
+	.tube_nr_xfers = 0, //set me
+	.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CIRC | DMA_CFG_HALF_CMPLT_IE | DMA_CFG_CMPLT_IE,
+	.target_data = NULL,
+	.tube_req_src = DMA_REQ_SRC_ADC3
+};
+
 dma_tube_config spi2_rx_tube = {
 	.tube_src = &SPI2_BASE->DR,
-	.tube_src_size = DMA_SIZE_8BITS, //TODO can we use 32 bit, this should be faster and fine with OSC...
+	.tube_src_size = DMA_SIZE_8BITS,
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_8BITS,
 	.tube_nr_xfers = 0, //set me
-	//.tube_flags = DMA_CFG_DST_INC | DMA_CFG_CMPLT_IE,
 	.tube_flags = DMA_CFG_DST_INC,
 	.target_data = NULL,
 	.tube_req_src = DMA_REQ_SRC_SPI2_RX

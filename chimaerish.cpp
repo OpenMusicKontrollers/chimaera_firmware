@@ -26,7 +26,17 @@
  */
 #include <wirish/wirish.h>
 
-HardwareSPI spi(2);
+extern "C" void
+usb_debug_str (const char * str)
+{
+	SerialUSB.println(str);
+}
+
+extern "C" void
+usb_debug_int (uint32_t i)
+{
+	SerialUSB.println(i);
+}
 
 __attribute__ ((constructor)) void
 premain ()
@@ -38,9 +48,6 @@ extern "C" void
 cpp_setup ()
 {
 	// we don't need USB communication, so we disable it
+	//SerialUSB.begin ();
 	SerialUSB.end ();
-
-	// set up SPI for usage with wiz820io
-  spi.begin (SPI_18MHZ, MSBFIRST, 0);
-  //spi.begin (SPI_9MHZ, MSBFIRST, 0);
 }

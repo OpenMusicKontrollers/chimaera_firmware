@@ -26,8 +26,8 @@
 #include "wiz_private.h"
 
 #include <tube.h>
-#include <chimaera.h>
 #include <netdef.h>
+#include <chimaera.h>
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
@@ -60,10 +60,12 @@ uint16_t nonblocklen;
 inline void setSS ()
 {
 	gpio_write_bit (ss_dev, ss_bit, 0);
+	//SPI2->regs->CR1 |= SPI_CR1_SPE;
 }
 
 inline void resetSS ()
 {
+	//SPI2->regs->CR1 &= ~SPI_CR1_SPE;
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
@@ -74,6 +76,7 @@ _spi_dma_run (uint16_t len, uint8_t io_flags)
 	{
 		spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
 		dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
+
 		dma_enable (DMA1, DMA_CH4); // Rx
 	}
 	else
@@ -95,7 +98,7 @@ _spi_dma_block (uint8_t io_flags)
 	uint8_t ret = 1;
 	uint8_t isr_rx;
 	uint8_t isr_tx;
-	uint8_t spi_sr;
+	uint16_t spi_sr;
 
 	if (io_flags == WIZ_TXRX)
 	{
@@ -106,11 +109,10 @@ _spi_dma_block (uint8_t io_flags)
 			spi_sr = SPI2_BASE->SR;
 
 			// check for errors in DMA and SPI status registers
-
-			if (isr_rx & 0x8) // RX DMA transfer error
+			if (isr_rx & DMA_ISR_TEIF) // RX DMA transfer error
 				ret = 0;
 
-			if (isr_tx & 0x8) // TX DMA transfer error
+			if (isr_tx & DMA_ISR_TEIF) // TX DMA transfer error
 				ret = 0;
 
 			if (spi_sr & SPI_SR_OVR) // SPI overrun error
@@ -118,7 +120,7 @@ _spi_dma_block (uint8_t io_flags)
 
 			if (spi_sr & SPI_SR_MODF) // SPI mode fault
 				ret = 0;
-		} while (!(isr_rx & 0x2) && ret); // RX DMA transfer complete
+		} while (!(isr_rx & DMA_ISR_TCIF) && ret); // RX DMA transfer complete
 
 		dma_clear_isr_bits (DMA1, DMA_CH4);
 		dma_clear_isr_bits (DMA1, DMA_CH5);
@@ -133,29 +135,30 @@ _spi_dma_block (uint8_t io_flags)
 			isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
 			spi_sr = SPI2_BASE->SR;
 
-			if (isr_tx & 0x8) // TX DMA transfer error
+			// check for errors in DMA and SPI status registers
+			if (isr_tx & DMA_ISR_TEIF) // TX DMA transfer error
 				ret = 0;
 
 			if (spi_sr & SPI_SR_MODF) // SPI mode fault
 				ret = 0;
-		} while (!(isr_tx & 0x2) && ret); // TX DMA transfer complete
+		} while (!(isr_tx & DMA_ISR_TCIF) && ret); // TX DMA transfer complete
 
 		do {
 			spi_sr = SPI2_BASE->SR;
-		} while (!(spi_sr & SPI_SR_TXE) && ret); // wait for TXE==1
+		} while ( (spi_sr & SPI_SR_FTLVL) && ret); // TX FIFO not empty
 
 		do {
 			spi_sr = SPI2_BASE->SR;
-		} while ((spi_sr & SPI_SR_BSY) && ret); // wait for BSY==0
+		} while ( (spi_sr & SPI_SR_BSY) && ret); // wait for BSY==0
 
 		do
 		{
-			spi_sr = SPI2_BASE->DR;
+			//spi_sr = SPI2_BASE->DR;
+			spi_sr = spi_rx_reg(SPI2);
 			spi_sr = SPI2_BASE->SR;
-		} while (spi_sr & SPI_SR_OVR); // clear OVR flag
+		} while ( (spi_sr & SPI_SR_FRLVL) || (spi_sr & SPI_SR_RXNE) || (spi_sr & SPI_SR_OVR) ); // empty buffer and clear OVR flag
 
 		dma_clear_isr_bits (DMA1, DMA_CH5);
-		dma_clear_isr_bits (DMA1, DMA_CH4);
 
 		dma_disable (DMA1, DMA_CH5); // Tx
 	}
@@ -181,7 +184,6 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	_spi_dma_run (buflen, WIZ_TX);
 	while (!_spi_dma_block (WIZ_TX))
 		_spi_dma_run (buflen, WIZ_TX);
-
 	resetSS ();
 }
 
@@ -340,7 +342,6 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	//dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
-	//dma_attach_interrupt (DMA1, DMA_CH4, _spi_dma_irq);
 	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
 
 	// set up dma for SPI2TX
@@ -354,8 +355,11 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	uint8_t sock;
 	uint8_t flag;
 
-	flag = 1 << WIZ_RESET;
+	flag = MR_RST;
 	_dma_write (MR, &flag, 1);
+	do {
+		_dma_read (MR, &flag, 1);
+	} while (flag & MR_RST);
 
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
   for (sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
@@ -464,9 +468,9 @@ udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
 	// open socket
 	flag = SnCR_OPEN;
 	_dma_write_sock (sock, SnCR, &flag, 1);
-	do _dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_UDP)
-		;
+	do
+		_dma_read_sock (sock, SnSR, &flag, 1);
+	while (flag != SnSR_UDP);
 
 	udp_update_read_write_pointers (sock);
 }
@@ -479,6 +483,16 @@ udp_update_read_write_pointers (uint8_t sock)
 
 	// get read pointer
 	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
+}
+
+void
+udp_reset_read_write_pointers (uint8_t sock)
+{
+	_dma_read_sock_16 (sock, SnTX_RD, &Sn_Tx_WR[sock]);
+	_dma_write_sock_16 (sock, SnTX_WR, Sn_Tx_WR[sock]);
+
+	_dma_read_sock_16 (sock, SnRX_WR, &Sn_Rx_RD[sock]);
+	_dma_write_sock_16 (sock, SnRX_RD, Sn_Rx_RD[sock]);
 }
 
 void
@@ -519,8 +533,9 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		tmp_buf_o_ptr = buf_ptr;
 
 		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-		int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-		ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
+		//int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+		//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	}
 
 	uint8_t *buf = buf_o[buf_ptr];
@@ -609,15 +624,17 @@ udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 		tmp_buf_o_ptr = buf_ptr;
 
 		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-		int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-		ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
+		//int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+		//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	}
 
 	tmp_buf_i = buf_i_i;
 
 	spi2_rx_tube.tube_dst = tmp_buf_i;
-	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
+	//int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
 	uint16_t ptr = Sn_Rx_RD[sock];
 
@@ -671,8 +688,9 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 	tmp_buf_i = buf_i_o;
 
 	spi2_rx_tube.tube_dst = tmp_buf_i;
-	int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
+	//int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 
 	return success;
 }

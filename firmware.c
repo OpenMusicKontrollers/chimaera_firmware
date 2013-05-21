@@ -32,7 +32,7 @@
 /*
  * libmaple headers
  */
-#include <libmaple/i2c.h> // I2C for eeprom
+//#include <libmaple/i2c.h> // I2C for eeprom
 #include <libmaple/spi.h> // SPI for w5200
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
@@ -43,7 +43,7 @@
  */
 #include <chimaera.h>
 #include <chimutil.h>
-#include <eeprom.h>
+//#include <eeprom.h>
 #include <sntp.h>
 #include <config.h>
 #include <tube.h>
@@ -61,13 +61,16 @@
 
 uint8_t mux_sequence [MUX_LENGTH] = {PA15, PB3, PB4, PB5}; // digital out pins to switch MUX channels
 
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA0, PA2, PA4, PA6, PB0}; // analog input pins read out by the ADC 
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA1, PA3, PA5, PA7, PB1}; // analog input pins read out by the ADC 
+uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA0, PA2, PA3}; // analog input pins read out by the ADC1
+uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
+uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3
 
 uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
+uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
 
-int16_t adc_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__ ((aligned (4)));; // the dma temporary data array.
+int16_t adc12_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
+int16_t adc3_raw[2][MUX_MAX][ADC_SING_LENGTH] __attribute__((aligned(4)));
 int16_t adc_sum[SENSOR_N];
 int16_t adc_rela[SENSOR_N];
 int16_t adc_swap[SENSOR_N];
@@ -76,8 +79,10 @@ uint8_t mux_order [MUX_MAX] = {0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5,
 uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 uint8_t order [MUX_MAX][ADC_LENGTH];
 
-volatile uint8_t adc_dma_done = 0;
-volatile uint8_t adc_dma_err = 0;
+volatile uint8_t adc12_dma_done = 0;
+volatile uint8_t adc12_dma_err = 0;
+volatile uint8_t adc3_dma_done = 0;
+volatile uint8_t adc3_dma_err = 0;
 volatile uint8_t adc_time_up = 1;
 volatile uint8_t adc_raw_ptr = 1;
 volatile uint8_t mux_counter = MUX_MAX;
@@ -114,8 +119,10 @@ mdns_timer_irq ()
 }
 
 void
-__irq_adc ()
+__irq_adc1_2 ()
 {
+	ADC1_BASE->ISR |= ADC_ISR_EOS;
+
 	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
 	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
 	pin_write_bit (mux_sequence[2], mux_counter & 0b0100);
@@ -124,29 +131,49 @@ __irq_adc ()
 	if (mux_counter < MUX_MAX)
 	{
 		mux_counter++;
-		ADC1->regs->CR |= ADC_CR_ADSTART;
+		ADC1->regs->CR |= ADC_CR_ADSTART; // start master(ADC1) and slave(ADC2) conversion
+		ADC3->regs->CR |= ADC_CR_ADSTART;
 	}
 }
 
+void
+__irq_adc3 ()
+{
+	ADC3_BASE->ISR |= ADC_ISR_EOS;
+}
+
 static void
-adc_dma_irq ()
+adc12_dma_irq ()
 {
 	uint8_t isr = dma_get_isr_bits (DMA1, DMA_CH1);
 	dma_clear_isr_bits (DMA1, DMA_CH1);
 
 	if (isr & 0x8)
-		adc_dma_err = 1;
+		adc12_dma_err = 1;
 
-	adc_dma_done = 1;
+	adc12_dma_done = 1;
+}
+
+static void
+adc3_dma_irq ()
+{
+	uint8_t isr = dma_get_isr_bits (DMA2, DMA_CH5);
+	dma_clear_isr_bits (DMA2, DMA_CH5);
+
+	if (isr & 0x8)
+		adc3_dma_err = 1;
+
+	adc3_dma_done = 1;
 }
 
 #define adc_dma_run \
-	adc_dma_done = 0; \
+	adc12_dma_done = 0; \
+	adc3_dma_done = 0; \
 	mux_counter = 0; \
-	__irq_adc ();
+	__irq_adc1_2 ();
 
 #define adc_dma_block \
-	while (!adc_dma_done) \
+	while (!adc12_dma_done || !adc3_dma_done) \
 		; \
 	adc_raw_ptr ^= 1;
 
@@ -244,6 +271,7 @@ loop ()
 			timer_resume (adc_timer);
 		}
 
+		/*
 		adc_dma_run;
 
 		if (first) // in the first round there is no data
@@ -252,12 +280,13 @@ loop ()
 			first = 0;
 			continue;
 		}
+		*/
 
 		// fill adc_rela
 #ifdef BENCHMARK
 		stop_watch_start (&sw_adc_fill);
 #endif // BENCHMARK
-		adc_fill (adc_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
+		adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
 #ifdef BENCHMARK
 		stop_watch_stop (&sw_adc_fill);
 #endif // BENCHMARK
@@ -362,7 +391,7 @@ loop ()
 			mdns_should_listen = 0;
 		}
 
-		adc_dma_block;
+		//adc_dma_block;
 
 		if (config.rate)
 			while (!adc_time_up)
@@ -445,9 +474,7 @@ setup ()
 	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 
-	// enable wiz820io module
-	pin_set_modef (UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit (UDP_PWDN, 0);
+	pin_write_bit (BOARD_LED_PIN, 1);
 
 	//TODO
 	//pin_set_mode (UDP_INT, GPIO_INPUT_FLOATING);
@@ -463,6 +490,8 @@ setup ()
 		pin_set_modef (adc1_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
 		pin_set_modef (adc2_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
 	}
+	for (i=0; i<ADC_SING_LENGTH; i++)
+		pin_set_modef (adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
 
 	// systick 
 	systick_disable ();
@@ -476,8 +505,8 @@ setup ()
 	srand (*seed);
 
 	// init eeprom for I2C1
-	eeprom_init (I2C1);
-	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
+	//eeprom_init (I2C1);
+	//eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
 	//eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load configuration from eeprom
@@ -504,13 +533,33 @@ setup ()
 
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
+	dma_init (DMA2);
 
-	pin_set_modef (BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit (BOARD_SPI2_NSS_PIN, 1); // disable peripheral
-	//SPI2->regs->CR2 |= SPI_CR2_SSOE; // automatic toggling of NSS pin in single master mode, we don't use this
+	// SPI for W5200
+	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_PWDN, 0);
 
-	spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
-	spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
+	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
+
+	pin_set_modef(BOARD_SPI2_SCK_PIN, GPIO_MODE_AF, GPIO_MODEF_TYPE_PP);
+	pin_set_modef(BOARD_SPI2_MISO_PIN, GPIO_MODE_AF, GPIO_MODEF_PUPD_NONE);
+	pin_set_modef(BOARD_SPI2_MOSI_PIN, GPIO_MODE_AF, GPIO_MODEF_TYPE_PP);
+
+	pin_set_af(BOARD_SPI2_SCK_PIN, GPIO_AF_5);
+	pin_set_af(BOARD_SPI2_MISO_PIN, GPIO_AF_5);
+	pin_set_af(BOARD_SPI2_MOSI_PIN, GPIO_AF_5);
+
+	spi_init(SPI2); //FIXME add to libmaple F3 port
+	SPI2->regs->CR1 |= SPI_CR1_BR_PCLK_DIV_2;
+	SPI2->regs->CR1 |= SPI_MODE_0;
+	SPI2->regs->CR1 |= SPI_CR1_BIDIMODE_2_LINE;
+	SPI2->regs->CR2 |= SPI_DATA_SIZE_8_BIT;
+	SPI2->regs->CR1 |= SPI_FRAME_MSB;
+	SPI2->regs->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI;
+	SPI2->regs->CR2 |= SPI_CR2_FRXTH;
+	SPI2->regs->CR1 |= SPI_CR1_MSTR;
+	SPI2->regs->CR1 |= SPI_CR1_SPE;
 
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
@@ -521,6 +570,8 @@ setup ()
 	// wait for link up before proceeding
 	while (!wiz_link_up ()) // TODO monitor this and go to sleep mode when link is down
 		;
+
+	wiz_init (PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
 	uint8_t claimed = 0;
 	if (config.dhcpc.enabled)
@@ -555,25 +606,16 @@ setup ()
 	// set up ADCs
 	adc_disable (ADC1);
 	adc_disable (ADC2);
+	adc_disable (ADC3);
+	adc_disable (ADC4);
 
 	adc_set_exttrig (ADC1, ADC_EXTTRIG_MODE_SOFTWARE);
 	adc_set_exttrig (ADC2, ADC_EXTTRIG_MODE_SOFTWARE);
+	adc_set_exttrig (ADC3, ADC_EXTTRIG_MODE_SOFTWARE);
 
-	/*
-	ADC_SMPR_1_5
-	ADC_SMPR_7_5
-	ADC_SMPR_13_5
-	ADC_SMPR_28_5
-	ADC_SMPR_41_5
-	ADC_SMPR_55_5
-	ADC_SMPR_71_5
-	ADC_SMPR_239_5
-	*/
 	adc_set_sample_rate (ADC1, ADC_SMPR_61_5); //TODO make this configurable
 	adc_set_sample_rate (ADC2, ADC_SMPR_61_5);
-
-  adc_set_reg_seqlen (ADC1, ADC_DUAL_LENGTH);  //The number of channels to be converted 
-  adc_set_reg_seqlen (ADC2, ADC_DUAL_LENGTH);  //The number of channels to be converted
+	adc_set_sample_rate (ADC3, ADC_SMPR_61_5);
 
 	// fill raw sequence array with corresponding ADC channels
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
@@ -581,38 +623,56 @@ setup ()
 		adc1_raw_sequence[i] = PIN_MAP[adc1_sequence[i]].adc_channel;
 		adc2_raw_sequence[i] = PIN_MAP[adc2_sequence[i]].adc_channel;
 	}
+	for (i=0; i<ADC_SING_LENGTH; i++)
+		adc3_raw_sequence[i] = PIN_MAP[adc3_sequence[i]].adc_channel;
 
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_LENGTH; i++)
 			order[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
 
 	// set channels in register
-	set_adc_sequence (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
-	set_adc_sequence (ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
+	adc_set_conv_seq (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
+	adc_set_conv_seq (ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
+	adc_set_conv_seq (ADC3, adc3_raw_sequence, ADC_SING_LENGTH);
 
-	ADC1->regs->IER |= ADC_IER_EOC; // enable interrupt
+	ADC1->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
 	nvic_irq_enable (NVIC_ADC1_2);
 
-	//ADC1->regs->CFGR |= ADC_CFGR_DMACFG; FIXME what does this do?
-  ADC1->regs->CFGR |= ADC_CFGR_DMAEN; // use DMA (write analog values directly into DMA buffer)
-	ADC12_BASE->CCR &= ~ADC_CCR_DUAL;
-	ADC12_BASE->CCR |= ADC_MODE_DUAL_REGULAR_ONLY;
+	ADC3->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
+	ADC3->regs->CFGR |= ADC_CFGR_DMAEN; // enable DMA request
+	ADC3->regs->CFGR |= ADC_CFGR_DMACFG, // enable ADC circular mode for use with DMA
+	nvic_irq_enable (NVIC_ADC3);
+
+	ADC12_BASE->CCR |= ADC_MDMA_MODE_ENABLE_12_10_BIT; // enable ADC DMA in 12-bit dual mode
+	ADC12_BASE->CCR |= ADC_CCR_DMACFG; // enable ADC circular mode for use with DMA
+	ADC12_BASE->CCR |= ADC_MODE_DUAL_REGULAR_ONLY; // set DMA dual mode to regular channels only
 
 	adc_enable (ADC1);
 	adc_enable (ADC2);
+	adc_enable (ADC3);
 
-	adc_calibrate (ADC1);
-	adc_calibrate (ADC2);
+	// set up ADC DMA tubes
+	int status;
 
-	// set up ADC DMA tube
-	adc_tube.tube_dst = (void *)adc_raw;
-	int status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube);
+	adc_tube12.tube_dst = (void *)adc12_raw;
+	status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube12);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+
 	dma_set_priority (DMA1, DMA_CH1, DMA_PRIORITY_MEDIUM);    //Optional
 	dma_set_num_transfers (DMA1, DMA_CH1, ADC_DUAL_LENGTH*MUX_MAX*2);
-	dma_attach_interrupt (DMA1, DMA_CH1, adc_dma_irq);
+	dma_attach_interrupt (DMA1, DMA_CH1, adc12_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 	nvic_irq_set_priority (NVIC_DMA_CH1, ADC_DMA_PRIORITY);
+
+	adc_tube3.tube_dst = (void *)adc3_raw;
+	status = dma_tube_cfg (DMA2, DMA_CH5, &adc_tube3);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+
+	dma_set_priority (DMA2, DMA_CH5, DMA_PRIORITY_MEDIUM);
+	dma_set_num_transfers (DMA2, DMA_CH5, 1*MUX_MAX*2);
+	dma_attach_interrupt (DMA2, DMA_CH5, adc3_dma_irq);
+	dma_enable (DMA2, DMA_CH5);
+	nvic_irq_set_priority (NVIC_DMA_CH5, ADC_DMA_PRIORITY);
 
 	// set up continuous music controller struct
 	cmc_init ();
