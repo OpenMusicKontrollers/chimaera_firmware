@@ -232,9 +232,28 @@ config_save ()
 }
 
 void
-adc_fill (int16_t raw12[16][8], int16_t raw3[16][1], uint8_t order[16][9], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
+adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_SING_LENGTH], uint8_t order12[MUX_MAX][ADC_DUAL_LENGTH*2], uint8_t order3[MUX_MAX][ADC_SING_LENGTH], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
 {
 	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
+
+	uint8_t p, i;
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+		{
+			uint8_t pos = order12[p][i];
+			int16_t val = raw12[p][i] - 0x7ff;
+			rela[pos] = val;
+			swap[pos] = hton (val);
+		}
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_SING_LENGTH; i++)
+		{
+			uint8_t pos = order3[p][i];
+			int16_t val = raw3[p][i] - 0x7ff;
+			rela[pos] = val;
+			swap[pos] = hton (val);
+		}
 
 	/*
 	if (config.movingaverage.enabled)

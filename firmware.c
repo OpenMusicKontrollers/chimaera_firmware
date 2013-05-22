@@ -59,9 +59,9 @@
 #include <oscmidi.h>
 #include <wiz.h>
 
-uint8_t mux_sequence [MUX_LENGTH] = {PA15, PB3, PB4, PB5}; // digital out pins to switch MUX channels
+uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
 
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA0, PA2, PA3}; // analog input pins read out by the ADC1
+uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3
 
@@ -75,9 +75,10 @@ int16_t adc_sum[SENSOR_N];
 int16_t adc_rela[SENSOR_N];
 int16_t adc_swap[SENSOR_N];
 
-uint8_t mux_order [MUX_MAX] = {0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0};
-uint8_t adc_order [ADC_LENGTH] = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
-uint8_t order [MUX_MAX][ADC_LENGTH];
+uint8_t mux_order [MUX_MAX] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
+uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
+uint8_t order12 [MUX_MAX][ADC_DUAL_LENGTH*2];
+uint8_t order3 [MUX_MAX][ADC_SING_LENGTH];
 
 volatile uint8_t adc12_dma_done = 0;
 volatile uint8_t adc12_dma_err = 0;
@@ -173,7 +174,7 @@ adc3_dma_irq ()
 	__irq_adc1_2 ();
 
 #define adc_dma_block \
-	while (!adc12_dma_done || !adc3_dma_done) \
+	while (!adc12_dma_done) \
 		; \
 	adc_raw_ptr ^= 1;
 
@@ -271,7 +272,6 @@ loop ()
 			timer_resume (adc_timer);
 		}
 
-		/*
 		adc_dma_run;
 
 		if (first) // in the first round there is no data
@@ -280,13 +280,12 @@ loop ()
 			first = 0;
 			continue;
 		}
-		*/
 
 		// fill adc_rela
 #ifdef BENCHMARK
 		stop_watch_start (&sw_adc_fill);
 #endif // BENCHMARK
-		adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
+		adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
 #ifdef BENCHMARK
 		stop_watch_stop (&sw_adc_fill);
 #endif // BENCHMARK
@@ -391,7 +390,7 @@ loop ()
 			mdns_should_listen = 0;
 		}
 
-		//adc_dma_block;
+		adc_dma_block;
 
 		if (config.rate)
 			while (!adc_time_up)
@@ -627,8 +626,12 @@ setup ()
 		adc3_raw_sequence[i] = PIN_MAP[adc3_sequence[i]].adc_channel;
 
 	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_LENGTH; i++)
-			order[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
+		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+			order12[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
+
+	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_SING_LENGTH; i++)
+			order3[p][i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
 
 	// set channels in register
 	adc_set_conv_seq (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
