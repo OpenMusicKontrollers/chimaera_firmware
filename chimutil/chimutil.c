@@ -115,6 +115,21 @@ debug_timestamp (nOSC_Timestamp t)
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
+void
+debug_reg (const char *id, uint32_t reg)
+{
+	if (!config.debug.enabled)
+		return;
+	uint16_t size;
+	char str[32+1];
+	uint8_t i;
+	for (i=0; i<32; i++)
+		str[31-i] = reg & (1U << i) ? '1' : '_';
+	str[32] = '\0';
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "ss", id, str);
+	udp_send (config.debug.socket.sock, buf_o_ptr, size);
+}
+
 /*
  * This function converts the array into one number by multiplying each 5-bits
  * channel numbers by multiplications of 2^5

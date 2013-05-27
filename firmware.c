@@ -32,7 +32,7 @@
 /*
  * libmaple headers
  */
-//#include <libmaple/i2c.h> // I2C for eeprom
+#include <libmaple/i2c.h> // I2C for eeprom
 #include <libmaple/spi.h> // SPI for w5200
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
@@ -43,7 +43,7 @@
  */
 #include <chimaera.h>
 #include <chimutil.h>
-//#include <eeprom.h>
+#include <eeprom.h>
 #include <sntp.h>
 #include <config.h>
 #include <tube.h>
@@ -71,14 +71,20 @@ uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
 
 int16_t adc12_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
 int16_t adc3_raw[2][MUX_MAX][ADC_SING_LENGTH] __attribute__((aligned(4)));
-int16_t adc_sum[SENSOR_N];
-int16_t adc_rela[SENSOR_N];
-int16_t adc_swap[SENSOR_N];
+int16_t adc_sum[SENSOR_N] __CCM__;
+int16_t adc_rela[SENSOR_N] __CCM__;
+int16_t adc_swap[SENSOR_N] __CCM__;
+
+uint32_t **adc12_raw_vec32 = (uint32_t **)adc12_raw;
+uint32_t **adc3_raw_vec32 = (uint32_t **)adc3_raw;
+uint32_t *adc_sum_vec32 = (uint32_t *)adc_sum;
+uint32_t *adc_rela_vec32 = (uint32_t *)adc_rela;
+uint32_t *adc_swap_vec32 = (uint32_t *) adc_swap;
 
 uint8_t mux_order [MUX_MAX] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
 uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
-uint8_t order12 [MUX_MAX][ADC_DUAL_LENGTH*2];
-uint8_t order3 [MUX_MAX][ADC_SING_LENGTH];
+uint8_t order12 [MUX_MAX][ADC_DUAL_LENGTH*2] __CCM__;
+uint8_t order3 [MUX_MAX][ADC_SING_LENGTH] __CCM__;
 
 volatile uint8_t adc12_dma_done = 0;
 volatile uint8_t adc12_dma_err = 0;
@@ -174,7 +180,7 @@ adc3_dma_irq ()
 	__irq_adc1_2 ();
 
 #define adc_dma_block \
-	while (!adc12_dma_done) \
+	while ( !adc12_dma_done || !adc3_dma_done ) \
 		; \
 	adc_raw_ptr ^= 1;
 
@@ -252,6 +258,7 @@ loop ()
 	uint8_t first = 1;
 	nOSC_Timestamp offset;
 
+#define BENCHMARK 1
 #ifdef BENCHMARK
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
 
@@ -504,8 +511,8 @@ setup ()
 	srand (*seed);
 
 	// init eeprom for I2C1
-	//eeprom_init (I2C1);
-	//eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
+	eeprom_init (I2C1);
+	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
 	//eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load configuration from eeprom
@@ -528,7 +535,7 @@ setup ()
 	*/
 
 	// load calibrated sensor ranges from eeprom
-	range_load (config.calibration);
+	//FIXME range_load (config.calibration);
 
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
@@ -686,7 +693,7 @@ setup ()
 	rtpmidi_init ();
 
 	// load saved groups
-	groups_load ();
+	//FIXME groups_load ();
 }
 
 void

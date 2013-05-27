@@ -37,6 +37,7 @@ void debug_int32 (int32_t i);
 void debug_float (float f);
 void debug_double (double d);
 void debug_timestamp (nOSC_Timestamp t);
+void debug_reg (const char *id, uint32_t reg);
 
 void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
 

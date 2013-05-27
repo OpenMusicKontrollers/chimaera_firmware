@@ -28,10 +28,12 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <libmaple/dsp.h>
+
 #include <chimaera.h>
 #include <chimutil.h>
 #include <wiz.h>
-//#include <eeprom.h>
+#include <eeprom.h>
 #include <cmc.h>
 #include <scsynth.h>
 #include <midi.h>
@@ -208,7 +210,7 @@ static uint8_t
 magic_match ()
 {
 	uint8_t magic;
-	//eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
+	eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
 
 	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
 }
@@ -217,7 +219,7 @@ uint8_t
 config_load ()
 {
 	if (magic_match ())
-		;//eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
 
@@ -227,9 +229,13 @@ config_load ()
 uint8_t
 config_save ()
 {
-	//eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	return 1;
 }
+
+extern uint32_t *adc_sum_vec32;
+extern uint32_t *adc_rela_vec32;
+extern uint32_t *adc_swap_vec32;
 
 void
 adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_SING_LENGTH], uint8_t order12[MUX_MAX][ADC_DUAL_LENGTH*2], uint8_t order3[MUX_MAX][ADC_SING_LENGTH], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
@@ -237,23 +243,76 @@ adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_S
 	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
 
 	uint8_t p, i;
-	for (p=0; p<MUX_MAX; p++)
-		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+	int16_t pos, val;
+	uint8_t bitshift;
+
+	if (config.movingaverage.enabled)
+	{
+		bitshift = config.movingaverage.bitshift;
+
+		for (i=0; i<SENSOR_N/2; i++)
 		{
-			uint8_t pos = order12[p][i];
-			int16_t val = raw12[p][i] - 0x7ff;
-			rela[pos] = val;
-			swap[pos] = hton (val);
+			uint32_t mean = __shadd16 (adc_sum_vec32[i], 0); // mean = sum / 2
+			mean = __shadd16 (mean, 0); // mean /= 2 FIXME
+			mean = __shadd16 (mean, 0); // mean /= 2 FIXME
+			adc_sum_vec32[i] = __ssub16 (adc_sum_vec32[i], mean); // sum -= mean
 		}
 
-	for (p=0; p<MUX_MAX; p++)
+		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+			for (p=0; p<MUX_MAX; p++)
+			{
+				pos = order12[p][i];
+				val = raw12[p][i] - 0x7ff;
+
+				sum[pos] += val;
+				//sum[pos] -= sum[pos] >> bitshift;
+				//val = (sum[pos] += val) >> bitshift;
+
+				//rela[pos] = val; 
+				//swap[pos] = hton (val);
+			}
+
 		for (i=0; i<ADC_SING_LENGTH; i++)
+			for (p=0; p<MUX_MAX; p++)
+			{
+				pos = order3[p][i];
+				val = raw3[p][i] - 0x7ff;
+
+				sum[pos] += val;
+				//sum[pos] -= sum[pos] >> bitshift;
+				//val = (sum[pos] += val) >> bitshift;
+
+				//rela[pos] = val; 
+				//swap[pos] = hton (val);
+			}
+
+		// SIMD
+		for (i=0; i<SENSOR_N/2; i++)
 		{
-			uint8_t pos = order3[p][i];
-			int16_t val = raw3[p][i] - 0x7ff;
-			rela[pos] = val;
-			swap[pos] = hton (val);
+			adc_rela_vec32[i] = __shadd16 (adc_sum_vec32, 0); // rela = sum / 2
+			adc_swap_vec32[i] = __rev16 (adc_rela_vec32[i]); // hton
 		}
+	}
+	else
+	{
+		for (p=0; p<MUX_MAX; p++)
+			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+			{
+				pos = order12[p][i];
+				val = raw12[p][i] - 0x7ff;
+				rela[pos] = val;
+				swap[pos] = hton (val);
+			}
+
+		for (p=0; p<MUX_MAX; p++)
+			for (i=0; i<ADC_SING_LENGTH; i++)
+			{
+				pos = order3[p][i];
+				val = raw3[p][i] - 0x7ff;
+				rela[pos] = val;
+				swap[pos] = hton (val);
+			}
+	}
 
 	/*
 	if (config.movingaverage.enabled)
@@ -395,7 +454,7 @@ uint8_t
 range_load (uint8_t pos)
 {
 	if (magic_match ()) // EEPROM and FLASH config versions match
-		;//eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
 		uint8_t i;
@@ -416,7 +475,7 @@ range_load (uint8_t pos)
 uint8_t
 range_save (uint8_t pos)
 {
-	//eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 
 	return 1;
 }
@@ -613,7 +672,7 @@ groups_load ()
 	if (magic_match ())
 	{
 		buf = cmc_group_buf_get (&size);
-		//eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 	}
 	else
 		groups_save ();
@@ -628,7 +687,7 @@ groups_save ()
 	uint8_t *buf;
 
 	buf = cmc_group_buf_get (&size);
-	//eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
 
 	return 1;
 }
