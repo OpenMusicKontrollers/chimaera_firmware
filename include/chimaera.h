@@ -25,7 +25,6 @@
 #define _CHIMAERA_H_
 
 #include <stdint.h>
-#include <armfix.h>
 
 // hack to have access to PIN_MAP from plain C
 #include <wirish/wirish_types.h>
@@ -52,8 +51,6 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define OSC_ARGS_MAX 12
 
-#define ADC_CR1_DUALMOD_BIT 16
-
 #define UDP_PWDN PB11
 #define UDP_INT PA8
 
@@ -74,16 +71,17 @@ extern const stm32_pin_info PIN_MAP [];
 #define FACTORY_RESET_REG 1
 #define FACTORY_RESET_VAL 666
 
+#define EEPROM_SIZE 0x2000
 #define EEPROM_CONFIG_OFFSET 0x0000
-#define EEPROM_GROUP_OFFSET 0x00e0
-#define EEPROM_RANGE_OFFSET 0x01a0
-#define EEPROM_RANGE_SIZE 0x0a20 // sizeof(ADC_Range)*144
-#define EEPROM_RANGE_MAX 2 // we have palce for three slots: 0, 1 and 2
+#define EEPROM_GROUP_OFFSET 0x0c00
+#define EEPROM_RANGE_OFFSET 0x1000
+#define EEPROM_RANGE_SIZE 0x0484
+#define EEPROM_RANGE_MAX 2 // we have place for three slots: 0, 1, 2
 
-// STM32F1 flash memory size (16bit)
+// STM32F1 flash memory size (16bit) TODO F3
 #define FSIZE_BASE  ((const uint16_t *)0x1FFFF7E0)
 
-// STM32F1 universal ID (96bit)
+// STM32F1 universal ID (96bit) TODO F3
 #define UID_BASE  ((const uint8_t *)0x1FFFF7E8)
 
 extern uint8_t buf_o_ptr;
@@ -91,7 +89,7 @@ extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i_o [];
 extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
-extern const fix_0_32_t lookup_sqrt [];
+extern const float lookup_sqrt [];
 
 extern uint8_t calibrating;
 

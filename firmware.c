@@ -81,7 +81,8 @@ uint32_t *adc_sum_vec32 = (uint32_t *)adc_sum;
 uint32_t *adc_rela_vec32 = (uint32_t *)adc_rela;
 uint32_t *adc_swap_vec32 = (uint32_t *) adc_swap;
 
-uint8_t mux_order [MUX_MAX] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
+//uint8_t mux_order [MUX_MAX] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
+uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
 uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
 uint8_t order12 [MUX_MAX][ADC_DUAL_LENGTH*2] __CCM__;
 uint8_t order3 [MUX_MAX][ADC_SING_LENGTH] __CCM__;
@@ -535,7 +536,7 @@ setup ()
 	*/
 
 	// load calibrated sensor ranges from eeprom
-	//FIXME range_load (config.calibration);
+	range_load (config.calibration);
 
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
@@ -693,7 +694,7 @@ setup ()
 	rtpmidi_init ();
 
 	// load saved groups
-	//FIXME groups_load ();
+	groups_load ();
 }
 
 void

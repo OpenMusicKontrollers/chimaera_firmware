@@ -60,12 +60,12 @@ cmc_init ()
 	cmc.fid = 0; // we start counting at 1, 0 marks an 'out of order' frame
 	cmc.sid = 0; // we start counting at 0
 
-	cmc.d = 1.0ulr / SENSOR_N;
+	cmc.d = 1.0 / SENSOR_N;
 	cmc.d_2 = cmc.d / 2;
 
 	for (i=0; i<SENSOR_N+2; i++)
 	{
-		cmc.x[i] = cmc.d * i - cmc.d_2; //TODO caution: sensors[0] and sensors[145] get saturated to 0 and 1
+		cmc.x[i] = cmc.d * i - cmc.d_2; //TODO caution: sensors[0] and sensors[145] are <0 & >1
 		cmc.v[i] = 0;
 		cmc.n[i] = 0;
 	}
@@ -97,11 +97,11 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			cmc.n[newpos] = val < 0 ? POLE_NORTH : POLE_SOUTH;
 			cmc.a[newpos] = aval > range.thresh[pos];
 
-			//fix_16_16_t b = (fix_16_16_t)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
+			//float b = (float)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
 			//cmc.v[newpos] = (b - range.bmin) * range.sc_1; // rescale to [0,1]
 
 			// this is the same as the above, just in one function
-			fix_32_32_t y = (aval * (fix_32_32_t)range.as_1_sc_1[pos]) - range.bmin_sc_1;
+			float y = ((float)aval * range.as_1_sc_1[pos]) - range.bmin_sc_1;
 			cmc.v[newpos] = y; //FIXME get rid of cmc structure.
 		}
 	}
@@ -147,37 +147,37 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		uint8_t P = peaks[p];
 		//fit parabola
 
-		fix_s31_32_t y0 = cmc.v[P-1];
-		fix_s31_32_t y1 = cmc.v[P];
-		fix_s31_32_t y2 = cmc.v[P+1];
+		float y0 = cmc.v[P-1];
+		float y1 = cmc.v[P];
+		float y2 = cmc.v[P+1];
 
 		// lookup square root
-		fix_s31_32_t sqrt0 = lookup_sqrt[(uint16_t)(y0<<11)];
-		fix_s31_32_t sqrt1 = lookup_sqrt[(uint16_t)(y1<<11)];
-		fix_s31_32_t sqrt2 = lookup_sqrt[(uint16_t)(y2<<11)];
+		float sqrt0 = lookup_sqrt[(uint16_t)(y0*0xFFF)];
+		float sqrt1 = lookup_sqrt[(uint16_t)(y1*0xFFF)];
+		float sqrt2 = lookup_sqrt[(uint16_t)(y2*0xFFF)];
 
 		y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
 		y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
 		y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
 
 		// parabolic interpolation
-		//fix_s31_32_t divisor = y0 - 2*y1 + y2;
-		fix_s31_32_t divisor = y0 - (y1<<1) + y2;
-		fix_s31_32_t divisor_1 = 1.0LLK / divisor; // only one division
+		float divisor = y0 - 2*y1 + y2;
+		//float divisor = y0 - (y1<<1) + y2;
+		float divisor_1 = 1.0 / divisor; // only one division
 
-		//fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
-		fix_0_32_t x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
+		//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+		float x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
 
-		//fix_0_32_t y = y1; // dummy
+		//float y = y1; // dummy
 
-		//fix_s31_32_t dividend = -y0*y0*0.125LR + y0*y1 - y1*y1*2 + y0*y2*0.25LR + y1*y2 - y2*y2*0.125LR; // 10 multiplications, 5 additions/subtractions
-		//fix_s31_32_t dividend = y0*(y1 - 0.125LR*y0 + 0.25LR*y2) + y2*(y1 - 0.125LR*y2) - y1*y1*2; // 7 multiplications, 5 additions/subtractions
-		fix_s31_32_t dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
+		//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
+		float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
+		//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
 
-		//fix_0_32_t y = dividend / divisor;
-		fix_0_32_t y = dividend * divisor_1; // multiplication instead of division
+		//float y = dividend / divisor;
+		float y = dividend * divisor_1; // multiplication instead of division
 
-		if ( (x > 0ULR) && (y > 0ULR) ) //FIXME why can this happen in the first place?
+		if ( (x > 0.0) && (y > 0.0) ) //FIXME why can this happen in the first place?
 		{
 			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
 			cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
@@ -208,12 +208,12 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				i = 0;
 				for (j=0; j<cmc.J; )
 				{
-					fix_0_32_t diff0, diff1;
+					float diff0, diff1;
 
 					if (n_less)
 					{
-						diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
-						diff1 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i+1].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i+1].x : cmc.blobs[cmc.old][i+1].x - cmc.blobs[cmc.neu][j].x;
+						diff0 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x); //TODO use assembly for fabs?
+						diff1 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i+1].x);
 					}
 
 					if ( n_less && (diff1 < diff0) )
@@ -260,12 +260,12 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				j = 0;
 				for (i=0; i<cmc.I; )
 				{
-					fix_0_32_t diff0, diff1;
+					float diff0, diff1;
 					
 					if (n_more) // only calculate differences when there are still new blobs to be found
 					{
-						diff0 = cmc.blobs[cmc.neu][j].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j].x;
-						diff1 = cmc.blobs[cmc.neu][j+1].x > cmc.blobs[cmc.old][i].x ? cmc.blobs[cmc.neu][j+1].x - cmc.blobs[cmc.old][i].x : cmc.blobs[cmc.old][i].x - cmc.blobs[cmc.neu][j+1].x;
+						diff0 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x);
+						diff1 = fabs (cmc.blobs[cmc.neu][j+1].x - cmc.blobs[cmc.old][i].x);
 					}
 
 					if ( n_more && (diff1 < diff0) ) // cmc.blobs[cmc.neu][j] is the new blob
@@ -345,7 +345,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 					tar->group = ptr;
 
-					if ( (ptr->x0 != 0ULR) || (ptr->m != 1ULK) ) // we need scaling
+					if ( (ptr->x0 != 0.0) || (ptr->m != 1.0) ) // we need scaling
 						tar->x = (tar->x - ptr->x0) * ptr->m;
 
 					break; // match found, do not search further
@@ -443,9 +443,9 @@ cmc_group_clear ()
 		grp->gid = gid;
 		grp->pid = CMC_BOTH;
 		strcpy (grp->name, none_str);
-		grp->x0 = 0.0ULR;
-		grp->x1 = 1.0ULR;
-		grp->m = 1.0ULK;
+		grp->x0 = 0.0;
+		grp->x1 = 1.0;
+		grp->m = 1.0;
 	}
 }
 
@@ -471,7 +471,7 @@ cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x1)
 	strcpy (grp->name, name);
 	grp->x0 = x0;
 	grp->x1 = x1;
-	grp->m = 1.0ULK/(x1-x0);
+	grp->m = 1.0/(x1-x0);
 
 	return 1;
 }

@@ -27,7 +27,6 @@
 #include <chimaera.h>
 #include <cmc.h>
 #include <tuio2.h>
-#include <armfix.h>
 
 #define CMC_NORTH 0x80
 #define CMC_SOUTH 0x100
@@ -53,15 +52,15 @@ typedef struct _CMC CMC;
 struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
-	fix_0_32_t x, p;
+	float x, p;
 	uint16_t pid;
 	uint8_t above_thresh;
 	CMC_Blob_State state;
 };
 
 struct _CMC_Group {
-	fix_0_32_t x0, x1;
-	fix_16_16_t m; //TODO make fix_32_32_t ?
+	float x0, x1;
+	float m;
 	uint16_t gid; //TODO make uint8_t
 	uint16_t pid; //TODO make uint8_t
 	char name[8]; //TODO how big?
@@ -69,11 +68,11 @@ struct _CMC_Group {
 
 struct _CMC {
 	uint32_t fid, sid;
-	fix_0_32_t d;
-	fix_0_32_t d_2;
+	float d;
+	float d_2;
 
-	fix_0_32_t x[SENSOR_N+2];
-	fix_0_32_t v[SENSOR_N+2];
+	float x[SENSOR_N+2];
+	float v[SENSOR_N+2];
 	uint8_t n[SENSOR_N+2];
 	uint8_t a[SENSOR_N+2];
 	CMC_Blob blobs[2][BLOB_MAX];

@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <math.h> // floor
 
 #include <chimaera.h>
 #include <chimutil.h>
@@ -60,12 +61,12 @@ oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_o
 }
 
 void
-oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
+oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
 	uint8_t pos = sid % BLOB_MAX;
-	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
-	uint8_t key = X;
+	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	uint8_t key = floor (X);
 	oscmidi_keys[pos] = key;
 
 	nosc_message_set_midi (midi_msg, oscmidi_tok, NOTE_ON | ch, key, 0x7f, 0x00);
@@ -88,15 +89,15 @@ oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 }
 
 void
-oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
+oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
 	uint8_t pos = sid % BLOB_MAX;
-	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
+	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = oscmidi_keys[pos];
-	uint16_t bend = (X - key) * 170.65LLK + 0x2000; // := (X - key) / 48LLK * 0x1fff + 0x2000;
+	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;
 
-	uint16_t eff = (fix_16_16_t)y * 0x3fff;
+	uint16_t eff = y * 0x3fff;
 
 	nosc_message_set_midi (midi_msg, oscmidi_tok, PITCH_BEND | ch, bend & 0x7f, bend >> 7, 0x00);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;

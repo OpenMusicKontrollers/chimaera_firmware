@@ -25,7 +25,6 @@
 #define RTPMIDI_PRIVATE_H
 
 #include <rtpmidi.h>
-#include <armfix.h>
 
 typedef struct _RTP_Header RTP_Header;
 typedef struct _RTP_MIDI_Session RTP_MIDI_Session;
@@ -41,7 +40,7 @@ struct _RTP_Header {
 } __attribute__((packed,aligned(4)));
 
 struct _RTP_MIDI_Session {
-	fix_32_32_t rate;
+	float rate;
 };
 
 struct _RTP_MIDI_Header {

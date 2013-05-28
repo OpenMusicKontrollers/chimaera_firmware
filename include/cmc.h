@@ -31,9 +31,9 @@
 #include <config.h>
 
 typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t nbob_new);
-typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y);
+typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t gid, uint16_t pid);
-typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y);
+typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 
 typedef struct _CMC_Engine CMC_Engine;
 

@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <math.h> // floor
 
 #include "rtpmidi_private.h"
 
@@ -38,7 +39,7 @@ RTP_Header rtp_header = {
 };
 
 RTP_MIDI_Session rtp_midi_session = {
-	.rate = 48000ULLK //TODO make this configurable via RTCP
+	.rate = 48000.0 //TODO make this configurable via RTCP
 };
 
 RTP_MIDI_Header rtp_midi_header = {
@@ -123,13 +124,13 @@ rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint8_t nblob_old,
 }
 
 void
-rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
+rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
 	uint8_t pos = sid % BLOB_MAX;
-	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
-	uint8_t key = X;
+	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	uint8_t key = floor (X);
 	rtpmidi_keys[pos] = key;
 	
 	itm = &rtp_midi_list[nlist];
@@ -157,16 +158,16 @@ rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 }
 
 void
-rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, fix_0_32_t x, fix_0_32_t y)
+rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
 	uint8_t pos = sid % BLOB_MAX;
-	fix_s31_32_t X = config.oscmidi.offset - 0.5LLK + x * 48.0LLK;
+	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = rtpmidi_keys[pos];
-	uint16_t bend = (X - key) * 170.65LLK + 0x2000; // := (X - key) / 48LLK * 0x1fff + 0x2000;
+	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;
 
-	uint16_t eff = (fix_16_16_t)y * 0x3fff;
+	uint16_t eff = y * 0x3fff;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;

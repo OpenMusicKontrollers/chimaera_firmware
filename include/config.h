@@ -28,7 +28,6 @@
 
 #include <nosc.h>
 #include <chimaera.h>
-#include <armfix.h>
 
 #define SRC_PORT 0
 #define DST_PORT 1
@@ -141,9 +140,9 @@ struct _Config {
 	} COMPACT oscmidi;
 
 	struct _curve {
-		fix_s31_32_t A;
-		fix_s31_32_t B;
-		fix_s31_32_t C;
+		float A;
+		float B;
+		float C;
 	} COMPACT curve;
 
 	struct _movingaverage {
@@ -171,8 +170,8 @@ typedef struct _Range Range;
 struct _Range {
 	uint16_t qui [SENSOR_N];
 	uint16_t thresh [SENSOR_N];
-	fix_0_32_t as_1_sc_1 [SENSOR_N];
-	fix_0_32_t bmin_sc_1;
+	float as_1_sc_1 [SENSOR_N];
+	float bmin_sc_1;
 };
 
 extern Range range;
