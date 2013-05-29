@@ -101,7 +101,7 @@ Config config = {
 	},
 
 	.dump = {
-		.enabled = 1
+		.enabled = 0
 	},
 
 	.scsynth = {
@@ -135,7 +135,7 @@ Config config = {
 
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
-		.enabled = 0, // enabled by default
+		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 3,
 			.port = {123, 123},
@@ -248,6 +248,10 @@ adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_S
 
 	if (config.movingaverage.enabled)
 	{
+	}
+
+	if (config.movingaverage.enabled)
+	{
 		bitshift = config.movingaverage.bitshift;
 
 		// take advantage of SIMD
@@ -259,21 +263,42 @@ adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_S
 			adc_sum_vec32[i] = __ssub16 (adc_sum_vec32[i], mean); // sum -= mean
 		}
 
-		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-			for (p=0; p<MUX_MAX; p++)
-			{
-				pos = order12[p][i];
-				val = raw12[p][i] - range.qui[pos];
-				sum[pos] += val;
-			}
+		if (relative)
+		{
+			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+				for (p=0; p<MUX_MAX; p++)
+				{
+					pos = order12[p][i];
+					val = raw12[p][i] - range.qui[pos];
+					sum[pos] += val;
+				}
 
-		for (i=0; i<ADC_SING_LENGTH; i++)
-			for (p=0; p<MUX_MAX; p++)
-			{
-				pos = order3[p][i];
-				val = raw3[p][i] - range.qui[pos];
-				sum[pos] += val;
-			}
+			for (i=0; i<ADC_SING_LENGTH; i++)
+				for (p=0; p<MUX_MAX; p++)
+				{
+					pos = order3[p][i];
+					val = raw3[p][i] - range.qui[pos];
+					sum[pos] += val;
+				}
+		}
+		else // !relative
+		{
+			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
+				for (p=0; p<MUX_MAX; p++)
+				{
+					pos = order12[p][i];
+					val = raw12[p][i];
+					sum[pos] += val;
+				}
+
+			for (i=0; i<ADC_SING_LENGTH; i++)
+				for (p=0; p<MUX_MAX; p++)
+				{
+					pos = order3[p][i];
+					val = raw3[p][i];
+					sum[pos] += val;
+				}
+		}
 
 		// take advantage fo SIMD
 		for (i=0; i<SENSOR_N/2; i++)
@@ -282,164 +307,95 @@ adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_S
 			//rela = __shadd16 (rela, 0); // rela /= 2 FIXME base this on bitshift
 			//rela = __shadd16 (rela, 0); // rela /= 2 FIXME
 			adc_rela_vec32[i] = rela;
-			adc_swap_vec32[i] = __rev16 (rela); // hton
-		}
-	}
-	else
-	{
-		for (p=0; p<MUX_MAX; p++)
-			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-			{
-				pos = order12[p][i];
-				val = raw12[p][i] - 0x7ff; //range.qui[pos];
-				rela[pos] = val;
-				swap[pos] = hton (val);
-			}
-
-		for (p=0; p<MUX_MAX; p++)
-			for (i=0; i<ADC_SING_LENGTH; i++)
-			{
-				pos = order3[p][i];
-				val = raw3[p][i] - 0x7ff; //range.qui[pos];
-				rela[pos] = val;
-				swap[pos] = hton (val);
-			}
-	}
-
-	/*
-	if (config.movingaverage.enabled)
-	{
-		uint8_t bitshift = config.movingaverage.bitshift;
-
-		if (relative)
-		{
 			if (config.dump.enabled)
-			{
-				uint8_t p, i;
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
-					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i] - range.qui[pos];
-
-						sum[pos] -= sum[pos] >> bitshift;
-						val = (sum[pos] += val) >> bitshift;
-
-						rela[pos] = val; 
-						swap[pos] = hton (val);
-					}
-			}
-			else // !config.dump.enabled
-			{
-				uint8_t p, i;
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
-					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i] - range.qui[pos];
-
-						sum[pos] -= sum[pos] >> bitshift;
-						val = (sum[pos] += val) >> bitshift;
-
-						rela[pos] = val; 
-					}
-			}
-		}
-		else // absolute
-		{
-			if (config.dump.enabled)
-			{
-				uint8_t p, i;
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
-					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i];
-
-						sum[pos] -= sum[pos] >> bitshift;
-						val = (sum[pos] += val) >> bitshift;
-
-						rela[pos] = val; 
-						swap[pos] = hton (val);
-					}
-			}
-			else // !config.dump.enabled
-			{
-				uint8_t p, i;
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
-					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i];
-
-						sum[pos] -= sum[pos] >> bitshift;
-						val = (sum[pos] += val) >> bitshift;
-
-						rela[pos] = val; 
-					}
-			}
+				adc_swap_vec32[i] = __rev16 (rela); // hton
 		}
 	}
-	else // !movingaverage
+	else // !config.movingaverage.enabled
 	{
 		if (relative)
 		{
 			if (config.dump.enabled)
 			{
-				uint8_t p, i;
 				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
+					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
 					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i] - range.qui[pos];
+						pos = order12[p][i];
+						val = raw12[p][i] - range.qui[pos];
+						rela[pos] = val;
+						swap[pos] = hton (val);
+					}
 
-						rela[pos] = val; 
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_SING_LENGTH; i++)
+					{
+						pos = order3[p][i];
+						val = raw3[p][i] - range.qui[pos];
+						rela[pos] = val;
 						swap[pos] = hton (val);
 					}
 			}
 			else // !config.dump.enabled
 			{
-				uint8_t p, i;
 				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
+					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
 					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i] - range.qui[pos];
+						pos = order12[p][i];
+						val = raw12[p][i] - range.qui[pos];
+						rela[pos] = val;
+					}
 
-						rela[pos] = val; 
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_SING_LENGTH; i++)
+					{
+						pos = order3[p][i];
+						val = raw3[p][i] - range.qui[pos];
+						rela[pos] = val;
 					}
 			}
 		}
-		else // absolute
+		else // !relative
 		{
 			if (config.dump.enabled)
 			{
-				uint8_t p, i;
 				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
+					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
 					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i];
+						pos = order12[p][i];
+						val = raw12[p][i];
+						rela[pos] = val;
+						swap[pos] = hton (val);
+					}
 
-						rela[pos] = val; 
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_SING_LENGTH; i++)
+					{
+						pos = order3[p][i];
+						val = raw3[p][i];
+						rela[pos] = val;
 						swap[pos] = hton (val);
 					}
 			}
 			else // !config.dump.enabled
 			{
-				uint8_t p, i;
 				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_LENGTH; i++)
+					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
 					{
-						uint8_t pos = order[p][i];
-						int16_t val = raw[p][i];
+						pos = order12[p][i];
+						val = raw12[p][i];
+						rela[pos] = val;
+					}
 
-						rela[pos] = val; 
+				for (p=0; p<MUX_MAX; p++)
+					for (i=0; i<ADC_SING_LENGTH; i++)
+					{
+						pos = order3[p][i];
+						val = raw3[p][i];
+						rela[pos] = val;
 					}
 			}
 		}
 	}
-	*/
 }
 
 uint8_t
@@ -614,6 +570,8 @@ range_update_b0 ()
 void
 range_update_b1 ()
 {
+	//FIXME approximate Y1, so that MAX ( (0x7ff * as_1_sc1[i]) - bmin_sc_1) == 1
+	//FIXME or calculate Y1' out of A, B, C
 	uint8_t i;
 	uint16_t b = (float)0x7ff * Y1;
 	float as_1;

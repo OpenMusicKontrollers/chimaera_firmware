@@ -41,7 +41,7 @@ uint8_t idle_bit = 0;
 CMC cmc;
 
 uint8_t n_aoi;
-uint8_t aoi[BLOB_MAX*7]; //TODO how big? BLOB_MAX * 5,7,9 ?
+uint8_t aoi[BLOB_MAX*13]; //TODO how big? BLOB_MAX * 5,7,9 ?
 
 uint8_t n_peaks;
 uint8_t peaks[BLOB_MAX];
@@ -144,6 +144,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	uint8_t p;
 	for (p=0; p<n_peaks; p++)
 	{
+		float x, y;
 		uint8_t P = peaks[p];
 		//fit parabola
 
@@ -151,44 +152,62 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		float y1 = cmc.v[P];
 		float y2 = cmc.v[P+1];
 
+		if (y0 < 0.0) y0 = 0.0;
+		if (y0 > 1.0) y0 = 1.0;
+		if (y1 < 0.0) y1 = 0.0;
+		if (y1 > 1.0) y1 = 1.0;
+		if (y2 < 0.0) y2 = 0.0;
+		if (y2 > 1.0) y2 = 1.0;
+
 		// lookup square root
-		float sqrt0 = lookup_sqrt[(uint16_t)(y0*0xFFF)];
-		float sqrt1 = lookup_sqrt[(uint16_t)(y1*0xFFF)];
-		float sqrt2 = lookup_sqrt[(uint16_t)(y2*0xFFF)];
+		float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
+		float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
+		float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
 
 		y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
 		y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
 		y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
 
 		// parabolic interpolation
-		float divisor = y0 - 2*y1 + y2;
+		float divisor = y0 - 2.0*y1 + y2;
 		//float divisor = y0 - (y1<<1) + y2;
-		float divisor_1 = 1.0 / divisor; // only one division
 
-		//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
-		float x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
-
-		//float y = y1; // dummy
-
-		//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
-		float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
-		//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
-
-		//float y = dividend / divisor;
-		float y = dividend * divisor_1; // multiplication instead of division
-
-		if ( (x > 0.0) && (y > 0.0) ) //FIXME why can this happen in the first place?
+		if (divisor == 0.0)
 		{
-			cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-			cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
-			cmc.blobs[cmc.neu][cmc.J].group = NULL;
-			cmc.blobs[cmc.neu][cmc.J].x = x;
-			cmc.blobs[cmc.neu][cmc.J].p = y;
-			cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
-			cmc.blobs[cmc.neu][cmc.J].state = CMC_BLOB_INVALID;
-
-			cmc.J++;
+			x = cmc.x[P];
+			y = y1;
 		}
+		else
+		{
+			float divisor_1 = 1.0 / divisor;
+
+			//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+			x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
+
+			//float y = y1; // dummy
+
+			//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
+			float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
+			//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
+
+			//float y = dividend / divisor;
+			y = dividend * divisor_1; // multiplication instead of division
+		}
+
+		if (x < 0.0) x = 0.0;
+		if (x > 1.0) x = 1.0;
+		if (y < 0.0) y = 0.0;
+		if (y > 1.0) y = 1.0;
+
+		cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
+		cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+		cmc.blobs[cmc.neu][cmc.J].group = NULL;
+		cmc.blobs[cmc.neu][cmc.J].x = x;
+		cmc.blobs[cmc.neu][cmc.J].p = y;
+		cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
+		cmc.blobs[cmc.neu][cmc.J].state = CMC_BLOB_INVALID;
+
+		cmc.J++;
 	} // 50us per blob
 
 	/*

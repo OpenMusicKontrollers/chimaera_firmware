@@ -75,14 +75,14 @@ extern const stm32_pin_info PIN_MAP [];
 #define EEPROM_CONFIG_OFFSET 0x0000
 #define EEPROM_GROUP_OFFSET 0x0c00
 #define EEPROM_RANGE_OFFSET 0x1000
-#define EEPROM_RANGE_SIZE 0x0484
+#define EEPROM_RANGE_SIZE 0x0500
 #define EEPROM_RANGE_MAX 2 // we have place for three slots: 0, 1, 2
 
-// STM32F1 flash memory size (16bit) TODO F3
-#define FSIZE_BASE  ((const uint16_t *)0x1FFFF7E0)
+// STM32F1 flash memory size (16bit)
+#define FSIZE_BASE  ((const uint16_t *)0x1FFFF7CC)
 
-// STM32F1 universal ID (96bit) TODO F3
-#define UID_BASE  ((const uint8_t *)0x1FFFF7E8)
+// STM32F1 universal ID (96bit)
+#define UID_BASE  ((const uint8_t *)0x1FFFF7AC)
 
 extern uint8_t buf_o_ptr;
 extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer

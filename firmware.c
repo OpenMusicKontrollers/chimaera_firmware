@@ -514,7 +514,7 @@ setup ()
 	// init eeprom for I2C1
 	eeprom_init (I2C1);
 	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
-	//eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
+	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load configuration from eeprom
 	/* FIXME
@@ -530,10 +530,8 @@ setup ()
 
 	// read MAC from MAC EEPROM
 	uint8_t MAC [6];
-	/*
 	if (!config.comm.locally)
 		eeprom_bulk_read (eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
-	*/
 
 	// load calibrated sensor ranges from eeprom
 	range_load (config.calibration);
