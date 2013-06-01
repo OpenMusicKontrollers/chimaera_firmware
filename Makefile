@@ -4,6 +4,9 @@ export BOARD ?= 48F3
 export MEMORY_TARGET ?= jtag
 export USER_MODULES := $(shell pwd)
 
+export DFU_VENDOR := 0x0483
+export DFU_PRODUCT := 0xdf11
+
 .DEFAULT_GOAL := sketch
 
 all: sketch

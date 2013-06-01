@@ -69,23 +69,17 @@ uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
 
-int16_t adc12_raw[2][MUX_MAX][ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
-int16_t adc3_raw[2][MUX_MAX][ADC_SING_LENGTH] __attribute__((aligned(4)));
+int16_t adc12_raw[2][MUX_MAX*ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
+int16_t adc3_raw[2][MUX_MAX*ADC_SING_LENGTH] __attribute__((aligned(4)));
+
 int16_t adc_sum[SENSOR_N] __CCM__;
 int16_t adc_rela[SENSOR_N] __CCM__;
 int16_t adc_swap[SENSOR_N] __CCM__;
 
-uint32_t **adc12_raw_vec32 = (uint32_t **)adc12_raw;
-uint32_t **adc3_raw_vec32 = (uint32_t **)adc3_raw;
-uint32_t *adc_sum_vec32 = (uint32_t *)adc_sum;
-uint32_t *adc_rela_vec32 = (uint32_t *)adc_rela;
-uint32_t *adc_swap_vec32 = (uint32_t *) adc_swap;
-
-//uint8_t mux_order [MUX_MAX] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF };
 uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
 uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
-uint8_t order12 [MUX_MAX][ADC_DUAL_LENGTH*2] __CCM__;
-uint8_t order3 [MUX_MAX][ADC_SING_LENGTH] __CCM__;
+uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2] __CCM__;
+uint8_t order3 [MUX_MAX*ADC_SING_LENGTH] __CCM__;
 
 volatile uint8_t adc12_dma_done = 0;
 volatile uint8_t adc12_dma_err = 0;
@@ -263,17 +257,13 @@ loop ()
 	uint8_t first = 1;
 	nOSC_Timestamp offset;
 
-#define BENCHMARK 1
+#define BENCHMARK
 #ifdef BENCHMARK
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
-
-	Stop_Watch sw_dump_update = {.id = "dump_update", .thresh=2000};
-	Stop_Watch sw_dump_serialize = {.id = "dump_serialize", .thresh=2000};
-	Stop_Watch sw_dump_send = {.id = "dump_send", .thresh=2000};
-
+	Stop_Watch sw_output_send = {.id = "output_send", .thresh=2000};
 	Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
-	Stop_Watch sw_tuio_serialize = {.id = "tuio_serialize", .thresh=2000};
-	Stop_Watch sw_tuio_send = {.id = "tuio_send", .thresh=2000};
+	Stop_Watch sw_output_serialize = {.id = "output_serialize", .thresh=2000};
+	Stop_Watch sw_output_block = {.id = "output_block", .thresh=2000};
 #endif // BENCHMARK
 
 	while (1) // endless loop
@@ -293,24 +283,23 @@ loop ()
 			continue;
 		}
 
-		// fill adc_rela
-#ifdef BENCHMARK
-		stop_watch_start (&sw_adc_fill);
-#endif // BENCHMARK
-		adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela, adc_swap, !calibrating); // 49us (rela only), 69us (rela & swap), 71us (movingaverage)
-#ifdef BENCHMARK
-		stop_watch_stop (&sw_adc_fill);
-#endif // BENCHMARK
-
 		if (calibrating)
-			range_calibrate (adc_rela);
-
-		if (!calibrating && config.output.enabled)
+			range_calibrate (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
+		else if (config.output.enabled)
 		{
 			uint8_t job = 0;
 
+#ifdef BENCHMARK
+			stop_watch_start (&sw_output_send);
+#endif
 			if (cmc_job) // start nonblocking sending of last cycles tuio output
 				send_status = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
+
+		// fill adc_rela
+#ifdef BENCHMARK
+			stop_watch_start (&sw_adc_fill);
+#endif
+			adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela, adc_swap);
 
 			sntp_timestamp_refresh (&now, &offset);
 
@@ -322,6 +311,9 @@ loop ()
 		
 			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 			{
+#ifdef BENCHMARK
+				stop_watch_start (&sw_tuio_process);
+#endif
 				uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
 				if (blobs) // was there any update?
@@ -344,6 +336,9 @@ loop ()
 
 			if (job)
 			{
+#ifdef BENCHMARK
+				stop_watch_start (&sw_output_serialize);
+#endif
 				if (job > 1)
 				{
 					memset (nest_fmt, nOSC_BUNDLE, job);
@@ -358,6 +353,9 @@ loop ()
 			if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 				job = 1;
 
+#ifdef BENCHMARK
+				stop_watch_start (&sw_output_block);
+#endif
 			if (cmc_job && send_status) // block for end of sending of last cycles tuio output
 				udp_send_block (config.output.socket.sock); //FIXME check return status
 
@@ -365,6 +363,14 @@ loop ()
 				buf_o_ptr ^= 1;
 
 			cmc_job = job;
+
+#ifdef BENCHMARK
+			stop_watch_stop (&sw_output_send);
+			stop_watch_stop (&sw_adc_fill);
+			stop_watch_stop (&sw_tuio_process);
+			stop_watch_stop (&sw_output_serialize);
+			stop_watch_stop (&sw_output_block);
+#endif
 		}
 
 		// run osc config server
@@ -626,11 +632,11 @@ setup ()
 
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-			order12[p][i] = mux_order[p] + adc_order[i]*MUX_MAX;
+			order12[p*ADC_DUAL_LENGTH*2 + i] = mux_order[p] + adc_order[i]*MUX_MAX;
 
 	for (p=0; p<MUX_MAX; p++)
 		for (i=0; i<ADC_SING_LENGTH; i++)
-			order3[p][i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
+			order3[p*ADC_SING_LENGTH + i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
 
 	// set channels in register
 	adc_set_conv_seq (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);

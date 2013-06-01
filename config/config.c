@@ -61,7 +61,7 @@ const char *group_err_str = "group not found";
 
 float Y1 = 0.7;
 
-Range range;
+Range range __CCM__;
 
 float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
@@ -233,165 +233,61 @@ config_save ()
 	return 1;
 }
 
-extern uint32_t *adc_sum_vec32;
-extern uint32_t *adc_rela_vec32;
-extern uint32_t *adc_swap_vec32;
-
 void
-adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_SING_LENGTH], uint8_t order12[MUX_MAX][ADC_DUAL_LENGTH*2], uint8_t order3[MUX_MAX][ADC_SING_LENGTH], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative)
+adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela, int16_t *swap)
 {
-	//NOTE conditionals have been taken out of the loop, makes it MUCH faster
+	uint8_t i;
+	uint8_t pos;
+	uint16_t *qui = range.qui;
+	uint32_t *rela_vec32 = (uint32_t *)rela;
+	//uint32_t *sum_vec32 = (uint32_t *)sum;
+	uint32_t *qui_vec32 = (uint32_t *)range.qui;
+	uint32_t *swap_vec32 = (uint32_t *)swap;
 
-	uint8_t p, i;
-	int16_t pos, val;
-	uint8_t bitshift;
-
+	/* TODO reimplement movingaverager
 	if (config.movingaverage.enabled)
-	{
-		bitshift = config.movingaverage.bitshift;
-
-		// take advantage of SIMD
 		for (i=0; i<SENSOR_N/2; i++)
 		{
-			uint32_t mean = __shadd16 (adc_sum_vec32[i], 0); // mean = sum / 2
-			//mean = __shadd16 (mean, 0); // mean /= 2 FIXME base this on bitshift
-			//mean = __shadd16 (mean, 0); // mean /= 2 FIXME
-			adc_sum_vec32[i] = __ssub16 (adc_sum_vec32[i], mean); // sum -= mean
+			uint32_t mean = __shadd16 (sum_vec32[i], 0); // mean = sum / 2
+			//mean = __shadd16 (mean, 0); // mean /= 2
+			//mean = __shadd16 (mean, 0); // mean /= 2
+			sum_vec32[i] = __ssub16 (sum_vec32[i], mean); // sum -= mean
 		}
+	*/
 
-		if (relative)
-		{
-			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-				for (p=0; p<MUX_MAX; p++)
-				{
-					pos = order12[p][i];
-					val = raw12[p][i] - range.qui[pos];
-					sum[pos] += val;
-				}
+	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
+	{
+		pos = order12[i];
+		rela[pos] = raw12[i];
+	}
 
-			for (i=0; i<ADC_SING_LENGTH; i++)
-				for (p=0; p<MUX_MAX; p++)
-				{
-					pos = order3[p][i];
-					val = raw3[p][i] - range.qui[pos];
-					sum[pos] += val;
-				}
-		}
-		else // !relative
-		{
-			for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-				for (p=0; p<MUX_MAX; p++)
-				{
-					pos = order12[p][i];
-					val = raw12[p][i];
-					sum[pos] += val;
-				}
+	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
+	{
+		pos = order3[i];
+		rela[pos] = raw3[i];
+	}
 
-			for (i=0; i<ADC_SING_LENGTH; i++)
-				for (p=0; p<MUX_MAX; p++)
-				{
-					pos = order3[p][i];
-					val = raw3[p][i];
-					sum[pos] += val;
-				}
-		}
-
-		// take advantage fo SIMD
+	if (config.dump.enabled)
 		for (i=0; i<SENSOR_N/2; i++)
 		{
-			uint32_t rela = __shadd16 (adc_sum_vec32[i], 0); // rela = sum / 2
-			//rela = __shadd16 (rela, 0); // rela /= 2 FIXME base this on bitshift
-			//rela = __shadd16 (rela, 0); // rela /= 2 FIXME
-			adc_rela_vec32[i] = rela;
-			if (config.dump.enabled)
-				adc_swap_vec32[i] = __rev16 (rela); // hton
+			rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+			swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
 		}
-	}
-	else // !config.movingaverage.enabled
-	{
-		if (relative)
+	else // !config.dump.enabled
+		for (i=0; i<SENSOR_N/2; i++)
+			rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+
+	/* TODO reimplement movingaverager
+	if (config.movingaverage.enabled)
+		for (i=0; i<SENSOR_N/2; i++)
 		{
-			if (config.dump.enabled)
-			{
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-					{
-						pos = order12[p][i];
-						val = raw12[p][i] - range.qui[pos];
-						rela[pos] = val;
-						swap[pos] = hton (val);
-					}
-
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_SING_LENGTH; i++)
-					{
-						pos = order3[p][i];
-						val = raw3[p][i] - range.qui[pos];
-						rela[pos] = val;
-						swap[pos] = hton (val);
-					}
-			}
-			else // !config.dump.enabled
-			{
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-					{
-						pos = order12[p][i];
-						val = raw12[p][i] - range.qui[pos];
-						rela[pos] = val;
-					}
-
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_SING_LENGTH; i++)
-					{
-						pos = order3[p][i];
-						val = raw3[p][i] - range.qui[pos];
-						rela[pos] = val;
-					}
-			}
+			sum_vec32[i] = __sadd16 (sum_vec32[i], rela_vec32[i]); // sum += rela
+			uint32_t rela = __shadd16 (sum_vec32[i], 0); // rela = sum /2
+			//rela = __shadd16 (rela, 0); // rela /= 2
+			//rela = __shadd16 (rela, 0); // rela /= 2
+			rela_vec32[i] = rela;
 		}
-		else // !relative
-		{
-			if (config.dump.enabled)
-			{
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-					{
-						pos = order12[p][i];
-						val = raw12[p][i];
-						rela[pos] = val;
-						swap[pos] = hton (val);
-					}
-
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_SING_LENGTH; i++)
-					{
-						pos = order3[p][i];
-						val = raw3[p][i];
-						rela[pos] = val;
-						swap[pos] = hton (val);
-					}
-			}
-			else // !config.dump.enabled
-			{
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_DUAL_LENGTH*2; i++)
-					{
-						pos = order12[p][i];
-						val = raw12[p][i];
-						rela[pos] = val;
-					}
-
-				for (p=0; p<MUX_MAX; p++)
-					for (i=0; i<ADC_SING_LENGTH; i++)
-					{
-						pos = order3[p][i];
-						val = raw3[p][i];
-						rela[pos] = val;
-					}
-			}
-		}
-	}
+	*/
 }
 
 uint8_t
@@ -493,9 +389,25 @@ uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
 uint8_t zeroing = 0;
 
 void
-range_calibrate (int16_t *raw)
+range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela)
 {
 	uint8_t i;
+	uint8_t pos;
+
+	// fill rela vector from raw vector
+	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
+	{
+		pos = order12[i];
+		rela[pos] = raw12[i];
+	}
+
+	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
+	{
+		pos = order3[i];
+		rela[pos] = raw3[i];
+	}
+
+	// do the calibration
 	for (i=0; i<SENSOR_N; i++)
 	{
 		uint16_t avg;
@@ -504,20 +416,20 @@ range_calibrate (int16_t *raw)
 		{
 			// moving average over 16 samples
 			range.qui[i] -= range.qui[i] >> 4;
-			range.qui[i] += raw[i];
+			range.qui[i] += rela[i];
 		}
 
 		//TODO is this the best way to get a mean of min and max?
-		if (raw[i] > (avg = arr[POLE_SOUTH][i] >> 4) )
+		if (rela[i] > (avg = arr[POLE_SOUTH][i] >> 4) )
 		{
 			arr[POLE_SOUTH][i] -= avg;
-			arr[POLE_SOUTH][i] += raw[i];
+			arr[POLE_SOUTH][i] += rela[i];
 		}
 
-		if (raw[i] < (avg =arr[POLE_NORTH][i] >> 4) )
+		if (rela[i] < (avg =arr[POLE_NORTH][i] >> 4) )
 		{
 			arr[POLE_NORTH][i] -= avg;
-			arr[POLE_NORTH][i] += raw[i];
+			arr[POLE_NORTH][i] += rela[i];
 		}
 	}
 }

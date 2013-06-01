@@ -162,7 +162,7 @@ extern const nOSC_Method config_serv [];
 uint8_t config_load ();
 uint8_t config_save ();
 
-void adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_SING_LENGTH], uint8_t order12[MUX_MAX][ADC_DUAL_LENGTH*2], uint8_t order3[MUX_MAX][ADC_SING_LENGTH], int16_t *sum, int16_t *rela, int16_t *swap, uint8_t relative);
+void adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela, int16_t *swap);
 
 /* rev4 */
 typedef struct _Range Range;
@@ -182,7 +182,7 @@ float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
 uint8_t range_load (uint8_t pos);
 uint8_t range_save (uint8_t pos);
-void range_calibrate (int16_t *rela);
+void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 void range_update ();
 
 uint8_t groups_load ();
