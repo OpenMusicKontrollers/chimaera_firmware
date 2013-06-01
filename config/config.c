@@ -248,10 +248,6 @@ adc_fill (int16_t raw12[MUX_MAX][ADC_DUAL_LENGTH*2], int16_t raw3[MUX_MAX][ADC_S
 
 	if (config.movingaverage.enabled)
 	{
-	}
-
-	if (config.movingaverage.enabled)
-	{
 		bitshift = config.movingaverage.bitshift;
 
 		// take advantage of SIMD

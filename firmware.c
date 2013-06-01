@@ -128,8 +128,10 @@ mdns_timer_irq ()
 
 void
 __irq_adc1_2 ()
+//adc1_2_irq (adc_callback_data *data)
 {
-	ADC1_BASE->ISR |= ADC_ISR_EOS;
+	ADC1->regs->ISR |= ADC_ISR_EOS;
+	//ADC1->regs->ISR |= data->irq_flags; // clear flags
 
 	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
 	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
@@ -146,8 +148,10 @@ __irq_adc1_2 ()
 
 void
 __irq_adc3 ()
+//adc3_irq (adc_callback_data *data)
 {
-	ADC3_BASE->ISR |= ADC_ISR_EOS;
+	ADC3->regs->ISR |= ADC_ISR_EOS;
+	//ADC3->regs->ISR |= data->irq_flags; // clear flags
 }
 
 static void
@@ -544,27 +548,16 @@ setup ()
 	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit(UDP_PWDN, 0);
 
-	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	spi_init(SPI2);
+	spi_data_size(SPI2, SPI_DATA_SIZE_8_BIT);
+	spi_master_enable(SPI2, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
+													SPI_CR1_BIDIMODE_2_LINE | SPI_FRAME_MSB | SPI_CR1_SSM | SPI_CR1_SSI);
+	spi_config_gpios(SPI2, 1,
+		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit,
+		PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_device, PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MISO_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MOSI_PIN].gpio_bit);
+	pin_set_af(BOARD_SPI2_NSS_PIN, GPIO_AF_0); // we want to handle NSS by software
+	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
 	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
-
-	pin_set_modef(BOARD_SPI2_SCK_PIN, GPIO_MODE_AF, GPIO_MODEF_TYPE_PP);
-	pin_set_modef(BOARD_SPI2_MISO_PIN, GPIO_MODE_AF, GPIO_MODEF_PUPD_NONE);
-	pin_set_modef(BOARD_SPI2_MOSI_PIN, GPIO_MODE_AF, GPIO_MODEF_TYPE_PP);
-
-	pin_set_af(BOARD_SPI2_SCK_PIN, GPIO_AF_5);
-	pin_set_af(BOARD_SPI2_MISO_PIN, GPIO_AF_5);
-	pin_set_af(BOARD_SPI2_MOSI_PIN, GPIO_AF_5);
-
-	spi_init(SPI2); //FIXME add to libmaple F3 port
-	SPI2->regs->CR1 |= SPI_CR1_BR_PCLK_DIV_2;
-	SPI2->regs->CR1 |= SPI_MODE_0;
-	SPI2->regs->CR1 |= SPI_CR1_BIDIMODE_2_LINE;
-	SPI2->regs->CR2 |= SPI_DATA_SIZE_8_BIT;
-	SPI2->regs->CR1 |= SPI_FRAME_MSB;
-	SPI2->regs->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI;
-	SPI2->regs->CR2 |= SPI_CR2_FRXTH;
-	SPI2->regs->CR1 |= SPI_CR1_MSTR;
-	SPI2->regs->CR1 |= SPI_CR1_SPE;
 
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
@@ -646,11 +639,14 @@ setup ()
 
 	ADC1->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
 	nvic_irq_enable (NVIC_ADC1_2);
+	//adc_attach_interrupt (ADC1, ADC_IER_EOS, adc1_2_irq, NULL);
 
 	ADC3->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
+	nvic_irq_enable (NVIC_ADC3);
+	//adc_attach_interrupt (ADC3, ADC_IER_EOS, adc3_irq, NULL);
+
 	ADC3->regs->CFGR |= ADC_CFGR_DMAEN; // enable DMA request
 	ADC3->regs->CFGR |= ADC_CFGR_DMACFG, // enable ADC circular mode for use with DMA
-	nvic_irq_enable (NVIC_ADC3);
 
 	ADC12_BASE->CCR |= ADC_MDMA_MODE_ENABLE_12_10_BIT; // enable ADC DMA in 12-bit dual mode
 	ADC12_BASE->CCR |= ADC_CCR_DMACFG; // enable ADC circular mode for use with DMA
