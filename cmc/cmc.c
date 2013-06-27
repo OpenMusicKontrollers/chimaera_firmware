@@ -60,8 +60,8 @@ cmc_init ()
 	cmc.fid = 0; // we start counting at 1, 0 marks an 'out of order' frame
 	cmc.sid = 0; // we start counting at 0
 
-	cmc.d = 1.0 / SENSOR_N;
-	cmc.d_2 = cmc.d / 2;
+	cmc.d = 1.0 / (float)SENSOR_N;
+	cmc.d_2 = cmc.d / 2.0;
 
 	for (i=0; i<SENSOR_N+2; i++)
 	{
@@ -104,6 +104,8 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			float y = ((float)aval * range.as_1_sc_1[pos]) - range.bmin_sc_1;
 			cmc.v[newpos] = y; //FIXME get rid of cmc structure.
 		}
+		else
+			cmc.v[pos+1] = 0.0; //FIXME necessary?
 	}
 
 	uint8_t changed = 1; //TODO actually check for changes
@@ -111,14 +113,24 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	/*
 	 * detect peaks
 	 */
-
 	n_peaks = 0;
 	uint8_t up = 1;
 	uint8_t a;
 	for (a=1; a<n_aoi; a++)
 	{
-		uint8_t p0 = aoi[a-1];
-		uint8_t p1 = aoi[a];
+		uint8_t p0 = aoi[a-1]; //TODO optimize
+		uint8_t p1 = aoi[a]; //TODO optimize
+
+		/*
+		if (p1 > p0+1) // new local AOI
+		{
+			if (up)
+				peaks[n_peaks++] = p0;
+			else
+				up = 1;
+			continue; //FIXME
+		}
+		*/
 
 		if (up)
 		{
@@ -131,7 +143,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		}
 		else // !up
 		{
-			if (cmc.v[p1] > cmc.v[p0])
+			if (cmc.v[p1] > cmc.v[p0]) //TODO what if two peaks are equally high?
 				up = 1;
 			// else up := 0
 		}
@@ -146,52 +158,149 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	{
 		float x, y;
 		uint8_t P = peaks[p];
-		//fit parabola
 
-		float y0 = cmc.v[P-1];
-		float y1 = cmc.v[P];
-		float y2 = cmc.v[P+1];
-
-		if (y0 < 0.0) y0 = 0.0;
-		if (y0 > 1.0) y0 = 1.0;
-		if (y1 < 0.0) y1 = 0.0;
-		if (y1 > 1.0) y1 = 1.0;
-		if (y2 < 0.0) y2 = 0.0;
-		if (y2 > 1.0) y2 = 1.0;
-
-		// lookup square root
-		float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
-		float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
-		float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
-
-		y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
-		y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
-		y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
-
-		// parabolic interpolation
-		float divisor = y0 - 2.0*y1 + y2;
-		//float divisor = y0 - (y1<<1) + y2;
-
-		if (divisor == 0.0)
+		switch (config.interpolation.order)
 		{
-			x = cmc.x[P];
-			y = y1;
-		}
-		else
-		{
-			float divisor_1 = 1.0 / divisor;
+			case 0:
+			{
+				//TODO
+				break;
+			}
+			case 2: // quadratic interpolation, aka fitting a parabola
+			{
+				float y0 = cmc.v[P-1];
+				float y1 = cmc.v[P];
+				float y2 = cmc.v[P+1];
 
-			//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
-			x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
+				if (y0 < 0.0) y0 = 0.0;
+				if (y0 > 1.0) y0 = 1.0;
+				if (y1 < 0.0) y1 = 0.0;
+				if (y1 > 1.0) y1 = 1.0;
+				if (y2 < 0.0) y2 = 0.0;
+				if (y2 > 1.0) y2 = 1.0;
 
-			//float y = y1; // dummy
+				// lookup square root
+				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
+				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
+				float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
 
-			//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
-			float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
-			//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
+				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
+				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+				y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
 
-			//float y = dividend / divisor;
-			y = dividend * divisor_1; // multiplication instead of division
+				// parabolic interpolation
+				float divisor = y0 - 2.0*y1 + y2;
+				//float divisor = y0 - (y1<<1) + y2;
+
+				if (divisor == 0.0)
+				{
+					x = cmc.x[P];
+					y = y1;
+				}
+				else
+				{
+					float divisor_1 = 1.0 / divisor;
+
+					//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
+					x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
+
+					//float y = y1; // dummy
+
+					//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
+					float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
+					//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
+
+					//float y = dividend / divisor;
+					y = dividend * divisor_1; // multiplication instead of division
+				}
+				break;
+			}
+			case 3: // cubic interpolation
+			{
+				float y0, y1, y2, y3, x1;
+
+				float tm1 = cmc.v[P-1];
+				float thi = cmc.v[P];
+				float tp1 = cmc.v[P+1];
+
+				if (tm1 >= tp1)
+				{
+					x1 = cmc.x[P-1];
+					y0 = cmc.v[P-2]; //FIXME caution
+					y1 = tm1;
+					y2 = thi;
+					y3 = tp1;
+				}
+				else // tp1 > tm1
+				{
+					x1 = cmc.x[P];
+					y0 = tm1;
+					y1 = thi;
+					y2 = tp1;
+					y3 = cmc.v[P+2]; //FIXME caution
+				}
+
+				/*
+				if (y0 < 0.0) y0 = 0.0;
+				if (y0 > 1.0) y0 = 1.0;
+				if (y1 < 0.0) y1 = 0.0;
+				if (y1 > 1.0) y1 = 1.0;
+				if (y2 < 0.0) y2 = 0.0;
+				if (y2 > 1.0) y2 = 1.0;
+				if (y3 < 0.0) y3 = 0.0;
+				if (y3 > 1.0) y3 = 1.0;
+
+				// lookup square root
+				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
+				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
+				float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
+				float sqrt3 = lookup_sqrt[(uint16_t)(y3*0x7FF)];
+
+				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
+				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+				y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
+				y3 = config.curve.A * sqrt3 + config.curve.B * y3; // + config.curve.C;
+
+				// simple cubic splines
+				//float a0 = y3 - y2 - y0 + y1;
+				//float a1 = y0 - y1 - a0;
+				//float a2 = y2 - y0;
+				//float a3 = y1;
+			
+				// catmull-rom splines
+				float a0 = -0.5*y0 + 1.5*y1 - 1.5*y2 + 0.5*y3;
+				float a1 = y0 - 2.5*y1 + 2.0*y2 - 0.5*y3;
+				float a2 = -0.5*y0 + 0.5*y2;
+				float a3 = y1;
+
+				float mu;
+				if (a0 == 0.0)
+				{
+					mu = -0.5 * a2 / a1;
+				}
+				else
+				{
+					float _3a0 = 3.0 * a0;
+					float s = a1*a1 - _3a0*a2;
+					if (s < 0.0)
+						s = 0.0;
+					else
+						s = sqrt(s); //TODO sqrt(0:4) := 2*sqrt(0:1) -> lookup_sqrt
+
+					mu = (-a1 - s) / _3a0;
+
+					//TODO mu must be [0:1]
+				}
+
+				x = x1 + mu*cmc.d;
+				float mu2 = mu*mu;
+				y = a0*mu2*mu + a1*mu2 + a2*mu + a3;
+				*/
+
+				x = x1;
+				y = y1;
+				break;
+			}
 		}
 
 		if (x < 0.0) x = 0.0;
@@ -360,7 +469,19 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				if ( ( (tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
 				{
 					if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
-						tar->sid = ++(cmc.sid); //TODO also set state
+					{
+						// mark old blob as DISAPPEARED
+						for (i=0; i<cmc.I; i++)
+							if (cmc.blobs[cmc.old][i].sid == tar->sid)
+							{
+								cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+								break;
+							}
+
+						// mark new blob as APPEARED and give it a new sid
+						tar->sid = ++(cmc.sid);
+						tar->state = CMC_BLOB_APPEARED;
+					}
 
 					tar->group = ptr;
 
@@ -431,7 +552,8 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					}
 				}
 
-			if (engine->off_cb && (cmc.I > cmc.J) )
+			//if (engine->off_cb && (cmc.I > cmc.J) ) //FIXME I and J can be equal with different SIDs
+			if (engine->off_cb)
 				for (i=0; i<cmc.I; i++)
 				{
 					CMC_Blob *tar = &cmc.blobs[cmc.old][i];
