@@ -29,10 +29,10 @@
 #include "../config/config_private.h"
 
 uint32_t frame = 0;
-nOSC_Arg dump_msg [3];
+nOSC_Arg dump_msg [2];
 
 nOSC_Item dump_bndl [] = {
-	nosc_message(dump_msg, "/dump", "itb")
+	nosc_message(dump_msg, "/dump", "ib")
 };
 char *dump_fmt = "M";
 
@@ -52,5 +52,4 @@ inline void
 dump_update (nOSC_Timestamp now)
 {
 	nosc_message_set_int32 (dump_msg, DUMP_FRAME, ++frame);
-	nosc_message_set_timestamp (dump_msg, DUMP_TIME, now);
 }

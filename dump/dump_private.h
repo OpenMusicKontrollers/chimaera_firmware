@@ -27,7 +27,6 @@
 #include <dump.h>
 
 #define DUMP_FRAME 0
-#define DUMP_TIME 1
-#define DUMP_BLOB 2
+#define DUMP_BLOB 1
 
 #endif /* DUMP_PRIVATE_H */
