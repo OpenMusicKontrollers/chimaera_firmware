@@ -27,6 +27,8 @@
 #include <oscmidi.h>
 #include <nosc.h>
 
-#define OSCMIDI_MAX BLOB_MAX*3+1 // 3 compound midi commands per blob in average plus timestamp
+#define OSCMIDI_MAX BLOB_MAX*3 // 3 compound midi commands per blob
+
+typedef nOSC_Arg OSCMidi_Msg [3];
 
 #endif /* OSCMIDI_PRIVATE_H */
