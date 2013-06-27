@@ -36,6 +36,7 @@ typedef enum _SCSynth_Add_Action {
 	SCSYNTH_ADD_REPLACE = 4
 } SCSynth_Add_Action;
 
+extern nOSC_Timestamp scsynth_timestamp;
 extern nOSC_Item scsynth_bndl [];
 extern char scsynth_fmt [];
 extern CMC_Engine scsynth_engine;

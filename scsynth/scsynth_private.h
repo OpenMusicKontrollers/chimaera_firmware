@@ -27,11 +27,6 @@
 #include <scsynth.h>
 #include <nosc.h>
 
-#define SCSYNTH_MAX (BLOB_MAX+1)
-
-typedef nOSC_Arg SCSynth_On_Msg [8];
-typedef nOSC_Arg SCSynth_Off_Msg [3];
-typedef nOSC_Arg SCSynth_Free_Msg [1];
-typedef nOSC_Arg SCSynth_Set_Msg [7];
+typedef nOSC_Arg SCSynth_Msg [9];
 
 #endif /* SCSYNTH_PRIVATE_H */
