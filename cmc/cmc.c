@@ -161,12 +161,17 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 		switch (config.interpolation.order)
 		{
-			case 0:
+			case 0: // no interpolation
 			{
 				//TODO
 				break;
 			}
-			case 2: // quadratic interpolation, aka fitting a parabola
+			case 1: // linear interpolation
+			{
+				//TODO
+				break;
+			}
+			case 2: // quadratic, aka parabolic interpolation
 			{
 				float y0 = cmc.v[P-1];
 				float y1 = cmc.v[P];

@@ -106,10 +106,8 @@ Config config = {
 
 	.scsynth = {
 		.enabled = 0,
-		.instrument = {'c', 'h', 'i', 'm', 'i', 'n', 's', 't', '\0'},
 		.offset = 1000,
-		.modulo = 8,
-		.prealloc = 1,
+		.modulo = 8000,
 		.addaction = SCSYNTH_ADD_TO_HEAD
 	},
 	
@@ -120,7 +118,7 @@ Config config = {
 			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
-		.offset = 0ULLK
+		.offset = 0.001ULLK // := 1ms offset
 	},
 
 	.config = {
@@ -199,6 +197,11 @@ Config config = {
 	.movingaverage = {
 		.enabled = 0, //FIXME
 		.bitshift = 3 // moving average over 8(2³) samples
+	},
+
+	.interpolation = {
+		.order = 2, // use hyperbolic interpolation by default
+		//.order = 3, // use cubic interpolation by default
 	},
 
 	.rate = 2000, // update rate in Hz
@@ -595,7 +598,7 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 	else
 	{
 		uint8_t arg = args[1].i;
-		if ( (arg >= min) && (arg < max) )
+		if ( (arg >= min) && (arg <= max) )
 		{
 			*val = arg;
 			size = CONFIG_SUCCESS ("i", id);
@@ -626,7 +629,7 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 	else
 	{
 		uint16_t arg = args[1].i;
-		if ( (arg >= min) && (arg < max) )
+		if ( (arg >= min) && (arg <= max) )
 		{
 			*val = arg;
 			size = CONFIG_SUCCESS ("i", id);
@@ -657,7 +660,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 	else
 	{
 		float arg = args[1].f;
-		if ( (arg >= min) && (arg < max) )
+		if ( (arg >= min) && (arg <= max) )
 		{
 			*val = arg;
 			size = CONFIG_SUCCESS ("i", id);
@@ -1134,32 +1137,6 @@ _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	return res;
 }
 
-//TODO make arbitrary function to read/write string
-static uint8_t
-_scsynth_instrument (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (argc == 1) // query
-	{
-		size = CONFIG_SUCCESS ("is", id, config.scsynth.instrument);
-	}
-	else
-	{
-		if (strlen (args[1].s) < NAME_LENGTH)
-		{
-			strcpy (config.scsynth.instrument, args[1].s);
-			size = CONFIG_SUCCESS ("i", id);
-		}
-		else
-			size = CONFIG_FAIL ("is", id, "name is too long");
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
 
 static uint8_t
 _scsynth_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
@@ -1171,12 +1148,6 @@ static uint8_t
 _scsynth_modulo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range16 (&config.scsynth.modulo, 0x0000, 0xffff, path, fmt, argc, args);
-}
-
-static uint8_t
-_scsynth_prealloc (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	return _check_bool (path, fmt, argc, args, &config.scsynth.prealloc);
 }
 
 static uint8_t
@@ -1400,6 +1371,12 @@ _movingaverage_samples (const char *path, const char *fmt, uint8_t argc, nOSC_Ar
 		}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
+}
+
+static uint8_t
+_interpolation_order (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	return _check_range8 (&config.interpolation.order, 0, 3, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -1821,10 +1798,8 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
-	{"/chimaera/scsynth/instrument", "i*", _scsynth_instrument},
 	{"/chimaera/scsynth/offset", "i*", _scsynth_offset},
 	{"/chimaera/scsynth/modulo", "i*", _scsynth_modulo},
-	{"/chimaera/scsynth/prealloc", "i*", _scsynth_prealloc},
 	{"/chimaera/scsynth/addaction", "i*", _scsynth_addaction},
 
 	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
@@ -1856,6 +1831,8 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/movingaverage/enabled", "i*", _movingaverage_enabled},
 	{"/chimaera/movingaverage/samples", "i*", _movingaverage_samples},
+
+	{"/chimaera/interpolation/order", "i*", _interpolation_order},
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/get", "ii", _group_get},

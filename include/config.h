@@ -82,10 +82,8 @@ struct _Config {
 
 	struct _scsynth {
 		uint8_t enabled;
-		char instrument[NAME_LENGTH];
 		uint16_t offset; //TODO int32_t?
 		uint16_t modulo; //TODO int32_t?
-		uint8_t prealloc;
 		uint8_t addaction;
 	} COMPACT scsynth;
 
@@ -129,14 +127,12 @@ struct _Config {
 
 	struct _rtpmidi {
 		uint8_t enabled;
-		//Socket_Config socket;
 	} COMPACT rtpmidi;
 
 	struct _oscmidi {
 		uint8_t enabled;
 		uint8_t offset;
 		uint8_t effect;
-		//Socket_Config socket;
 	} COMPACT oscmidi;
 
 	struct _curve {
@@ -149,6 +145,10 @@ struct _Config {
 		uint8_t enabled;
 		uint8_t bitshift;
 	} COMPACT movingaverage;
+
+	struct _interpolation {
+		uint8_t order;
+	} COMPACT interpolation;
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
 	uint8_t pacemaker;

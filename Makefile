@@ -1,6 +1,6 @@
 # LIB_MAPLE_HOME needs to be defined in your environment 
 
-export BOARD ?= 48F3
+export BOARD ?= F303CC
 export MEMORY_TARGET ?= jtag
 export USER_MODULES := $(shell pwd)
 
@@ -17,5 +17,5 @@ all: sketch
 flash:	build/48F1.bin
 	python2 $(LIB_MAPLE_HOME)/support/stm32loader.py -p /dev/ttyUSB0 -evw $<
 
-DfuSeDl:	build/48F3.bin
+DfuSeDl:	build/F303CC.bin
 	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<

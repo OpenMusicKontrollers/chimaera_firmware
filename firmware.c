@@ -257,7 +257,7 @@ loop ()
 	uint8_t first = 1;
 	nOSC_Timestamp offset;
 
-#define BENCHMARK
+//#define BENCHMARK
 #ifdef BENCHMARK
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
 	Stop_Watch sw_output_send = {.id = "output_send", .thresh=2000};
@@ -322,10 +322,10 @@ loop ()
 						nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, offset, tuio2_fmt);
 
 					if (config.scsynth.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, offset, scsynth_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, scsynth_timestamp, scsynth_fmt);
 
 					if (config.oscmidi.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, offset, oscmidi_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, oscmidi_timestamp, oscmidi_fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
@@ -344,10 +344,13 @@ loop ()
 					memset (nest_fmt, nOSC_BUNDLE, job);
 					nest_fmt[job] = nOSC_TERM;
 
-					cmc_len = nosc_bundle_serialize (nest_bndl, offset, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+					cmc_len = nosc_bundle_serialize (nest_bndl, nOSC_IMMEDIATE, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 				}
 				else // job == 1, there's no need to send a nested bundle in this case
-					cmc_len = nosc_bundle_serialize (nest_bndl[0].bundle.bndl, offset, nest_bndl[0].bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+				{
+					nOSC_Item *first = &nest_bndl[0];
+					cmc_len = nosc_bundle_serialize (first->bundle.bndl, first->bundle.tt, first->bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+				}
 			}
 
 			if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
@@ -490,7 +493,6 @@ setup ()
 
 	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-
 	pin_write_bit (BOARD_LED_PIN, 1);
 
 	//TODO
@@ -550,10 +552,9 @@ setup ()
 	dma_init (DMA1);
 	dma_init (DMA2);
 
-	// SPI for W5200
-	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit(UDP_PWDN, 0);
+	pin_write_bit (BOARD_LED_PIN, 0);
 
+	// SPI for W5200
 	spi_init(SPI2);
 	spi_data_size(SPI2, SPI_DATA_SIZE_8_BIT);
 	spi_master_enable(SPI2, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
@@ -565,17 +566,25 @@ setup ()
 	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
 	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
 
+	pin_set_modef(UDP_SS, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_SS, 1);
+
+	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_PWDN, 0);
+
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
-	wiz_init (PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem);
+	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem);
 	wiz_mac_set (config.comm.mac);
 
 	// wait for link up before proceeding
 	while (!wiz_link_up ()) // TODO monitor this and go to sleep mode when link is down
 		;
 
-	wiz_init (PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
+	pin_write_bit (BOARD_LED_PIN, 1);
+
+	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
 	uint8_t claimed = 0;
 	if (config.dhcpc.enabled)
