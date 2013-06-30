@@ -110,6 +110,21 @@ Config config = {
 		.modulo = 8000,
 		.addaction = SCSYNTH_ADD_TO_HEAD
 	},
+
+	.rtpmidi = {
+		.enabled = 0,
+		//.socket = {
+		//	.sock = 7,
+		//	.port = {7777, 7777},
+		//	.ip = LAN_BROADCAST
+		//}
+	},
+
+	.oscmidi = {
+		.enabled = 0,
+		.offset = 24,
+		.effect = VOLUME
+	},
 	
 	.output = {
 		.enabled = 1,
@@ -171,21 +186,6 @@ Config config = {
 			.port = {68, 67}, // BOOTPclient, BOOTPserver
 			.ip = {255, 255, 255, 255} // broadcast
 		}
-	},
-
-	.rtpmidi = {
-		.enabled = 0,
-		//.socket = {
-		//	.sock = 7,
-		//	.port = {7777, 7777},
-		//	.ip = LAN_BROADCAST
-		//}
-	},
-
-	.oscmidi = {
-		.enabled = 0,
-		.offset = 24,
-		.effect = VOLUME
 	},
 
 	.curve = {
@@ -958,6 +958,17 @@ _output_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args
 		return _enabled_get (config.output.enabled, path, fmt, argc, args);
 	else
 		return _enabled_set (output_enable, path, fmt, argc, args);
+}
+
+static uint8_t
+_output_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	config.dump.enabled = 0;
+	config.tuio.enabled = 0;
+	config.scsynth.enabled = 0;
+	config.oscmidi.enabled = 0;
+	config.rtpmidi.enabled = 0;
+	return 1;
 }
 
 static uint8_t
@@ -1791,22 +1802,23 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/output/enabled", "i*", _output_enabled},
 	{"/chimaera/output/address", "i*", _output_address},
 	{"/chimaera/output/offset", "i*", _output_offset},
+	{"/chimaera/output/reset", "i", _output_reset},
+
+	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
 	{"/chimaera/tuio/enabled", "i*", _tuio_enabled},
 	{"/chimaera/tuio/long_header", "i*", _tuio_long_header},
-
-	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
 	{"/chimaera/scsynth/offset", "i*", _scsynth_offset},
 	{"/chimaera/scsynth/modulo", "i*", _scsynth_modulo},
 	{"/chimaera/scsynth/addaction", "i*", _scsynth_addaction},
 
-	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
-
 	{"/chimaera/oscmidi/enabled", "i*", _oscmidi_enabled},
 	{"/chimaera/oscmidi/offset", "i*", _oscmidi_offset},
 	{"/chimaera/oscmidi/effect", "i*", _oscmidi_effect},
+
+	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
 
 	{"/chimaera/config/enabled", "i*", _config_enabled},
 	{"/chimaera/config/address", "i*", _config_address},

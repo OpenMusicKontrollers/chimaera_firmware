@@ -70,15 +70,15 @@ struct _Config {
 		uint8_t subnet_check;
 	} COMPACT comm;
 
+	struct _dump {
+		uint8_t enabled;
+	} COMPACT dump;
+
 	struct _tuio {
 		uint8_t enabled;
 		uint8_t version;
 		uint8_t long_header;
 	} COMPACT tuio;
-
-	struct _dump {
-		uint8_t enabled;
-	} COMPACT dump;
 
 	struct _scsynth {
 		uint8_t enabled;
@@ -86,6 +86,16 @@ struct _Config {
 		uint16_t modulo; //TODO int32_t?
 		uint8_t addaction;
 	} COMPACT scsynth;
+
+	struct _oscmidi {
+		uint8_t enabled;
+		uint8_t offset;
+		uint8_t effect;
+	} COMPACT oscmidi;
+
+	struct _rtpmidi {
+		uint8_t enabled;
+	} COMPACT rtpmidi;
 
 	struct _output {
 		uint8_t enabled;
@@ -124,16 +134,6 @@ struct _Config {
 		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT dhcpc;
-
-	struct _rtpmidi {
-		uint8_t enabled;
-	} COMPACT rtpmidi;
-
-	struct _oscmidi {
-		uint8_t enabled;
-		uint8_t offset;
-		uint8_t effect;
-	} COMPACT oscmidi;
 
 	struct _curve {
 		float A;

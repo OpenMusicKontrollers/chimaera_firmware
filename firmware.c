@@ -572,6 +572,8 @@ setup ()
 	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit(UDP_PWDN, 0);
 
+	//FIXME delay
+
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
