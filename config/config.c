@@ -46,18 +46,13 @@ const char *group_err_str = "group not found";
 #define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], success_str, __VA_ARGS__))
 #define CONFIG_FAIL(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], fail_str, __VA_ARGS__))
 
-#define GLOB_BROADCAST {255, 255, 255, 255}
-//#define LAN_BROADCAST {192, 168, 1, 255}
-#define LAN_BROADCAST GLOB_BROADCAST // FIXME
-#define LAN_HOST {192, 168, 1, 10}
+//FIXME solve this elegantly
+//#define LAN_BROADCAST {255, 255, 255, 255} // global
+//#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
+#define LAN_BROADCAST {192, 168, 1, 255} // local
 
-// FIXME set those for Zeroconf
-//#define LAN_BROADCAST {169, 254, 255, 255}
-//#define LAN_HOST {169, 254, 205, 27}
-
-// FIXME set those for DHCP
-//#define LAN_BROADCAST {46, 126, 89, 221}
-//#define LAN_HOST {46, 126, 89, 221}
+//#define LAN_HOST {169, 254, 5, 207} // IPv4LL
+#define LAN_HOST {192, 168, 1, 10} // local
 
 float Y1 = 0.7;
 
@@ -200,8 +195,10 @@ Config config = {
 	},
 
 	.interpolation = {
-		.order = 2, // use hyperbolic interpolation by default
-		//.order = 3, // use cubic interpolation by default
+		//.order = 0, // use no interpolation at all
+		//.order = 1, // use linear interpolation
+		//.order = 2, // use quadratic, aka hyperbolic interpolation
+		.order = 3, // use cubic interpolation
 	},
 
 	.rate = 2000, // update rate in Hz

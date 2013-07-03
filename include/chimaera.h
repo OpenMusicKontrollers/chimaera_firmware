@@ -51,15 +51,15 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define OSC_ARGS_MAX 12
 
-// DSP-F1
-#define UDP_PWDN PB11
-#define UDP_SS BOARD_SPI2_NSS_PIN
-#define UDP_INT PA8
-
-// DSP-F3
-//#define UDP_PWDN PB12
-//#define UDP_SS PA9
-//#define UDP_INT PA10
+#if defined(MCU_STM32F303CC)
+# define UDP_PWDN PB11
+# define UDP_SS BOARD_SPI2_NSS_PIN
+# define UDP_INT PA8
+#elif defined(MCU_STM32F303CB)
+# define UDP_PWDN PB12
+# define UDP_SS PA9
+# define UDP_INT PA10
+#endif
 
 #define CHIMAERA_BUFSIZE 0x400
 

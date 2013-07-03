@@ -163,12 +163,55 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		{
 			case 0: // no interpolation
 			{
-				//TODO
+        float y1 = cmc.v[P];
+
+				if (y1 < 0.0) y1 = 0.0;
+				if (y1 > 1.0) y1 = 1.0;
+
+				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
+				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+
+        x = cmc.x[P]; 
+        y = y1;
+
 				break;
 			}
 			case 1: // linear interpolation
 			{
-				//TODO
+				float x0, y0, a, b;
+
+        float x1 = cmc.x[P];
+				float tm1 = cmc.v[P-1];
+				float y1 = cmc.v[P];
+				float tp1 = cmc.v[P+1];
+
+				if (tm1 >= tp1)
+				{
+          x0 = cmc.x[P-1];
+          y0 = tm1;
+				}
+				else // tp1 > tm1
+				{
+          x0 = cmc.x[P+1];
+          y0 = tp1;
+				}
+
+				if (y0 < 0.0) y0 = 0.0;
+				if (y0 > 1.0) y0 = 1.0;
+				if (y1 < 0.0) y1 = 0.0;
+				if (y1 > 1.0) y1 = 1.0;
+
+				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
+				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
+
+				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
+				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+
+        x = x1 + cmc.d * y0 / (y1+y0);
+        a = (y1-y0) / (x1-x0);
+        b = y0 - a*x0;
+        y = a*x + b;
+
 				break;
 			}
 			case 2: // quadratic, aka parabolic interpolation
@@ -245,7 +288,6 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					y3 = cmc.v[P+2]; //FIXME caution
 				}
 
-				/*
 				if (y0 < 0.0) y0 = 0.0;
 				if (y0 > 1.0) y0 = 1.0;
 				if (y1 < 0.0) y1 = 0.0;
@@ -278,32 +320,36 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				float a2 = -0.5*y0 + 0.5*y2;
 				float a3 = y1;
 
+        float A = 3.0 * a0;
+        float B = 2.0 * a1;
+        float C = a2;
+
 				float mu;
-				if (a0 == 0.0)
-				{
-					mu = -0.5 * a2 / a1;
-				}
-				else
-				{
-					float _3a0 = 3.0 * a0;
-					float s = a1*a1 - _3a0*a2;
-					if (s < 0.0)
-						s = 0.0;
-					else
-						s = sqrt(s); //TODO sqrt(0:4) := 2*sqrt(0:1) -> lookup_sqrt
 
-					mu = (-a1 - s) / _3a0;
-
-					//TODO mu must be [0:1]
-				}
+        if (A == 0.0)
+        {
+          mu = 0.0; // TODO what to do here? fall back to quadratic?
+        }
+        else // A != 0.0
+        {
+          if (C == 0.0)
+            mu = -B / A;
+          else
+          {
+            float A2 = 2.0*A;
+            float D = B*B - 2.0*A2*C;
+            if (D < 0.0) // bad, this'd give an imaginary solution
+              D = 0.0;
+            else
+              D = sqrt(D);
+            mu = (-B - D) / A2;
+          }
+        }
 
 				x = x1 + mu*cmc.d;
 				float mu2 = mu*mu;
 				y = a0*mu2*mu + a1*mu2 + a2*mu + a3;
-				*/
 
-				x = x1;
-				y = y1;
 				break;
 			}
 		}
