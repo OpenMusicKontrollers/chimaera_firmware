@@ -48,11 +48,11 @@ const char *group_err_str = "group not found";
 
 //FIXME solve this elegantly
 //#define LAN_BROADCAST {255, 255, 255, 255} // global
-#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
-//#define LAN_BROADCAST {192, 168, 1, 255} // local
+//#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
+#define LAN_BROADCAST {192, 168, 1, 255} // local
 
-#define LAN_HOST {169, 254, 9, 90} // IPv4LL
-//#define LAN_HOST {192, 168, 1, 10} // local
+//#define LAN_HOST {169, 254, 9, 90} // IPv4LL
+#define LAN_HOST {192, 168, 1, 10} // local
 
 float Y1 = 0.7;
 
@@ -143,7 +143,7 @@ Config config = {
 
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
-		.enabled = 0, // enabled by default
+		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 3,
 			.port = {123, 123},
@@ -161,7 +161,7 @@ Config config = {
 	},
 
 	.ipv4ll = {
-		.enabled = 1
+		.enabled = 0
 	},
 
 	.mdns = {
@@ -1638,6 +1638,30 @@ _uid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
+static void
+_resolve_done (uint8_t *ip, void *data)
+{
+	uint16_t size;
+
+	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+}
+
+static uint8_t
+_resolve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+	const char *name = args[1].s;
+
+	mdns_resolve (name, _resolve_done, NULL);
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
 /*
 static uint8_t
 _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
@@ -1865,6 +1889,8 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/load", "i*", _calibration_load},
 
 	{"/chimaera/uid", "i", _uid},
+
+	{"/chimaera/resolve", "is", _resolve},
 
 	//TODO remove
 	/*

@@ -29,6 +29,7 @@
 typedef struct _DNS_Query DNS_Query;
 typedef struct _DNS_Question DNS_Question;
 typedef struct _DNS_Answer DNS_Answer;
+typedef struct _DNS_Resolve DNS_Resolve;
 
 #define QR_BIT			15
 #define OPCODE_BIT	11
@@ -78,5 +79,11 @@ struct _DNS_Answer {
 	uint32_t TTL;
 	uint16_t RLEN;
 } __attribute((packed,aligned(2)));
+
+struct _DNS_Resolve {
+	char name [32];
+	mDNS_Resolve_Cb cb;
+	void *data;
+};
 
 #endif
