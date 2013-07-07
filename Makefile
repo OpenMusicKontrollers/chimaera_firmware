@@ -1,7 +1,7 @@
 # LIB_MAPLE_HOME needs to be defined in your environment 
 
-#TARGET = F303CB
-TARGET = F303CC
+TARGET = F303CB
+#TARGET = F303CC
 
 export BOARD ?= $(TARGET)
 export MEMORY_TARGET ?= jtag

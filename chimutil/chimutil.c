@@ -130,38 +130,6 @@ debug_reg (const char *id, uint32_t reg)
 	udp_send (config.debug.socket.sock, buf_o_ptr, size);
 }
 
-/*
- * This function converts the array into one number by multiplying each 5-bits
- * channel numbers by multiplications of 2^5
- */
-static uint32_t
-_calc_adc_sequence (uint8_t *adc_sequence_array, uint8_t n)
-{
-	uint8_t i;
-  uint32_t adc_sequence=0;
-
-  for (i=0; i<n; i++)
-		adc_sequence += adc_sequence_array[i] << (i*5);
-
-  return adc_sequence;
-}
-
-void
-set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len)
-{
-	if (len > 12)
-	{
-		dev->regs->SQR1 = _calc_adc_sequence (&(seq[12]), len % 12); 
-		len -= len % 12;
-	}
-	if (len > 6)
-	{
-		dev->regs->SQR2 = _calc_adc_sequence (&(seq[6]), len % 6);
-		len -= len % 6;
-	}
-  dev->regs->SQR3 = _calc_adc_sequence (&(seq[0]), len);
-}
-
 void 
 output_enable (uint8_t b)
 {

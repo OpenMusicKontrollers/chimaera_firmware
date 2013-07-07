@@ -32,7 +32,6 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/dhcpc
 BUILDDIRS += $(BUILD_PATH)/$(d)/rtpmidi
 BUILDDIRS += $(BUILD_PATH)/$(d)/oscmidi
 BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
-BUILDDIRS += $(BUILD_PATH)/$(d)/armfix
 BUILDDIRS += $(BUILD_PATH)/$(d)/arp
 
 ### Local flags: these control how the compiler gets called.
@@ -92,7 +91,6 @@ cSRCS_$(d) += dhcpc/dhcpc.c
 cSRCS_$(d) += rtpmidi/rtpmidi.c
 cSRCS_$(d) += oscmidi/oscmidi.c
 cSRCS_$(d) += scsynth/scsynth.c
-cSRCS_$(d) += armfix/armfix.c
 cSRCS_$(d) += arp/arp.c
 cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c

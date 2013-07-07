@@ -81,7 +81,7 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 
 	fix_s31_32_t clock_offset;
 	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.output.offset with this value by default?
-	clock_offset = 0.5LLK * (fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix);
+	clock_offset = 0.5LLK * ((fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix));
 
 	if (t0 == 0ULLK)
 		t0 = t3.fix;

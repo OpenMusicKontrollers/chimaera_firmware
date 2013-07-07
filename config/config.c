@@ -48,11 +48,11 @@ const char *group_err_str = "group not found";
 
 //FIXME solve this elegantly
 //#define LAN_BROADCAST {255, 255, 255, 255} // global
-//#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
-#define LAN_BROADCAST {192, 168, 1, 255} // local
+#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
+//#define LAN_BROADCAST {192, 168, 1, 255} // local
 
-//#define LAN_HOST {169, 254, 5, 207} // IPv4LL
-#define LAN_HOST {192, 168, 1, 10} // local
+#define LAN_HOST {169, 254, 9, 90} // IPv4LL
+//#define LAN_HOST {192, 168, 1, 10} // local
 
 float Y1 = 0.7;
 
@@ -143,7 +143,7 @@ Config config = {
 
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
-		.enabled = 1, // enabled by default
+		.enabled = 0, // enabled by default
 		.socket = {
 			.sock = 3,
 			.port = {123, 123},
@@ -161,7 +161,7 @@ Config config = {
 	},
 
 	.ipv4ll = {
-		.enabled = 0
+		.enabled = 1
 	},
 
 	.mdns = {

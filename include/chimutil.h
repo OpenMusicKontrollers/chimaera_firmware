@@ -39,8 +39,6 @@ void debug_double (double d);
 void debug_timestamp (nOSC_Timestamp t);
 void debug_reg (const char *id, uint32_t reg);
 
-void set_adc_sequence (const adc_dev *dev, uint8_t *seq, uint8_t len);
-
 void adc_timer_reconfigure ();
 void sntp_timer_reconfigure ();
 void config_timer_reconfigure ();
