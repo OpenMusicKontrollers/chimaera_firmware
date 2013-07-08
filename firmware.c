@@ -477,14 +477,6 @@ config_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
 }
 
-/*
-static void
-udp_irq (void)
-{
-	//TODO
-}
-*/
-
 void
 setup ()
 {
@@ -494,10 +486,6 @@ setup ()
 	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit (BOARD_LED_PIN, 1);
-
-	//TODO
-	//pin_set_mode (UDP_INT, GPIO_INPUT_FLOATING);
-	//attachInterrupt (UDP_INT, udp_irq, FALLING);
 
 	// setup pins to switch the muxes
 	for (i=0; i<MUX_LENGTH; i++)
@@ -511,6 +499,30 @@ setup ()
 	}
 	for (i=0; i<ADC_SING_LENGTH; i++)
 		pin_set_modef (adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+
+	// SPI for W5200
+	spi_init(SPI2);
+	spi_data_size(SPI2, SPI_DATA_SIZE_8_BIT);
+	spi_master_enable(SPI2, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
+													SPI_CR1_BIDIMODE_2_LINE | SPI_FRAME_MSB | SPI_CR1_SSM | SPI_CR1_SSI);
+	spi_config_gpios(SPI2, 1,
+		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit,
+		PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_device, PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MISO_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MOSI_PIN].gpio_bit);
+	pin_set_af(BOARD_SPI2_NSS_PIN, GPIO_AF_0); // we want to handle NSS by software
+	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
+	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
+
+	pin_set_modef(UDP_SS, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_SS, 1);
+
+	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_PWDN, 0);
+
+	pin_set_modef (UDP_INT, GPIO_MODE_INPUT, GPIO_PUPDR_NOPUPD);
+	exti_attach_interrupt((exti_num)(PIN_MAP[UDP_INT].gpio_bit),
+		gpio_exti_port(PIN_MAP[UDP_INT].gpio_device),
+		wiz_irq,
+		EXTI_FALLING);
 
 	// systick 
 	systick_disable ();
@@ -553,26 +565,6 @@ setup ()
 	dma_init (DMA2);
 
 	pin_write_bit (BOARD_LED_PIN, 0);
-
-	// SPI for W5200
-	spi_init(SPI2);
-	spi_data_size(SPI2, SPI_DATA_SIZE_8_BIT);
-	spi_master_enable(SPI2, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
-													SPI_CR1_BIDIMODE_2_LINE | SPI_FRAME_MSB | SPI_CR1_SSM | SPI_CR1_SSI);
-	spi_config_gpios(SPI2, 1,
-		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit,
-		PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_device, PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MISO_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MOSI_PIN].gpio_bit);
-	pin_set_af(BOARD_SPI2_NSS_PIN, GPIO_AF_0); // we want to handle NSS by software
-	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
-	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
-
-	pin_set_modef(UDP_SS, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit(UDP_SS, 1);
-
-	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit(UDP_PWDN, 0);
-
-	//FIXME delay
 
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};

@@ -424,12 +424,19 @@ wiz_subnet_set (uint8_t *subnet)
 	_dma_write (SUBR, subnet, 4);
 }
 
-void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+void
+wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 {
 	wiz_mac_set (mac);
 	wiz_ip_set (ip);
 	wiz_gateway_set (gateway);
 	wiz_subnet_set (subnet);
+}
+
+void
+wiz_irq (void)
+{
+	//TODO, read IRQ registers and act appropriately
 }
 
 void
