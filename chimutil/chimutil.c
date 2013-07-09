@@ -63,12 +63,21 @@ dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len)
 	dma_disable (DMA1, DMA_CH2);
 }
 
+uint8_t
+ip_part_of_subnet (uint8_t *ip)
+{
+	return ( ( (ip[0] && config.comm.subnet[0]) == (config.comm.ip[0] && config.comm.subnet[0]) )
+				&& ( (ip[1] && config.comm.subnet[1]) == (config.comm.ip[1] && config.comm.subnet[1]) )
+				&& ( (ip[2] && config.comm.subnet[2]) == (config.comm.ip[2] && config.comm.subnet[2]) )
+				&& ( (ip[3] && config.comm.subnet[3]) == (config.comm.ip[3] && config.comm.subnet[3]) ) );
+}
+
 uint32_t debug_counter = 0;
 
 void
 debug_str (const char *str)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "is", debug_counter++, str);
@@ -78,7 +87,7 @@ debug_str (const char *str)
 void
 debug_int32 (int32_t i)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "ii", debug_counter++, i);
@@ -88,7 +97,7 @@ debug_int32 (int32_t i)
 void
 debug_float (float f)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "if", debug_counter++, f);
@@ -98,7 +107,7 @@ debug_float (float f)
 void
 debug_double (double d)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "id", debug_counter++, d);
@@ -108,7 +117,7 @@ debug_double (double d)
 void
 debug_timestamp (nOSC_Timestamp t)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", "it", debug_counter++, t);
@@ -118,7 +127,7 @@ debug_timestamp (nOSC_Timestamp t)
 void
 debug_reg (const char *id, uint32_t reg)
 {
-	if (!config.debug.enabled)
+	if (!config.debug.socket.enabled)
 		return;
 	uint16_t size;
 	char str[32+1];
@@ -133,8 +142,8 @@ debug_reg (const char *id, uint32_t reg)
 void 
 output_enable (uint8_t b)
 {
-	config.output.enabled = b;
-	if (config.output.enabled)
+	config.output.socket.enabled = b;
+	if (config.output.socket.enabled)
 	{
 		udp_begin (config.output.socket.sock, config.output.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.output.socket.sock, config.output.socket.ip, config.output.socket.port[DST_PORT]);
@@ -149,8 +158,8 @@ config_enable (uint8_t b)
 	timer_pause (config_timer);
 	config_timer_reconfigure ();
 
-	config.config.enabled = b;
-	if (config.config.enabled)
+	config.config.socket.enabled = b;
+	if (config.config.socket.enabled)
 	{
 		udp_begin (config.config.socket.sock, config.config.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port[DST_PORT]);
@@ -167,8 +176,8 @@ sntp_enable (uint8_t b)
 	timer_pause (sntp_timer);
 	sntp_timer_reconfigure ();
 
-	config.sntp.enabled = b;
-	if (config.sntp.enabled)
+	config.sntp.socket.enabled = b;
+	if (config.sntp.socket.enabled)
 	{
 		udp_begin (config.sntp.socket.sock, config.sntp.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port[DST_PORT]);
@@ -182,8 +191,8 @@ sntp_enable (uint8_t b)
 void 
 debug_enable (uint8_t b)
 {
-	config.debug.enabled = b;
-	if (config.debug.enabled)
+	config.debug.socket.enabled = b;
+	if (config.debug.socket.enabled)
 	{
 		udp_begin (config.debug.socket.sock, config.debug.socket.port[SRC_PORT], 0);
 		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port[DST_PORT]);
@@ -196,8 +205,8 @@ void
 mdns_enable (uint8_t b)
 {
 	//FIXME handle timer
-	config.mdns.enabled = b;
-	if (config.mdns.enabled)
+	config.mdns.socket.enabled = b;
+	if (config.mdns.socket.enabled)
 	{
 		udp_set_remote_har (config.mdns.socket.sock, config.mdns.har);
 		udp_set_remote (config.mdns.socket.sock, config.mdns.socket.ip, config.mdns.socket.port[DST_PORT]);
@@ -211,8 +220,8 @@ void
 dhcpc_enable (uint8_t b)
 {
 	//FIXME handle timer
-	config.dhcpc.enabled = b;
-	if (config.dhcpc.enabled)
+	config.dhcpc.socket.enabled = b;
+	if (config.dhcpc.socket.enabled)
 	{
 		udp_set_remote (config.dhcpc.socket.sock, config.dhcpc.socket.ip, config.dhcpc.socket.port[DST_PORT]);
 		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);

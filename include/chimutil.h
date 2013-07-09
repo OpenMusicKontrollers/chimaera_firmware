@@ -32,6 +32,8 @@
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 
+uint8_t ip_part_of_subnet (uint8_t *ip);
+
 void debug_str (const char *str);
 void debug_int32 (int32_t i);
 void debug_float (float f);

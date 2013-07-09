@@ -86,4 +86,12 @@ struct _DNS_Resolve {
 	void *data;
 };
 
+uint16_t mdns_query_serialize (DNS_Query *query, uint8_t *buf);
+uint16_t mdns_question_serialize (DNS_Question *question, uint8_t *buf);
+uint16_t mdsn_answer_serialize (DNS_Answer *answer, uint8_t *buf);
+
+void mdns_query_deserialize (DNS_Query *query, uint8_t *buf, uint16_t *size);
+void mdns_question_deserialize (DNS_Question *question, uint8_t *buf, uint16_t *size);
+void mdns_answer_deserialize (DNS_Answer *answer, uint8_t *buf, uint16_t *size);
+
 #endif

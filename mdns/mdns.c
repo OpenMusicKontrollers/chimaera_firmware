@@ -208,9 +208,10 @@ dns_answer (DNS_Query *query, uint8_t *buf)
 
 			uint8_t *ip = buf_ptr; 
 
-			//TODO check IP for same net, etc...
-			if (resolve.cb)
-				resolve.cb (ip, resolve.data);
+			// check IP for same subnet
+			if (ip_part_of_subnet (ip)) // TODO make this configurable
+				if (resolve.cb)
+					resolve.cb (ip, resolve.data);
 
 			// reset resolve struct
 			/* //TODO

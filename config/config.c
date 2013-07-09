@@ -108,11 +108,6 @@ Config config = {
 
 	.rtpmidi = {
 		.enabled = 0,
-		//.socket = {
-		//	.sock = 7,
-		//	.port = {7777, 7777},
-		//	.ip = LAN_BROADCAST
-		//}
 	},
 
 	.oscmidi = {
@@ -122,9 +117,10 @@ Config config = {
 	},
 	
 	.output = {
-		.enabled = 1,
 		.socket = {
 			.sock = 1,
+			.enabled = 1,
+			.cb = output_enable,
 			.port = {3333, 3333},
 			.ip = LAN_BROADCAST
 		},
@@ -133,9 +129,10 @@ Config config = {
 
 	.config = {
 		.rate = 10, // rate in Hz
-		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 2,
+			.enabled = 1,
+			.cb = config_enable,
 			.port = {4444, 4444},
 			.ip = LAN_BROADCAST
 		}
@@ -143,18 +140,20 @@ Config config = {
 
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
-		.enabled = 1, // enabled by default
 		.socket = {
 			.sock = 3,
+			.enabled = 1,
+			.cb = sntp_enable,
 			.port = {123, 123},
 			.ip = LAN_HOST
 		}
 	},
 
 	.debug = {
-		.enabled = 1,
 		.socket = {
 			.sock = 4,
+			.enabled = 1,
+			.cb = debug_enable,
 			.port = {6666, 6666},
 			.ip = LAN_BROADCAST
 		}
@@ -165,19 +164,21 @@ Config config = {
 	},
 
 	.mdns = {
-		.enabled = 1,
 		.har = {0x01, 0x00, 0x5e, 0x00, 0x00, 0xfb}, // hardware address for mDNS multicast
 		.socket = {
 			.sock = 5,
+			.enabled = 1,
+			.cb = mdns_enable,
 			.port = {5353, 5353}, // mDNS multicast port
 			.ip = {224, 0, 0, 251} // mDNS multicast group
 		}
 	},
 
 	.dhcpc = {
-		.enabled = 0,
 		.socket = {
 			.sock = 6,
+			.enabled = 0,
+			.cb = dhcpc_enable,
 			.port = {68, 67}, // BOOTPclient, BOOTPserver
 			.ip = {255, 255, 255, 255} // broadcast
 		}
@@ -789,10 +790,9 @@ str2addr (char *str, uint8_t *ip, uint16_t *port)
 }
 
 static void
-addr2str (const char *protocol, const char *transport, uint8_t *ip, uint16_t port, char *str)
+addr2str (uint8_t *ip, uint16_t port, char *str)
 {
-	sprintf (str, "%s.%s://%i.%i.%i.%i:%i",
-		protocol, transport,
+	sprintf (str, "%i.%i.%i.%i:%i",
 		ip[0], ip[1], ip[2], ip[3], port);
 }
 
@@ -923,12 +923,18 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 static uint8_t
-_enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	size = CONFIG_SUCCESS ("ii", id, b ? 1 : 0);
+	if (argc == 1) // query
+		size = CONFIG_SUCCESS ("ii", id, socket->enabled ? 1 : 0);
+	else
+	{
+		socket->cb (args[1].i);
+		size = CONFIG_SUCCESS ("i", id);
+	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -936,25 +942,9 @@ _enabled_get (uint8_t b, const char *path, const char *fmt, uint8_t argc, nOSC_A
 }
 
 static uint8_t
-_enabled_set (void (*cb) (uint8_t b), const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	cb (args[1].i);
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-} 
-
-static uint8_t
 _output_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	if (argc == 1) // query
-		return _enabled_get (config.output.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (output_enable, path, fmt, argc, args);
+	return _socket_enabled (&config.output.socket, path, fmt, argc, args);
 }
 
 static uint8_t
@@ -971,66 +961,79 @@ _output_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 static uint8_t
 _config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	if (argc == 1) // query
-		return _enabled_get (config.config.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (config_enable, path, fmt, argc, args);
+	return _socket_enabled (&config.config.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	if (argc == 1) // query
-		return _enabled_get (config.sntp.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (sntp_enable, path, fmt, argc, args);
+	return _socket_enabled (&config.sntp.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	if (argc == 1) // query
-		return _enabled_get (config.debug.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (debug_enable, path, fmt, argc, args);
+	return _socket_enabled (&config.debug.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _dhcpc_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	if (argc == 1) // query
-		return _enabled_get (config.dhcpc.enabled, path, fmt, argc, args);
-	else
-		return _enabled_set (dhcpc_enable, path, fmt, argc, args);
+	return _socket_enabled (&config.dhcpc.socket, path, fmt, argc, args);
 }
 
 const char *addr_err_str = "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100"; //TODO move me up
 
+static void
+_address_dns_cb (uint8_t *ip, void *data)
+{
+	debug_str ("_address_dns_cb");
+	Socket_Config *socket = data;
+
+	memcpy (socket->ip, ip, 4);
+	socket->cb (socket->enabled);
+}
+
 static uint8_t
-_address (Socket_Config *socket, void (*cb) (uint8_t b), const char *protocol, const char *transport, uint8_t flag, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_address (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
+	char *hostname = args[1].s;
 
 	if (argc == 1) // query
 	{
 		char addr[ADDR_STR_LEN];
-		addr2str (protocol, transport, socket->ip, socket->port[DST_PORT], addr);
+		addr2str (socket->ip, socket->port[DST_PORT], addr);
 		size = CONFIG_SUCCESS ("is", id, addr);
 	}
 	else
 	{
 		uint16_t port;
 		uint8_t ip[4];
-		if (str2addr(args[1].s, ip, &port)) // TODO check if valid
+		if (str2addr(hostname, ip, &port))
 		{
 			socket->port[DST_PORT] = port;
 			memcpy (socket->ip, ip, 4);
-			cb (flag);
+			socket->cb (socket->enabled);
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-			size = CONFIG_FAIL ("is", id, addr_err_str);
+		{
+			if (strstr (hostname, ".local")) // TODO use const localdomain
+			{
+				char *port_str = strstr (hostname, ":");
+				port = atoi (port_str+1);
+				socket->port[DST_PORT] = port;
+
+				mdns_resolve (hostname, _address_dns_cb, socket);
+				size = CONFIG_SUCCESS ("i", id);
+			}
+			else
+			{
+				size = CONFIG_FAIL ("is", id, "can only resolve raw IP and mDNS addresses");
+			}
+		}
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1041,25 +1044,41 @@ _address (Socket_Config *socket, void (*cb) (uint8_t b), const char *protocol, c
 static uint8_t
 _output_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _address (&config.output.socket, output_enable, "osc", "udp", config.output.enabled, path, fmt, argc, args);
+	return _address (&config.output.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _config_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _address (&config.config.socket, config_enable, "osc", "udp", config.config.enabled, path, fmt, argc, args);
+	return _address (&config.config.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _sntp_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _address (&config.sntp.socket, sntp_enable, "ntp", "udp", config.sntp.enabled, path, fmt, argc, args);
+	return _address (&config.sntp.socket, path, fmt, argc, args);
 }
 
 static uint8_t
 _debug_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _address (&config.debug.socket, debug_enable, "osc", "udp", config.debug.enabled, path, fmt, argc, args);
+	return _address (&config.debug.socket, path, fmt, argc, args);
+}
+
+static void
+_host_address_dns_cb (uint8_t *ip, void *data)
+{
+	debug_str ("_host_address_dns_cb");
+
+	memcpy (config.output.socket.ip, ip, 4);
+	memcpy (config.config.socket.ip, ip, 4);
+	memcpy (config.sntp.socket.ip, ip, 4);
+	memcpy (config.debug.socket.ip, ip, 4);
+
+	output_enable (config.output.socket.enabled);
+	config_enable (config.config.socket.enabled);
+	sntp_enable (config.sntp.socket.enabled);
+	debug_enable (config.debug.socket.enabled);
 }
 
 static uint8_t
@@ -1067,22 +1086,28 @@ _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
+	char *hostname = args[1].s;
 
 	uint8_t ip[4];
-	if (str2ip (args[1].s, ip)) // TODO check if valid
+	if (str2ip (hostname, ip)) // an IPv4 was given in string format
 	{
-		memcpy (config.output.socket.ip, ip, 4);
-		memcpy (config.config.socket.ip, ip, 4);
-		memcpy (config.sntp.socket.ip, ip, 4);
-		memcpy (config.debug.socket.ip, ip, 4);
-
-		output_enable (config.output.enabled);
-		config_enable (config.config.enabled);
-		sntp_enable (config.sntp.enabled);
-		debug_enable (config.debug.enabled);
+		_host_address_dns_cb (ip, NULL);
+		size = CONFIG_SUCCESS ("i", id);
+	}
+	else
+	{
+		if (strstr (hostname, ".local")) // resolve via mDNS
+		{
+			mdns_resolve (hostname, _host_address_dns_cb, NULL);
+			size = CONFIG_SUCCESS ("i", id);
+		}
+		else // resolve via unicast DNS
+		{
+			size = CONFIG_FAIL ("is", "can only resolve raw IP and mDNS addresses");
+			// FIXME TODO
+		}
 	}
 
-	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;

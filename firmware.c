@@ -285,7 +285,7 @@ loop ()
 
 		if (calibrating)
 			range_calibrate (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
-		else if (config.output.enabled)
+		else if (config.output.socket.enabled)
 		{
 			uint8_t job = 0;
 
@@ -377,14 +377,14 @@ loop ()
 		}
 
 		// run osc config server
-		if (config.config.enabled && config_should_listen)
+		if (config.config.socket.enabled && config_should_listen)
 		{
 			udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
 			config_should_listen = 0;
 		}
 		
 		// run sntp client
-		if (config.sntp.enabled)
+		if (config.sntp.socket.enabled)
 		{
 			// listen for sntp request answer
 			if (sntp_should_listen)
@@ -405,7 +405,7 @@ loop ()
 		}
 
 		// run ZEROCONF server
-		if (config.mdns.enabled && mdns_should_listen)
+		if (config.mdns.socket.enabled && mdns_should_listen)
 		{
 			udp_dispatch (config.mdns.socket.sock, buf_o_ptr, mdns_cb);
 			mdns_should_listen = 0;
@@ -581,9 +581,9 @@ setup ()
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
 	uint8_t claimed = 0;
-	if (config.dhcpc.enabled)
+	if (config.dhcpc.socket.enabled)
 	{
-		dhcpc_enable (config.dhcpc.enabled);
+		dhcpc_enable (config.dhcpc.socket.enabled);
 		claimed = dhcpc_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
 	}
 	if (!claimed && config.ipv4ll.enabled)
@@ -604,11 +604,11 @@ setup ()
 	adc_timer_reconfigure ();
 
 	// initialize sockets
-	output_enable (config.output.enabled);
-	config_enable (config.config.enabled);
-	sntp_enable (config.sntp.enabled);
-	debug_enable (config.debug.enabled);
-	mdns_enable (config.mdns.enabled);
+	output_enable (config.output.socket.enabled);
+	config_enable (config.config.socket.enabled);
+	sntp_enable (config.sntp.socket.enabled);
+	debug_enable (config.debug.socket.enabled);
+	mdns_enable (config.mdns.socket.enabled);
 
 	// set up ADCs
 	adc_disable (ADC1);

@@ -35,11 +35,14 @@
 
 #define COMPACT __attribute__((packed,aligned(1))) // we don't have endless space in EEPROM
 
+typedef void (*Socket_Enable_Cb) (uint8_t flag);
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
 
 struct _Socket_Config {
 	uint8_t sock;
+	uint8_t enabled;
+	Socket_Enable_Cb cb;
 	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
 } COMPACT;
@@ -98,25 +101,21 @@ struct _Config {
 	} COMPACT rtpmidi;
 
 	struct _output {
-		uint8_t enabled;
 		Socket_Config socket;
 		nOSC_Timestamp offset;
 	} COMPACT output;
 
 	struct _config {
 		uint16_t rate;
-		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT config;
 
 	struct _sntp {
 		uint8_t tau;
-		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT sntp;
 
 	struct _debug {
-		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT debug;
 
@@ -125,13 +124,11 @@ struct _Config {
 	} COMPACT ipv4ll;
 
 	struct _mdns {
-		uint8_t enabled;
 		uint8_t har [6];
 		Socket_Config socket;
 	} COMPACT mdns;
 
 	struct _dhcpc {
-		uint8_t enabled;
 		Socket_Config socket;
 	} COMPACT dhcpc;
 
