@@ -47,7 +47,7 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define SENSOR_N (MUX_MAX*ADC_LENGTH)
 #define BLOB_MAX 8
-#define GROUP_MAX 4
+#define GROUP_MAX 8
 
 #define OSC_ARGS_MAX 12
 
@@ -71,7 +71,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define CONFIG_TIMER_PRIORITY 0x7
 #define TIMEOUT_TIMER_PRIORITY 0x8
 
-#define ENGINE_MAX 4 // tuio, scsynth, oscmidi, rtpmidi
+#define ENGINE_MAX 5 // tuio, scsynth, oscmidi, dummy, rtpmidi
 
 #define MAGIC 0x03
 

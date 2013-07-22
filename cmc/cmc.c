@@ -34,6 +34,7 @@
 #include <tuio2.h>
 #include <scsynth.h>
 #include <oscmidi.h>
+#include <dummy.h>
 #include <rtpmidi.h>
 
 uint16_t idle_word = 0;
@@ -49,6 +50,9 @@ uint8_t peaks[BLOB_MAX];
 const char *none_str = "none";
 
 CMC_Engine *engines [ENGINE_MAX+1];
+
+CMC_Blob *cmc_old;
+CMC_Blob *cmc_neu;
 
 void
 cmc_init ()
@@ -74,6 +78,9 @@ cmc_init ()
 
 	cmc.old = 0;
 	cmc.neu = 1;
+
+	cmc_old = cmc.blobs[cmc.old];
+	cmc_neu = cmc.blobs[cmc.neu];
 }
 
 uint8_t
@@ -116,10 +123,13 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	n_peaks = 0;
 	uint8_t up = 1;
 	uint8_t a;
+	uint8_t p1 = aoi[0];
 	for (a=1; a<n_aoi; a++)
 	{
-		uint8_t p0 = aoi[a-1]; //TODO optimize
-		uint8_t p1 = aoi[a]; //TODO optimize
+		//uint8_t p0 = aoi[a-1]; //TODO optimize
+		//uint8_t p1 = aoi[a]; //TODO optimize
+		uint8_t p0 = p1;
+		p1 = aoi[a];
 
 		/*
 		if (p1 > p0+1) // new local AOI
@@ -359,13 +369,14 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		if (y < 0.0) y = 0.0;
 		if (y > 1.0) y = 1.0;
 
-		cmc.blobs[cmc.neu][cmc.J].sid = -1; // not assigned yet
-		cmc.blobs[cmc.neu][cmc.J].pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
-		cmc.blobs[cmc.neu][cmc.J].group = NULL;
-		cmc.blobs[cmc.neu][cmc.J].x = x;
-		cmc.blobs[cmc.neu][cmc.J].p = y;
-		cmc.blobs[cmc.neu][cmc.J].above_thresh = cmc.a[P];
-		cmc.blobs[cmc.neu][cmc.J].state = CMC_BLOB_INVALID;
+		CMC_Blob *blob = &cmc_neu[cmc.J];
+		blob->sid = -1; // not assigned yet
+		blob->pid = cmc.n[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+		blob->group = NULL;
+		blob->x = x;
+		blob->p = y;
+		blob->above_thresh = cmc.a[P];
+		blob->state = CMC_BLOB_INVALID;
 
 		cmc.J++;
 	} // 50us per blob
@@ -391,13 +402,13 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 					if (n_less)
 					{
-						diff0 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x); //TODO use assembly for fabs?
-						diff1 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i+1].x);
+						diff0 = fabs (cmc_neu[j].x - cmc_old[i].x); //TODO use assembly for fabs?
+						diff1 = fabs (cmc_neu[j].x - cmc_old[i+1].x);
 					}
 
 					if ( n_less && (diff1 < diff0) )
 					{
-						cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+						cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 
 						n_less--;
 						i++;
@@ -405,9 +416,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					}
 					else
 					{
-						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
+						cmc_neu[j].sid = cmc_old[i].sid;
+						cmc_neu[j].group = cmc_old[i].group;
+						cmc_neu[j].state = CMC_BLOB_EXISTED;
 
 						i++;
 						j++;
@@ -416,7 +427,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 				// if (n_less)
 				for (i=cmc.I - n_less; i<cmc.I; i++)
-					cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+					cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 
 				break;
 			}
@@ -425,9 +436,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			{
 				for (j=0; j<cmc.J; j++)
 				{
-					cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][j].sid;
-					cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][j].group;
-					cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
+					cmc_neu[j].sid = cmc_old[j].sid;
+					cmc_neu[j].group = cmc_old[j].group;
+					cmc_neu[j].state = CMC_BLOB_EXISTED;
 				}
 
 				break;
@@ -443,20 +454,20 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					
 					if (n_more) // only calculate differences when there are still new blobs to be found
 					{
-						diff0 = fabs (cmc.blobs[cmc.neu][j].x - cmc.blobs[cmc.old][i].x);
-						diff1 = fabs (cmc.blobs[cmc.neu][j+1].x - cmc.blobs[cmc.old][i].x);
+						diff0 = fabs (cmc_neu[j].x - cmc_old[i].x);
+						diff1 = fabs (cmc_neu[j+1].x - cmc_old[i].x);
 					}
 
-					if ( n_more && (diff1 < diff0) ) // cmc.blobs[cmc.neu][j] is the new blob
+					if ( n_more && (diff1 < diff0) ) // cmc_neu[j] is the new blob
 					{
-						if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+						if (cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
 						{
-							cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
-							cmc.blobs[cmc.neu][j].group = NULL;
-							cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+							cmc_neu[j].sid = ++(cmc.sid); // this is a new blob
+							cmc_neu[j].group = NULL;
+							cmc_neu[j].state = CMC_BLOB_APPEARED;
 						}
 						else
-							cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+							cmc_neu[j].state = CMC_BLOB_IGNORED;
 
 						n_more--;
 						j++;
@@ -464,9 +475,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					}
 					else // 1:1 relation
 					{
-						cmc.blobs[cmc.neu][j].sid = cmc.blobs[cmc.old][i].sid;
-						cmc.blobs[cmc.neu][j].group = cmc.blobs[cmc.old][i].group;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_EXISTED;
+						cmc_neu[j].sid = cmc_old[i].sid;
+						cmc_neu[j].group = cmc_old[i].group;
+						cmc_neu[j].state = CMC_BLOB_EXISTED;
 						j++;
 						i++;
 					}
@@ -475,14 +486,14 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				//if (n_more)
 				for (j=cmc.J - n_more; j<cmc.J; j++)
 				{
-					if (cmc.blobs[cmc.neu][j].above_thresh) // check whether it is above threshold for a new blob
+					if (cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
 					{
-						cmc.blobs[cmc.neu][j].sid = ++(cmc.sid); // this is a new blob
-						cmc.blobs[cmc.neu][j].group = NULL;
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_APPEARED;
+						cmc_neu[j].sid = ++(cmc.sid); // this is a new blob
+						cmc_neu[j].group = NULL;
+						cmc_neu[j].state = CMC_BLOB_APPEARED;
 					}
 					else
-						cmc.blobs[cmc.neu][j].state = CMC_BLOB_IGNORED;
+						cmc_neu[j].state = CMC_BLOB_IGNORED;
 				}
 
 				break;
@@ -495,10 +506,10 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		uint8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
 		{
-			uint8_t ignore = cmc.blobs[cmc.neu][j].state == CMC_BLOB_IGNORED;
+			uint8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
 
 			if (newJ != j)
-				memmove (&cmc.blobs[cmc.neu][newJ], &cmc.blobs[cmc.neu][j], sizeof(CMC_Blob));
+				memmove (&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
 
 			if (!ignore)
 				newJ++;
@@ -510,7 +521,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		 */
 		for (j=0; j<cmc.J; j++)
 		{
-			CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
+			CMC_Blob *tar = &cmc_neu[j];
 
 			uint8_t gid;
 			for (gid=0; gid<GROUP_MAX; gid++)
@@ -523,9 +534,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 					{
 						// mark old blob as DISAPPEARED
 						for (i=0; i<cmc.I; i++)
-							if (cmc.blobs[cmc.old][i].sid == tar->sid)
+							if (cmc_old[i].sid == tar->sid)
 							{
-								cmc.blobs[cmc.old][i].state = CMC_BLOB_DISAPPEARED;
+								cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 								break;
 							}
 
@@ -590,7 +601,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			if (engine->on_cb || engine->set_cb)
 				for (j=0; j<cmc.J; j++)
 				{
-					CMC_Blob *tar = &cmc.blobs[cmc.neu][j];
+					CMC_Blob *tar = &cmc_neu[j];
 					if (tar->state == CMC_BLOB_APPEARED)
 					{
 						if (engine->on_cb)
@@ -607,7 +618,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			if (engine->off_cb)
 				for (i=0; i<cmc.I; i++)
 				{
-					CMC_Blob *tar = &cmc.blobs[cmc.old][i];
+					CMC_Blob *tar = &cmc_old[i];
 					if (tar->state == CMC_BLOB_DISAPPEARED)
 						engine->off_cb (tar->sid, tar->group->gid, tar->pid);
 				}
@@ -620,6 +631,9 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	cmc.old = !cmc.old;
 	cmc.neu = !cmc.neu;
 	cmc.I = cmc.J;
+
+	cmc_old = cmc.blobs[cmc.old];
+	cmc_neu = cmc.blobs[cmc.neu];
 
 	return res;
 }
@@ -634,7 +648,6 @@ cmc_group_clear ()
 
 		grp->gid = gid;
 		grp->pid = CMC_BOTH;
-		strcpy (grp->name, none_str);
 		grp->x0 = 0.0;
 		grp->x1 = 1.0;
 		grp->m = 1.0;
@@ -642,11 +655,10 @@ cmc_group_clear ()
 }
 
 uint8_t
-cmc_group_get (uint16_t gid, char **name, uint16_t *pid, float *x0, float *x1)
+cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1)
 {
 	CMC_Group *grp = &cmc.groups[gid];
 
-	*name = grp->name;
 	*pid = grp->pid;
 	*x0 = grp->x0;
 	*x1 = grp->x1;
@@ -655,24 +667,16 @@ cmc_group_get (uint16_t gid, char **name, uint16_t *pid, float *x0, float *x1)
 }
 
 uint8_t
-cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x1)
+cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1)
 {
 	CMC_Group *grp = &cmc.groups[gid];
 
 	grp->pid = pid;
-	strcpy (grp->name, name);
 	grp->x0 = x0;
 	grp->x1 = x1;
 	grp->m = 1.0/(x1-x0);
 
 	return 1;
-}
-
-char *
-cmc_group_name_get (uint16_t gid)
-{
-	CMC_Group *grp = &cmc.groups[gid];
-	return grp->name;
 }
 
 uint8_t *
@@ -696,6 +700,9 @@ cmc_engines_update ()
 
 	if (config.oscmidi.enabled)
 		engines[ptr++] = &oscmidi_engine;
+
+	if (config.dummy.enabled)
+		engines[ptr++] = &dummy_engine;
 
 	if (config.rtpmidi.enabled)
 		engines[ptr++] = &rtpmidi_engine;

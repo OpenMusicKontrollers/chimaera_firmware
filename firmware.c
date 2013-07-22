@@ -57,6 +57,7 @@
 #include <arp.h>
 #include <rtpmidi.h>
 #include <oscmidi.h>
+#include <dummy.h>
 #include <wiz.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
@@ -81,17 +82,17 @@ uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
 uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2] __CCM__;
 uint8_t order3 [MUX_MAX*ADC_SING_LENGTH] __CCM__;
 
-volatile uint8_t adc12_dma_done = 0;
-volatile uint8_t adc12_dma_err = 0;
-volatile uint8_t adc3_dma_done = 0;
-volatile uint8_t adc3_dma_err = 0;
-volatile uint8_t adc_time_up = 1;
-volatile uint8_t adc_raw_ptr = 1;
-volatile uint8_t mux_counter = MUX_MAX;
-volatile uint8_t sntp_should_request = 0;
-volatile uint8_t sntp_should_listen = 0;
-volatile uint8_t mdns_should_listen = 0;
-volatile uint8_t config_should_listen = 0;
+volatile uint_fast8_t adc12_dma_done = 0;
+volatile uint_fast8_t adc12_dma_err = 0;
+volatile uint_fast8_t adc3_dma_done = 0;
+volatile uint_fast8_t adc3_dma_err = 0;
+volatile uint_fast8_t adc_time_up = 1;
+volatile uint_fast8_t adc_raw_ptr = 1;
+volatile uint_fast8_t mux_counter = MUX_MAX;
+volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
+volatile uint_fast8_t sntp_should_listen = 0;
+volatile uint_fast8_t mdns_should_listen = 0;
+volatile uint_fast8_t config_should_listen = 0;
 
 nOSC_Timestamp now;
 
@@ -205,7 +206,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	if (config.comm.subnet_check)
 	{
 		//TODO make a prober function out of this and put it into chimutil
-		uint8_t i;
+		uint_fast8_t i;
 		for (i=0; i<4; i++)
 			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
 			{
@@ -222,7 +223,7 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	if (config.comm.subnet_check)
 	{
-		uint8_t i;
+		uint_fast8_t i;
 		for (i=0; i<4; i++)
 			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
 			{
@@ -249,12 +250,12 @@ loop ()
 	nOSC_Item nest_bndl [ENGINE_MAX];
 	char nest_fmt [ENGINE_MAX+1];
 
-	uint8_t send_status = 0;
-	uint8_t cmc_job = 0;
-	uint16_t cmc_len = 0;
-	uint16_t len = 0;
+	uint_fast8_t send_status = 0;
+	uint_fast8_t cmc_job = 0;
+	uint_fast16_t cmc_len = 0;
+	uint_fast16_t len = 0;
 
-	uint8_t first = 1;
+	uint_fast8_t first = 1;
 	nOSC_Timestamp offset;
 
 //#define BENCHMARK
@@ -287,7 +288,7 @@ loop ()
 			range_calibrate (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
 		else if (config.output.socket.enabled)
 		{
-			uint8_t job = 0;
+			uint_fast8_t job = 0;
 
 #ifdef BENCHMARK
 			stop_watch_start (&sw_output_send);
@@ -309,12 +310,12 @@ loop ()
 				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, offset, dump_fmt);
 			}
 		
-			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.dummy.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
 			{
 #ifdef BENCHMARK
 				stop_watch_start (&sw_tuio_process);
 #endif
-				uint8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
+				uint_fast8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
 
 				if (blobs) // was there any update?
 				{
@@ -326,6 +327,9 @@ loop ()
 
 					if (config.oscmidi.enabled)
 						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, oscmidi_timestamp, oscmidi_fmt);
+
+					if (config.dummy.enabled)
+						nosc_item_bundle_set (nest_bndl, job++, dummy_bndl, dummy_timestamp, dummy_fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
@@ -480,8 +484,8 @@ config_timer_reconfigure ()
 void
 setup ()
 {
-	uint8_t i;
-	uint8_t p;
+	uint_fast8_t i;
+	uint_fast8_t p;
 
 	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
@@ -580,7 +584,7 @@ setup ()
 
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
-	uint8_t claimed = 0;
+	uint_fast8_t claimed = 0;
 	if (config.dhcpc.socket.enabled)
 	{
 		dhcpc_enable (config.dhcpc.socket.enabled);
@@ -694,6 +698,7 @@ setup ()
 	tuio2_init ();
 	scsynth_init ();
 	oscmidi_init ();
+	dummy_init ();
 	rtpmidi_init ();
 
 	// load saved groups

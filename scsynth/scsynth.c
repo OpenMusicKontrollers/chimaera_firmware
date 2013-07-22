@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 
 #include <chimaera.h>
 #include <chimutil.h>
@@ -29,6 +30,8 @@
 #include <cmc.h>
 
 #include "scsynth_private.h"
+
+SCSynth_Group scsynth_groups [GROUP_MAX];
 
 nOSC_Item scsynth_early_bndl [BLOB_MAX];
 nOSC_Item scsynth_late_bndl [BLOB_MAX];
@@ -51,6 +54,8 @@ const char *on_set_fmt = "iififiisi";
 const char *off_fmt = "isi";
 const char *set_fmt = "iififii";
 
+const char *default_fmt = "group%02i";
+
 nOSC_Timestamp scsynth_timestamp;
 nOSC_Timestamp tt;
 
@@ -70,6 +75,21 @@ scsynth_init ()
 	scsynth_fmt[2] = nOSC_TERM;
 
 	scsynth_timestamp = nOSC_IMMEDIATE;
+
+	uint_fast8_t i;
+	for(i=0; i<GROUP_MAX; i++)
+	{
+		SCSynth_Group *group = &scsynth_groups[i];
+		sprintf(group->name, default_fmt, i);
+		group->sid = 1000;
+		group->group = i;
+		group->out = i;
+		group->arg = 0;
+		group->alloc = 1;
+		group->gate = 1;
+		group->add_action = SCSYNTH_ADD_TO_HEAD;
+		group->is_group = 0;
+	}
 }
 
 void
@@ -92,45 +112,53 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 {
 	uint32_t id;
 	nOSC_Message msg;
-
-	id = config.scsynth.offset + sid%config.scsynth.modulo;
+	SCSynth_Group *group = &scsynth_groups[gid];
+	
+	id = group->is_group ? group->group : group->sid + sid;
 
 	// message to create synth (sent early, e.g immediately)
-	msg = msgs[early_i + late_i];
-	nosc_message_set_string (msg, 0, cmc_group_name_get (gid)); // synthdef name 
-	nosc_message_set_int32 (msg, 1, id);
-	nosc_message_set_int32 (msg, 2, config.scsynth.addaction);
-	nosc_message_set_int32 (msg, 3, gid); // group id
-	nosc_message_set_string (msg, 4, (char *)gate_str);
-	nosc_message_set_int32 (msg, 5, 0); // do not start synth yet
-	nosc_message_set_string (msg, 6, (char *)out_str);
-	nosc_message_set_int32 (msg, 7, gid);
+	if(group->alloc)
+	{
+		msg = msgs[early_i + late_i];
+		nosc_message_set_string (msg, 0, group->name); // synthdef name 
+		nosc_message_set_int32 (msg, 1, id);
+		nosc_message_set_int32 (msg, 2, group->add_action);
+		nosc_message_set_int32 (msg, 3, group->group); // group id
+		nosc_message_set_string (msg, 4, (char *)gate_str);
+		nosc_message_set_int32 (msg, 5, 0); // do not start synth yet
+		nosc_message_set_string (msg, 6, (char *)out_str);
+		nosc_message_set_int32 (msg, 7, group->out);
 
-	nosc_item_message_set (scsynth_early_bndl, early_i, msg, (char *)on_str, (char *)on_fmt);
-	scsynth_early_fmt[early_i++] = nOSC_MESSAGE;
-	scsynth_early_fmt[early_i] = nOSC_TERM;
+		nosc_item_message_set (scsynth_early_bndl, early_i, msg, (char *)on_str, (char *)on_fmt);
+		scsynth_early_fmt[early_i++] = nOSC_MESSAGE;
+		scsynth_early_fmt[early_i] = nOSC_TERM;
+
+		// we have an early bundle, so instantiate it
+		nosc_item_bundle_set (scsynth_bndl, 0, scsynth_early_bndl, nOSC_IMMEDIATE, scsynth_early_fmt);
+		nosc_item_bundle_set (scsynth_bndl, 1, scsynth_late_bndl, tt, scsynth_late_fmt);
+		scsynth_fmt[0] = nOSC_BUNDLE;
+		scsynth_fmt[1] = nOSC_BUNDLE;
+		scsynth_fmt[2] = nOSC_TERM;
+	}
 
 	// message to start synth (sent late, e.g. with lag)
-	msg = msgs[early_i + late_i];
-	nosc_message_set_int32 (msg, 0, id);
-	nosc_message_set_int32 (msg, 1, 0);
-	nosc_message_set_float (msg, 2, x);
-	nosc_message_set_int32 (msg, 3, 1);
-	nosc_message_set_float (msg, 4, y);
-	nosc_message_set_int32 (msg, 5, 2);
-	nosc_message_set_int32 (msg, 6, pid);
-	nosc_message_set_string (msg, 7, (char *)gate_str);
-	nosc_message_set_int32 (msg, 8, 1);
+	if(group->gate)
+	{
+		msg = msgs[early_i + late_i];
+		nosc_message_set_int32 (msg, 0, id);
+		nosc_message_set_int32 (msg, 1, group->arg + 0);
+		nosc_message_set_float (msg, 2, x);
+		nosc_message_set_int32 (msg, 3, group->arg + 1);
+		nosc_message_set_float (msg, 4, y);
+		nosc_message_set_int32 (msg, 5, group->arg + 2);
+		nosc_message_set_int32 (msg, 6, pid);
+		nosc_message_set_string (msg, 7, (char *)gate_str);
+		nosc_message_set_int32 (msg, 8, 1);
 
-	nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)on_set_fmt);
-	scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
-	scsynth_late_fmt[late_i] = nOSC_TERM;
-
-	nosc_item_bundle_set (scsynth_bndl, 0, scsynth_early_bndl, nOSC_IMMEDIATE, scsynth_early_fmt);
-	nosc_item_bundle_set (scsynth_bndl, 1, scsynth_late_bndl, tt, scsynth_late_fmt);
-	scsynth_fmt[0] = nOSC_BUNDLE;
-	scsynth_fmt[1] = nOSC_BUNDLE;
-	scsynth_fmt[2] = nOSC_TERM;
+		nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)on_set_fmt);
+		scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
+		scsynth_late_fmt[late_i] = nOSC_TERM;
+	}
 }
 
 void
@@ -138,17 +166,21 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint32_t id;
 	nOSC_Message msg;
+	SCSynth_Group *group = &scsynth_groups[gid];
 
-	id = config.scsynth.offset + sid%config.scsynth.modulo;
+	id = group->is_group ? group->group : group->sid + sid;
 
-	msg = msgs[early_i + late_i];
-	nosc_message_set_int32 (msg, 0, id);
-	nosc_message_set_string (msg, 1, (char *)gate_str);
-	nosc_message_set_int32 (msg, 2, 0);
+	if(group->gate)
+	{
+		msg = msgs[early_i + late_i];
+		nosc_message_set_int32 (msg, 0, id);
+		nosc_message_set_string (msg, 1, (char *)gate_str);
+		nosc_message_set_int32 (msg, 2, 0);
 
-	nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)off_fmt);
-	scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
-	scsynth_late_fmt[late_i] = nOSC_TERM;
+		nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)off_fmt);
+		scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
+		scsynth_late_fmt[late_i] = nOSC_TERM;
+	}
 }
 
 void
@@ -156,16 +188,17 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 {
 	uint32_t id;
 	nOSC_Message msg;
+	SCSynth_Group *group = &scsynth_groups[gid];
 
-	id = config.scsynth.offset + sid%config.scsynth.modulo;
+	id = group->is_group ? group->group : group->sid + sid;
 	
 	msg = msgs[early_i + late_i];
 	nosc_message_set_int32 (msg, 0, id);
-	nosc_message_set_int32 (msg, 1, 0);
+	nosc_message_set_int32 (msg, 1, group->arg + 0);
 	nosc_message_set_float (msg, 2, x);
-	nosc_message_set_int32 (msg, 3, 1);
+	nosc_message_set_int32 (msg, 3, group->arg + 1);
 	nosc_message_set_float (msg, 4, y);
-	nosc_message_set_int32 (msg, 5, 2);
+	nosc_message_set_int32 (msg, 5, group->arg + 2);
 	nosc_message_set_int32 (msg, 6, pid);
 
 	nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)set_fmt);
@@ -179,3 +212,37 @@ CMC_Engine scsynth_engine = {
 	scsynth_engine_off_cb,
 	scsynth_engine_set_cb
 };
+
+void
+scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
+										uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group)
+{
+	SCSynth_Group *grp = &scsynth_groups[gid];
+
+	*name = grp->name;
+	*sid = grp->sid;
+	*group = grp->group;
+	*out = grp->out;
+	*arg = grp->arg;
+	*alloc = grp->alloc;
+	*gate = grp->gate;
+	*add_action = grp->add_action;
+	*is_group = grp->is_group;
+}
+
+void
+scsynth_group_set (uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
+										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
+{
+	SCSynth_Group *grp = &scsynth_groups[gid];
+
+	strcpy(grp->name, name);
+	grp->sid = sid;
+	grp->group = group;
+	grp->out = out;
+	grp->arg = arg;
+	grp->alloc = alloc;
+	grp->gate = gate;
+	grp->add_action = add_action;
+	grp->is_group = is_group;
+}

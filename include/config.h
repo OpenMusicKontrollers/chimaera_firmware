@@ -85,9 +85,6 @@ struct _Config {
 
 	struct _scsynth {
 		uint8_t enabled;
-		uint16_t offset; //TODO int32_t?
-		uint16_t modulo; //TODO int32_t?
-		uint8_t addaction;
 	} COMPACT scsynth;
 
 	struct _oscmidi {
@@ -95,6 +92,10 @@ struct _Config {
 		uint8_t offset;
 		uint8_t effect;
 	} COMPACT oscmidi;
+
+	struct _dummy {
+		uint8_t enabled;
+	} COMPACT dummy;
 
 	struct _rtpmidi {
 		uint8_t enabled;

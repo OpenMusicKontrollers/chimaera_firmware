@@ -100,10 +100,7 @@ Config config = {
 	},
 
 	.scsynth = {
-		.enabled = 0,
-		.offset = 1000,
-		.modulo = 8000,
-		.addaction = SCSYNTH_ADD_TO_HEAD
+		.enabled = 0
 	},
 
 	.rtpmidi = {
@@ -114,6 +111,10 @@ Config config = {
 		.enabled = 0,
 		.offset = 24,
 		.effect = VOLUME
+	},
+
+	.dummy = {
+		.enabled = 0,
 	},
 	
 	.output = {
@@ -191,15 +192,15 @@ Config config = {
 	},
 
 	.movingaverage = {
-		.enabled = 0, //FIXME
+		.enabled = 1,
 		.bitshift = 3 // moving average over 8(2³) samples
 	},
 
 	.interpolation = {
 		//.order = 0, // use no interpolation at all
 		//.order = 1, // use linear interpolation
-		//.order = 2, // use quadratic, aka hyperbolic interpolation
-		.order = 3, // use cubic interpolation
+		.order = 2, // use quadratic, aka hyperbolic interpolation
+		//.order = 3, // use cubic interpolation
 	},
 
 	.rate = 2000, // update rate in Hz
@@ -237,24 +238,24 @@ config_save ()
 void
 adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela, int16_t *swap)
 {
-	uint8_t i;
-	uint8_t pos;
+	uint_fast8_t i;
+	uint_fast8_t pos;
 	uint16_t *qui = range.qui;
 	uint32_t *rela_vec32 = (uint32_t *)rela;
-	//uint32_t *sum_vec32 = (uint32_t *)sum;
+	uint32_t *sum_vec32 = (uint32_t *)sum;
 	uint32_t *qui_vec32 = (uint32_t *)range.qui;
 	uint32_t *swap_vec32 = (uint32_t *)swap;
 
-	/* TODO reimplement movingaverager
+	uint32_t zero = 0UL;
+
 	if (config.movingaverage.enabled)
 		for (i=0; i<SENSOR_N/2; i++)
 		{
-			uint32_t mean = __shadd16 (sum_vec32[i], 0); // mean = sum / 2
-			//mean = __shadd16 (mean, 0); // mean /= 2
-			//mean = __shadd16 (mean, 0); // mean /= 2
+			uint32_t mean = __shadd16 (sum_vec32[i], zero); // mean = sum / 2
+			mean = __shadd16 (mean, zero); // mean /= 2
+			mean = __shadd16 (mean, zero); // mean /= 2
 			sum_vec32[i] = __ssub16 (sum_vec32[i], mean); // sum -= mean
 		}
-	*/
 
 	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
@@ -268,27 +269,49 @@ adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int1
 		rela[pos] = raw3[i];
 	}
 
-	if (config.dump.enabled)
-		for (i=0; i<SENSOR_N/2; i++)
-		{
-			rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-			swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
-		}
-	else // !config.dump.enabled
-		for (i=0; i<SENSOR_N/2; i++)
-			rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-
-	/* TODO reimplement movingaverager
 	if (config.movingaverage.enabled)
-		for (i=0; i<SENSOR_N/2; i++)
-		{
-			sum_vec32[i] = __sadd16 (sum_vec32[i], rela_vec32[i]); // sum += rela
-			uint32_t rela = __shadd16 (sum_vec32[i], 0); // rela = sum /2
-			//rela = __shadd16 (rela, 0); // rela /= 2
-			//rela = __shadd16 (rela, 0); // rela /= 2
-			rela_vec32[i] = rela;
-		}
-	*/
+	{
+		if (config.dump.enabled)
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				uint32_t rela;
+				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+
+				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
+				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela_vec32[i] = rela;
+
+				swap_vec32[i] = __rev16 (rela); // SIMD hton
+			}
+		else // !config.dump.enabled
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				uint32_t rela;
+				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+
+				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
+				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela_vec32[i] = rela;
+			}
+	}
+	else // !config.movingaverage.enabled
+	{
+		if (config.dump.enabled)
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+				swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
+			}
+		else // !config.dump.enabled
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+			}
+	}
 }
 
 uint8_t
@@ -954,6 +977,7 @@ _output_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	config.tuio.enabled = 0;
 	config.scsynth.enabled = 0;
 	config.oscmidi.enabled = 0;
+	config.dummy.enabled = 0;
 	config.rtpmidi.enabled = 0;
 	return 1;
 }
@@ -987,11 +1011,16 @@ const char *addr_err_str = "wrong range: port number must be < 0x10000 and numbe
 static void
 _address_dns_cb (uint8_t *ip, void *data)
 {
+	uint16_t size;
+
 	debug_str ("_address_dns_cb");
 	Socket_Config *socket = data;
 
 	memcpy (socket->ip, ip, 4);
 	socket->cb (socket->enabled);
+
+	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
 static uint8_t
@@ -1068,7 +1097,12 @@ _debug_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 static void
 _host_address_dns_cb (uint8_t *ip, void *data)
 {
+	uint16_t size;
+
 	debug_str ("_host_address_dns_cb");
+
+	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	memcpy (config.output.socket.ip, ip, 4);
 	memcpy (config.config.socket.ip, ip, 4);
@@ -1170,23 +1204,49 @@ _scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	return res;
 }
 
-
 static uint8_t
-_scsynth_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+_scsynth_group (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	return _check_range16 (&config.scsynth.offset, 0x0000, 0xffff, path, fmt, argc, args);
-}
+	uint16_t size;
+	int32_t id = args[0].i;
+	uint16_t gid = args[1].i;
 
-static uint8_t
-_scsynth_modulo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	return _check_range16 (&config.scsynth.modulo, 0x0000, 0xffff, path, fmt, argc, args);
-}
+	char *name;
+	uint16_t sid;
+	uint16_t group;
+	uint16_t out;
+	uint8_t arg;
+	uint8_t alloc;
+	uint8_t gate;
+	uint8_t add_action;
+	uint8_t is_group;
 
-static uint8_t
-_scsynth_addaction (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
-{
-	return _check_range8 (&config.scsynth.addaction, 0, 4, path, fmt, argc, args);
+	if (argc == 2) // query
+	{
+		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
+
+		size = CONFIG_SUCCESS ("isiiiiiiii", id, name, sid, group, out, arg, alloc, gate, add_action, is_group);
+	}
+	else
+	{
+		name = args[2].s;
+		sid = args[3].i;
+		group = args[4].i;
+		out = args[5].i;
+		arg = args[6].i;
+		alloc = args[7].i;
+		gate = args[8].i;
+		add_action = args[9].i;
+		is_group = args[10].i;
+
+		scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group);
+
+		size = CONFIG_SUCCESS ("i", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
 }
 
 static uint8_t
@@ -1215,6 +1275,14 @@ static uint8_t
 _oscmidi_effect (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.oscmidi.effect, 0, 0x7f, path, fmt, argc, args);
+}
+
+static uint8_t
+_dummy_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.dummy.enabled);
+	cmc_engines_update ();
+	return res;
 }
 
 static uint8_t
@@ -1432,13 +1500,12 @@ _group_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	char *name;
 	uint16_t pid;
 	float x0;
 	float x1;
 
-	if (cmc_group_get (args[1].i, &name, &pid, &x0, &x1))
-		size = CONFIG_SUCCESS ("isiff", id, name, pid, x0, x1);
+	if (cmc_group_get (args[1].i, &pid, &x0, &x1))
+		size = CONFIG_SUCCESS ("iiff", id, pid, x0, x1);
 	else
 		size = CONFIG_FAIL ("is", id, group_err_str);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1452,7 +1519,7 @@ _group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	if (cmc_group_set (args[1].i, args[2].s, args[3].i, args[4].f, args[5].f))
+	if (cmc_group_set (args[1].i, args[2].i, args[3].f, args[4].f))
 		size = CONFIG_SUCCESS ("i", id);
 	else
 		size = CONFIG_FAIL ("is", id, group_err_str);
@@ -1856,13 +1923,13 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/tuio/long_header", "i*", _tuio_long_header},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
-	{"/chimaera/scsynth/offset", "i*", _scsynth_offset},
-	{"/chimaera/scsynth/modulo", "i*", _scsynth_modulo},
-	{"/chimaera/scsynth/addaction", "i*", _scsynth_addaction},
+	{"/chimaera/scsynth/group", "ii*", _scsynth_group},
 
 	{"/chimaera/oscmidi/enabled", "i*", _oscmidi_enabled},
 	{"/chimaera/oscmidi/offset", "i*", _oscmidi_offset},
 	{"/chimaera/oscmidi/effect", "i*", _oscmidi_effect},
+
+	{"/chimaera/dummy/enabled", "i*", _dummy_enabled},
 
 	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
 
@@ -1894,7 +1961,7 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/get", "ii", _group_get},
-	{"/chimaera/group/set", "iisiff", _group_set},
+	{"/chimaera/group/set", "iiiff", _group_set},
 
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},

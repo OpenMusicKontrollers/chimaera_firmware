@@ -49,10 +49,9 @@ void cmc_init ();
 uint8_t cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines);
 
 void cmc_group_clear ();
-uint8_t cmc_group_get (uint16_t gid, char **name, uint16_t *pid, float *x0, float *x1);
-uint8_t cmc_group_set (uint16_t gid, char *name, uint16_t pid, float x0, float x1);
+uint8_t cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1);
+uint8_t cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1);
 
-char *cmc_group_name_get (uint16_t gid);
 uint8_t *cmc_group_buf_get (uint16_t *size); //TODO this is ugly code, solve differently
 
 extern CMC_Engine *engines [];
