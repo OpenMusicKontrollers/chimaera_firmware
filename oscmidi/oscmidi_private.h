@@ -29,6 +29,6 @@
 
 #define OSCMIDI_MAX BLOB_MAX*3 // 3 compound midi commands per blob
 
-typedef nOSC_Arg OSCMidi_Msg [3];
+typedef nOSC_Arg OSCMidi_Msg [OSCMIDI_MAX];
 
 #endif /* OSCMIDI_PRIVATE_H */
