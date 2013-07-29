@@ -37,7 +37,9 @@ enum _MIDI_COMMAND {
 	PAN								= 0x0a,
 	EXPRESSION				= 0x0b,
 	EFFECT_CONTROL_1	= 0x0c,
-	EFFECT_CONTROL_2	= 0x0d
+	EFFECT_CONTROL_2	= 0x0d,
+
+	ALL_NOTES_OFF			= 0x7b,
 }; //TODO check whether ((aligned(1)))
 
 #define MSV 0x00

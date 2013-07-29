@@ -32,7 +32,7 @@
 #include "oscmidi_private.h"
 
 nOSC_Item oscmidi_bndl [1];
-const char *oscmidi_fmt = "m";
+const char *oscmidi_fmt = "M";
 
 OSCMidi_Msg msg;
 
@@ -63,7 +63,7 @@ oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_o
 	if (nblob_old + nblob_new == 0) // idling
 		for (ch=0; ch<0x10; ch++) //TODO check if 0x10 < OSCMIDI_MAX
 		{
-			nosc_message_set_midi(msg, oscmidi_tok, ch, CONTROL_CHANGE, 0x7b, 0x0); // send all notes off on all channels
+			nosc_message_set_midi(msg, oscmidi_tok, ch, CONTROL_CHANGE, ALL_NOTES_OFF, 0x0); // send all notes off on all channels
 			midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 		}
 
@@ -107,7 +107,7 @@ oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 
 	uint16_t eff = y * 0x3fff;
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, PITCH_BEND, bend >> 7, bend & 0x7f);
+	nosc_message_set_midi (msg, oscmidi_tok, ch, PITCH_BEND, bend & 0x7f, bend >> 7);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 
