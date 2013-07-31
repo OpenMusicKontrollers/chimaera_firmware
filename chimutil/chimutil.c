@@ -73,6 +73,31 @@ ip_part_of_subnet (uint8_t *ip)
 	return (*ip32 & *subnet32) == (*comm32 & *subnet32);
 }
 
+void
+cidr_to_subnet(uint8_t *subnet, uint8_t mask)
+{
+	uint32_t *subnet_ptr = (uint32_t *)subnet;
+	uint32_t subn = 0xffffffff;
+	if(mask == 0)
+		subn = 0x0;
+	else
+		subn &= ~((1UL << (32-mask)) - 1);
+	*subnet_ptr = htonl(subn);
+}
+
+uint8_t
+subnet_to_cidr(uint8_t *subnet)
+{
+	uint32_t *subnet_ptr = (uint32_t *)subnet;
+	uint32_t subn = htonl(*subnet_ptr);
+	uint8_t mask;
+	if(subn == 0)
+		return 0;
+	for(mask=0; !(subn & 1); mask++)
+		subn = subn >> 1;
+	return 32-mask;
+}
+
 uint32_t debug_counter = 0;
 
 void
@@ -168,6 +193,7 @@ config_enable (uint8_t b)
 		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
+
 		timer_resume (config_timer);
 	}
 }
@@ -186,6 +212,7 @@ sntp_enable (uint8_t b)
 		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
+
 		timer_resume (sntp_timer);
 	}
 }

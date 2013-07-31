@@ -774,6 +774,7 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 //TODO move to chimutil
 #define MAC_STR_LEN 18
 #define IP_STR_LEN 16
+#define IP_STR_CIDR_LEN 19
 #define ADDR_STR_LEN 32
 
 static uint8_t
@@ -809,6 +810,13 @@ ip2str (uint8_t *ip, char *str)
 {
 	sprintf (str, "%i.%i.%i.%i",
 		ip[0], ip[1], ip[2], ip[3]);
+}
+
+static void
+ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
+{
+	sprintf (str, "%i.%i.%i.%i/%i",
+		ip[0], ip[1], ip[2], ip[3], mask);
 }
 
 static uint8_t
@@ -867,30 +875,55 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
+	uint32_t *ip_ptr = (uint32_t *)config.comm.ip;
+	uint32_t *subnet_ptr = (uint32_t *)config.comm.subnet;
+	uint32_t *gateway_ptr = (uint32_t *)config.comm.gateway;
+
 	if (argc == 1) // query
 	{
-		char ip_str[IP_STR_LEN];
-		ip2str (config.comm.ip, ip_str);
-		size = CONFIG_SUCCESS ("is", id, ip_str);
+		char ip_str_cidr[IP_STR_CIDR_LEN];
+		uint8_t mask = subnet_to_cidr(config.comm.subnet);
+		ip2strCIDR (config.comm.ip, mask, ip_str_cidr);
+		size = CONFIG_SUCCESS ("is", id, ip_str_cidr);
 	}
 	else
 	{
+		uint8_t gtw[4];
+		if(argc == 3)
+		{
+			if(str2ip(args[2].s, gtw))
+			{
+				memcpy(config.comm.gateway, gtw, 4);
+				wiz_gateway_set(config.comm.gateway);
+			}
+			else // return
+			{
+				CONFIG_FAIL("is", id, "gatway invalid, format: x.x.x.x");
+				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				return 1;
+			}
+		}
+
 		uint8_t ip[4];
 		uint8_t mask;
-		if (str2ipCIDR (args[1].s, ip, &mask)) //TODO check if ip is valid
+		if (str2ipCIDR (args[1].s, ip, &mask))
 		{
 			memcpy (config.comm.ip, ip, 4);
 			wiz_ip_set (config.comm.ip);
-			uint32_t *brd = (uint32_t *)config.comm.subnet;
-			*brd = ~( (1UL<<mask) - 1 );
+
+			cidr_to_subnet(config.comm.subnet, mask);
 			wiz_subnet_set (config.comm.subnet);
-			memcpy(config.comm.gateway, ip, 4); //FIXME
-			config.comm.gateway[4] = 0x0;
-			wiz_gateway_set (config.comm.gateway);
+
+			if(argc == 2) // no custom gateway was given
+			{
+				*gateway_ptr = (*ip_ptr) & (*subnet_ptr); // default gateway = (ip & subnet)
+				wiz_gateway_set (config.comm.gateway);
+			}
 			size = CONFIG_SUCCESS ("i", id);
+			//FIXME should we disable all sockets here?
 		}
 		else
-			size = CONFIG_FAIL ("is", id, wrong_ip_port_error_str);
+			size = CONFIG_FAIL ("is", id, "ip invalid, format: x.x.x.x/x");
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1056,8 +1089,7 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc
 		if (str2addr(hostname, ip, &port))
 		{
 			socket->port[DST_PORT] = port;
-			memcpy (socket->ip, ip, 4);
-			socket->cb (socket->enabled);
+			_address_dns_cb(ip, socket);
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
@@ -1158,6 +1190,22 @@ _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
+}
+
+static uint8_t
+_ipv4ll_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+{
+	uint8_t res = _check_bool (path, fmt, argc, args, &config.comm.locally);
+
+	/*
+	config.ipv4ll.enabled = bool;
+	IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+
+	wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
+	*/
+
+
+	return res;
 }
 
 static uint8_t
@@ -1922,8 +1970,8 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/comm/locally", "i*", _comm_locally},
 	{"/chimaera/comm/mac", "i*", _comm_mac},
 	{"/chimaera/comm/ip", "i*", _comm_ip},
-	{"/chimaera/comm/gateway", "i*", _comm_gateway},
-	{"/chimaera/comm/subnet", "i*", _comm_subnet},
+	//{"/chimaera/comm/gateway", "i*", _comm_gateway},
+	//{"/chimaera/comm/subnet", "i*", _comm_subnet},
 
 	{"/chimaera/output/enabled", "i*", _output_enabled},
 	{"/chimaera/output/address", "i*", _output_address},
@@ -1963,6 +2011,8 @@ const nOSC_Method config_serv [] = {
 
 	//TODO
 	//{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
+
+	{"/chimaera/ipv4ll/enabled", "i*", _ipv4ll_enabled},
 
 	{"/chimaera/curve", "i", _curve},
 	{"/chimaera/curve", "ifff", _curve},
