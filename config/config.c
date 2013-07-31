@@ -84,7 +84,7 @@ Config config = {
 		.locally = 0,
 		.mac = {(0x1a | 0b00000010) & 0b11111110, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f}, // locally administered unicast MAC
 		.ip = {192, 168, 1, 177},
-		.gateway = {192, 168, 1, 1},
+		.gateway = {192, 168, 1, 0},
 		.subnet = {255, 255, 255, 0},
 		.subnet_check = 0 //TODO make this configurable
 	},
@@ -165,7 +165,6 @@ Config config = {
 	},
 
 	.mdns = {
-		.har = {0x01, 0x00, 0x5e, 0x00, 0x00, 0xfb}, // hardware address for mDNS multicast
 		.socket = {
 			.sock = 5,
 			.enabled = 1,
@@ -798,6 +797,13 @@ str2ip (char *str, uint8_t *ip)
 		&ip[0], &ip[1], &ip[2], &ip[3]) == 4;
 }
 
+static uint8_t
+str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
+{
+	return sscanf (str, "%hhi.%hhi.%hhi.%hhi/%hhi",
+		&ip[0], &ip[1], &ip[2], &ip[3], mask) == 5;
+}
+
 static void
 ip2str (uint8_t *ip, char *str)
 {
@@ -870,10 +876,17 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	else
 	{
 		uint8_t ip[4];
-		if (str2ip (args[1].s, ip)) //TODO check if ip is valid
+		uint8_t mask;
+		if (str2ipCIDR (args[1].s, ip, &mask)) //TODO check if ip is valid
 		{
 			memcpy (config.comm.ip, ip, 4);
 			wiz_ip_set (config.comm.ip);
+			uint32_t *brd = (uint32_t *)config.comm.subnet;
+			*brd = ~( (1UL<<mask) - 1 );
+			wiz_subnet_set (config.comm.subnet);
+			memcpy(config.comm.gateway, ip, 4); //FIXME
+			config.comm.gateway[4] = 0x0;
+			wiz_gateway_set (config.comm.gateway);
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else

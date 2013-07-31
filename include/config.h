@@ -125,7 +125,6 @@ struct _Config {
 	} COMPACT ipv4ll;
 
 	struct _mdns {
-		uint8_t har [6];
 		Socket_Config socket;
 	} COMPACT mdns;
 

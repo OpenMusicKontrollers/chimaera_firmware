@@ -66,10 +66,11 @@ dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len)
 uint8_t
 ip_part_of_subnet (uint8_t *ip)
 {
-	return ( ( (ip[0] && config.comm.subnet[0]) == (config.comm.ip[0] && config.comm.subnet[0]) )
-				&& ( (ip[1] && config.comm.subnet[1]) == (config.comm.ip[1] && config.comm.subnet[1]) )
-				&& ( (ip[2] && config.comm.subnet[2]) == (config.comm.ip[2] && config.comm.subnet[2]) )
-				&& ( (ip[3] && config.comm.subnet[3]) == (config.comm.ip[3] && config.comm.subnet[3]) ) );
+	uint32_t *ip32 = (uint32_t *)ip;
+	uint32_t *subnet32 = (uint32_t *)config.comm.subnet;
+	uint32_t *comm32 = (uint32_t *)config.comm.ip;
+
+	return (*ip32 & *subnet32) == (*comm32 & *subnet32);
 }
 
 uint32_t debug_counter = 0;
@@ -142,14 +143,15 @@ debug_reg (const char *id, uint32_t reg)
 void 
 output_enable (uint8_t b)
 {
-	config.output.socket.enabled = b;
-	if (config.output.socket.enabled)
+	Socket_Config *socket = &config.output.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_begin (config.output.socket.sock, config.output.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.output.socket.sock, config.output.socket.ip, config.output.socket.port[DST_PORT]);
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 	}
-	else
-		udp_end (config.output.socket.sock);
 }
 
 void 
@@ -158,16 +160,16 @@ config_enable (uint8_t b)
 	timer_pause (config_timer);
 	config_timer_reconfigure ();
 
-	config.config.socket.enabled = b;
-	if (config.config.socket.enabled)
+	Socket_Config *socket = &config.config.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_begin (config.config.socket.sock, config.config.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.config.socket.sock, config.config.socket.ip, config.config.socket.port[DST_PORT]);
-
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 		timer_resume (config_timer);
 	}
-	else
-		udp_end (config.config.socket.sock);
 }
 
 void 
@@ -176,58 +178,62 @@ sntp_enable (uint8_t b)
 	timer_pause (sntp_timer);
 	sntp_timer_reconfigure ();
 
-	config.sntp.socket.enabled = b;
-	if (config.sntp.socket.enabled)
+	Socket_Config *socket = &config.sntp.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_begin (config.sntp.socket.sock, config.sntp.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.sntp.socket.sock, config.sntp.socket.ip, config.sntp.socket.port[DST_PORT]);
-
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 		timer_resume (sntp_timer);
 	}
-	else
-		udp_end (config.sntp.socket.sock);
 }
 
 void 
 debug_enable (uint8_t b)
 {
-	config.debug.socket.enabled = b;
-	if (config.debug.socket.enabled)
+	Socket_Config *socket = &config.debug.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_begin (config.debug.socket.sock, config.debug.socket.port[SRC_PORT], 0);
-		udp_set_remote (config.debug.socket.sock, config.debug.socket.ip, config.debug.socket.port[DST_PORT]);
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 	}
-	else
-		udp_end (config.debug.socket.sock);
 }
 
 void 
 mdns_enable (uint8_t b)
 {
 	//FIXME handle timer
-	config.mdns.socket.enabled = b;
-	if (config.mdns.socket.enabled)
+
+	Socket_Config *socket = &config.mdns.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_set_remote_har (config.mdns.socket.sock, config.mdns.har);
-		udp_set_remote (config.mdns.socket.sock, config.mdns.socket.ip, config.mdns.socket.port[DST_PORT]);
-		udp_begin (config.mdns.socket.sock, config.mdns.socket.port[SRC_PORT], 1);
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 	}
-	else
-		udp_end (config.mdns.socket.sock);
 }
 
 void 
 dhcpc_enable (uint8_t b)
 {
 	//FIXME handle timer
-	config.dhcpc.socket.enabled = b;
-	if (config.dhcpc.socket.enabled)
+
+	Socket_Config *socket = &config.dhcpc.socket;
+	socket->enabled = b;
+	udp_end (socket->sock);
+	if (socket->enabled)
 	{
-		udp_set_remote (config.dhcpc.socket.sock, config.dhcpc.socket.ip, config.dhcpc.socket.port[DST_PORT]);
-		udp_begin (config.dhcpc.socket.sock, config.dhcpc.socket.port[SRC_PORT], 0);
+		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin (socket->sock, socket->port[SRC_PORT],
+			wiz_is_multicast(socket->ip));
 	}
-	else
-		udp_end (config.dhcpc.socket.sock);
 }
 
 void

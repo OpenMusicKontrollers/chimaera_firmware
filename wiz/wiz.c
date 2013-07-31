@@ -502,9 +502,30 @@ udp_reset_read_write_pointers (uint8_t sock)
 	_dma_write_sock_16 (sock, SnRX_RD, Sn_Rx_RD[sock]);
 }
 
+uint8_t
+wiz_is_multicast(uint8_t *ip)
+{
+	return (ip[0] & 0b11100000) == 0b11100000;
+}
+
 void
 udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 {
+	if(wiz_is_multicast(ip))
+	{
+		uint8_t multicast_mac [6];
+
+		multicast_mac[0] = 0x01;
+		multicast_mac[1] = 0x00;
+		multicast_mac[2] = 0x5e;
+
+		multicast_mac[3] = ip[1] & 0x7f;
+		multicast_mac[4] = ip[2] & 0xff;
+		multicast_mac[5] = ip[3] & 0xff;
+
+		udp_set_remote_har(sock, multicast_mac);
+	}
+
 	// set remote ip
 	_dma_write_sock (sock, SnDIPR, ip, 4);
 
