@@ -35,6 +35,7 @@ void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 uint8_t ip_part_of_subnet (uint8_t *ip);
 void cidr_to_subnet(uint8_t *subnet, uint8_t mask);
 uint8_t subnet_to_cidr(uint8_t *subnet);
+void broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet);
 
 void debug_str (const char *str);
 void debug_int32 (int32_t i);

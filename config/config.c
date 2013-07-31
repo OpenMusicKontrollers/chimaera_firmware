@@ -58,6 +58,8 @@ float Y1 = 0.7;
 
 Range range __CCM__;
 
+static void _host_address_dns_cb (uint8_t *ip, void *data); // forwared declaration
+
 float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
 {
@@ -780,56 +782,88 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 static uint8_t
 str2mac (char *str, uint8_t *mac)
 {
-	return sscanf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
-		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) == 6;
+	uint16_t smac [6];
+	uint8_t res;
+	res = sscanf (str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
+		smac, smac+1, smac+2, smac+3, smac+4, smac+5) == 6;
+	mac[0] = smac[0];
+	mac[1] = smac[1];
+	mac[2] = smac[2];
+	mac[3] = smac[3];
+	mac[4] = smac[4];
+	mac[5] = smac[5];
+	return res;
 }
 
 static void
 mac2str (uint8_t *mac, char *str)
 {
-	sprintf (str, "%02x:%02x:%02x:%02x:%02x:%02x",
+	sprintf (str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 static uint8_t
 str2ip (char *str, uint8_t *ip)
 {
-	return sscanf (str, "%hhi.%hhi.%hhi.%hhi",
-		&ip[0], &ip[1], &ip[2], &ip[3]) == 4;
+	uint16_t sip [4];
+	uint8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu", // hhu only available in c99
+		sip, sip+1, sip+2, sip+3) == 4;
+	ip[0] = sip[0];
+	ip[1] = sip[1];
+	ip[2] = sip[2];
+	ip[3] = sip[3];
+	return res;
 }
 
 static uint8_t
 str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
 {
-	return sscanf (str, "%hhi.%hhi.%hhi.%hhi/%hhi",
-		&ip[0], &ip[1], &ip[2], &ip[3], mask) == 5;
+	uint16_t sip [4];
+	uint16_t smask;
+	uint8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu/%hu",
+		sip, sip+1, sip+2, sip+3, &smask) == 5;
+	ip[0] = sip[0];
+	ip[1] = sip[1];
+	ip[2] = sip[2];
+	ip[3] = sip[3];
+	*mask = smask;
+	return res;
 }
 
 static void
 ip2str (uint8_t *ip, char *str)
 {
-	sprintf (str, "%i.%i.%i.%i",
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu",
 		ip[0], ip[1], ip[2], ip[3]);
 }
 
 static void
 ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
 {
-	sprintf (str, "%i.%i.%i.%i/%i",
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu/%hhu",
 		ip[0], ip[1], ip[2], ip[3], mask);
 }
 
 static uint8_t
 str2addr (char *str, uint8_t *ip, uint16_t *port)
 {
-	return sscanf (str, "%hhi.%hhi.%hhi.%hhi:%hi",
-		&ip[0], &ip[1], &ip[2], &ip[3], port) == 5;
+	uint16_t sip [4];
+	uint8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
+		sip, sip+1, sip+2, sip+3, port) == 5;
+	ip[0] = sip[0];
+	ip[1] = sip[1];
+	ip[2] = sip[2];
+	ip[3] = sip[3];
+	return res;
 }
 
 static void
 addr2str (uint8_t *ip, uint16_t port, char *str)
 {
-	sprintf (str, "%i.%i.%i.%i:%i",
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu:%hu",
 		ip[0], ip[1], ip[2], ip[3], port);
 }
 
@@ -888,9 +922,9 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	}
 	else
 	{
-		uint8_t gtw[4];
 		if(argc == 3)
 		{
+			uint8_t gtw[4];
 			if(str2ip(args[2].s, gtw))
 			{
 				memcpy(config.comm.gateway, gtw, 4);
@@ -906,7 +940,7 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 
 		uint8_t ip[4];
 		uint8_t mask;
-		if (str2ipCIDR (args[1].s, ip, &mask))
+		if(str2ipCIDR (args[1].s, ip, &mask))
 		{
 			memcpy (config.comm.ip, ip, 4);
 			wiz_ip_set (config.comm.ip);
@@ -920,7 +954,10 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 				wiz_gateway_set (config.comm.gateway);
 			}
 			size = CONFIG_SUCCESS ("i", id);
-			//FIXME should we disable all sockets here?
+
+			uint8_t brd [4];
+			broadcast_address(brd, config.comm.ip, config.comm.subnet);
+			_host_address_dns_cb(brd, NULL); //FIXME maybe we want to reset all sockets here instead of changing to broadcast?
 		}
 		else
 			size = CONFIG_FAIL ("is", id, "ip invalid, format: x.x.x.x/x");
@@ -1059,12 +1096,12 @@ _address_dns_cb (uint8_t *ip, void *data)
 {
 	uint16_t size;
 
-	debug_str ("_address_dns_cb");
 	Socket_Config *socket = data;
 
 	memcpy (socket->ip, ip, 4);
 	socket->cb (socket->enabled);
 
+	debug_str ("_address_dns_cb");
 	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
@@ -1144,11 +1181,6 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 {
 	uint16_t size;
 
-	debug_str ("_host_address_dns_cb");
-
-	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
 	memcpy (config.output.socket.ip, ip, 4);
 	memcpy (config.config.socket.ip, ip, 4);
 	memcpy (config.sntp.socket.ip, ip, 4);
@@ -1158,6 +1190,11 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 	config_enable (config.config.socket.enabled);
 	sntp_enable (config.sntp.socket.enabled);
 	debug_enable (config.debug.socket.enabled);
+
+	debug_str ("_host_address_dns_cb");
+
+	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
 static uint8_t
@@ -1195,17 +1232,46 @@ _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 static uint8_t
 _ipv4ll_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.comm.locally);
+	uint16_t size;
+	int32_t id = args[0].i;
 
-	/*
-	config.ipv4ll.enabled = bool;
-	IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+	uint8_t *boolean = &config.ipv4ll.enabled;
 
-	wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-	*/
+	if (argc == 1) // query
+	{
+		size = CONFIG_SUCCESS ("ii", id, *boolean ? 1 : 0);
+	}
+	else
+	{
+		switch (fmt[1])
+		{
+			case nOSC_INT32:
+				*boolean = args[1].i ? 1 : 0;
+				break;
+			case nOSC_TRUE:
+				*boolean = 1;
+				break;
+			case nOSC_FALSE:
+				*boolean = 0;
+				break;
+		}
 
+		if(*boolean)
+		{
+			IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+			wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
 
-	return res;
+			uint8_t brd [4];
+			broadcast_address(brd, config.comm.ip, config.comm.subnet);
+			_host_address_dns_cb(brd, NULL); //FIXME maybe we want to reset all sockets here instead of changing to broadcast?
+		}
+
+		size = CONFIG_SUCCESS ("i", id);
+	}
+
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
 }
 
 static uint8_t

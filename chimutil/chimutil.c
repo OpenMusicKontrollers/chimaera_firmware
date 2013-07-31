@@ -98,6 +98,15 @@ subnet_to_cidr(uint8_t *subnet)
 	return 32-mask;
 }
 
+void
+broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet)
+{
+	uint32_t *brd_ptr = (uint32_t *)brd;
+	uint32_t *ip_ptr = (uint32_t *)ip;
+	uint32_t *subnet_ptr = (uint32_t *)subnet;
+	*brd_ptr = (*ip_ptr & *subnet_ptr) | (~(*subnet_ptr));
+}
+
 uint32_t debug_counter = 0;
 
 void
