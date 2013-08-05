@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-uint8_t arp_probe (uint8_t sock, uint8_t *ip);
+uint_fast8_t arp_probe (uint8_t sock, uint8_t *ip);
 void arp_announce (uint8_t sock, uint8_t *ip);
 
 #endif

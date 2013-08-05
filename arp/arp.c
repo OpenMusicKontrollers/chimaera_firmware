@@ -38,7 +38,7 @@ const uint8_t broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 MACRAW_Header header;
 ARP_Payload payload;
-volatile uint8_t arp_collision = 0;
+volatile uint_fast8_t arp_collision = 0;
 
 static void
 _arp_fill (uint16_t oper, uint8_t *src_mac, uint8_t *src_ip, uint8_t *tar_mac, uint8_t *tar_ip)
@@ -104,13 +104,13 @@ arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
 }
 
 static uint32_t
-_random_ticks (uint8_t minsecs, uint8_t maxsecs)
+_random_ticks (uint32_t minsecs, uint32_t maxsecs)
 {
-	uint8_t span = maxsecs - minsecs;
+	uint32_t span = maxsecs - minsecs;
 	return 10000*(minsecs + (float)rand() / (RAND_MAX / span)); // 1 tick = 100us, 1 sec = 10000ticks //TODO use a define in chimaera.h
 }
 
-uint8_t
+uint_fast8_t
 arp_probe (uint8_t sock, uint8_t *ip)
 {
 	uint32_t tick;
@@ -127,7 +127,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 		;
 
 	arp_collision = 0;
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=ARP_PROBE_NUM; i>0; i--)
 	{
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
@@ -165,7 +165,7 @@ arp_announce (uint8_t sock, uint8_t *ip)
 
 	_arp_fill_announce (config.comm.mac, ip);
 
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=ARP_ANNOUNCE_NUM; i>0; i--)
 	{
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
