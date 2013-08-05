@@ -53,7 +53,7 @@ oscmidi_init ()
 }
 
 void
-oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t nblob_new)
+oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint8_t ch;
 	oscmidi_timestamp = timestamp + config.output.offset;

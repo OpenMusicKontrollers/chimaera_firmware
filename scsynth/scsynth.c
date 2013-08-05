@@ -93,7 +93,7 @@ scsynth_init ()
 }
 
 void
-scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint8_t nblob_old, uint8_t nblob_new)
+scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	scsynth_early_fmt[0] = nOSC_TERM;
 	scsynth_late_fmt[0] = nOSC_TERM;

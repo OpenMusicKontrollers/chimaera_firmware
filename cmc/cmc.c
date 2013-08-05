@@ -41,13 +41,11 @@ uint16_t idle_word = 0;
 uint8_t idle_bit = 0;
 CMC cmc;
 
-uint8_t n_aoi;
+uint_fast8_t n_aoi;
 uint8_t aoi[BLOB_MAX*13]; //TODO how big? BLOB_MAX * 5,7,9 ?
 
-uint8_t n_peaks;
+uint_fast8_t n_peaks;
 uint8_t peaks[BLOB_MAX];
-
-const char *none_str = "none";
 
 CMC_Engine *engines [ENGINE_MAX+1];
 
@@ -57,7 +55,7 @@ CMC_Blob *cmc_neu;
 void
 cmc_init ()
 {
-	uint8_t i;
+	uint_fast8_t i;
 
 	cmc.I = 0;
 	cmc.J = 0;
@@ -83,7 +81,7 @@ cmc_init ()
 	cmc_neu = cmc.blobs[cmc.neu];
 }
 
-uint8_t
+uint_fast8_t
 cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 {
 	/*
@@ -91,14 +89,14 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	 */
 
 	n_aoi = 0;
-	uint8_t pos;
+	uint_fast8_t pos;
 	for (pos=0; pos<SENSOR_N; pos++)
 	{
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
 		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 4, TODO make this configurable?
 		{
-			uint8_t newpos = pos+1;
+			uint_fast8_t newpos = pos+1;
 			aoi[n_aoi++] = newpos;
 
 			cmc.n[newpos] = val < 0 ? POLE_NORTH : POLE_SOUTH;
@@ -115,20 +113,20 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 			cmc.v[pos+1] = 0.0; //FIXME necessary?
 	}
 
-	uint8_t changed = 1; //TODO actually check for changes
+	uint_fast8_t changed = 1; //TODO actually check for changes
 
 	/*
 	 * detect peaks
 	 */
 	n_peaks = 0;
-	uint8_t up = 1;
-	uint8_t a;
-	uint8_t p1 = aoi[0];
+	uint_fast8_t up = 1;
+	uint_fast8_t a;
+	uint_fast8_t p1 = aoi[0];
 	for (a=1; a<n_aoi; a++)
 	{
-		//uint8_t p0 = aoi[a-1]; //TODO optimize
-		//uint8_t p1 = aoi[a]; //TODO optimize
-		uint8_t p0 = p1;
+		//uint_fast8_t p0 = aoi[a-1]; //TODO optimize
+		//uint_fast8_t p1 = aoi[a]; //TODO optimize
+		uint_fast8_t p0 = p1;
 		p1 = aoi[a];
 
 		/*
@@ -163,11 +161,11 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	 * handle peaks
 	 */
 	cmc.J = 0;
-	uint8_t p;
+	uint_fast8_t p;
 	for (p=0; p<n_peaks; p++)
 	{
 		float x, y;
-		uint8_t P = peaks[p];
+		uint_fast8_t P = peaks[p];
 
 		switch (config.interpolation.order)
 		{
@@ -384,7 +382,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	/*
 	 * relate new to old blobs
 	 */
-	uint8_t i, j;
+	uint_fast8_t i, j;
 	if (cmc.I || cmc.J)
 	{
 		idle_word = 0;
@@ -394,7 +392,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		{
 			case -1: // old blobs have disappeared
 			{
-				uint8_t n_less = cmc.I - cmc.J; // how many blobs have disappeared
+				uint_fast8_t n_less = cmc.I - cmc.J; // how many blobs have disappeared
 				i = 0;
 				for (j=0; j<cmc.J; )
 				{
@@ -446,7 +444,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 
 			case 1: // new blobs have appeared
 			{
-				uint8_t n_more = cmc.J - cmc.I; // how many blobs have appeared
+				uint_fast8_t n_more = cmc.J - cmc.I; // how many blobs have appeared
 				j = 0;
 				for (i=0; i<cmc.I; )
 				{
@@ -503,10 +501,10 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		/*
 		 * overwrite blobs that are to be ignored
 		 */
-		uint8_t newJ = 0;
+		uint_fast8_t newJ = 0;
 		for (j=0; j<cmc.J; j++)
 		{
-			uint8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
+			uint_fast8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
 
 			if (newJ != j)
 				memmove (&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
@@ -523,7 +521,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 		{
 			CMC_Blob *tar = &cmc_neu[j];
 
-			uint8_t gid;
+			uint16_t gid;
 			for (gid=0; gid<GROUP_MAX; gid++)
 			{
 				CMC_Group *ptr = &cmc.groups[gid];
@@ -582,12 +580,12 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 	 * handle output engines
 	 * FIXME check loop structure for efficiency
 	 */
-	uint8_t res = changed || idle;
+	uint_fast8_t res = changed || idle;
 	if (res)
 	{
 		++(cmc.fid);
 
-		uint8_t e;
+		uint_fast8_t e;
 		for (e=0; e<ENGINE_MAX; e++)
 		{
 			CMC_Engine *engine;
@@ -641,7 +639,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 void 
 cmc_group_clear ()
 {
-	uint8_t gid;
+	uint16_t gid;
 	for (gid=0; gid<GROUP_MAX; gid++)
 	{
 		CMC_Group *grp = &cmc.groups[gid];
@@ -654,7 +652,7 @@ cmc_group_clear ()
 	}
 }
 
-uint8_t
+uint_fast8_t
 cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1)
 {
 	CMC_Group *grp = &cmc.groups[gid];
@@ -666,7 +664,7 @@ cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1)
 	return 1;
 }
 
-uint8_t
+uint_fast8_t
 cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1)
 {
 	CMC_Group *grp = &cmc.groups[gid];
@@ -690,7 +688,7 @@ cmc_group_buf_get (uint16_t *size)
 void
 cmc_engines_update ()
 {
-	uint8_t ptr = 0;
+	uint_fast8_t ptr = 0;
 
 	if (config.tuio.enabled)
 		engines[ptr++] = &tuio2_engine;

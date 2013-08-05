@@ -105,7 +105,7 @@ rtpmidi_serialize (uint8_t *buf)
 }
 
 void
-rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint8_t nblob_old, uint8_t nblob_new)
+rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	seq_num = seq_offset + fid;
 
