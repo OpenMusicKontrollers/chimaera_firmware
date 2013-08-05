@@ -43,7 +43,7 @@ typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Method nOSC_Method;
 
-typedef uint8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args);
+typedef uint_fast8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
 typedef void (*nOSC_Bundle_Start_Cb) (nOSC_Timestamp timestamp);
 typedef void (*nOSC_Bundle_End_Cb) ();
 
@@ -118,7 +118,7 @@ union _nOSC_Item {
 #define nosc_item_message_set(ITM,POS,MSG,PATH,FMT) \
 ({ \
 	nOSC_Item *itm = (nOSC_Item *)(ITM); \
-	uint8_t pos = (uint8_t)(POS); \
+	uint_fast8_t pos = (uint_fast8_t)(POS); \
 	itm[pos].message.msg = (nOSC_Message)(MSG); \
 	itm[pos].message.path = (char *)PATH; \
 	itm[pos].message.fmt = (char *)FMT; \
@@ -127,7 +127,7 @@ union _nOSC_Item {
 #define nosc_item_bundle_set(ITM,POS,BNDL,TIMESTAMP,FMT) \
 ({ \
 	nOSC_Item *itm = (nOSC_Item *)(ITM); \
-	uint8_t pos = (uint8_t)(POS); \
+	uint_fast8_t pos = (uint_fast8_t)(POS); \
 	itm[pos].bundle.bndl = (nOSC_Item *)BNDL; \
 	itm[pos].bundle.tt = (nOSC_Timestamp)TIMESTAMP; \
 	itm[pos].bundle.fmt = (char *)FMT; \

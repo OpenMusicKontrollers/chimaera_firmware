@@ -36,7 +36,7 @@
 #include <config.h>
 #include <wiz.h>
 
-volatile uint8_t mem2mem_dma_done = 0;
+volatile uint_fast8_t mem2mem_dma_done = 0;
 
 void
 _mem2mem_dma_irq (void)
@@ -63,7 +63,7 @@ dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len)
 	dma_disable (DMA1, DMA_CH2);
 }
 
-uint8_t
+uint_fast8_t
 ip_part_of_subnet (uint8_t *ip)
 {
 	uint32_t *ip32 = (uint32_t *)ip;
@@ -166,7 +166,7 @@ debug_reg (const char *id, uint32_t reg)
 		return;
 	uint16_t size;
 	char str[32+1];
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=0; i<32; i++)
 		str[31-i] = reg & (1U << i) ? '1' : '_';
 	str[32] = '\0';

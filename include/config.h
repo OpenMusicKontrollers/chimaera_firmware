@@ -156,8 +156,8 @@ extern Config config;
 
 extern const nOSC_Method config_serv [];
 
-uint8_t config_load ();
-uint8_t config_save ();
+uint_fast8_t config_load ();
+uint_fast8_t config_save ();
 
 void adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela, int16_t *swap);
 
@@ -177,12 +177,12 @@ float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
 /* rev4 */
 
-uint8_t range_load (uint8_t pos);
-uint8_t range_save (uint8_t pos);
+uint_fast8_t range_load (uint_fast8_t pos);
+uint_fast8_t range_save (uint_fast8_t pos);
 void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 void range_update ();
 
-uint8_t groups_load ();
-uint8_t groups_save ();
+uint_fast8_t groups_load ();
+uint_fast8_t groups_save ();
 
 #endif

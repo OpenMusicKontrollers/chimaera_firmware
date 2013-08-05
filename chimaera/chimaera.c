@@ -23,7 +23,7 @@
 
 #include <chimaera.h>
 
-uint8_t buf_o_ptr = 0;
+uint_fast8_t buf_o_ptr = 0;
 uint8_t buf_o[2][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose output buffer
 uint8_t buf_i_o[32] __attribute__((aligned(4))); // TODO how big?
 uint8_t buf_i_i[CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose input buffer;
@@ -33,4 +33,4 @@ timer_dev *adc_timer;
 timer_dev *sntp_timer;
 timer_dev *config_timer;
 
-uint8_t calibrating = 0;
+uint_fast8_t calibrating = 0;

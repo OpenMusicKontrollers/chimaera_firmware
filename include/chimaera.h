@@ -91,14 +91,14 @@ extern const stm32_pin_info PIN_MAP [];
 // STM32F1 universal ID (96bit)
 #define UID_BASE  ((const uint8_t *)0x1FFFF7AC)
 
-extern uint8_t buf_o_ptr;
+extern uint_fast8_t buf_o_ptr;
 extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i_o [];
 extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 extern const float lookup_sqrt [];
 
-extern uint8_t calibrating;
+extern uint_fast8_t calibrating;
 
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;

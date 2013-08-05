@@ -40,7 +40,7 @@ const char *bundle_str = "#bundle";
  * Method
  */
 
-uint8_t
+uint_fast8_t
 pattern_match (char *pattern , char *string)
 {
 	char *qm;
@@ -65,7 +65,7 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 		{
 			if (!ptr->fmt || pattern_match (ptr->fmt, fmt) )
 			{
-				uint8_t res = ptr->cb (path, fmt, strlen (fmt), msg);
+				uint_fast8_t res = ptr->cb (path, fmt, strlen (fmt), msg);
 
 				if (res) // return when handled
 					return;
@@ -80,7 +80,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	nOSC_Message msg = dispatch_msg;
 
 	uint8_t *buf_ptr = buf;
-	uint8_t len, rem;
+	uint_fast8_t len, rem;
 
 	// find path
 	*path = buf_ptr;
@@ -98,7 +98,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	buf_ptr += len;
 
 	char *type;
-	uint8_t pos;
+	uint_fast8_t pos;
 	for (type=*fmt; *type!='\0'; type++)
 	{
 		pos = type - *fmt;
@@ -281,7 +281,7 @@ nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, ui
 uint16_t
 nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, uint8_t *buf)
 {
-	uint8_t i, rem;
+	uint_fast8_t i, rem;
 	uint16_t len;
 	nOSC_Arg *arg;
 
@@ -397,7 +397,7 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
   va_start (args, fmt);
 
   const char *p;
-	uint8_t pos;
+	uint_fast8_t pos;
   for (p = fmt; *p != nOSC_END; p++)
 	{
 		pos = p - fmt;

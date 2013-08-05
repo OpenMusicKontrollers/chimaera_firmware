@@ -209,7 +209,7 @@ Config config = {
 	.calibration = 0, // use slot 0 as standard calibration
 };
 
-static uint8_t
+static uint_fast8_t
 magic_match ()
 {
 	uint8_t magic;
@@ -218,7 +218,7 @@ magic_match ()
 	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
 }
 
-uint8_t
+uint_fast8_t
 config_load ()
 {
 	if (magic_match ())
@@ -229,7 +229,7 @@ config_load ()
 	return 1;
 }
 
-uint8_t
+uint_fast8_t
 config_save ()
 {
 	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
@@ -315,14 +315,14 @@ adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int1
 	}
 }
 
-uint8_t
-range_load (uint8_t pos)
+uint_fast8_t
+range_load (uint_fast8_t pos)
 {
 	if (magic_match ()) // EEPROM and FLASH config versions match
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 	{
-		uint8_t i;
+		uint_fast8_t i;
 		for (i=0; i<SENSOR_N; i++)
 		{
 			range.thresh[i] = 0;
@@ -337,8 +337,8 @@ range_load (uint8_t pos)
 	return 1;
 }
 
-uint8_t
-range_save (uint8_t pos)
+uint_fast8_t
+range_save (uint_fast8_t pos)
 {
 	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 
@@ -411,13 +411,13 @@ range_print ()
 */
 
 uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
-uint8_t zeroing = 0;
+uint_fast8_t zeroing = 0;
 
 void
 range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela)
 {
-	uint8_t i;
-	uint8_t pos;
+	uint_fast8_t i;
+	uint_fast8_t pos;
 
 	// fill rela vector from raw vector
 	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
@@ -463,7 +463,7 @@ range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order
 void
 range_update_quiescent ()
 {
-	uint8_t i;
+	uint_fast8_t i;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
@@ -480,7 +480,7 @@ range_update_quiescent ()
 void
 range_update_b0 ()
 {
-	uint8_t i;
+	uint_fast8_t i;
 	uint16_t thresh_s, thresh_n;
 
 	for (i=0; i<SENSOR_N; i++)
@@ -505,7 +505,7 @@ range_update_b1 ()
 {
 	//FIXME approximate Y1, so that MAX ( (0x7ff * as_1_sc1[i]) - bmin_sc_1) == 1
 	//FIXME or calculate Y1' out of A, B, C
-	uint8_t i;
+	uint_fast8_t i;
 	uint16_t b = (float)0x7ff * Y1;
 	float as_1;
 	float bmin, bmax_s, bmax_n;
@@ -546,7 +546,7 @@ range_update_b1 ()
 	}
 }
 
-uint8_t
+uint_fast8_t
 groups_load ()
 {
 	uint16_t size;
@@ -563,7 +563,7 @@ groups_load ()
 	return 1;
 }
 
-uint8_t
+uint_fast8_t
 groups_save ()
 {
 	uint16_t size;
@@ -575,8 +575,8 @@ groups_save ()
 	return 1;
 }
 
-static uint8_t
-_check_bool (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args, uint8_t *boolean)
+static uint_fast8_t
+_check_bool (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -607,8 +607,8 @@ _check_bool (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args, ui
 	return 1;
 }
 
-static uint8_t
-_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -638,8 +638,8 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 	return 1;
 }
 
-static uint8_t
-_check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -669,8 +669,8 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 	return 1;
 }
 
-static uint8_t
-_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -700,8 +700,8 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 	return 1;
 }
 
-static uint8_t
-_version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_version (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -714,8 +714,8 @@ _version (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_name (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_name (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -741,8 +741,8 @@ _name (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_config_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -757,8 +757,8 @@ _config_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_config_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -779,11 +779,11 @@ _config_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 #define IP_STR_CIDR_LEN 19
 #define ADDR_STR_LEN 32
 
-static uint8_t
+static uint_fast8_t
 str2mac (char *str, uint8_t *mac)
 {
 	uint16_t smac [6];
-	uint8_t res;
+	uint_fast8_t res;
 	res = sscanf (str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
 		smac, smac+1, smac+2, smac+3, smac+4, smac+5) == 6;
 	mac[0] = smac[0];
@@ -802,11 +802,11 @@ mac2str (uint8_t *mac, char *str)
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-static uint8_t
+static uint_fast8_t
 str2ip (char *str, uint8_t *ip)
 {
 	uint16_t sip [4];
-	uint8_t res;
+	uint_fast8_t res;
 	res = sscanf (str, "%hu.%hu.%hu.%hu", // hhu only available in c99
 		sip, sip+1, sip+2, sip+3) == 4;
 	ip[0] = sip[0];
@@ -816,12 +816,12 @@ str2ip (char *str, uint8_t *ip)
 	return res;
 }
 
-static uint8_t
+static uint_fast8_t
 str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
 {
 	uint16_t sip [4];
 	uint16_t smask;
-	uint8_t res;
+	uint_fast8_t res;
 	res = sscanf (str, "%hu.%hu.%hu.%hu/%hu",
 		sip, sip+1, sip+2, sip+3, &smask) == 5;
 	ip[0] = sip[0];
@@ -846,11 +846,11 @@ ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
 		ip[0], ip[1], ip[2], ip[3], mask);
 }
 
-static uint8_t
+static uint_fast8_t
 str2addr (char *str, uint8_t *ip, uint16_t *port)
 {
 	uint16_t sip [4];
-	uint8_t res;
+	uint_fast8_t res;
 	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
 		sip, sip+1, sip+2, sip+3, port) == 5;
 	ip[0] = sip[0];
@@ -867,14 +867,14 @@ addr2str (uint8_t *ip, uint16_t port, char *str)
 		ip[0], ip[1], ip[2], ip[3], port);
 }
 
-static uint8_t
-_comm_locally (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_comm_locally (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_bool (path, fmt, argc, args, &config.comm.locally);
 }
 
-static uint8_t
-_comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -903,8 +903,8 @@ _comm_mac (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -968,8 +968,8 @@ _comm_ip (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_comm_gateway (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -998,8 +998,8 @@ _comm_gateway (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_comm_subnet (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1028,8 +1028,8 @@ _comm_subnet (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1047,14 +1047,14 @@ _socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint8
 	return 1;
 }
 
-static uint8_t
-_output_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_output_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _socket_enabled (&config.output.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_output_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_output_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	config.dump.enabled = 0;
 	config.tuio.enabled = 0;
@@ -1065,26 +1065,26 @@ _output_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_config_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_config_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _socket_enabled (&config.config.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_sntp_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_sntp_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _socket_enabled (&config.sntp.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_debug_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_debug_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _socket_enabled (&config.debug.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_dhcpc_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _socket_enabled (&config.dhcpc.socket, path, fmt, argc, args);
 }
@@ -1106,8 +1106,8 @@ _address_dns_cb (uint8_t *ip, void *data)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
-static uint8_t
-_address (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1152,26 +1152,26 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint8_t argc
 	return 1;
 }
 
-static uint8_t
-_output_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_output_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _address (&config.output.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_config_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_config_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _address (&config.config.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_sntp_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_sntp_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _address (&config.sntp.socket, path, fmt, argc, args);
 }
 
-static uint8_t
-_debug_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_debug_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _address (&config.debug.socket, path, fmt, argc, args);
 }
@@ -1197,8 +1197,8 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
-static uint8_t
-_host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1229,8 +1229,8 @@ _host_address (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_ipv4ll_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1274,20 +1274,20 @@ _ipv4ll_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args
 	return 1;
 }
 
-static uint8_t
-_config_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_config_rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range16 (&config.config.rate, 1, 10, path, fmt, argc, args);
 }
 
-static uint8_t
-_sntp_tau (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_sntp_tau (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.sntp.tau, 1, 10, path, fmt, argc, args);
 }
 
-static uint8_t
-_tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_tuio_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1307,32 +1307,32 @@ _tuio_long_header (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-static uint8_t
-_tuio_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_tuio_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.tuio.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.tuio.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_dump_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_dump_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.dump.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.dump.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_scsynth_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_scsynth_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.scsynth.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.scsynth.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_scsynth_group (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1376,44 +1376,44 @@ _scsynth_group (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_rtpmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_rtpmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_oscmidi_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_oscmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_oscmidi_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_oscmidi_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.oscmidi.offset, 0, 0x7f, path, fmt, argc, args);
 }
 
-static uint8_t
-_oscmidi_effect (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_oscmidi_effect (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.oscmidi.effect, 0, 0x7f, path, fmt, argc, args);
 }
 
-static uint8_t
-_dummy_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_dummy_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint8_t res = _check_bool (path, fmt, argc, args, &config.dummy.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.dummy.enabled);
 	cmc_engines_update ();
 	return res;
 }
 
-static uint8_t
-_output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_output_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1444,8 +1444,8 @@ _output_offset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1481,8 +1481,8 @@ _rate (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1506,8 +1506,8 @@ _reset (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_factory (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1537,8 +1537,8 @@ _factory (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_curve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1559,14 +1559,14 @@ _curve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
-static uint8_t
-_movingaverage_enabled (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_movingaverage_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_bool (path, fmt, argc, args, &config.movingaverage.enabled);
 }
 
-static uint8_t
-_movingaverage_samples (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_movingaverage_samples (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1601,14 +1601,14 @@ _movingaverage_samples (const char *path, const char *fmt, uint8_t argc, nOSC_Ar
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
-static uint8_t
-_interpolation_order (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_interpolation_order (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.interpolation.order, 0, 3, path, fmt, argc, args);
 }
 
-static uint8_t
-_group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_group_clear (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1621,8 +1621,8 @@ _group_clear (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_group_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_group_get (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1640,8 +1640,8 @@ _group_get (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_group_set (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1655,8 +1655,8 @@ _group_set (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_group_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1670,8 +1670,8 @@ _group_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_group_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1685,14 +1685,14 @@ _group_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
 	// initialize sensor range
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
 		// moving average over 16 samples
@@ -1712,8 +1712,8 @@ _calibration_start (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	return 1;
 }
 
-static uint8_t
-_calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_zero (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1722,7 +1722,7 @@ _calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	zeroing = 0;
 	range_update_quiescent ();
 
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
@@ -1735,8 +1735,8 @@ _calibration_zero (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-static uint8_t
-_calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_min (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1744,7 +1744,7 @@ _calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	// update new range
 	range_update_b0 ();
 
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/thresh", "ii", i, range.thresh[i]);
@@ -1757,8 +1757,8 @@ _calibration_min (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	return 1;
 }
 
-static uint8_t
-_calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1768,7 +1768,7 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	// update new range
 	range_update_b1 ();
 
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
 		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sc_1_sc_1", "if", i, (float)range.as_1_sc_1[i]);
@@ -1786,12 +1786,12 @@ _calibration_mid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *arg
 	return 1;
 }
 
-static uint8_t
-_calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
-	uint8_t pos = config.calibration; // use default calibration
+	uint_fast8_t pos = config.calibration; // use default calibration
 
 	if (argc == 2)
 		pos = args[1].i; // use given calibration
@@ -1808,12 +1808,12 @@ _calibration_save (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-static uint8_t
-_calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
-	uint8_t pos = config.calibration; // use default calibration
+	uint_fast8_t pos = config.calibration; // use default calibration
 
 	if (argc == 2)
 		pos = args[1].i; // use given calibration
@@ -1830,8 +1830,8 @@ _calibration_load (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-static uint8_t
-_calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_calibration_print (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1845,8 +1845,8 @@ _calibration_print (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *a
 	return 1;
 }
 
-static uint8_t
-_uid (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1866,8 +1866,8 @@ _resolve_done (uint8_t *ip, void *data)
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
-static uint8_t
-_resolve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_resolve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1882,8 +1882,8 @@ _resolve (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 
 /*
-static uint8_t
-_test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_test (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1938,13 +1938,13 @@ _test (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static uint8_t
-_echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_echo (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	uint8_t i;
+	uint_fast8_t i;
 	for (i=1; i<argc; i++)
 		switch (fmt[i])
 		{
@@ -2013,8 +2013,8 @@ _echo (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
 }
 */
 
-static uint8_t
-_non (const char *path, const char *fmt, uint8_t argc, nOSC_Arg *args)
+static uint_fast8_t
+_non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;

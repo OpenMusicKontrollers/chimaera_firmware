@@ -28,6 +28,6 @@
 #include <config.h>
 #include <armfix.h>
 
-static uint8_t magic_match ();
+static uint_fast8_t magic_match ();
 
 #endif
