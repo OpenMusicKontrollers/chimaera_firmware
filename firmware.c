@@ -37,6 +37,7 @@
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 #include <libmaple/bkp.h> // backup register
+#include <libmaple/dsp.h> // SIMD instructions
 
 /*
  * include chimaera custom libraries
@@ -244,6 +245,87 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	mdns_dispatch (buf, len);
 }
 
+static void
+adc_fill (uint_fast8_t raw_ptr)
+{
+	uint_fast8_t i;
+	uint_fast8_t pos;
+	int16_t *raw12 = adc12_raw[raw_ptr];
+	int16_t *raw3 = adc3_raw[raw_ptr];
+	uint16_t *qui = range.qui;
+	uint32_t *rela_vec32 = (uint32_t *)adc_rela;
+	uint32_t *sum_vec32 = (uint32_t *)adc_sum;
+	uint32_t *qui_vec32 = (uint32_t *)range.qui;
+	uint32_t *swap_vec32 = (uint32_t *)adc_swap;
+
+	uint32_t zero = 0UL;
+
+	if (config.movingaverage.enabled)
+		for (i=0; i<SENSOR_N/2; i++)
+		{
+			uint32_t mean = __shadd16 (sum_vec32[i], zero); // mean = sum / 2
+			mean = __shadd16 (mean, zero); // mean /= 2
+			mean = __shadd16 (mean, zero); // mean /= 2
+			sum_vec32[i] = __ssub16 (sum_vec32[i], mean); // sum -= mean
+		}
+
+	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
+	{
+		pos = order12[i];
+		adc_rela[pos] = raw12[i];
+	}
+
+	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
+	{
+		pos = order3[i];
+		adc_rela[pos] = raw3[i];
+	}
+
+	if (config.movingaverage.enabled)
+	{
+		if (config.dump.enabled)
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				uint32_t rela;
+				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+
+				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
+				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela_vec32[i] = rela;
+
+				swap_vec32[i] = __rev16 (rela); // SIMD hton
+			}
+		else // !config.dump.enabled
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				uint32_t rela;
+				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+
+				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
+				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela = __shadd16 (rela, zero); // rela /= 2
+				rela_vec32[i] = rela;
+			}
+	}
+	else // !config.movingaverage.enabled
+	{
+		if (config.dump.enabled)
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+				swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
+			}
+		else // !config.dump.enabled
+			for (i=0; i<SENSOR_N/2; i++)
+			{
+				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+			}
+	}
+}
+
 void
 loop ()
 {
@@ -300,7 +382,7 @@ loop ()
 #ifdef BENCHMARK
 			stop_watch_start (&sw_adc_fill);
 #endif
-			adc_fill (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela, adc_swap);
+			adc_fill (adc_raw_ptr);
 
 			sntp_timestamp_refresh (&now, &offset);
 
@@ -589,6 +671,7 @@ setup ()
 	{
 		dhcpc_enable (config.dhcpc.socket.enabled);
 		claimed = dhcpc_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
+		dhcpc_enable (0); // disable socket again
 	}
 	if (!claimed && config.ipv4ll.enabled)
 		IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);

@@ -28,8 +28,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#include <libmaple/dsp.h>
-
 #include <chimaera.h>
 #include <chimutil.h>
 #include <wiz.h>
@@ -234,85 +232,6 @@ config_save ()
 {
 	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	return 1;
-}
-
-void
-adc_fill (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela, int16_t *swap)
-{
-	uint_fast8_t i;
-	uint_fast8_t pos;
-	uint16_t *qui = range.qui;
-	uint32_t *rela_vec32 = (uint32_t *)rela;
-	uint32_t *sum_vec32 = (uint32_t *)sum;
-	uint32_t *qui_vec32 = (uint32_t *)range.qui;
-	uint32_t *swap_vec32 = (uint32_t *)swap;
-
-	uint32_t zero = 0UL;
-
-	if (config.movingaverage.enabled)
-		for (i=0; i<SENSOR_N/2; i++)
-		{
-			uint32_t mean = __shadd16 (sum_vec32[i], zero); // mean = sum / 2
-			mean = __shadd16 (mean, zero); // mean /= 2
-			mean = __shadd16 (mean, zero); // mean /= 2
-			sum_vec32[i] = __ssub16 (sum_vec32[i], mean); // sum -= mean
-		}
-
-	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
-	{
-		pos = order12[i];
-		rela[pos] = raw12[i];
-	}
-
-	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
-	{
-		pos = order3[i];
-		rela[pos] = raw3[i];
-	}
-
-	if (config.movingaverage.enabled)
-	{
-		if (config.dump.enabled)
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				uint32_t rela;
-				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-
-				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
-				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela_vec32[i] = rela;
-
-				swap_vec32[i] = __rev16 (rela); // SIMD hton
-			}
-		else // !config.dump.enabled
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				uint32_t rela;
-				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-
-				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
-				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela_vec32[i] = rela;
-			}
-	}
-	else // !config.movingaverage.enabled
-	{
-		if (config.dump.enabled)
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-				swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
-			}
-		else // !config.dump.enabled
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
-			}
-	}
 }
 
 uint_fast8_t
