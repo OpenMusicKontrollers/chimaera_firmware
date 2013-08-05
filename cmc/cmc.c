@@ -29,6 +29,7 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
+#include <calibration.h>
 
 // engines
 #include <tuio2.h>

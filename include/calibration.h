@@ -21,11 +21,31 @@
  *     distribution.
  */
 
-#ifndef CONFIG_PRIVATE_H
-#define CONFIG_PRIVATE_H
+#ifndef _CALIBRATION_H_
+#define _CALIBRATION_H_
 
-#include <chimaera.h>
-#include <config.h>
-#include <armfix.h>
+typedef struct _Range Range;
+
+struct _Range {
+	uint16_t qui [SENSOR_N];
+	uint16_t thresh [SENSOR_N];
+	float as_1_sc_1 [SENSOR_N];
+	float bmin_sc_1;
+};
+
+extern float Y1;
+extern Range range;
+extern uint16_t arr [2][SENSOR_N];
+extern uint_fast8_t zeroing;
+
+//float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
+
+uint_fast8_t range_load (uint_fast8_t pos);
+uint_fast8_t range_save (uint_fast8_t pos);
+void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
+
+void range_update_quiescent ();
+void range_update_b0 ();
+void range_update_b1 ();
 
 #endif

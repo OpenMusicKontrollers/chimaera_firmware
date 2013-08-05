@@ -34,6 +34,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/oscmidi
 BUILDDIRS += $(BUILD_PATH)/$(d)/dummy
 BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
 BUILDDIRS += $(BUILD_PATH)/$(d)/arp
+BUILDDIRS += $(BUILD_PATH)/$(d)/calibration
 
 ### Local flags: these control how the compiler gets called.
 
@@ -94,6 +95,7 @@ cSRCS_$(d) += oscmidi/oscmidi.c
 cSRCS_$(d) += dummy/dummy.c
 cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += arp/arp.c
+cSRCS_$(d) += calibration/calibration.c
 cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c
 

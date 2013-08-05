@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
@@ -21,11 +22,9 @@
  *     distribution.
  */
 
-#ifndef CONFIG_PRIVATE_H
-#define CONFIG_PRIVATE_H
+#ifndef _CALIBRATION_PRIVATE_H_
+#define _CALIBRATION_PRIVATE_H_
 
-#include <chimaera.h>
-#include <config.h>
-#include <armfix.h>
+#include <calibration.h>
 
 #endif

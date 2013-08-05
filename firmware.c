@@ -60,6 +60,7 @@
 #include <oscmidi.h>
 #include <dummy.h>
 #include <wiz.h>
+#include <calibration.h>
 
 uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
 

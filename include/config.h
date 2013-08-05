@@ -156,29 +156,10 @@ extern Config config;
 
 extern const nOSC_Method config_serv [];
 
+uint_fast8_t magic_match ();
+
 uint_fast8_t config_load ();
 uint_fast8_t config_save ();
-
-/* rev4 */
-typedef struct _Range Range;
-
-struct _Range {
-	uint16_t qui [SENSOR_N];
-	uint16_t thresh [SENSOR_N];
-	float as_1_sc_1 [SENSOR_N];
-	float bmin_sc_1;
-};
-
-extern Range range;
-
-float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
-
-/* rev4 */
-
-uint_fast8_t range_load (uint_fast8_t pos);
-uint_fast8_t range_save (uint_fast8_t pos);
-void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
-void range_update ();
 
 uint_fast8_t groups_load ();
 uint_fast8_t groups_save ();
