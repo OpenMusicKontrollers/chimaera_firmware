@@ -262,7 +262,7 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 	//debug_str (deb);
 	buf_ptr += sizeof (DNS_Query);
 
-	uint8_t i;
+	uint_fast8_t i;
 	switch (qr)
 	{
 		case 0x0:
@@ -289,7 +289,7 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 void
 mdns_resolve (const char *name, mDNS_Resolve_Cb cb, void *data)
 {
-	uint8_t len = strstr (name, localdomain) - name - 1;
+	uint_fast8_t len = strstr (name, localdomain) - name - 1;
 	strncpy (resolve.name, name, len);
 	resolve.name[len] = '\0';
 

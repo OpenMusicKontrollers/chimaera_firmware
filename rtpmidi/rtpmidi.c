@@ -48,7 +48,7 @@ RTP_MIDI_Header rtp_midi_header = {
 };
 
 RTP_MIDI_List rtp_midi_list [BLOB_MAX*3];
-uint8_t nlist = 0;
+uint_fast8_t nlist = 0;
 
 uint16_t seq_offset;
 uint16_t seq_num;
@@ -76,7 +76,7 @@ rtpmidi_serialize (uint8_t *buf)
 	rtp_header.sequence_number = hton (seq_num);
 	rtp_header.timestamp = htonl (timestamp);
 
-	uint8_t len12bit;
+	uint_fast8_t len12bit;
 	uint16_t len = nlist * sizeof(RTP_MIDI_List);
 	if (len > 0b00001111)
 	{
@@ -128,7 +128,7 @@ rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = floor (X);
 	rtpmidi_keys[pos] = key;
@@ -146,7 +146,7 @@ rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	uint8_t key = rtpmidi_keys[pos];
 	
 	itm = &rtp_midi_list[nlist];
@@ -162,7 +162,7 @@ rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = rtpmidi_keys[pos];
 	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;

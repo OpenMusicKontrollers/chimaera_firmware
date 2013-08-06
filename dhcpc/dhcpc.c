@@ -233,7 +233,7 @@ dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	dhcpc_dispatch (buf, len);
 }
 
-uint8_t
+uint_fast8_t
 dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 {
 	uint8_t nil_ip [4] = {0, 0, 0, 0};

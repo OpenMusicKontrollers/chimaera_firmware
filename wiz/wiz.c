@@ -40,7 +40,7 @@
 
 gpio_dev *ss_dev;
 uint8_t ss_bit;
-uint8_t tmp_buf_o_ptr = 0;
+uint_fast8_t tmp_buf_o_ptr = 0;
 uint8_t *tmp_buf_i = buf_i_o;
 
 uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
@@ -92,10 +92,10 @@ _spi_dma_run (uint16_t len, uint8_t io_flags)
 		spi_tx_dma_disable (SPI2);
 }
 
-inline uint8_t
+inline uint_fast8_t
 _spi_dma_block (uint8_t io_flags)
 {
-	uint8_t ret = 1;
+	uint_fast8_t ret = 1;
 	uint8_t isr_rx;
 	uint8_t isr_tx;
 	uint16_t spi_sr;
@@ -214,7 +214,7 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 	return buf;
 }
 
-inline uint8_t
+inline uint_fast8_t
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -223,15 +223,15 @@ _dma_write_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-inline uint8_t
+inline uint_fast8_t
 _dma_write_nonblocking_out ()
 {
-	uint8_t res = _spi_dma_block (WIZ_TX);
+	uint_fast8_t res = _spi_dma_block (WIZ_TX);
 	resetSS ();
 	return res;
 }
 
-inline uint8_t
+inline uint_fast8_t
 _dma_read_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -240,10 +240,10 @@ _dma_read_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-inline uint8_t
+inline uint_fast8_t
 _dma_read_nonblocking_out ()
 {
-	uint8_t res = _spi_dma_block (WIZ_TXRX);
+	uint_fast8_t res = _spi_dma_block (WIZ_TXRX);
 	resetSS ();
 	return res;
 }
@@ -352,7 +352,7 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	//nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
 
 	// init udp
-	uint8_t sock;
+	uint_fast8_t sock;
 	uint8_t flag;
 
 	flag = MR_RST;
@@ -392,7 +392,7 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
   }
 }
 
-uint8_t
+uint_fast8_t
 wiz_link_up ()
 {
 	uint8_t physr;
@@ -452,7 +452,7 @@ udp_end (uint8_t sock)
 }
 
 void
-udp_begin (uint8_t sock, uint16_t port, uint8_t multicast)
+udp_begin (uint8_t sock, uint16_t port, uint_fast8_t multicast)
 {
 	uint8_t flag;
 
@@ -502,7 +502,7 @@ udp_reset_read_write_pointers (uint8_t sock)
 	_dma_write_sock_16 (sock, SnRX_RD, Sn_Rx_RD[sock]);
 }
 
-uint8_t
+uint_fast8_t
 wiz_is_multicast(uint8_t *ip)
 {
 	return (ip[0] & 0b11100000) == 0b11100000;
@@ -540,17 +540,17 @@ udp_set_remote_har (uint8_t sock, uint8_t *har)
 	_dma_write_sock (sock, SnDHAR, har, 6);
 }
 
-uint8_t
-udp_send (uint8_t sock, uint8_t buf_ptr, uint16_t len)
+uint_fast8_t
+udp_send (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
-	uint8_t success = 0;
+	uint_fast8_t success = 0;
 	if (udp_send_nonblocking (sock, buf_ptr, len))
 		success = udp_send_block (sock);
 	return success;
 }
 
-uint8_t 
-udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
+uint_fast8_t 
+udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
 	if ( !len || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) || (len > SSIZE[sock]) ) // return when buffer exceeds given size
 		return 0;
@@ -595,10 +595,10 @@ udp_send_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	return _dma_write_nonblocking_in (buf);
 }
 
-uint8_t 
+uint_fast8_t 
 udp_send_block (uint8_t sock)
 {
-	uint8_t success = _dma_write_nonblocking_out ();
+	uint_fast8_t success = _dma_write_nonblocking_out ();
 
 	if (!success)
 	{
@@ -634,15 +634,15 @@ udp_available (uint8_t sock)
 	return len;
 }
 
-uint8_t
-udp_receive (uint8_t sock, uint8_t buf_ptr, uint16_t len)
+uint_fast8_t
+udp_receive (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
 	uint16_t wrap = udp_receive_nonblocking (sock, buf_ptr, len);
 	return udp_receive_block (sock, wrap, len);
 }
 
 uint16_t
-udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
+udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
 	if (len > (CHIMAERA_BUFSIZE - 4) ) // return when buffer exceedes given size
 		return;
@@ -696,10 +696,10 @@ udp_receive_nonblocking (uint8_t sock, uint8_t buf_ptr, uint16_t len)
 	return size;
 }
 
-uint8_t
+uint_fast8_t
 udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 {
-	uint8_t success = _dma_read_nonblocking_out ();
+	uint_fast8_t success = _dma_read_nonblocking_out ();
 
 	if (!success)
 	{
@@ -743,7 +743,7 @@ _wiz_advance_read_ptr (uint8_t sock, uint16_t len)
 }
 
 void 
-udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
 	uint16_t len;
 
@@ -779,7 +779,7 @@ udp_dispatch (uint8_t sock, uint8_t ptr, void (*cb) (uint8_t *ip, uint16_t port,
 }
 
 void
-macraw_begin (uint8_t sock, uint8_t mac_filter)
+macraw_begin (uint8_t sock, uint_fast8_t mac_filter)
 {
 	uint8_t flag;
 
@@ -816,8 +816,8 @@ macraw_end (uint8_t sock)
 	udp_end (sock);
 }
 
-uint8_t
-macraw_send (uint8_t sock, uint8_t ptr, uint16_t len)
+uint_fast8_t
+macraw_send (uint8_t sock, uint_fast8_t ptr, uint16_t len)
 {
 	return udp_send (sock, ptr, len);
 }
@@ -828,13 +828,14 @@ macraw_available (uint8_t sock)
 	return udp_available (sock);
 }
 
-uint8_t
-macraw_receive (uint8_t sock, uint8_t ptr, uint16_t len)
+uint_fast8_t
+macraw_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len)
 {
 	return udp_receive (sock, ptr, len);
 }
 
-void macraw_dispatch (uint8_t sock, uint8_t ptr, MACRAW_Dispatch_Cb cb, void *user_data)
+void
+macraw_dispatch (uint8_t sock, uint_fast8_t ptr, MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
 

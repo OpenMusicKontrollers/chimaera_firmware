@@ -43,7 +43,7 @@ uint8_t oscmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a ha
 
 nOSC_Timestamp oscmidi_timestamp;
 
-uint8_t oscmidi_tok;
+uint_fast8_t oscmidi_tok;
 
 void
 oscmidi_init ()
@@ -74,7 +74,7 @@ void
 oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = floor (X);
 	oscmidi_keys[pos] = key;
@@ -88,7 +88,7 @@ void
 oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	uint8_t key = oscmidi_keys[pos];
 
 	nosc_message_set_midi (msg, oscmidi_tok, ch, NOTE_OFF, key, 0x7f);
@@ -100,7 +100,7 @@ void
 oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
-	uint8_t pos = sid % BLOB_MAX;
+	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = oscmidi_keys[pos];
 	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;

@@ -51,7 +51,7 @@ uint16_t dhcpc_decline (uint8_t *buf, uint16_t secs);
 
 void dhcpc_dispatch (uint8_t *buf, uint16_t size);
 
-uint8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
+uint_fast8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
 extern DHCPC dhcpc;
 

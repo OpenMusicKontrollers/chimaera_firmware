@@ -45,13 +45,13 @@ nOSC_Arg alv [BLOB_MAX];
 nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
 char tuio2_fmt [TUIO2_MAX+1];
 
-uint8_t old_end = BLOB_MAX;
-uint8_t counter = 0;
+uint_fast8_t old_end = BLOB_MAX;
+uint_fast8_t counter = 0;
 
 void
 tuio2_init ()
 {
-	uint8_t i;
+	uint_fast8_t i;
 
 	// initialize bundle format
 	memset (tuio2_fmt, nOSC_MESSAGE, TUIO2_MAX);
@@ -96,7 +96,7 @@ tuio2_init ()
 }
 
 void
-tuio2_long_header_enable (uint8_t on)
+tuio2_long_header_enable (uint_fast8_t on)
 {
 	config.tuio.long_header = on;
 

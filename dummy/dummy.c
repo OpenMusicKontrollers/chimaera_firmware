@@ -48,7 +48,7 @@ const char *dummy_set_fmt = "iiiff";
 
 nOSC_Timestamp dummy_timestamp;
 
-uint8_t dummy_tok;
+uint_fast8_t dummy_tok;
 
 void
 dummy_init ()

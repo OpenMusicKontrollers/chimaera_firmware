@@ -59,8 +59,8 @@ const char *default_fmt = "group%02i";
 nOSC_Timestamp scsynth_timestamp;
 nOSC_Timestamp tt;
 
-uint8_t early_i = 0;
-uint8_t late_i = 0;
+uint_fast8_t early_i = 0;
+uint_fast8_t late_i = 0;
 
 void
 scsynth_init ()

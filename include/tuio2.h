@@ -35,6 +35,6 @@ extern CMC_Engine tuio2_engine;
 
 void tuio2_init ();
 
-void tuio2_long_header_enable (uint8_t on);
+void tuio2_long_header_enable (uint_fast8_t on);
 
 #endif
