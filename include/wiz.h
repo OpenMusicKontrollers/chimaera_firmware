@@ -33,7 +33,8 @@
 
 #define WIZ_MAX_SOCK_NUM 8
 
-typedef void (*UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
+typedef void (*Wiz_UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
+typedef void (*Wiz_IRQ_Cb) (uint8_t isr);
 
 void wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
 uint_fast8_t wiz_link_up ();
@@ -44,8 +45,15 @@ void wiz_gateway_set (uint8_t *gateway);
 void wiz_subnet_set (uint8_t *subnet);
 void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
-void wiz_irq (void);
 uint_fast8_t wiz_is_multicast(uint8_t *ip);
+
+void wiz_irq (void);
+
+void wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask);
+void wiz_irq_unset();
+
+void wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask);
+void wiz_socket_irq_unset(uint8_t socket);
 
 /* 
  * UDP
@@ -70,7 +78,7 @@ uint_fast8_t udp_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint16_t udp_receive_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint_fast8_t udp_receive_block (uint8_t sock, uint16_t wrap, uint16_t len);
 
-void udp_dispatch (uint8_t sock, uint_fast8_t ptr, UDP_Dispatch_Cb cb);
+void udp_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_UDP_Dispatch_Cb cb);
 
 /*
  * MACRAW
@@ -87,13 +95,13 @@ struct _MACRAW_Header {
 #define MACRAW_HEADER_SIZE sizeof(MACRAW_Header)
 #define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
 
-typedef void (*MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
+typedef void (*Wiz_MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
 
 void macraw_begin (uint8_t sock, uint_fast8_t mac_filter);
 void macraw_end (uint8_t sock);
 uint_fast8_t macraw_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint16_t macraw_available (uint8_t sock);
 uint_fast8_t macraw_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-void macraw_dispatch (uint8_t sock, uint_fast8_t ptr, MACRAW_Dispatch_Cb cb, void *data);
+void macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *data);
 
 #endif

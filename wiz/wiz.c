@@ -57,19 +57,24 @@ uint16_t Sn_Rx_RD[8];
 
 uint16_t nonblocklen;
 
-inline void setSS ()
+Wiz_IRQ_Cb irq_cb = NULL;
+Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
+
+__always_inline static void
+setSS ()
 {
 	gpio_write_bit (ss_dev, ss_bit, 0);
 	//SPI2->regs->CR1 |= SPI_CR1_SPE;
 }
 
-inline void resetSS ()
+__always_inline static void
+resetSS ()
 {
 	//SPI2->regs->CR1 &= ~SPI_CR1_SPE;
 	gpio_write_bit (ss_dev, ss_bit, 1);
 }
 
-inline void
+static void
 _spi_dma_run (uint16_t len, uint8_t io_flags)
 {
 	if (io_flags & WIZ_RX)
@@ -92,7 +97,7 @@ _spi_dma_run (uint16_t len, uint8_t io_flags)
 		spi_tx_dma_disable (SPI2);
 }
 
-inline uint_fast8_t
+static uint_fast8_t
 _spi_dma_block (uint8_t io_flags)
 {
 	uint_fast8_t ret = 1;
@@ -166,7 +171,7 @@ _spi_dma_block (uint8_t io_flags)
 	return ret;
 }
 
-inline void
+__always_inline static void
 _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = buf_o[tmp_buf_o_ptr];
@@ -187,7 +192,7 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 	resetSS ();
 }
 
-inline uint8_t *
+__always_inline static uint8_t *
 _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	*buf++ = addr >> 8;
@@ -201,7 +206,7 @@ _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 	return buf;
 }
 
-inline uint8_t *
+__always_inline static uint8_t *
 _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 {
 	*buf++ = addr >> 8;
@@ -214,7 +219,7 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 	return buf;
 }
 
-inline uint_fast8_t
+__always_inline static uint_fast8_t
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -223,7 +228,7 @@ _dma_write_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-inline uint_fast8_t
+__always_inline static uint_fast8_t
 _dma_write_nonblocking_out ()
 {
 	uint_fast8_t res = _spi_dma_block (WIZ_TX);
@@ -231,7 +236,7 @@ _dma_write_nonblocking_out ()
 	return res;
 }
 
-inline uint_fast8_t
+__always_inline static uint_fast8_t
 _dma_read_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -240,7 +245,7 @@ _dma_read_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-inline uint_fast8_t
+__always_inline static uint_fast8_t
 _dma_read_nonblocking_out ()
 {
 	uint_fast8_t res = _spi_dma_block (WIZ_TXRX);
@@ -248,7 +253,7 @@ _dma_read_nonblocking_out ()
 	return res;
 }
 
-inline void
+__always_inline static void
 _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = buf_o[tmp_buf_o_ptr];
@@ -271,7 +276,7 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 	memcpy (dat, &tmp_buf_i[SPI_CMD_SIZE], len);
 }
 
-inline uint8_t *
+__always_inline static uint8_t *
 _dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len)
 {
 	*buf++ = addr >> 8;
@@ -285,42 +290,42 @@ _dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len)
 	return buf;
 }
 
-inline void
+__always_inline static void
 _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
 	_dma_write (CH_BASE + sock*CH_SIZE + addr, dat, len);
 }
 
-inline uint8_t *
+__always_inline static uint8_t *
 _dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
 	return _dma_write_append (buf, CH_BASE + sock*CH_SIZE + addr, dat, len);
 }
 
-inline void
+__always_inline static void
 _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat)
 {
 	uint16_t _dat = hton (dat);
 	_dma_write_sock (sock, addr, (uint8_t *)&_dat, 2);
 }
 
-inline uint8_t *
+__always_inline static uint8_t *
 _dma_write_sock_16_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint16_t dat)
 {
 	uint16_t _dat = hton (dat);
 	return _dma_write_sock_append (buf, sock, addr, (uint8_t *)&_dat, 2);
 }
 
-inline void
+__always_inline static void
 _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
 	_dma_read (CH_BASE + sock*CH_SIZE + addr, dat, len);
 }
 
-inline void
+__always_inline static void
 _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 {
 	_dma_read_sock (sock, addr, (uint8_t*)dat, 2);
@@ -436,7 +441,29 @@ wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 void
 wiz_irq (void)
 {
-	//TODO, read IRQ registers and act appropriately
+	uint8_t ir;
+	uint8_t ir2;
+	uint_fast8_t sock;
+
+	// main interrupt
+	_dma_read(IR, &ir, 1);
+	if(irq_cb)
+		irq_cb(ir);
+	_dma_write(IR, &ir, 1); // clear main IRQ flags
+
+	// socket interrupts
+	_dma_read(IR2, &ir2, 1);
+	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
+	{
+		if( (1U << sock) & ir2) // there was an IRQ for this socket
+		{
+			uint8_t sock_ir;
+			_dma_read_sock(sock, SnIR, &sock_ir, 1); // get socket IRQ
+			if(irq_socket_cb)
+				irq_socket_cb[sock](sock_ir);
+			_dma_write_sock(sock, SnIR, &sock_ir, 1); // clear socket IRQ flags (this automatically clears IR2[sock]
+		}
+	}
 }
 
 void
@@ -482,7 +509,7 @@ udp_begin (uint8_t sock, uint16_t port, uint_fast8_t multicast)
 	udp_update_read_write_pointers (sock);
 }
 
-void
+__always_inline void
 udp_update_read_write_pointers (uint8_t sock)
 {
 	// get write pointer
@@ -492,7 +519,7 @@ udp_update_read_write_pointers (uint8_t sock)
 	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
 }
 
-void
+__always_inline void
 udp_reset_read_write_pointers (uint8_t sock)
 {
 	_dma_read_sock_16 (sock, SnTX_RD, &Sn_Tx_WR[sock]);
@@ -626,7 +653,7 @@ udp_send_block (uint8_t sock)
 	return success;
 }
 
-uint16_t
+__always_inline uint16_t
 udp_available (uint8_t sock)
 {
 	uint16_t len;
@@ -723,7 +750,7 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 	return success;
 }
 
-void
+__always_inline void
 _wiz_advance_read_ptr (uint8_t sock, uint16_t len)
 {
 	uint16_t ptr = Sn_Rx_RD[sock];
@@ -822,7 +849,7 @@ macraw_send (uint8_t sock, uint_fast8_t ptr, uint16_t len)
 	return udp_send (sock, ptr, len);
 }
 
-uint16_t
+__always_inline uint16_t
 macraw_available (uint8_t sock)
 {
 	return udp_available (sock);
@@ -835,7 +862,7 @@ macraw_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len)
 }
 
 void
-macraw_dispatch (uint8_t sock, uint_fast8_t ptr, MACRAW_Dispatch_Cb cb, void *user_data)
+macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
 
@@ -869,4 +896,48 @@ macraw_dispatch (uint8_t sock, uint_fast8_t ptr, MACRAW_Dispatch_Cb cb, void *us
 			remaining -= size; // -(packet_info + packet_size + CRC)
 		}
 	}
+}
+
+void
+wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask)
+{
+	irq_cb = cb;
+
+	_dma_write(IMR, &mask , 1); // set mask
+}
+
+void
+wiz_irq_unset()
+{
+	irq_cb = NULL;
+
+	uint8_t mask = 0;
+	_dma_write(IMR, &mask , 1); // clear mask
+}
+
+void
+wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask)
+{
+	irq_socket_cb[socket] = cb;
+
+	uint8_t mask2;
+	_dma_read(IMR2, &mask2, 1);
+	mask2 |= (1U << socket); // enable socket IRQs
+	_dma_write(IMR2, &mask2, 1);
+
+	_dma_socket_write(socket, SnIMR, &mask, 1); // set mask
+}
+
+void
+wiz_socket_irq_unset(uint8_t socket)
+{
+	irq_socket_cb[socket] = NULL;
+
+	uint8_t mask2;
+	_dma_read(IMR2, &mask2, 1);
+	mask2 &= ~(1U << socket); // disable socket IRQs
+	_dma_write(IMR2, &mask2, 1);
+
+	uint8_t mask = 0;
+	_dma_socket_write(socket, SnIMR, &mask, 1); // clear mask
 }
