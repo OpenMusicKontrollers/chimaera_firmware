@@ -38,14 +38,27 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define MUX_LENGTH 4
 #define MUX_MAX 16
-#define ADC_LENGTH 9 // the number of channels to be converted per ADC  
-#define ADC_DUAL_LENGTH 4 // the number of channels to be converted per ADC 
-#define ADC_SING_LENGTH 1 // the number of channels to be converted per ADC 
 
+#if defined(SENSORS_48) // Mini
+#	define ADC_LENGTH 3 // the number of connected sensor units
+#	define ADC_DUAL_LENGTH 2 // the number of channels to be converted per ADC (1&2)
+#	define ADC_SING_LENGTH 0 // the number of channels to be converted per ADC (3)
+#elif defined(SENSORS_96) // Midi
+#	define ADC_LENGTH 6
+#	define ADC_DUAL_LENGTH 3
+#	define ADC_SING_LENGTH 0
+#elif defined(SENSORS_144) //Maxi
+#	define ADC_LENGTH 9
+#	define ADC_DUAL_LENGTH 4
+#	define ADC_SING_LENGTH 1
+#else
+#	error "invalid number of sensors given to Make (-DSENSORS)"
+#endif
+
+#define SENSOR_N (MUX_MAX*ADC_LENGTH)
 #define ADC_BITDEPTH 0xfff
 #define ADC_HALF_BITDEPTH 0x7ff
 
-#define SENSOR_N (MUX_MAX*ADC_LENGTH)
 #define BLOB_MAX 8
 #define GROUP_MAX 8
 
