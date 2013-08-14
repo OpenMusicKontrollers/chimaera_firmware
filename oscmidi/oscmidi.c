@@ -50,6 +50,8 @@ oscmidi_init ()
 {
 	nosc_item_message_set (oscmidi_bndl, 0, msg, midi_str, midi_fmt);
 	midi_fmt[0] = nOSC_END;
+
+	config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
 }
 
 void
@@ -75,7 +77,7 @@ oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 {
 	uint8_t ch = gid % 0xf;
 	uint_fast8_t pos = sid % BLOB_MAX;
-	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = floor (X);
 	oscmidi_keys[pos] = key;
 
@@ -101,9 +103,9 @@ oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 {
 	uint8_t ch = gid % 0xf;
 	uint_fast8_t pos = sid % BLOB_MAX;
-	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = oscmidi_keys[pos];
-	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;
+	uint16_t bend = (X - key)*config.oscmidi.mul + 0x2000;
 
 	uint16_t eff = y * 0x3fff;
 

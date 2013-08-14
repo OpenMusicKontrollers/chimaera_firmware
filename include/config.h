@@ -89,9 +89,12 @@ struct _Config {
 
 	struct _oscmidi {
 		uint8_t enabled;
-		uint8_t offset;
 		uint8_t effect;
-	} COMPACT oscmidi;
+		float offset;
+		float range;
+		float mul;
+	//} COMPACT oscmidi; //FIXME COMPACT does not work here
+	} oscmidi;
 
 	struct _dummy {
 		uint8_t enabled;

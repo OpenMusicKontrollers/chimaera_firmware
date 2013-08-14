@@ -95,7 +95,9 @@ Config config = {
 
 	.oscmidi = {
 		.enabled = 0,
-		.offset = 24,
+		.offset = 23.5,
+		.range = 48.0,
+		.mul = 170.65, // 0x1fff / 48
 		.effect = VOLUME
 	},
 
@@ -364,7 +366,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 		else
 		{
 			char buf[64];
-			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
+			sprintf (buf, "value %f is out of range [%f, %f]", arg, min, max);
 			size = CONFIG_FAIL ("is", id, buf);
 		}
 	}
@@ -1069,7 +1071,17 @@ _oscmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 static uint_fast8_t
 _oscmidi_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _check_range8 (&config.oscmidi.offset, 0, 0x7f, path, fmt, argc, args);
+	return _check_rangefloat (&config.oscmidi.offset, 0.0, 127.0, path, fmt, argc, args);
+}
+
+static uint_fast8_t
+_oscmidi_range (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res;
+	res = _check_rangefloat (&config.oscmidi.range, 0.0, 127.0, path, fmt, argc, args);
+	if(res)
+		config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
+	return res;
 }
 
 static uint_fast8_t
@@ -1728,6 +1740,7 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/oscmidi/enabled", "i*", _oscmidi_enabled},
 	{"/chimaera/oscmidi/offset", "i*", _oscmidi_offset},
+	{"/chimaera/oscmidi/range", "i*", _oscmidi_range},
 	{"/chimaera/oscmidi/effect", "i*", _oscmidi_effect},
 
 	{"/chimaera/dummy/enabled", "i*", _dummy_enabled},
