@@ -491,6 +491,16 @@ loop ()
 #endif
 		}
 
+		// run curvefitting procedure
+		if (curvefitting)
+		{
+			int16_t tmp = adc_rela[curvefit_nr];
+			if(tmp > curvefit_south)
+				curvefit_south = tmp;
+			if(tmp < curvefit_north)
+				curvefit_north = tmp;
+		}
+
 		// run osc config server
 		if (config.config.socket.enabled && config_should_listen)
 		{

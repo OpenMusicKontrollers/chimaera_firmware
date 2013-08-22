@@ -1517,6 +1517,51 @@ _calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 }
 
 static uint_fast8_t
+_curvefit_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	curvefit_nr = args[1].i;
+	curvefit_north = 0;
+	curvefit_south = 0;
+	curvefitting = 1;
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_curvefit_next (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	float vicinity = args[1].f;
+
+	size = CONFIG_SUCCESS ("ifii", id, vicinity, curvefit_south, curvefit_north);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_curvefit_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	curvefitting = 0;
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
 _calibration_print (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1795,6 +1840,10 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/print", "i", _calibration_print},
 	{"/chimaera/calibration/save", "i*", _calibration_save},
 	{"/chimaera/calibration/load", "i*", _calibration_load},
+
+	{"/chimaera/curvefit/start", "ii", _curvefit_start},
+	{"/chimaera/curvefit/next", "if", _curvefit_next},
+	{"/chimaera/curvefit/end", "i", _curvefit_end},
 
 	{"/chimaera/uid", "i", _uid},
 

@@ -37,6 +37,7 @@ extern float Y1;
 extern Range range;
 extern uint16_t arr [2][SENSOR_N];
 extern uint_fast8_t zeroing;
+extern uint_fast8_t calibrating;
 
 //float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
@@ -47,5 +48,13 @@ void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *
 void range_update_quiescent ();
 void range_update_b0 ();
 void range_update_b1 ();
+
+/*
+ * curvefitting
+ */
+extern uint_fast8_t curvefit_nr;
+extern int16_t curvefit_south;
+extern int16_t curvefit_north;
+extern uint_fast8_t curvefitting;
 
 #endif

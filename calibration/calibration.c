@@ -31,6 +31,12 @@ float Y1 = 0.7;
 Range range __CCM__;
 uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
 uint_fast8_t zeroing = 0;
+uint_fast8_t calibrating = 0;
+
+uint_fast8_t curvefitting = 0;
+uint_fast8_t curvefit_nr = 0;
+int16_t curvefit_south = 0;
+int16_t curvefit_north = 0;
 
 static float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)

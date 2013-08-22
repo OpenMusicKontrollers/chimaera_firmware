@@ -32,5 +32,3 @@ uint8_t buf_i_i[CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpos
 timer_dev *adc_timer;
 timer_dev *sntp_timer;
 timer_dev *config_timer;
-
-uint_fast8_t calibrating = 0;

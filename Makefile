@@ -3,9 +3,9 @@
 TARGET := F303CB
 #TARGET := F303CC
 
-#export SENSORS := 48 # 3 sensor units aka Chimaera Mini
+export SENSORS := 48 # 3 sensor units aka Chimaera Mini
 #export SENSORS := 96 # 6 sensor units aka Chimaera Midi
-export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
+#export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
 
 export BOARD := $(TARGET)
 export MEMORY_TARGET := jtag
@@ -21,5 +21,5 @@ all: sketch
 %:
 	$(MAKE) -f $(LIB_MAPLE_HOME)/Makefile $@
 
-DfuSeDl:	build/$(TARGET).bin
+download:	build/$(TARGET).bin
 	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<
