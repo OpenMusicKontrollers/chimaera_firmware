@@ -1,16 +1,17 @@
-CHIMAERA, a polymagnetophonic theremin
---------------------------------------
+# Chimaera
+
+## a polymagnetophonic theremin
 
 The general idea was to develop an expressive music controller. The general characteristics that had to be fulfilled were:
 
--playable with fingers
--multi touch(less) sensitive
--two continuous dimensions
--lightweight
--dimensions of a ribbon controller
--low latency and high update rates (2kHz)
--entirely based on open hardware, software and communication protocols
--designed to be as simple as possible but at the same time as configurable as possible
+- playable with fingers
+- multi touch(less) sensitive
+- two continuous dimensions
+- lightweight
+- dimensions of a ribbon controller
+- low latency and high update rates (2kHz)
+- entirely based on open hardware, software and communication protocols
+- designed to be as simple as possible but at the same time as configurable as possible
 
 The outcome was a device that is best described as a polyphonic theremin, based on magnetic distance sensing to permanent magnets atttached to fingers relative to an array of high accuracy linear hall effect sensors. An open source prototyping board with an ARM Cortex M4 MCU acts as the central computing unit, reading out the sensors, computing multi touch recognition and sending output via Ethernet.
 
