@@ -762,7 +762,20 @@ _debug_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 static uint_fast8_t
 _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _socket_enabled (&config.dhcpc.socket, path, fmt, argc, args);
+	uint_fast8_t res;
+
+	res = _socket_enabled(&config.dhcpc.socket, path, fmt, argc, args);
+	if(config.dhcpc.socket.enabled) // it has just been enabled ^, aka dhcpc_enable(1) was called
+	{
+		if(dhcpc_claim(config.comm.ip, config.comm.gateway, config.comm.subnet)) // was claimed?
+		{
+			wiz_comm_set(config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
+			//TODO report whether claim was successful 
+		}
+		dhcpc_enable(0); // disable socket again
+	}
+
+	return res;
 }
 
 const char *addr_err_str = "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100"; //TODO move me up

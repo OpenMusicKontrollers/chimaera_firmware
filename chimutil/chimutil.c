@@ -259,7 +259,8 @@ mdns_enable (uint8_t b)
 void 
 dhcpc_enable (uint8_t b)
 {
-	//FIXME handle timer
+	//timer_pause (dhcpc_timer); //todo we don't need this
+	//dhcpc_timer_reconfigure (); //TODO we don't need this
 
 	Socket_Config *socket = &config.dhcpc.socket;
 	socket->enabled = b;
@@ -269,6 +270,8 @@ dhcpc_enable (uint8_t b)
 		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
+
+		//timer_resume (dhcpc_timer); //TODO we don't need this
 	}
 }
 

@@ -45,6 +45,7 @@ void wiz_gateway_set (uint8_t *gateway);
 void wiz_subnet_set (uint8_t *subnet);
 void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
+uint_fast8_t wiz_is_broadcast(uint8_t *ip);
 uint_fast8_t wiz_is_multicast(uint8_t *ip);
 
 void wiz_irq (void);

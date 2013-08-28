@@ -84,7 +84,7 @@ struct _BOOTP_Option {
 	uint8_t *dat;
 };
 
-#define BOOTP_OPTION(CODE,DAT) {.code=CODE,.len=sizeof(DAT),.dat=DAT}
+#define BOOTP_OPTION(CODE,LEN,DAT) {.code=CODE,.len=LEN,.dat=DAT}
 #define BOOTP_OPTION_END {.code=OPTION_END}
 
 struct _DHCP_Packet {

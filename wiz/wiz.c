@@ -530,9 +530,16 @@ udp_reset_read_write_pointers (uint8_t sock)
 }
 
 uint_fast8_t
+wiz_is_broadcast(uint8_t *ip)
+{
+	uint32_t *ip32 = (uint32_t *)ip;
+	return *ip32 == 0xffffffff;
+}
+
+uint_fast8_t
 wiz_is_multicast(uint8_t *ip)
 {
-	return (ip[0] & 0b11100000) == 0b11100000;
+	return (ip[0] & 0b11110000) == 0b11100000; // is it of the form: 0b1110xxxx?
 }
 
 void

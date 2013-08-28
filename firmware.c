@@ -107,6 +107,7 @@ volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
 volatile uint_fast8_t sntp_should_listen = 0;
 volatile uint_fast8_t mdns_should_listen = 0;
 volatile uint_fast8_t config_should_listen = 0;
+volatile uint_fast8_t dhcpc_needs_refresh = 0;
 
 nOSC_Timestamp now;
 
@@ -133,6 +134,12 @@ static void
 mdns_timer_irq ()
 {
 	mdns_should_listen = 1;
+}
+
+static void
+dhcpc_timer_irq ()
+{
+	dhcpc_needs_refresh = 1;
 }
 
 void
@@ -536,6 +543,16 @@ loop ()
 			mdns_should_listen = 0;
 		}
 
+		// DHCPC REFRESH
+		if (dhcpc_needs_refresh)
+		{
+			timer_pause(dhcpc_timer);
+			dhcpc_enable (1);
+			dhcpc_refresh();
+			dhcpc_enable (0);
+			dhcpc_needs_refresh = 0;
+		}
+
 		adc_dma_block();
 
 		if (config.rate)
@@ -600,6 +617,23 @@ config_timer_reconfigure ()
 	timer_generate_update (config_timer);
 
 	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
+}
+
+void 
+dhcpc_timer_reconfigure ()
+{
+	uint16_t prescaler = 0xffff; 
+	uint16_t reload = 72e6 / 0xffff * dhcpc.leastime;
+	uint16_t compare = reload;
+
+	timer_set_prescaler (dhcpc_timer, prescaler);
+	timer_set_reload (dhcpc_timer, reload);
+	timer_set_mode (dhcpc_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (dhcpc_timer, TIMER_CH1, compare);
+	timer_attach_interrupt (dhcpc_timer, TIMER_CH1, dhcpc_timer_irq);
+	timer_generate_update (dhcpc_timer);
+
+	nvic_irq_set_priority (NVIC_TIMER2, DHCPC_TIMER_PRIORITY);
 }
 
 void
@@ -710,7 +744,7 @@ setup ()
 	uint_fast8_t claimed = 0;
 	if (config.dhcpc.socket.enabled)
 	{
-		dhcpc_enable (config.dhcpc.socket.enabled);
+		dhcpc_enable (1);
 		claimed = dhcpc_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
 		dhcpc_enable (0); // disable socket again
 	}
@@ -723,10 +757,14 @@ setup ()
 	adc_timer = TIMER1;
 	sntp_timer = TIMER2;
 	config_timer = TIMER3;
+	dhcpc_timer = TIMER4;
 
 	timer_init (adc_timer);
 	timer_init (sntp_timer);
 	timer_init (config_timer);
+	timer_init (dhcpc_timer);
+
+	timer_pause (dhcpc_timer);
 
 	timer_pause (adc_timer);
 	adc_timer_reconfigure ();

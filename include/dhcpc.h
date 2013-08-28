@@ -27,7 +27,7 @@
 #include <chimaera.h>
 
 typedef enum _DHCPC_State {
-	DISCOVER, OFFER, REQUEST, ACK, LEASE, TIMEOUT, CLAIMED, DECLINE 
+	DISCOVER, OFFER, REQUEST, ACK, LEASE, TIMEOUT, CLAIMED, DECLINE
 } DHCPC_State;
 
 typedef struct _DHCPC DHCPC;
@@ -36,22 +36,17 @@ struct _DHCPC {
 	DHCPC_State state;
 	uint8_t delay;
 	uint32_t timeout;
+	uint32_t leastime;
 
 	uint8_t ip [4];
 	uint8_t server_ip [4];
-	uint8_t gateway_ip [4];
-	uint8_t subnet_mask [4];
 	uint8_t router_ip [4];
-	uint8_t server_id [4];
+	uint8_t subnet_mask [4];
 };
 
-uint16_t dhcpc_discover (uint8_t *buf, uint16_t secs);
-uint16_t dhcpc_request (uint8_t *buf, uint16_t secs);
-uint16_t dhcpc_decline (uint8_t *buf, uint16_t secs);
-
-void dhcpc_dispatch (uint8_t *buf, uint16_t size);
-
 uint_fast8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
+uint_fast8_t dhcpc_refresh ();
+uint_fast8_t dhcpc_release ();
 
 extern DHCPC dhcpc;
 

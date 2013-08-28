@@ -82,7 +82,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define ADC_TIMER_PRIORITY 0x5
 #define SNTP_TIMER_PRIORITY 0x6
 #define CONFIG_TIMER_PRIORITY 0x7
-#define TIMEOUT_TIMER_PRIORITY 0x8
+#define DHCPC_TIMER_PRIORITY 0x8
 
 #define ENGINE_MAX 5 // tuio, scsynth, oscmidi, dummy, rtpmidi
 
@@ -114,6 +114,7 @@ extern const float lookup_sqrt [];
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;
 extern timer_dev *config_timer;
+extern timer_dev *dhcpc_timer;
 
 void cpp_setup ();
 
