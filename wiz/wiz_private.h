@@ -105,14 +105,14 @@
 #define SnCR_SEND_KEEP 				0x22
 #define SnCR_RECV      				0x40
 
-#define SnIR_PRECV						(1U << 7) // valid only on socket 0 & PPPoE
-#define SnIR_PFAIL						(1U << 6) // valid only on socket 0 & PPPoE
-#define SnIR_PNEXT						(1U << 5) // valid only on socket 0 & PPPoE
-#define SnIR_SEND_OK					(1U << 4)
-#define SnIR_TIMEOUT					(1U << 3)
-#define SnIR_RECV							(1U << 2)
-#define SnIR_DISCON						(1U << 1)
-#define SnIR_CON							(1U << 0)
+//#define SnIR_PRECV						(1U << 7) // valid only on socket 0 & PPPoE
+//#define SnIR_PFAIL						(1U << 6) // valid only on socket 0 & PPPoE
+//#define SnIR_PNEXT						(1U << 5) // valid only on socket 0 & PPPoE
+//#define SnIR_SEND_OK					(1U << 4)
+//#define SnIR_TIMEOUT					(1U << 3)
+//#define SnIR_RECV							(1U << 2)
+//#define SnIR_DISCON						(1U << 1)
+//#define SnIR_CON							(1U << 0)
 
 #define SnSR_CLOSED 					0x00
 #define SnSR_SOCK_ARP					0x01

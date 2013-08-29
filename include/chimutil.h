@@ -46,7 +46,6 @@ void debug_reg (const char *id, uint32_t reg);
 
 void adc_timer_reconfigure ();
 void sntp_timer_reconfigure ();
-void config_timer_reconfigure ();
 void dhcpc_timer_reconfigure ();
 
 void output_enable (uint8_t b);

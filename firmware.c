@@ -108,6 +108,7 @@ volatile uint_fast8_t sntp_should_listen = 0;
 volatile uint_fast8_t mdns_should_listen = 0;
 volatile uint_fast8_t config_should_listen = 0;
 volatile uint_fast8_t dhcpc_needs_refresh = 0;
+volatile uint_fast8_t wiz_needs_attention = 0;
 
 nOSC_Timestamp now;
 
@@ -125,21 +126,33 @@ sntp_timer_irq ()
 }
 
 static void
-config_timer_irq ()
+dhcpc_timer_irq ()
+{
+	dhcpc_needs_refresh = 1;
+}
+
+static void
+wiz_irq ()
+{
+	wiz_needs_attention = 1;
+}
+
+static void
+wiz_config_irq(uint8_t isr)
 {
 	config_should_listen = 1;
 }
 
 static void
-mdns_timer_irq ()
+wiz_mdns_irq(uint8_t isr)
 {
 	mdns_should_listen = 1;
 }
 
 static void
-dhcpc_timer_irq ()
+wiz_sntp_irq(uint8_t isr)
 {
-	dhcpc_needs_refresh = 1;
+	sntp_should_listen = 1;
 }
 
 void
@@ -269,8 +282,6 @@ sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 
 	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
-
-	sntp_should_listen = 0;
 }
 
 static void
@@ -508,6 +519,14 @@ loop ()
 				curvefit_north = tmp;
 		}
 
+		// handle WIZnet IRQs
+		if (wiz_needs_attention)
+		{
+			//debug_str("wiz_needs_attention");
+			wiz_irq_handle();
+			wiz_needs_attention = 0;
+		}
+
 		// run osc config server
 		if (config.config.socket.enabled && config_should_listen)
 		{
@@ -522,17 +541,16 @@ loop ()
 			if (sntp_should_listen)
 			{
 				udp_dispatch (config.sntp.socket.sock, buf_o_ptr, sntp_cb);
+				sntp_should_listen = 0;
 			}
 
 			// send sntp request
 			if (sntp_should_request)
 			{
-				sntp_should_request = 0;
-				sntp_should_listen = 1;
-
 				sntp_timestamp_refresh (&now, NULL);
 				len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
 				udp_send (config.sntp.socket.sock, buf_o_ptr, len);
+				sntp_should_request = 0;
 			}
 		}
 
@@ -596,29 +614,6 @@ sntp_timer_reconfigure ()
 	nvic_irq_set_priority (NVIC_TIMER2, SNTP_TIMER_PRIORITY);
 }
 
-void
-config_timer_reconfigure ()
-{
-	uint16_t prescaler = 72e6 / 0xffff;
-	uint16_t reload = 0xffff / config.config.rate;
-	uint16_t compare = reload;
-
-	timer_set_prescaler (config_timer, prescaler);
-	timer_set_reload (config_timer, reload);
-
-	timer_set_mode (config_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	timer_set_compare (config_timer, TIMER_CH1, compare);
-	timer_attach_interrupt (config_timer, TIMER_CH1, config_timer_irq);
-
-	timer_set_mode (config_timer, TIMER_CH2, TIMER_OUTPUT_COMPARE);
-	timer_set_compare (config_timer, TIMER_CH2, compare);
-	timer_attach_interrupt (config_timer, TIMER_CH2, mdns_timer_irq);
-
-	timer_generate_update (config_timer);
-
-	nvic_irq_set_priority (NVIC_TIMER3, CONFIG_TIMER_PRIORITY);
-}
-
 void 
 dhcpc_timer_reconfigure ()
 {
@@ -678,12 +673,10 @@ setup ()
 	pin_write_bit(UDP_PWDN, 0);
 
 	pin_set_modef (UDP_INT, GPIO_MODE_INPUT, GPIO_PUPDR_NOPUPD);
-	/*
 	exti_attach_interrupt((exti_num)(PIN_MAP[UDP_INT].gpio_bit),
 		gpio_exti_port(PIN_MAP[UDP_INT].gpio_device),
 		wiz_irq,
 		EXTI_FALLING);
-	*/
 
 	// systick 
 	systick_disable ();
@@ -752,16 +745,17 @@ setup ()
 		IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
 
 	wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
+	wiz_socket_irq_set(config.config.socket.sock, wiz_config_irq, SnIR_RECV); //TODO put this into config_enable
+	wiz_socket_irq_set(config.mdns.socket.sock, wiz_mdns_irq, SnIR_RECV); //TODO put this into config_enable
+	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, SnIR_RECV); //TODO put this into config_enable
 
 	// initialize timers
 	adc_timer = TIMER1;
 	sntp_timer = TIMER2;
-	config_timer = TIMER3;
 	dhcpc_timer = TIMER4;
 
 	timer_init (adc_timer);
 	timer_init (sntp_timer);
-	timer_init (config_timer);
 	timer_init (dhcpc_timer);
 
 	timer_pause (dhcpc_timer);

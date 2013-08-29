@@ -33,6 +33,15 @@
 
 #define WIZ_MAX_SOCK_NUM 8
 
+#define SnIR_PRECV						(1U << 7) // valid only on socket 0 & PPPoE
+#define SnIR_PFAIL						(1U << 6) // valid only on socket 0 & PPPoE
+#define SnIR_PNEXT						(1U << 5) // valid only on socket 0 & PPPoE
+#define SnIR_SEND_OK					(1U << 4)
+#define SnIR_TIMEOUT					(1U << 3)
+#define SnIR_RECV							(1U << 2)
+#define SnIR_DISCON						(1U << 1)
+#define SnIR_CON							(1U << 0)
+
 typedef void (*Wiz_UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
 typedef void (*Wiz_IRQ_Cb) (uint8_t isr);
 
@@ -48,8 +57,7 @@ void wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 uint_fast8_t wiz_is_broadcast(uint8_t *ip);
 uint_fast8_t wiz_is_multicast(uint8_t *ip);
 
-void wiz_irq (void);
-
+void wiz_irq_handle(void);
 void wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask);
 void wiz_irq_unset();
 

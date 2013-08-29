@@ -113,7 +113,6 @@ extern const float lookup_sqrt [];
 
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;
-extern timer_dev *config_timer;
 extern timer_dev *dhcpc_timer;
 
 void cpp_setup ();

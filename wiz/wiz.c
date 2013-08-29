@@ -439,34 +439,6 @@ wiz_comm_set (uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 }
 
 void
-wiz_irq (void)
-{
-	uint8_t ir;
-	uint8_t ir2;
-	uint_fast8_t sock;
-
-	// main interrupt
-	_dma_read(IR, &ir, 1);
-	if(irq_cb)
-		irq_cb(ir);
-	_dma_write(IR, &ir, 1); // clear main IRQ flags
-
-	// socket interrupts
-	_dma_read(IR2, &ir2, 1);
-	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
-	{
-		if( (1U << sock) & ir2) // there was an IRQ for this socket
-		{
-			uint8_t sock_ir;
-			_dma_read_sock(sock, SnIR, &sock_ir, 1); // get socket IRQ
-			if(irq_socket_cb)
-				irq_socket_cb[sock](sock_ir);
-			_dma_write_sock(sock, SnIR, &sock_ir, 1); // clear socket IRQ flags (this automatically clears IR2[sock]
-		}
-	}
-}
-
-void
 udp_end (uint8_t sock)
 {
 	uint8_t flag;
@@ -906,6 +878,36 @@ macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void
 }
 
 void
+wiz_irq_handle (void)
+{
+	uint8_t ir;
+	uint8_t ir2;
+	uint_fast8_t sock;
+
+	// main interrupt
+	if(irq_cb)
+	{
+		_dma_read(IR, &ir, 1);
+		irq_cb(ir);
+		_dma_write(IR, &ir, 1); // clear main IRQ flags
+	}
+
+	// socket interrupts
+	_dma_read(IR2, &ir2, 1);
+	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
+	{
+		if( (1U << sock) & ir2) // there was an IRQ for this socket
+			if(irq_socket_cb[sock])
+			{
+				uint8_t sock_ir;
+				_dma_read_sock(sock, SnIR, &sock_ir, 1); // get socket IRQ
+				irq_socket_cb[sock](sock_ir);
+				_dma_write_sock(sock, SnIR, &sock_ir, 1); // clear socket IRQ flags (this automatically clears IR2[sock]
+			}
+	}
+}
+
+void
 wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask)
 {
 	irq_cb = cb;
@@ -932,7 +934,7 @@ wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask)
 	mask2 |= (1U << socket); // enable socket IRQs
 	_dma_write(IMR2, &mask2, 1);
 
-	_dma_socket_write(socket, SnIMR, &mask, 1); // set mask
+	_dma_write_sock(socket, SnIMR, &mask, 1); // set mask
 }
 
 void
@@ -946,5 +948,5 @@ wiz_socket_irq_unset(uint8_t socket)
 	_dma_write(IMR2, &mask2, 1);
 
 	uint8_t mask = 0;
-	_dma_socket_write(socket, SnIMR, &mask, 1); // clear mask
+	_dma_write_sock(socket, SnIMR, &mask, 1); // clear mask
 }

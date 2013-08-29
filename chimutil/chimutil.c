@@ -191,9 +191,6 @@ output_enable (uint8_t b)
 void 
 config_enable (uint8_t b)
 {
-	timer_pause (config_timer);
-	config_timer_reconfigure ();
-
 	Socket_Config *socket = &config.config.socket;
 	socket->enabled = b;
 	udp_end (socket->sock);
@@ -202,8 +199,6 @@ config_enable (uint8_t b)
 		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
-
-		timer_resume (config_timer);
 	}
 }
 
@@ -243,8 +238,6 @@ debug_enable (uint8_t b)
 void 
 mdns_enable (uint8_t b)
 {
-	//FIXME handle timer
-
 	Socket_Config *socket = &config.mdns.socket;
 	socket->enabled = b;
 	udp_end (socket->sock);
