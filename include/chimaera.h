@@ -88,8 +88,9 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define MAGIC 0x03
 
-#define FACTORY_RESET_REG 1
-#define FACTORY_RESET_VAL 666
+#define RESET_REG 1
+#define RESET_SOFT 0
+#define RESET_HARD 666
 
 #define EEPROM_SIZE 0x2000
 #define EEPROM_CONFIG_OFFSET 0x0000

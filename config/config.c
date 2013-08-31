@@ -1181,7 +1181,7 @@ _rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_reset_soft (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1198,6 +1198,11 @@ _reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	// reset factory reset flag
+	bkp_enable_writes();
+	bkp_write(RESET_REG, RESET_SOFT);
+	bkp_disable_writes();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
@@ -1206,7 +1211,7 @@ _reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_factory (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_reset_hard (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
@@ -1224,11 +1229,10 @@ _factory (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
-	// FIXME does not work as intended without VBAT powered up, needs a change on the PCB
-	//bkp_init ();
-	//bkp_enable_writes ();
-	//bkp_write (FACTORY_RESET_REG, FACTORY_RESET_VAL);
-	//bkp_disable_writes ();
+	// set factory reset flag
+	bkp_enable_writes();
+	bkp_write(RESET_REG, RESET_HARD);
+	bkp_disable_writes();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
@@ -1256,6 +1260,8 @@ _curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
 }
 
 static uint_fast8_t
@@ -1298,6 +1304,8 @@ _movingaverage_samples (const char *path, const char *fmt, uint_fast8_t argc, nO
 		}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
 }
 
 static uint_fast8_t
@@ -1842,9 +1850,8 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/rate", "i*", _rate},
 
-	{"/chimaera/reset", "i*", _reset},
-
-	{"/chimaera/factory", "i*", _factory},
+	{"/chimaera/reset/soft", "i*", _reset_soft},
+	{"/chimaera/reset/hard", "i*", _reset_hard},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},

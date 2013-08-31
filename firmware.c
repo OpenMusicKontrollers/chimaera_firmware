@@ -37,7 +37,7 @@
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 #include <libmaple/bkp.h> // backup register
-#include <libmaple/dsp.h> // SIMD instructions
+#include <series/simd.h> // SIMD instructions
 
 /*
  * include chimaera custom libraries
@@ -637,6 +637,16 @@ setup ()
 	uint_fast8_t i;
 	uint_fast8_t p;
 
+	// determine power vs factory reset
+	bkp_init ();
+	uint_fast8_t soft_reset = (bkp_read(RESET_REG) == RESET_SOFT);
+	if(soft_reset)
+	{
+		bkp_enable_writes();
+		bkp_write(RESET_REG, RESET_HARD); // set hard reset flag by default
+		bkp_disable_writes();
+	}
+
 	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit (BOARD_LED_PIN, 1);
@@ -694,14 +704,9 @@ setup ()
 	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
 	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
-	// load configuration from eeprom
-	/* FIXME
-	uint16_t bkp_val = bkp_read (FACTORY_RESET_REG); //FIXME does not yet work
-	if (bkp_val == FACTORY_RESET_VAL)
-		bkp_init (); // clear backup register
-	else
-		config_load ();
-	*/
+	// load config or use factory settings?
+	if(soft_reset)
+		config_load(); // soft reset: load configuration from EEPROM
 
 	// rebuild engines stack
 	cmc_engines_update ();
@@ -867,6 +872,9 @@ setup ()
 
 	// load saved groups
 	groups_load ();
+
+	debug_str("soft_reset");
+	debug_int32(soft_reset);
 }
 
 void
