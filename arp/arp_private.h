@@ -50,15 +50,15 @@
 typedef struct _ARP_Payload ARP_Payload;
 
 struct _ARP_Payload {
-	uint16_t htype;
-	uint16_t ptype;
-	uint8_t hlen;
-	uint8_t plen;
-	uint16_t oper;
-	uint8_t sha [6];
-	uint8_t spa [4];
-	uint8_t tha [6];
-	uint8_t tpa [4];
+	uint16_t htype;		// hardware type (ethernet MAC)
+	uint16_t ptype;		// protocol type (IPv4|IPv6)
+	uint8_t hlen;			// hardware length (6bytes)
+	uint8_t plen;			// protocol length (4bytes for IPv4)
+	uint16_t oper;		// operation mode (request|reply)
+	uint8_t sha [6];	// source hardware address
+	uint8_t spa [4];	// source IP address
+	uint8_t tha [6];	// target hardware address
+	uint8_t tpa [4];	// target IP address
 } __attribute((packed,aligned(2)));
 
 #endif

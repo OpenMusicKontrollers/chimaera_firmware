@@ -40,6 +40,9 @@ MACRAW_Header header;
 ARP_Payload payload;
 volatile uint_fast8_t arp_collision = 0;
 
+/*
+ * fill macraw packet with ARP payload
+ */
 static void
 _arp_fill (uint16_t oper, uint8_t *src_mac, uint8_t *src_ip, uint8_t *tar_mac, uint8_t *tar_ip)
 {
@@ -61,18 +64,27 @@ _arp_fill (uint16_t oper, uint8_t *src_mac, uint8_t *src_ip, uint8_t *tar_mac, u
 	memcpy (payload.tpa, tar_ip, 4);
 }
 
+/*
+ * send and ARP probe with mac and ip
+ */
 static void
 _arp_fill_probe (uint8_t *mac, uint8_t *ip)
 {
 	_arp_fill (ARP_OPER_REQUEST, mac, (uint8_t *)nil_ip, (uint8_t *)broadcast_mac, ip);
 }
 
+/*
+ * send and ARP announce with mac and ip
+ */
 static void
 _arp_fill_announce (uint8_t *mac, uint8_t *ip)
 {
 	_arp_fill (ARP_OPER_REQUEST, mac, ip, (uint8_t *)broadcast_mac, ip);
 }
 
+/*
+ * callback to handle replies to the ARP probes and announces
+ */
 static void
 arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
 {
@@ -103,6 +115,9 @@ arp_reply_cb (uint8_t *buf, uint16_t len, void *data)
 		arp_collision = 1;
 }
 
+/*
+ * return number of systicks representing a random delay in seconds in the range [minsecs:maxsecs]
+ */
 static uint32_t
 _random_ticks (uint32_t minsecs, uint32_t maxsecs)
 {
@@ -116,6 +131,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 	uint32_t tick;
 	uint32_t arp_timeout;
 
+	// open socket in MACRAW mode
 	macraw_begin (sock, 1);
 
 	_arp_fill_probe (config.comm.mac, ip);
@@ -124,14 +140,16 @@ arp_probe (uint8_t sock, uint8_t *ip)
 	tick = systick_uptime ();
 	arp_timeout = _random_ticks (0, ARP_PROBE_WAIT);
 	while (systick_uptime() - tick < arp_timeout)
-		;
+		; // wait for random delay
 
 	arp_collision = 0;
 	uint_fast8_t i;
 	for (i=ARP_PROBE_NUM; i>0; i--)
 	{
+		// serialize MACRAW packet with ARP payload
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		// send packet
 		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
 		
 		// delay between probes
@@ -150,6 +168,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 	while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
 		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
 
+	// close MACRAW socket
 	macraw_end (sock);
 
 	return arp_collision;
@@ -161,6 +180,7 @@ arp_announce (uint8_t sock, uint8_t *ip)
 	uint32_t tick;
 	uint32_t arp_timeout;
 
+	// open socket in MACRAW mode
 	macraw_begin (sock, 1);
 
 	_arp_fill_announce (config.comm.mac, ip);
@@ -168,8 +188,10 @@ arp_announce (uint8_t sock, uint8_t *ip)
 	uint_fast8_t i;
 	for (i=ARP_ANNOUNCE_NUM; i>0; i--)
 	{
+		// serialize MACRAW packet with ARP payload
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
 		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		// send packet
 		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
 
 		// delay between announces
@@ -178,9 +200,10 @@ arp_announce (uint8_t sock, uint8_t *ip)
 			tick = systick_uptime ();
 			arp_timeout = 10000*ARP_ANNOUNCE_INTERVAL;
 			while (systick_uptime() - tick < arp_timeout)
-				;
+				; // wait for random delay
 		}
 	}
-
+	
+	// close MACRAW socket
 	macraw_end (sock);
 }

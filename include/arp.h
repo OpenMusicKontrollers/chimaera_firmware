@@ -26,7 +26,16 @@
 
 #include <stdint.h>
 
+/*
+ * send an ARP probe: investigate whether another hardware uses ip,
+ * e.g. whether there is an IP collision.
+ * returns 1 on collision, 0 otherwise
+ */
 uint_fast8_t arp_probe (uint8_t sock, uint8_t *ip);
+
+/*
+ * announce ip via ARP
+ */
 void arp_announce (uint8_t sock, uint8_t *ip);
 
 #endif
