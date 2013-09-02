@@ -418,6 +418,18 @@ _name (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
+_sensors (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	size = CONFIG_SUCCESS("ii", id, SENSOR_N);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
 _config_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1779,8 +1791,8 @@ _non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 const nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
-
 	{"/chimaera/name", "i*", _name},
+	{"/chimaera/sensors", "i", _sensors},
 
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
