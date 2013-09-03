@@ -42,6 +42,7 @@ extern uint_fast8_t calibrating;
 //float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
 uint_fast8_t range_load (uint_fast8_t pos);
+uint_fast8_t range_reset ();
 uint_fast8_t range_save (uint_fast8_t pos);
 void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 

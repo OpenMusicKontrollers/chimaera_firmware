@@ -45,13 +45,7 @@ const char *group_err_str = "group not found";
 #define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], success_str, __VA_ARGS__))
 #define CONFIG_FAIL(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], fail_str, __VA_ARGS__))
 
-//FIXME solve this elegantly
-//#define LAN_BROADCAST {255, 255, 255, 255} // global
-//#define LAN_BROADCAST {169, 254, 255, 255} // IPv4LL
-#define LAN_BROADCAST {192, 168, 1, 255} // local
-
-//#define LAN_HOST {169, 254, 9, 90} // IPv4LL
-#define LAN_HOST {192, 168, 1, 10} // local
+#define IP_BROADCAST {255, 255, 255, 255}
 
 static void _host_address_dns_cb (uint8_t *ip, void *data); // forwared declaration
 
@@ -69,12 +63,11 @@ Config config = {
 	.name = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a', '\0'},
 
 	.comm = {
-		.locally = 0,
-		.mac = {(0x1a | 0b00000010) & 0b11111110, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f}, // locally administered unicast MAC
+		.custom_mac = 0,
+		.mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		.ip = {192, 168, 1, 177},
 		.gateway = {192, 168, 1, 0},
 		.subnet = {255, 255, 255, 0},
-		.subnet_check = 0 //TODO make this configurable
 	},
 
 	.tuio = {
@@ -113,7 +106,7 @@ Config config = {
 			.enabled = 1,
 			.cb = output_enable,
 			.port = {3333, 3333},
-			.ip = LAN_BROADCAST
+			.ip = IP_BROADCAST
 		},
 		.offset = 0.001ULLK // := 1ms offset
 	},
@@ -125,7 +118,7 @@ Config config = {
 			.enabled = 1,
 			.cb = config_enable,
 			.port = {4444, 4444},
-			.ip = LAN_BROADCAST
+			.ip = IP_BROADCAST
 		}
 	},
 
@@ -133,10 +126,10 @@ Config config = {
 		.tau = 4, // delay between SNTP requests in seconds
 		.socket = {
 			.sock = 3,
-			.enabled = 1,
+			.enabled = 0,
 			.cb = sntp_enable,
 			.port = {123, 123},
-			.ip = LAN_HOST
+			.ip = IP_BROADCAST
 		}
 	},
 
@@ -146,7 +139,7 @@ Config config = {
 			.enabled = 1,
 			.cb = debug_enable,
 			.port = {6666, 6666},
-			.ip = LAN_BROADCAST
+			.ip = IP_BROADCAST
 		}
 	},
 
@@ -170,7 +163,7 @@ Config config = {
 			.enabled = 0,
 			.cb = dhcpc_enable,
 			.port = {68, 67}, // BOOTPclient, BOOTPserver
-			.ip = {255, 255, 255, 255} // broadcast
+			.ip = IP_BROADCAST
 		}
 	},
 
@@ -562,12 +555,6 @@ addr2str (uint8_t *ip, uint16_t port, char *str)
 }
 
 static uint_fast8_t
-_comm_locally (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _check_bool (path, fmt, argc, args, &config.comm.locally);
-}
-
-static uint_fast8_t
 _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -586,6 +573,7 @@ _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		{
 			memcpy (config.comm.mac, mac, 6);
 			wiz_mac_set (config.comm.mac);
+			config.comm.custom_mac = 1;
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
@@ -1556,6 +1544,21 @@ _calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 }
 
 static uint_fast8_t
+_calibration_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	// reset calibration range
+	range_reset ();
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
 _curvefit_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1803,7 +1806,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
 
-	{"/chimaera/comm/locally", "i*", _comm_locally},
 	{"/chimaera/comm/mac", "i*", _comm_mac},
 	{"/chimaera/comm/ip", "i*", _comm_ip},
 	//{"/chimaera/comm/gateway", "i*", _comm_gateway},
@@ -1878,6 +1880,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/print", "i", _calibration_print},
 	{"/chimaera/calibration/save", "i*", _calibration_save},
 	{"/chimaera/calibration/load", "i*", _calibration_load},
+	{"/chimaera/calibration/reset", "i", _calibration_reset},
 
 	{"/chimaera/curvefit/start", "ii", _curvefit_start},
 	{"/chimaera/curvefit/next", "if", _curvefit_next},

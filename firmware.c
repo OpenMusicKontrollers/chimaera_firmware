@@ -259,35 +259,12 @@ config_bndl_end_cb ()
 static void
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	if (config.comm.subnet_check)
-	{
-		//TODO make a prober function out of this and put it into chimutil
-		uint_fast8_t i;
-		for (i=0; i<4; i++)
-			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
-			{
-				debug_str ("sender IP not part of subnet");
-				return; // IP not part of same subnet as chimaera -> ignore message
-			}
-	}
-
 	nosc_method_dispatch ((nOSC_Method *)config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
 }
 
 static void
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	if (config.comm.subnet_check)
-	{
-		uint_fast8_t i;
-		for (i=0; i<4; i++)
-			if ( (ip[i] & config.comm.subnet[i]) != (config.comm.ip[i] & config.comm.subnet[i]) )
-			{
-				debug_str ("sender IP not part of subnet");
-				return; // IP not part of same subnet as chimaera -> ignore message
-			}
-	}
-
 	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
 }
@@ -726,9 +703,8 @@ setup ()
 	// rebuild engines stack
 	cmc_engines_update ();
 
-	// read MAC from MAC EEPROM
-	uint8_t MAC [6];
-	if (!config.comm.locally)
+	// read MAC from MAC EEPROM or use custom one stored in config
+	if (!config.comm.custom_mac)
 		eeprom_bulk_read (eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
 
 	// load calibrated sensor ranges from eeprom
@@ -890,6 +866,8 @@ setup ()
 
 	debug_str("soft_reset");
 	debug_int32(soft_reset);
+	debug_str("config size");
+	debug_int32(sizeof(Config));
 }
 
 void
