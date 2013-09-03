@@ -52,21 +52,21 @@ _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
 uint_fast8_t
 range_load (uint_fast8_t pos)
 {
-	if (magic_match ()) // EEPROM and FLASH config versions match
+	//if (version_match ()) // EEPROM and FLASH config versions match FIXME
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
-	else // EEPROM and FLASH config version do not match, overwrite old with new default one
-	{
-		uint_fast8_t i;
-		for (i=0; i<SENSOR_N; i++)
-		{
-			range.thresh[i] = 0;
-			range.qui[i] = 0x7ff;
-			range.as_1_sc_1[i] = 1.0;
-			range.bmin_sc_1 = 0.0;
-		}
+	//else // EEPROM and FLASH config version do not match, overwrite old with new default one
+	//{
+	//	uint_fast8_t i;
+	//	for (i=0; i<SENSOR_N; i++)
+	//	{
+	//		range.thresh[i] = 0;
+	//		range.qui[i] = 0x7ff;
+	//		range.as_1_sc_1[i] = 1.0;
+	//		range.bmin_sc_1 = 0.0;
+	//	}
 
-		range_save (pos);
-	}
+	//	range_save (pos);
+	//}
 
 	return 1;
 }

@@ -51,12 +51,14 @@ struct _Config {
 	/*
 	 * read-only
 	 */
-	uint8_t magic;
-
-	struct _version {
-		uint8_t major;
-		uint8_t minor;
-		uint8_t patch_level;
+	union {
+		uint32_t all;
+		struct {
+			uint8_t revision;	// board layout revision
+			uint8_t major;		// major version
+			uint8_t minor;		// minor version
+			uint8_t patch;		// patch level
+		} part;
 	} COMPACT version;
 
 	/*
@@ -159,7 +161,7 @@ extern Config config;
 
 extern const nOSC_Method config_serv [];
 
-uint_fast8_t magic_match ();
+uint_fast8_t version_match ();
 
 uint_fast8_t config_load ();
 uint_fast8_t config_save ();

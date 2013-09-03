@@ -3,9 +3,9 @@
 TARGET := F303CB
 #TARGET := F303CC
 
-export SENSORS := 48 # 3 sensor units aka Chimaera Mini
+#export SENSORS := 48 # 3 sensor units aka Chimaera Mini
 #export SENSORS := 96 # 6 sensor units aka Chimaera Midi
-#export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
+export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
 
 export BOARD := $(TARGET)
 export MEMORY_TARGET := jtag

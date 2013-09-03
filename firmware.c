@@ -132,6 +132,14 @@ dhcpc_timer_irq ()
 }
 
 static void
+soft_irq ()
+{
+	bkp_enable_writes();
+	bkp_write(RESET_REG, RESET_SOFT); // set soft reset flag
+	bkp_disable_writes();
+}
+
+static void
 wiz_irq ()
 {
 	wiz_needs_attention = 1;
@@ -642,12 +650,19 @@ setup ()
 	uint_fast8_t soft_reset = (bkp_read(RESET_REG) == RESET_SOFT);
 	if(soft_reset)
 	{
+		// only pressing RESET button will trigger a hard reset
 		bkp_enable_writes();
 		bkp_write(RESET_REG, RESET_HARD); // set hard reset flag by default
 		bkp_disable_writes();
 	}
 
-	pin_set_modef (BOARD_BUTTON_PIN, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
+	// by pressing FLASH button before RESET button will trigger a soft reset
+	pin_set_modef (SOFT_RESET, GPIO_MODE_INPUT, GPIO_MODEF_PUPD_NONE);
+	exti_attach_interrupt((exti_num)(PIN_MAP[SOFT_RESET].gpio_bit),
+		gpio_exti_port(PIN_MAP[SOFT_RESET].gpio_device),
+		soft_irq,
+		EXTI_RISING);
+
 	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit (BOARD_LED_PIN, 1);
 

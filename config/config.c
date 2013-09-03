@@ -56,15 +56,17 @@ const char *group_err_str = "group not found";
 static void _host_address_dns_cb (uint8_t *ip, void *data); // forwared declaration
 
 Config config = {
-	.magic = MAGIC, // used to compare EEPROM and FLASH config versions
+	.version = {
+		//.all = VERSION;
+		.part = {
+			.revision = VERSION_REVISION,
+			.major = VERSION_MAJOR,
+			.minor = VERSION_MINOR,
+			.patch = VERSION_PATCH
+		}
+	},
 
 	.name = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a', '\0'},
-
-	.version = {
-		.major = 0,
-		.minor = 1,
-		.patch_level = 0
-	},
 
 	.comm = {
 		.locally = 0,
@@ -196,18 +198,18 @@ Config config = {
 };
 
 uint_fast8_t
-magic_match ()
+version_match ()
 {
-	uint8_t magic;
-	eeprom_byte_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, &magic);
+	uint32_t version;
+	eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&version, sizeof(version));
 
-	return magic == config.magic; // check whether EEPROM and FLASH config magic number match
+	return version == config.version.all; // check whether EEPROM and FLASH version numbers match
 }
 
 uint_fast8_t
 config_load ()
 {
-	if (magic_match ())
+	if (version_match ())
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
@@ -228,7 +230,7 @@ groups_load ()
 	uint16_t size;
 	uint8_t *buf;
 
-	if (magic_match ())
+	if (version_match ())
 	{
 		buf = cmc_group_buf_get (&size);
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
@@ -382,8 +384,12 @@ _version (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	char version[16]; // FIXME share string buffer space between config methods
-	sprintf (version, "%i.%i.%i", config.version.major, config.version.minor, config.version.patch_level);
+	char version[20]; // FIXME share string buffer space between config methods
+	sprintf (version, "%i.%i.%i Rev%i",
+		config.version.part.major,
+		config.version.part.minor,
+		config.version.part.patch,
+		config.version.part.revision);
 	size = CONFIG_SUCCESS ("is", id, version);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
