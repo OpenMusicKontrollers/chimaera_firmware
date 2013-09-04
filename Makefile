@@ -22,4 +22,6 @@ all: sketch
 	$(MAKE) -f $(LIB_MAPLE_HOME)/Makefile $@
 
 download:	build/$(TARGET).bin
+	oscsend osc.udp://255.255.255.255:4444 /chimaera/reset/flash i 13
+	sleep 1
 	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<

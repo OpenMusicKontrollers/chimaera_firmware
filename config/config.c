@@ -1193,15 +1193,6 @@ _reset_soft (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	int32_t id = args[0].i;
 	int32_t sec;
 
-	if (argc > 1)
-	{
-		sec = args[1].i;
-		if (sec < 1)
-			sec = 1;
-	}
-	else
-		sec = 1;
-
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -1210,7 +1201,6 @@ _reset_soft (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT);
 	bkp_disable_writes();
 
-	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
 
 	return 1;
@@ -1223,15 +1213,6 @@ _reset_hard (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	int32_t id = args[0].i;
 	int32_t sec;
 
-	if (argc > 1)
-	{
-		sec = args[1].i;
-		if (sec < 1)
-			sec = 1;
-	}
-	else
-		sec = 1;
-
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -1240,7 +1221,6 @@ _reset_hard (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
 	bkp_disable_writes();
 
-	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
 
 	return 1;
@@ -1253,15 +1233,6 @@ _reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	int32_t id = args[0].i;
 	int32_t sec;
 
-	if (argc > 1)
-	{
-		sec = args[1].i;
-		if (sec < 1)
-			sec = 1;
-	}
-	else
-		sec = 1;
-
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
@@ -1270,7 +1241,6 @@ _reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	bkp_write(RESET_MODE_REG, RESET_MODE_SYSTEM_FLASH);
 	bkp_disable_writes();
 
-	delay_us (sec * 1e6); // delay sec seconds until reset
 	nvic_sys_reset ();
 
 	return 1;
@@ -1900,9 +1870,9 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/rate", "i*", _rate},
 
-	{"/chimaera/reset/soft", "i*", _reset_soft},
-	{"/chimaera/reset/hard", "i*", _reset_hard},
-	{"/chimaera/reset/flash", "i*", _reset_flash},
+	{"/chimaera/reset/soft", "i", _reset_soft},
+	{"/chimaera/reset/hard", "i", _reset_hard},
+	{"/chimaera/reset/flash", "i", _reset_flash},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
