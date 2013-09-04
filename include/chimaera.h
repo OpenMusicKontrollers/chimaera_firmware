@@ -94,11 +94,15 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define ENGINE_MAX 5 // tuio, scsynth, oscmidi, dummy, rtpmidi
 
-#define MAGIC 0x03
+#define BOOT_MODE_REG 0xF
 
-#define RESET_REG 1
-#define RESET_SOFT 0
-#define RESET_HARD 666
+#define RESET_MODE_REG 1
+typedef enum _Reset_Mode {
+	RESET_MODE_FLASH_SOFT		= 0,
+	RESET_MODE_FLASH_HARD		= 1,
+	RESET_MODE_SYSTEM_FLASH	= 2,
+	RESET_MODE_SRAM					= 4,
+} Reset_Mode;
 
 #define EEPROM_SIZE 0x2000
 #define EEPROM_CONFIG_OFFSET 0x0000

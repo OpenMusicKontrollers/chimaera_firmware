@@ -37,6 +37,7 @@
 #include <libmaple/adc.h> // analog to digital converter
 #include <libmaple/dma.h> // direct memory access
 #include <libmaple/bkp.h> // backup register
+#include <libmaple/syscfg.h> // syscfg register
 #include <series/simd.h> // SIMD instructions
 
 /*
@@ -135,7 +136,7 @@ static void
 soft_irq ()
 {
 	bkp_enable_writes();
-	bkp_write(RESET_REG, RESET_SOFT); // set soft reset flag
+	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT); // set soft reset flag
 	bkp_disable_writes();
 }
 
@@ -624,13 +625,41 @@ setup ()
 
 	// determine power vs factory reset
 	bkp_init ();
-	uint_fast8_t soft_reset = (bkp_read(RESET_REG) == RESET_SOFT);
-	if(soft_reset)
+
+	// get reset mode
+	Reset_Mode reset_mode = bkp_read(RESET_MODE_REG);
+	
+	// set hard reset mode by default for next boot
+	bkp_enable_writes();
+	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
+	bkp_disable_writes();
+
+	switch(reset_mode)
 	{
-		// only pressing RESET button will trigger a hard reset
-		bkp_enable_writes();
-		bkp_write(RESET_REG, RESET_HARD); // set hard reset flag by default
-		bkp_disable_writes();
+		case RESET_MODE_FLASH_SOFT:
+			syscfg_set_mem_mode(SYSCFG_MEM_MODE_FLASH);
+			// fall through
+		case RESET_MODE_FLASH_HARD:
+			syscfg_set_mem_mode(SYSCFG_MEM_MODE_FLASH);
+			break;
+		case RESET_MODE_SYSTEM_FLASH:
+			syscfg_set_mem_mode(SYSCFG_MEM_MODE_SYSTEM_FLASH);
+			// jump to system memory, aka DfuSe boot loader
+			asm volatile (
+				"\tLDR		R0, =0x1FFFD800\n"
+				"\tLDR		SP, [R0, #0]\n"
+				"\tLDR		R0, [R0, #4]\n"
+				"\tBX			R0\n");
+			break; // never reached
+		case RESET_MODE_SRAM:
+			syscfg_set_mem_mode(SYSCFG_MEM_MODE_SRAM);
+			// jump to SRAM
+			asm volatile (
+				"\tLDR		R0, =0x20000000\n"
+				"\tLDR		SP, [R0, #0]\n"
+				"\tLDR		R0, [R0, #4]\n"
+				"\tBX			R0\n");
+			break; // never reached
 	}
 
 	// by pressing FLASH button before RESET button will trigger a soft reset
@@ -697,7 +726,7 @@ setup ()
 	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
 
 	// load config or use factory settings?
-	if(soft_reset)
+	if(reset_mode == RESET_MODE_FLASH_SOFT)
 		config_load(); // soft reset: load configuration from EEPROM
 
 	// rebuild engines stack
@@ -864,8 +893,8 @@ setup ()
 	// load saved groups
 	groups_load ();
 
-	debug_str("soft_reset");
-	debug_int32(soft_reset);
+	debug_str("reset_mode");
+	debug_int32(reset_mode);
 	debug_str("config size");
 	debug_int32(sizeof(Config));
 }

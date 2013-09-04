@@ -1207,7 +1207,7 @@ _reset_soft (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 
 	// reset factory reset flag
 	bkp_enable_writes();
-	bkp_write(RESET_REG, RESET_SOFT);
+	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT);
 	bkp_disable_writes();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
@@ -1237,7 +1237,37 @@ _reset_hard (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 
 	// set factory reset flag
 	bkp_enable_writes();
-	bkp_write(RESET_REG, RESET_HARD);
+	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
+	bkp_disable_writes();
+
+	delay_us (sec * 1e6); // delay sec seconds until reset
+	nvic_sys_reset ();
+
+	return 1;
+}
+
+static uint_fast8_t
+_reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+	int32_t sec;
+
+	if (argc > 1)
+	{
+		sec = args[1].i;
+		if (sec < 1)
+			sec = 1;
+	}
+	else
+		sec = 1;
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	// set bootloader flag
+	bkp_enable_writes();
+	bkp_write(RESET_MODE_REG, RESET_MODE_SYSTEM_FLASH);
 	bkp_disable_writes();
 
 	delay_us (sec * 1e6); // delay sec seconds until reset
@@ -1872,6 +1902,7 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/reset/soft", "i*", _reset_soft},
 	{"/chimaera/reset/hard", "i*", _reset_hard},
+	{"/chimaera/reset/flash", "i*", _reset_flash},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
