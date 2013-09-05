@@ -79,7 +79,7 @@
 #define SnTX_FSR 							0x0020 // 2 TX Free Size
 #define SnTX_RD  							0x0022 // 2 TX Read Pointer
 #define SnTX_WR  							0x0024 // 2 TX Write Pointer
-#define SnRX_RSR 							0x0026 // 2 RX Free Size
+#define SnRX_RSR 							0x0026 // 2 RX Received Size
 #define SnRX_RD  							0x0028 // 2 RX Read Pointer
 #define SnRX_WR  							0x002A // 2 RX Write Pointer (supported?)
 #define SnIMR    							0x002C // 1 Interrupt mask

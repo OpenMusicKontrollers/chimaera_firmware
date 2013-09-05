@@ -24,6 +24,7 @@
 #include "mdns_private.h"
 
 #include <chimaera.h>
+#include <chimutil.h>
 #include <wiz.h>
 #include <config.h>
 

@@ -290,15 +290,9 @@ adc_fill (uint_fast8_t raw_ptr)
 	uint32_t *swap_vec32 = (uint32_t *)adc_swap;
 
 	uint32_t zero = 0UL;
-
-	if (config.movingaverage.enabled)
-		for (i=0; i<SENSOR_N/2; i++)
-		{
-			uint32_t mean = __shadd16 (sum_vec32[i], zero); // mean = sum / 2
-			mean = __shadd16 (mean, zero); // mean /= 2
-			mean = __shadd16 (mean, zero); // mean /= 2
-			sum_vec32[i] = __ssub16 (sum_vec32[i], mean); // sum -= mean
-		}
+	uint_fast8_t dump_enabled = config.dump.enabled; // local copy
+	uint_fast8_t movingaverage_enabled = config.movingaverage.enabled; // local copy
+	uint_fast8_t bitshift = config.movingaverage.bitshift; // local copy
 
 	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
@@ -314,44 +308,108 @@ adc_fill (uint_fast8_t raw_ptr)
 	}
 #endif
 
-	if (config.movingaverage.enabled)
+	if (movingaverage_enabled)
 	{
-		if (config.dump.enabled)
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				uint32_t rela;
-				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+		switch (bitshift)
+		{
+			case 1: // 2^1 = 2 samples moving average
+				if (dump_enabled)
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
 
-				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
-				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela_vec32[i] = rela;
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
 
-				swap_vec32[i] = __rev16 (rela); // SIMD hton
-			}
-		else // !config.dump.enabled
-			for (i=0; i<SENSOR_N/2; i++)
-			{
-				uint32_t rela;
-				rela = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
+						rela_vec32[i] = rela32;
+						swap_vec32[i] = __rev16 (rela32); // SIMD hton
+					}
+				else // !dump_enabled
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
 
-				sum_vec32[i] = __sadd16 (sum_vec32[i], rela); // sum += rela
-				rela = __shadd16 (sum_vec32[i], zero); // rela = sum /2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela = __shadd16 (rela, zero); // rela /= 2
-				rela_vec32[i] = rela;
-			}
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
+
+						rela_vec32[i] = rela32;
+					}
+				break;
+			case 2: // 2^2 = 4 samples moving average
+				if (dump_enabled)
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
+
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
+
+						rela_vec32[i] = rela32;
+						swap_vec32[i] = __rev16 (rela32); // SIMD hton
+					}
+				else // !dump_enabled
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
+
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
+
+						rela_vec32[i] = rela32;
+					}
+				break;
+			case 3: // 2^3 = 8 samples moving average
+				if (dump_enabled)
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
+
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
+
+						rela_vec32[i] = rela32;
+						swap_vec32[i] = __rev16 (rela32); // SIMD hton
+					}
+				else // !dump_enabled
+					for (i=0; i<SENSOR_N/2; i++)
+					{
+						uint32_t rela32;
+						rela32 = __ssub16 (rela_vec32[i], qui_vec32[i]); // rela -= qui
+
+						sum_vec32[i] = __sadd16 (sum_vec32[i], rela32); // sum += rela
+						rela32 = __shadd16 (sum_vec32[i], zero); // rela = sum / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						rela32 = __shadd16 (rela32, zero); // rela = rela / 2
+						sum_vec32[i] = __ssub16 (sum_vec32[i], rela32); // sum -= rela
+
+						rela_vec32[i] = rela32;
+					}
+				break;
+		}
 	}
-	else // !config.movingaverage.enabled
+	else // !movingaverage_enabled
 	{
-		if (config.dump.enabled)
+		if (dump_enabled)
 			for (i=0; i<SENSOR_N/2; i++)
 			{
 				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
 				swap_vec32[i] = __rev16 (rela_vec32[i]); // SIMD hton
 			}
-		else // !config.dump.enabled
+		else // !dump_enabled
 			for (i=0; i<SENSOR_N/2; i++)
 			{
 				rela_vec32[i] = __ssub16 (rela_vec32[i], qui_vec32[i]); // SIMD sub
@@ -637,7 +695,6 @@ setup ()
 	switch(reset_mode)
 	{
 		case RESET_MODE_FLASH_SOFT:
-			syscfg_set_mem_mode(SYSCFG_MEM_MODE_FLASH);
 			// fall through
 		case RESET_MODE_FLASH_HARD:
 			syscfg_set_mem_mode(SYSCFG_MEM_MODE_FLASH);
@@ -647,15 +704,6 @@ setup ()
 			// jump to system memory, aka DfuSe boot loader
 			asm volatile (
 				"\tLDR		R0, =0x1FFFD800\n"
-				"\tLDR		SP, [R0, #0]\n"
-				"\tLDR		R0, [R0, #4]\n"
-				"\tBX			R0\n");
-			break; // never reached
-		case RESET_MODE_SRAM:
-			syscfg_set_mem_mode(SYSCFG_MEM_MODE_SRAM);
-			// jump to SRAM
-			asm volatile (
-				"\tLDR		R0, =0x20000000\n"
 				"\tLDR		SP, [R0, #0]\n"
 				"\tLDR		R0, [R0, #4]\n"
 				"\tBX			R0\n");
@@ -893,10 +941,8 @@ setup ()
 	// load saved groups
 	groups_load ();
 
-	debug_str("reset_mode");
-	debug_int32(reset_mode);
-	debug_str("config size");
-	debug_int32(sizeof(Config));
+	DEBUG("si", "reset_mode", reset_mode);
+	DEBUG("si", "config size", sizeof(Config));
 }
 
 void

@@ -797,8 +797,12 @@ _address_dns_cb (uint8_t *ip, void *data)
 	socket->cb (socket->enabled);
 
 	debug_str ("_address_dns_cb");
-	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	debug_int32 (ip[0]);
+	debug_int32 (ip[1]);
+	debug_int32 (ip[2]);
+	debug_int32 (ip[3]);
+	//size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	//udp_send (config.config.socket.sock, buf_o_ptr, size);
 }
 
 static uint_fast8_t
@@ -1301,12 +1305,8 @@ _movingaverage_samples (const char *path, const char *fmt, uint_fast8_t argc, nO
 				config.movingaverage.bitshift = 3;
 				size = CONFIG_SUCCESS ("i", id);
 				break;
-			case 16:
-				config.movingaverage.bitshift = 4;
-				size = CONFIG_SUCCESS ("i", id);
-				break;
 			default:
-				size = CONFIG_FAIL ("is", id, "valid sample windows are 2, 4, 8 and 16");
+				size = CONFIG_FAIL ("is", id, "valid sample windows are 2, 4 and 8");
 		}
 
 	udp_send (config.config.socket.sock, buf_o_ptr, size);

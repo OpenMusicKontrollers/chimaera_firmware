@@ -753,34 +753,24 @@ udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t 
 {
 	uint16_t len;
 
-	if ( (len = udp_available (sock)) )
+	while ( (len = udp_available (sock)) )
 	{
-		// we cannot handle compound packets if they are too long, ignore them by now, FIXME try to read them separately
-		if ( (len > CHIMAERA_BUFSIZE) || (len > RSIZE[sock]) )
-		{
-			//debug_str ("udp message too long to dispatch");
-			//debug_int32 (len);
-			_wiz_advance_read_ptr (sock, len);
-			return;
-		}
-
-		if (!udp_receive (sock, ptr, len))
+		// read UDP header
+		if (!udp_receive (sock, ptr, 8))
 			return;
 
-		// separate concurrent UDP messages
-		uint16_t remaining = len;
-		while (remaining > 0)
-		{
-			uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE + len - remaining;
+		uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE;
 
-			uint8_t *ip = &buf_in_ptr[0];
-			uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
-			uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
+		uint8_t ip[4];
+		memcpy(ip, buf_in_ptr, 4);
+		uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
+		uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
-			cb (ip, port, buf_in_ptr + WIZ_UDP_HDR_SIZE, size);
+		// read UDP payload
+		if (!udp_receive (sock, ptr, size))
+			return;
 
-			remaining -= WIZ_UDP_HDR_SIZE + size;
-		}
+		cb (ip, port, buf_in_ptr, size);
 	}
 }
 
@@ -845,35 +835,20 @@ macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void
 {
 	uint16_t len;
 
-	if ( (len = macraw_available (sock)) )
+	while ( (len = macraw_available (sock)) )
 	{
-		// we cannot handle compound packets if they are too long, ignore them by now, FIXME try to read them separately
-		if ( (len > CHIMAERA_BUFSIZE) || (len > RSIZE[sock]) )
-		{
-			//debug_str ("udp message too long to dispatch");
-			//debug_int32 (len);
-			_wiz_advance_read_ptr (sock, len);
+		// receive packet MACRAW size
+		if (!macraw_receive (sock, ptr, 2))
 			return;
-		}
+			
+		uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE;
+		uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
 
-		if (!macraw_receive (sock, ptr, len))
+		// receive payload
+		if (!macraw_receive (sock, ptr, size-2))
 			return;
-
-		// separate concurrent MACRAW packets
-		uint16_t remaining = len;
-		while (remaining > 0)
-		{
-			uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE + len - remaining;
-			uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
-
-			//debug_str ("macraw_dispatch"); // FIXME  remove debug
-			//debug_int32 (len);
-			//debug_int32 (size);
-			cb (buf_in_ptr+2, size-2, user_data);
-
-			//remaining -= 2 + size + 4; // -(packet_info + packet_size + CRC)
-			remaining -= size; // -(packet_info + packet_size + CRC)
-		}
+			
+		cb (buf_in_ptr, size-2, user_data);
 	}
 }
 
