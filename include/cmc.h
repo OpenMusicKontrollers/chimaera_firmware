@@ -56,6 +56,7 @@ uint8_t *cmc_group_buf_get (uint16_t *size); //TODO this is ugly code, solve dif
 
 extern CMC_Engine *engines [];
 
+extern uint_fast8_t cmc_engines_active;
 void cmc_engines_update ();
 
 #endif

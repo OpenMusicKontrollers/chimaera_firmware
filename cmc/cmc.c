@@ -686,25 +686,27 @@ cmc_group_buf_get (uint16_t *size)
 	return (uint8_t *)cmc.groups;
 }
 
+uint_fast8_t cmc_engines_active = 0;
+
 void
 cmc_engines_update ()
 {
-	uint_fast8_t ptr = 0;
+	cmc_engines_active = 0;
 
 	if (config.tuio.enabled)
-		engines[ptr++] = &tuio2_engine;
+		engines[cmc_engines_active++] = &tuio2_engine;
 
 	if (config.scsynth.enabled)
-		engines[ptr++] = &scsynth_engine;
+		engines[cmc_engines_active++] = &scsynth_engine;
 
 	if (config.oscmidi.enabled)
-		engines[ptr++] = &oscmidi_engine;
+		engines[cmc_engines_active++] = &oscmidi_engine;
 
 	if (config.dummy.enabled)
-		engines[ptr++] = &dummy_engine;
+		engines[cmc_engines_active++] = &dummy_engine;
 
 	if (config.rtpmidi.enabled)
-		engines[ptr++] = &rtpmidi_engine;
+		engines[cmc_engines_active++] = &rtpmidi_engine;
 
-	engines[ptr] = NULL;
+	engines[cmc_engines_active] = NULL;
 }

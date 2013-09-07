@@ -459,7 +459,8 @@ loop ()
 
 		if (calibrating)
 			range_calibrate (adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
-		else if (config.output.socket.enabled)
+
+		if (config.output.socket.enabled)
 		{
 			uint_fast8_t job = 0;
 
@@ -477,13 +478,13 @@ loop ()
 
 			sntp_timestamp_refresh (&now, &offset);
 
-			if (config.dump.enabled)
+			if (config.dump.enabled) // dump output is functional even when calibrating
 			{
 				dump_update (now); // 6us
 				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, offset, dump_fmt);
 			}
 		
-			if (config.tuio.enabled || config.scsynth.enabled || config.oscmidi.enabled || config.dummy.enabled || config.rtpmidi.enabled) // put all blob based engine flags here, e.g. TUIO, RTPMIDI, Kraken, SuperCollider, ...
+			if (!calibrating && cmc_engines_active) // output engines are disfunctional when calibrating
 			{
 #ifdef BENCHMARK
 				stop_watch_start (&sw_tuio_process);
@@ -530,7 +531,7 @@ loop ()
 				}
 			}
 
-			if (config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
+			if (!calibrating && config.rtpmidi.enabled && cmc_len) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 				job = 1;
 
 #ifdef BENCHMARK
