@@ -29,5 +29,12 @@ for B in range (0x800):
 	b = sqrt (B / 0x7ff)
 	print ('\t', b, ',')
 
-print ('};')
+print ('};\n')
 
+print ('const float lookup_crt [0x800] = {')
+
+for B in range (0x800):
+	b = pow (B / 0x7ff, 1/3)
+	print ('\t', b, ',')
+
+print ('};')

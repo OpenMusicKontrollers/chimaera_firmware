@@ -122,6 +122,7 @@ extern uint8_t buf_i_o [];
 extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 extern const float lookup_sqrt [];
+extern const float lookup_crt [];
 
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;
