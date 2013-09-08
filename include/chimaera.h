@@ -41,6 +41,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define pin_set_modef(PIN, MODE, FLAGS) (gpio_set_modef (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE), (FLAGS)))
 #define pin_set_af(PIN, AF) (gpio_set_af (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (AF)))
 #define pin_write_bit(PIN, VAL) (gpio_write_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (VAL)))
+#define pin_read_bit(PIN) (gpio_read_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit))
 
 #define MUX_LENGTH 4
 #define MUX_MAX 16

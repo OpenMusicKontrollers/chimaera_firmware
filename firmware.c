@@ -567,8 +567,9 @@ loop ()
 		// handle WIZnet IRQs
 		if (wiz_needs_attention)
 		{
-			//debug_str("wiz_needs_attention");
-			wiz_irq_handle();
+			// as long as interrupt pin is low, handle interrupts
+			while (pin_read_bit(UDP_INT) == 0)
+				wiz_irq_handle();
 			wiz_needs_attention = 0;
 		}
 
