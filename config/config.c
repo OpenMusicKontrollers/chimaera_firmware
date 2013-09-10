@@ -974,12 +974,6 @@ _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 }
 
 static uint_fast8_t
-_config_rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _check_range16 (&config.config.rate, 1, 10, path, fmt, argc, args);
-}
-
-static uint_fast8_t
 _sntp_tau (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return _check_range8 (&config.sntp.tau, 1, 10, path, fmt, argc, args);
@@ -1801,10 +1795,18 @@ _non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 const nOSC_Method config_serv [] = {
 	{"/chimaera/version", "i", _version},
 	{"/chimaera/name", "i*", _name},
+	{"/chimaera/uid", "i", _uid},
 	{"/chimaera/sensors", "i", _sensors},
+	{"/chimaera/rate", "i*", _rate},
+
+	{"/chimaera/reset/soft", "i", _reset_soft},
+	{"/chimaera/reset/hard", "i", _reset_hard},
+	{"/chimaera/reset/flash", "i", _reset_flash},
 
 	{"/chimaera/config/load", "i", _config_load},
 	{"/chimaera/config/save", "i", _config_save},
+	{"/chimaera/config/enabled", "i*", _config_enabled},
+	{"/chimaera/config/address", "i*", _config_address},
 
 	{"/chimaera/comm/mac", "i*", _comm_mac},
 	{"/chimaera/comm/ip", "i*", _comm_ip},
@@ -1833,10 +1835,6 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/rtpmidi/enabled", "i*", _rtpmidi_enabled},
 
-	{"/chimaera/config/enabled", "i*", _config_enabled},
-	{"/chimaera/config/address", "i*", _config_address},
-	{"/chimaera/config/rate", "i*", _config_rate},
-
 	{"/chimaera/sntp/enabled", "i*", _sntp_enabled},
 	{"/chimaera/sntp/address", "i*", _sntp_address},
 	{"/chimaera/sntp/tau", "i*", _sntp_tau},
@@ -1844,9 +1842,9 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/debug/enabled", "i*", _debug_enabled},
 	{"/chimaera/debug/address", "i*", _debug_address},
 
-	{"/chimaera/dhcpc/enabled", "i*", _dhcpc_enabled},
-
 	{"/chimaera/host/address", "is", _host_address},
+
+	{"/chimaera/dhcpc/enabled", "i*", _dhcpc_enabled},
 
 	//TODO
 	//{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
@@ -1861,33 +1859,25 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/interpolation/order", "i*", _interpolation_order},
 
+	{"/chimaera/group/load", "i", _group_load},
+	{"/chimaera/group/save", "i", _group_save},
 	{"/chimaera/group/clear", "i", _group_clear},
 	{"/chimaera/group/get", "ii", _group_get},
 	{"/chimaera/group/set", "iiiff", _group_set},
 
-	{"/chimaera/group/load", "i", _group_load},
-	{"/chimaera/group/save", "i", _group_save},
-
-	{"/chimaera/rate", "i*", _rate},
-
-	{"/chimaera/reset/soft", "i", _reset_soft},
-	{"/chimaera/reset/hard", "i", _reset_hard},
-	{"/chimaera/reset/flash", "i", _reset_flash},
+	{"/chimaera/calibration/load", "i*", _calibration_load},
+	{"/chimaera/calibration/save", "i*", _calibration_save},
+	{"/chimaera/calibration/reset", "i", _calibration_reset},
+	{"/chimaera/calibration/print", "i", _calibration_print},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
 	{"/chimaera/calibration/min", "i", _calibration_min},
 	{"/chimaera/calibration/mid", "if", _calibration_mid},
-	{"/chimaera/calibration/print", "i", _calibration_print},
-	{"/chimaera/calibration/save", "i*", _calibration_save},
-	{"/chimaera/calibration/load", "i*", _calibration_load},
-	{"/chimaera/calibration/reset", "i", _calibration_reset},
 
 	{"/chimaera/curvefit/start", "ii", _curvefit_start},
 	{"/chimaera/curvefit/next", "if", _curvefit_next},
 	{"/chimaera/curvefit/end", "i", _curvefit_end},
-
-	{"/chimaera/uid", "i", _uid},
 
 	{"/chimaera/resolve", "is", _resolve},
 
