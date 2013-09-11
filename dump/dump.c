@@ -24,9 +24,6 @@
 #include <chimaera.h>
 
 #include "dump_private.h"
-#include "../nosc/nosc_private.h"
-#include "../sntp/sntp_private.h"
-#include "../config/config_private.h"
 
 uint32_t frame = 0;
 nOSC_Arg dump_msg [2];
@@ -34,7 +31,17 @@ nOSC_Arg dump_msg [2];
 nOSC_Item dump_bndl [] = {
 	nosc_message(dump_msg, "/dump", "ib")
 };
-char *dump_fmt = "M";
+
+char dump_fmt [] = {
+	nOSC_MESSAGE,
+	nOSC_TERM
+};
+
+nOSC_Bundle_Item dump_osc = {
+	.bndl = dump_bndl,
+	.tt = nOSC_IMMEDIATE,
+	.fmt = dump_fmt
+};
 
 inline void
 dump_init (int32_t size, int16_t *swap)
@@ -42,14 +49,9 @@ dump_init (int32_t size, int16_t *swap)
 	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t *)swap);
 }
 
-inline uint16_t
-dump_serialize (uint8_t *buf, nOSC_Timestamp offset)
-{
-	return nosc_bundle_serialize (dump_bndl, offset, dump_fmt, buf);
-}
-
 inline void
-dump_update (nOSC_Timestamp now)
+dump_update (nOSC_Timestamp now, nOSC_Timestamp offset)
 {
+	dump_osc.tt = offset;
 	nosc_message_set_int32 (dump_msg, DUMP_FRAME, ++frame);
 }

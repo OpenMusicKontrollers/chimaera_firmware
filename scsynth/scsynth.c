@@ -56,11 +56,16 @@ const char *set_fmt = "iififii";
 
 const char *default_fmt = "group%02i";
 
-nOSC_Timestamp scsynth_timestamp;
 nOSC_Timestamp tt;
 
 uint_fast8_t early_i = 0;
 uint_fast8_t late_i = 0;
+
+nOSC_Bundle_Item scsynth_osc = {
+	.bndl = scsynth_bndl,
+	.tt = nOSC_IMMEDIATE,
+	.fmt = scsynth_fmt
+};
 
 void
 scsynth_init ()
@@ -73,8 +78,6 @@ scsynth_init ()
 
 	memset (scsynth_fmt, nOSC_BUNDLE, 2);
 	scsynth_fmt[2] = nOSC_TERM;
-
-	scsynth_timestamp = nOSC_IMMEDIATE;
 
 	uint_fast8_t i;
 	for(i=0; i<GROUP_MAX; i++)
@@ -93,12 +96,12 @@ scsynth_init ()
 }
 
 void
-scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	scsynth_early_fmt[0] = nOSC_TERM;
 	scsynth_late_fmt[0] = nOSC_TERM;
 
-	tt = timestamp + config.output.offset;
+	tt = offset;
 	early_i = 0;
 	late_i = 0;
 

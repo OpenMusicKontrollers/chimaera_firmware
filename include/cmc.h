@@ -30,7 +30,7 @@
 #include <nosc.h>
 #include <config.h>
 
-typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
+typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
 typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t gid, uint16_t pid);
 typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
@@ -46,7 +46,7 @@ struct _CMC_Engine {
 
 void cmc_init ();
 
-uint_fast8_t cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines);
+uint_fast8_t cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines);
 
 void cmc_group_clear ();
 uint_fast8_t cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1);

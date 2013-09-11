@@ -105,7 +105,7 @@ rtpmidi_serialize (uint8_t *buf)
 }
 
 void
-rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	seq_num = seq_offset + fid;
 
@@ -114,11 +114,11 @@ rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp tstamp, uint_fast8_t nblob
 
 	if (last_tt > 0ULLK)
 	{
-		dt = tstamp - last_tt;
+		dt = now - last_tt;
 		df = dt * rtp_midi_session.rate;
 		timestamp += df;
 	}
-	last_tt = tstamp;
+	last_tt = now;
 
 	nlist = 0;
 }

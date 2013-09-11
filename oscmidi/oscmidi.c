@@ -32,7 +32,13 @@
 #include "oscmidi_private.h"
 
 nOSC_Item oscmidi_bndl [1];
-const char *oscmidi_fmt = "M";
+char oscmidi_fmt [2] = {nOSC_MESSAGE, nOSC_TERM};
+
+nOSC_Bundle_Item oscmidi_osc = {
+	.bndl = oscmidi_bndl,
+	.tt = nOSC_IMMEDIATE,
+	.fmt = oscmidi_fmt
+};
 
 OSCMidi_Msg msg;
 
@@ -40,8 +46,6 @@ const char *midi_str = "/midi";
 char midi_fmt [OSCMIDI_MAX+1];
 
 uint8_t oscmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a hash instead
-
-nOSC_Timestamp oscmidi_timestamp;
 
 uint_fast8_t oscmidi_tok;
 
@@ -55,10 +59,10 @@ oscmidi_init ()
 }
 
 void
-oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint8_t ch;
-	oscmidi_timestamp = timestamp + config.output.offset;
+	oscmidi_osc.tt = offset;
 
 	oscmidi_tok = 0;
 

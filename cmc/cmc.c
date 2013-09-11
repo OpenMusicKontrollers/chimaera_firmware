@@ -83,7 +83,7 @@ cmc_init ()
 }
 
 uint_fast8_t
-cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
+cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines)
 {
 	/*
 	 * find areas of interest
@@ -595,7 +595,7 @@ cmc_process (nOSC_Timestamp now, int16_t *rela, CMC_Engine **engines)
 				break;
 
 			if (engine->frame_cb)
-				engine->frame_cb (cmc.fid, now, cmc.I, cmc.J);
+				engine->frame_cb (cmc.fid, now, offset, cmc.I, cmc.J);
 
 			if (engine->on_cb || engine->set_cb)
 				for (j=0; j<cmc.J; j++)

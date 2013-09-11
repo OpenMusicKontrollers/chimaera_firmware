@@ -29,8 +29,7 @@
 #include <netdef.h>
 #include <cmc.h>
 
-extern nOSC_Item tuio2_bndl [];
-extern char tuio2_fmt [];
+extern nOSC_Bundle_Item tuio2_osc;
 extern CMC_Engine tuio2_engine;
 
 void tuio2_init ();

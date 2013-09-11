@@ -38,6 +38,8 @@
 typedef fix_32_32_t nOSC_Timestamp;
 typedef union _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
+typedef struct _nOSC_Bundle_Item nOSC_Bundle_Item;
+typedef struct _nOSC_Message_Item nOSC_Message_Item;
 typedef union _nOSC_Item nOSC_Item;
 typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
@@ -98,19 +100,22 @@ typedef enum _nOSC_Item_Type {
 	nOSC_TERM = '\0'
 } nOSC_Item_Type;
 
-union _nOSC_Item {
-	struct {
-		nOSC_Bundle bndl;
-		nOSC_Timestamp tt;
-		char *fmt;
-	} bundle;
+struct _nOSC_Bundle_Item {
+	nOSC_Bundle bndl;
+	nOSC_Timestamp tt;
+	char *fmt;
+};
 
-	struct {
-		nOSC_Message msg;
-		char *path;
-		char *fmt;
-	} message;
-} __attribute__((packed,aligned(4)));
+struct _nOSC_Message_Item {
+	nOSC_Message msg;
+	char *path;
+	char *fmt;
+};
+
+union _nOSC_Item {
+	nOSC_Bundle_Item bundle;
+	nOSC_Message_Item message;
+};
 
 #define nosc_message(m,p,f)	(nOSC_Item){.message={.msg=m, .path=p, .fmt=f}}
 #define nosc_bundle(b,t,f)	(nOSC_Item){.bundle={.bndl=b, .tt=t, .fmt=f}}
