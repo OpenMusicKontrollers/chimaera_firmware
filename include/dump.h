@@ -29,13 +29,10 @@
 #include <netdef.h>
 #include <nosc.h>
 
-extern nOSC_Item dump_bndl [];
-extern char *dump_fmt;
+extern nOSC_Bundle_Item dump_osc;
 
 void dump_init (int32_t size, int16_t *swap);
 
-uint16_t dump_serialize (uint8_t *buf, nOSC_Timestamp offset);
-
-void dump_update (nOSC_Timestamp now);
+void dump_update (nOSC_Timestamp now, nOSC_Timestamp offset);
 
 #endif

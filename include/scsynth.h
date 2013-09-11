@@ -51,9 +51,7 @@ struct _SCSynth_Group {
 	uint8_t is_group;
 };
 
-extern nOSC_Timestamp scsynth_timestamp;
-extern nOSC_Item scsynth_bndl [];
-extern char scsynth_fmt [];
+extern nOSC_Bundle_Item scsynth_osc;
 extern CMC_Engine scsynth_engine;
 
 void scsynth_init ();

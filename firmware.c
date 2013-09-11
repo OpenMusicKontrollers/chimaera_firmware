@@ -480,8 +480,8 @@ loop ()
 
 			if (config.dump.enabled) // dump output is functional even when calibrating
 			{
-				dump_update (now); // 6us
-				nosc_item_bundle_set (nest_bndl, job++, dump_bndl, offset, dump_fmt);
+				dump_update (now, offset); // 6us
+				nosc_item_bundle_set (nest_bndl, job++, dump_osc.bndl, dump_osc.tt, dump_osc.fmt);
 			}
 		
 			if (!calibrating && cmc_engines_active) // output engines are disfunctional when calibrating
@@ -489,26 +489,24 @@ loop ()
 #ifdef BENCHMARK
 				stop_watch_start (&sw_tuio_process);
 #endif
-				uint_fast8_t blobs = cmc_process (now, adc_rela, engines); // touch recognition of current cycle
+				uint_fast8_t blobs = cmc_process (now, offset, adc_rela, engines); // touch recognition of current cycle
 
 				if (blobs) // was there any update?
 				{
 					if (config.tuio.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, tuio2_bndl, offset, tuio2_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, tuio2_osc.bndl, tuio2_osc.tt, tuio2_osc.fmt);
 
 					if (config.scsynth.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, scsynth_bndl, scsynth_timestamp, scsynth_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, scsynth_osc.bndl, scsynth_osc.tt, scsynth_osc.fmt);
 
 					if (config.oscmidi.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, oscmidi_bndl, oscmidi_timestamp, oscmidi_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, oscmidi_osc.bndl, oscmidi_osc.tt, oscmidi_osc.fmt);
 
 					if (config.dummy.enabled)
-						nosc_item_bundle_set (nest_bndl, job++, dummy_bndl, dummy_timestamp, dummy_fmt);
+						nosc_item_bundle_set (nest_bndl, job++, dummy_osc.bndl, dummy_osc.tt, dummy_osc.fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
-
-					// if (config.kraken.enabled)
 				}
 			}
 

@@ -27,10 +27,8 @@
 #include <cmc.h>
 #include <midi.h>
 
-extern nOSC_Item dummy_bndl [];
-extern char dummy_fmt [];
+extern nOSC_Bundle_Item dummy_osc;
 extern CMC_Engine dummy_engine;
-extern nOSC_Timestamp dummy_timestamp;
 
 void dummy_init ();
 

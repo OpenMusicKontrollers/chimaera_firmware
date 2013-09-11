@@ -45,6 +45,12 @@ nOSC_Arg alv [BLOB_MAX];
 nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
 char tuio2_fmt [TUIO2_MAX+1];
 
+nOSC_Bundle_Item tuio2_osc = {
+	.bndl = tuio2_bndl,
+	.tt = nOSC_IMMEDIATE,
+	.fmt = tuio2_fmt
+};
+
 uint_fast8_t old_end = BLOB_MAX;
 uint_fast8_t counter = 0;
 
@@ -123,10 +129,12 @@ tuio2_long_header_enable (uint_fast8_t on)
 }
 
 void
-tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t end)
+tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
 	frm[0].i = fid;
-	frm[1].t = timestamp;
+	frm[1].t = now;
+
+	tuio2_osc.tt = offset;
 
 	// first undo previous unlinking at position old_end
 	if (old_end < BLOB_MAX)

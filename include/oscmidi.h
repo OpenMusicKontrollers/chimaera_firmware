@@ -27,10 +27,8 @@
 #include <cmc.h>
 #include <midi.h>
 
-extern nOSC_Item oscmidi_bndl [];
-extern const char *oscmidi_fmt;
+extern nOSC_Bundle_Item oscmidi_osc;
 extern CMC_Engine oscmidi_engine;
-extern nOSC_Timestamp oscmidi_timestamp;
 
 void oscmidi_init ();
 

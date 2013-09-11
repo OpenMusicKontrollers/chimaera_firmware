@@ -34,6 +34,12 @@
 nOSC_Item dummy_bndl [BLOB_MAX];
 char dummy_fmt [BLOB_MAX+1];
 
+nOSC_Bundle_Item dummy_osc = {
+	.bndl = dummy_bndl,
+	.tt = nOSC_IMMEDIATE,
+	.fmt = dummy_fmt
+};
+
 Dummy_Msg msgs [BLOB_MAX];
 
 const char *dummy_idle_str = "/idle";
@@ -46,8 +52,6 @@ const char *dummy_on_fmt = "iiiff";
 const char *dummy_off_fmt = "iii";
 const char *dummy_set_fmt = "iiiff";
 
-nOSC_Timestamp dummy_timestamp;
-
 uint_fast8_t dummy_tok;
 
 void
@@ -57,9 +61,9 @@ dummy_init ()
 }
 
 void
-dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp timestamp, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	dummy_timestamp = timestamp + config.output.offset;
+	dummy_osc.tt = offset;
 
 	dummy_tok = 0;
 
