@@ -45,6 +45,11 @@ union _timestamp64_t {
 	} ntp;
 };
 
+#define SNTP_LEAP_INDICATOR_NO_WARNING	(0 << 6)
+#define SNTP_VERSION_4									(4 << 3)
+#define SNTP_MODE_CLIENT								(3 << 0)
+#define SNTP_MODE_SERVER								(4 << 0)
+
 struct _sntp_t {
 	uint8_t li_vn_mode;
 	uint8_t stratum;

@@ -44,7 +44,7 @@ sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 	timestamp64_t T3;
 	T3.fix = t3;
 
-	request->li_vn_mode = (0x0<<6) + (0x4<<3) + 0x3;
+	request->li_vn_mode = SNTP_LEAP_INDICATOR_NO_WARNING | SNTP_VERSION_4 | SNTP_MODE_CLIENT;
 	request->transmit_timestamp.ntp.sec = htonl (T3.osc.sec);
 	request->transmit_timestamp.ntp.frac = htonl (T3.osc.frac);
 	
@@ -56,7 +56,9 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 {
 	sntp_t *answer = (sntp_t *)buf;
 
-	//FIXME check whether its a SNTP answer
+	// check whether its a SNTP version 4 server answer
+	if ( (answer->li_vn_mode & 0x3f) != (SNTP_VERSION_4 | SNTP_MODE_SERVER) )
+		return;
 
 	timestamp64_t t1, t2, t3, _t4;
 
