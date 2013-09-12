@@ -32,10 +32,6 @@
 
 #include <libmaple/systick.h>
 
-const uint8_t nil_ip [] = {0x00, 0x00, 0x00, 0x00};
-const uint8_t nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-const uint8_t broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-
 MACRAW_Header header;
 ARP_Payload payload;
 volatile uint_fast8_t arp_collision = 0;
@@ -70,7 +66,7 @@ _arp_fill (uint16_t oper, uint8_t *src_mac, uint8_t *src_ip, uint8_t *tar_mac, u
 static void
 _arp_fill_probe (uint8_t *mac, uint8_t *ip)
 {
-	_arp_fill (ARP_OPER_REQUEST, mac, (uint8_t *)nil_ip, (uint8_t *)broadcast_mac, ip);
+	_arp_fill (ARP_OPER_REQUEST, mac, (uint8_t *)wiz_nil_ip, (uint8_t *)wiz_broadcast_mac, ip);
 }
 
 /*
@@ -79,7 +75,7 @@ _arp_fill_probe (uint8_t *mac, uint8_t *ip)
 static void
 _arp_fill_announce (uint8_t *mac, uint8_t *ip)
 {
-	_arp_fill (ARP_OPER_REQUEST, mac, ip, (uint8_t *)broadcast_mac, ip);
+	_arp_fill (ARP_OPER_REQUEST, mac, ip, (uint8_t *)wiz_broadcast_mac, ip);
 }
 
 /*

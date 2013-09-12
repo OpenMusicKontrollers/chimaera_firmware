@@ -33,6 +33,10 @@
 #include <libmaple/spi.h>
 #include <libmaple/systick.h>
 
+const uint8_t wiz_nil_ip [] = {0x00, 0x00, 0x00, 0x00};
+const uint8_t wiz_nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
 #define SPI_CMD_SIZE 4
 
 #define INPUT_BUF_SEND 0
