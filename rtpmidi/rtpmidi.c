@@ -55,7 +55,7 @@ uint16_t seq_num;
 uint32_t timestamp;
 nOSC_Timestamp last_tt;
 
-uint8_t rtpmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a hash instead
+MIDI_Hash rtpmidi_hash [BLOB_MAX];
 
 void
 rtpmidi_init ()
@@ -128,10 +128,9 @@ rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
 	uint8_t key = floor (X);
-	rtpmidi_keys[pos] = key;
+	midi_add_key (rtpmidi_hash, sid, key);
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
@@ -146,8 +145,7 @@ rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
-	uint8_t key = rtpmidi_keys[pos];
+	uint8_t key = midi_rem_key (rtpmidi_hash, sid);
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
@@ -162,9 +160,8 @@ rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset - 0.5 + x * 48.0;
-	uint8_t key = rtpmidi_keys[pos];
+	uint8_t key = midi_get_key (rtpmidi_hash, sid);
 	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;
 
 	uint16_t eff = y * 0x3fff;

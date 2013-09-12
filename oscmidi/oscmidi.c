@@ -24,11 +24,6 @@
 #include <string.h>
 #include <math.h> // floor
 
-#include <chimaera.h>
-#include <chimutil.h>
-#include <config.h>
-#include <cmc.h>
-
 #include "oscmidi_private.h"
 
 nOSC_Item oscmidi_bndl [1];
@@ -45,7 +40,7 @@ OSCMidi_Msg msg;
 const char *midi_str = "/midi";
 char midi_fmt [OSCMIDI_MAX+1];
 
-uint8_t oscmidi_keys [BLOB_MAX]; // FIXME we should use something bigger or a hash instead
+MIDI_Hash oscmidi_hash [BLOB_MAX];
 
 uint_fast8_t oscmidi_tok;
 
@@ -80,10 +75,9 @@ void
 oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = floor (X);
-	oscmidi_keys[pos] = key;
+	midi_add_key (oscmidi_hash, sid, key);
 
 	nosc_message_set_midi (msg, oscmidi_tok, ch, NOTE_ON, key, 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
@@ -94,8 +88,7 @@ void
 oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
-	uint8_t key = oscmidi_keys[pos];
+	uint8_t key = midi_rem_key (oscmidi_hash, sid);
 
 	nosc_message_set_midi (msg, oscmidi_tok, ch, NOTE_OFF, key, 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
@@ -106,9 +99,8 @@ void
 oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
-	uint_fast8_t pos = sid % BLOB_MAX;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = oscmidi_keys[pos];
+	uint8_t key = midi_get_key (oscmidi_hash, sid);
 	uint16_t bend = (X - key)*config.oscmidi.mul + 0x2000;
 
 	uint16_t eff = y * 0x3fff;

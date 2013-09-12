@@ -21,43 +21,41 @@
  *     distribution.
  */
 
-#ifndef MIDI_H
-#define MIDI_H
+#include <chimaera.h>
+#include <midi.h>
 
-#include <stdint.h>
+inline void
+midi_add_key (MIDI_Hash *hash, uint32_t sid, uint8_t key)
+{
+	uint_fast8_t k;
+	for (k=0; k<BLOB_MAX; k++)
+		if (hash[k].sid == 0)
+		{
+			hash[k].sid = sid;
+			hash[k].key = key;
+			break;
+		}
+}
 
-enum _MIDI_COMMAND {
-	NOTE_OFF 					= 0x80,
-	NOTE_ON						= 0x90,
-	AFTER_TOUCH				= 0xa0,
-	CONTROL_CHANGE		= 0xb0,
-	PITCH_BEND				= 0xe0,
-	
-	MODULATION				= 0x01,
-	BREATH						= 0x02,
-	VOLUME						= 0x07,
-	PAN								= 0x0a,
-	EXPRESSION				= 0x0b,
-	EFFECT_CONTROL_1	= 0x0c,
-	EFFECT_CONTROL_2	= 0x0d,
+inline uint8_t
+midi_get_key (MIDI_Hash *hash, uint32_t sid)
+{
+	uint_fast8_t k;
+	for (k=0; k<BLOB_MAX; k++)
+		if (hash[k].sid == sid)
+			return hash[k].key;
+	return 0; // not found
+}
 
-	ALL_NOTES_OFF			= 0x7b,
-};
-
-#define MSV 0x00
-#define LSV 0x20
-
-typedef struct _MIDI_Hash MIDI_Hash;
-
-struct _MIDI_Hash {
-	uint32_t sid;
-	uint8_t key;
-};
-
-void midi_add_key (MIDI_Hash *hash, uint32_t sid, uint8_t key);
-uint8_t midi_get_key (MIDI_Hash *hash, uint32_t sid);
-uint8_t midi_rem_key (MIDI_Hash *hash, uint32_t sid);
-
-//TODO create a MIDI meta engine, both OSC-MIDI and RTP-MIDI can refer to
-
-#endif /* MIDI_H */
+inline uint8_t
+midi_rem_key (MIDI_Hash *hash, uint32_t sid)
+{
+	uint_fast8_t k;
+	for (k=0; k<BLOB_MAX; k++)
+		if (hash[k].sid == sid)
+		{
+			hash[k].sid = 0;
+			return hash[k].key;
+		}
+	return 0; // not found
+}
