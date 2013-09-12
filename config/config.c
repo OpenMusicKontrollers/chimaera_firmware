@@ -635,7 +635,7 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 			uint8_t brd [4];
 			broadcast_address(brd, config.comm.ip, config.comm.subnet);
-			_host_address_dns_cb(brd, NULL); //FIXME maybe we want to reset all sockets here instead of changing to broadcast?
+			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
 		}
 		else
 			size = CONFIG_FAIL ("is", id, "ip invalid, format: x.x.x.x/x");
@@ -778,6 +778,12 @@ _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	return res;
 }
 
+static uint_fast8_t
+_mdns_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return _socket_enabled (&config.mdns.socket, path, fmt, argc, args);
+}
+
 const char *addr_err_str = "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100"; //TODO move me up
 
 static void
@@ -912,7 +918,6 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 		else // resolve via unicast DNS
 		{
 			size = CONFIG_FAIL ("is", "can only resolve raw IP and mDNS addresses");
-			// FIXME TODO
 		}
 	}
 
@@ -955,7 +960,7 @@ _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 
 			uint8_t brd [4];
 			broadcast_address(brd, config.comm.ip, config.comm.subnet);
-			_host_address_dns_cb(brd, NULL); //FIXME maybe we want to reset all sockets here instead of changing to broadcast?
+			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
 		}
 
 		size = CONFIG_SUCCESS ("i", id);
@@ -1591,21 +1596,6 @@ _curvefit_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
-_calibration_print (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	// print calibration in RAM
-	//range_print (); FIXME
-
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint_fast8_t
 _uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1618,161 +1608,17 @@ _uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
-static void
-_resolve_done (uint8_t *ip, void *data)
-{
-	uint16_t size;
-
-	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-}
-
 static uint_fast8_t
-_resolve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-	const char *name = args[1].s;
-
-	mdns_resolve (name, _resolve_done, NULL);
-
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-/*
-static uint_fast8_t
-_test (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	debug_int32 (sizeof (sat unsigned short fract));				// size = 1
-	debug_int32 (sizeof (sat unsigned fract));							// size = 2
-	debug_int32 (sizeof (sat unsigned long fract));					// size = 4
-	debug_int32 (sizeof (sat unsigned long long fract));		// size = 8
-
-	debug_int32 (sizeof (sat short fract));									// size = 1
-	debug_int32 (sizeof (sat fract));												// size = 2
-	debug_int32 (sizeof (sat long fract));									// size = 4
-	debug_int32 (sizeof (sat long long fract));							// size = 8
-
-	debug_int32 (sizeof (sat unsigned short accum));				// size = 2
-	debug_int32 (sizeof (sat unsigned accum));							// size = 4
-	debug_int32 (sizeof (sat unsigned long accum));					// size = 8
-	debug_int32 (sizeof (sat unsigned long long accum));		// size = 8
-
-	debug_int32 (sizeof (sat short accum));									// size = 2
-	debug_int32 (sizeof (sat accum));												// size = 4
-	debug_int32 (sizeof (sat long accum));									// size = 8
-	debug_int32 (sizeof (sat long long accum));							// size = 8
-
-	debug_str ("nOSC_Arg");
-	debug_int32 (sizeof (nOSC_Type));
-	debug_int32 (sizeof (nOSC_Arg));
-	debug_int32 (sizeof (nOSC_Item));
-	debug_int32 (sizeof (nOSC_Method));
-	debug_int32 (sizeof (nOSC_Timestamp));
-	debug_int32 (sizeof (int32_t));
-	debug_int32 (sizeof (float));
-	debug_int32 (sizeof (char *));
-	debug_int32 (sizeof (nOSC_Blob));
-	debug_int32 (sizeof (int64_t));
-	debug_int32 (sizeof (double));
-	debug_int32 (sizeof (uint8_t [4]));
-	debug_int32 (sizeof (char *));
-	debug_int32 (sizeof (char));
-
-	struct {
-		union {
-			uint32_t i;
-		} u;
-		char c;
-	} s;
-	debug_int32 (sizeof (s));
-
-	size = CONFIG_SUCCESS ("i", id);
+	size = nosc_message_serialize (args, "/pong", fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
 }
-
-static uint_fast8_t
-_echo (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	uint_fast8_t i;
-	for (i=1; i<argc; i++)
-		switch (fmt[i])
-		{
-			case nOSC_INT32:
-				CONFIG_SUCCESS ("ii", id, args[i].i);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_FLOAT:
-				CONFIG_SUCCESS ("if", id, args[i].f);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_STRING:
-				CONFIG_SUCCESS ("is", id, args[i].s);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_BLOB:
-				CONFIG_SUCCESS ("ib", id, args[i].b.size, args[i].b.data);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-
-			case nOSC_TRUE:
-				CONFIG_SUCCESS ("iT", id);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_FALSE:
-				CONFIG_SUCCESS ("iF", id);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_NIL:
-				CONFIG_SUCCESS ("iN", id);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_INFTY:
-				CONFIG_SUCCESS ("iI", id);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-
-			case nOSC_INT64:
-				CONFIG_SUCCESS ("ih", id, args[i].h);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_DOUBLE:
-				CONFIG_SUCCESS ("id", id, args[i].d);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_TIMESTAMP:
-				CONFIG_SUCCESS ("it", id, args[i].t);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-
-			case nOSC_MIDI:
-				CONFIG_SUCCESS ("im", id, args[i].m);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_SYMBOL:
-				CONFIG_SUCCESS ("iS", id, args[i].S);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-			case nOSC_CHAR:
-				CONFIG_SUCCESS ("ic", id, args[i].c);
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
-				break;
-		}
-
-	return 1;
-}
-*/
 
 static uint_fast8_t
 _non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
@@ -1840,8 +1686,7 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/dhcpc/enabled", "i*", _dhcpc_enabled},
 
-	//TODO
-	//{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
+	{"/chimaera/mdns/enabled", "i*", _mdns_enabled},
 
 	{"/chimaera/ipv4ll/enabled", "i*", _ipv4ll_enabled},
 
@@ -1862,7 +1707,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/load", "i*", _calibration_load},
 	{"/chimaera/calibration/save", "i*", _calibration_save},
 	{"/chimaera/calibration/reset", "i", _calibration_reset},
-	{"/chimaera/calibration/print", "i", _calibration_print},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
@@ -1873,14 +1717,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/curvefit/next", "if", _curvefit_next},
 	{"/chimaera/curvefit/end", "i", _curvefit_end},
 
-	{"/chimaera/resolve", "is", _resolve},
-
-	//TODO remove
-	/*
-	{"/chimaera/test", "i", _test},
-	{"/chimaera/echo", NULL, _echo},
-	*/
-
+	{"/chimaera/ping", NULL, _ping},
 	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 
 	{NULL, NULL, NULL} // terminator
