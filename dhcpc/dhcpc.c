@@ -30,7 +30,7 @@
 #include <wiz.h>
 #include <config.h>
 
-uint32_t xid = 0x3903F326;
+uint32_t xid = 0x3903F326; // TODO make this random or based on uid?
 
 DHCPC dhcpc = {
 	.state = DISCOVER
@@ -70,7 +70,7 @@ BOOTP_Option dhcp_decline_options [] = {
 	BOOTP_OPTION_END
 };
 
-DHCP_Packet dhcp_packet = {
+DHCP_Packet_Packed dhcp_packet = {
 	.bootp = {
 		.op = BOOTP_OP_REQUEST,
 		.htype = BOOTP_HTYPE_ETHERNET,
@@ -85,12 +85,18 @@ DHCP_Packet dhcp_packet = {
 };
 
 static uint16_t
-_dhcp_packet_serialize (DHCP_Packet *packet, uint8_t *buf)
+_dhcp_packet_serialize (DHCP_Packet_Packed *packet, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
-	memcpy (buf_ptr, packet, sizeof (BOOTP_Packet) + 4); // bootp + magic_cookie
-	buf_ptr += sizeof (BOOTP_Packet) + 4;
+	memcpy (buf_ptr, &packet->bootp, sizeof (BOOTP_Packet));
+	buf_ptr += sizeof (BOOTP_Packet);
+
+	memset (buf_ptr, 0, sizeof (BOOTP_Packet_Optionals));
+	buf_ptr += sizeof (BOOTP_Packet_Optionals);
+
+	memcpy (buf_ptr, &packet->magic_cookie, 4);
+	buf_ptr += 4;
 
 	BOOTP_Option *opt;
 	for (opt=packet->options; opt->code!=255; opt++)
@@ -163,7 +169,7 @@ dhcpc_decline (uint8_t *buf, uint16_t secs)
 void
 dhcpc_dispatch (uint8_t *buf, uint16_t size)
 {
-	DHCP_Packet *recv = (DHCP_Packet *)buf;
+	DHCP_Packet_Unpacked *recv = (DHCP_Packet_Unpacked *)buf;
 
 	// check for magic_cookie
 	if (strncmp (recv->magic_cookie, dhcp_packet.magic_cookie, 4))
@@ -176,7 +182,7 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 	//memcpy (dhcpc.server_ip, recv->bootp.siaddr, 4);
 	//memcpy (dhcpc.gateway_ip, recv->bootp.giaddr, 4);
 
-	uint8_t *buf_ptr = buf + sizeof (BOOTP_Packet) + 4; // offset of options
+	uint8_t *buf_ptr = (uint8_t *)recv->options;
 	uint8_t code;
 	while ( (code = buf_ptr[0]) != OPTION_END)
 	{
@@ -205,7 +211,6 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 				break;
 
 			case OPTION_IP_ADDRESS_LEASE_TIME:
-				//TODO needs to be tested thoroughly
 				memcpy(&dhcpc.leastime, dat, 4);
 				dhcpc.leastime = htonl(dhcpc.leastime) / 2; // refresh after half of it
 				break;
@@ -302,7 +307,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
 				break;
 			case DECLINE:
-				//TODO properly test this
+				//TODO needs to be tested
 				secs = systick_uptime() / 10000 + 1;
 				len = dhcpc_decline (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
 				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
@@ -378,7 +383,7 @@ dhcpc_refresh ()
 				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
 				break;
 			case DECLINE:
-				//TODO properly test this
+				//TODO needs to be tested
 				secs = systick_uptime() / 10000 + 1;
 				len = dhcpc_decline (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
 				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);

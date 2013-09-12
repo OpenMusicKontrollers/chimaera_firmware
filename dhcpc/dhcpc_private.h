@@ -55,8 +55,10 @@
 #define OPTION_END 255
 
 typedef struct _BOOTP_Packet BOOTP_Packet;
+typedef struct _BOOTP_Packet_Optionals BOOTP_Packet_Optionals;
 typedef struct _BOOTP_Option BOOTP_Option;
-typedef struct _DHCP_Packet DHCP_Packet;
+typedef struct _DHCP_Packet_Packed DHCP_Packet_Packed;
+typedef struct _DHCP_Packet_Unpacked DHCP_Packet_Unpacked;
 
 struct _BOOTP_Packet {
 	uint8_t op;					// 1: request, 0: reply
@@ -73,8 +75,10 @@ struct _BOOTP_Packet {
 	uint8_t siaddr [4]; // server IP
 	uint8_t giaddr [4]; // relay agent IP
 	uint8_t chaddr [16];// client MAC
+};
 
-	char sname [64];		// server name [optional] FIXME this is unused, we don't want to waste memory on it!
+struct _BOOTP_Packet_Optionals {
+	char sname [64];		// server name [optional]
 	char file [128];		// file name [optional]
 };
 
@@ -87,8 +91,15 @@ struct _BOOTP_Option {
 #define BOOTP_OPTION(CODE,LEN,DAT) {.code=CODE,.len=LEN,.dat=DAT}
 #define BOOTP_OPTION_END {.code=OPTION_END}
 
-struct _DHCP_Packet {
+struct _DHCP_Packet_Packed {
 	BOOTP_Packet bootp;
+	uint8_t magic_cookie [4];
+	BOOTP_Option *options;
+};
+
+struct _DHCP_Packet_Unpacked {
+	BOOTP_Packet bootp;
+	BOOTP_Packet_Optionals optionals;
 	uint8_t magic_cookie [4];
 	BOOTP_Option *options;
 };
