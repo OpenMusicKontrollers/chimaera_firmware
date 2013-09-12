@@ -221,12 +221,6 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundl
 	// else THIS IS NO OSC MESSAGE, IGNORE IT
 }
 
-void
-_nosc_bundle_deserialize (uint8_t *buf, uint16_t size, nOSC_Timestamp *timestamp)
-{
-	//FIXME
-}
-
 /*
  * Bundle
  */

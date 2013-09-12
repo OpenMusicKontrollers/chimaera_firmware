@@ -28,7 +28,7 @@
 #include "calibration_private.h"
 
 float Y1 = 0.7;
-Range range __CCM__;
+Calibration range __CCM__;
 uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
 uint_fast8_t zeroing = 0;
 uint_fast8_t calibrating = 0;

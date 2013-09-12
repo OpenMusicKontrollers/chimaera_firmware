@@ -24,22 +24,20 @@
 #ifndef _CALIBRATION_H_
 #define _CALIBRATION_H_
 
-typedef struct _Range Range;
+typedef struct _Calibration Calibration;
 
-struct _Range {
-	uint16_t qui [SENSOR_N];
-	uint16_t thresh [SENSOR_N];
-	float as_1_sc_1 [SENSOR_N];
-	float bmin_sc_1;
+struct _Calibration {
+	uint16_t qui [SENSOR_N]; // quiscent value
+	uint16_t thresh [SENSOR_N]; // threshold value
+	float as_1_sc_1 [SENSOR_N]; // AS^(-1) * Sc^(-1)
+	float bmin_sc_1; // Bmin * Sc^(-1)
 };
 
 extern float Y1;
-extern Range range;
+extern Calibration range;
 extern uint16_t arr [2][SENSOR_N];
 extern uint_fast8_t zeroing;
 extern uint_fast8_t calibrating;
-
-//float _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b);
 
 uint_fast8_t range_load (uint_fast8_t pos);
 uint_fast8_t range_reset ();
