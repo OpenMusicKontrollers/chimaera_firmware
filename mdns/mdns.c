@@ -252,6 +252,7 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 	uint8_t z = (query->FLAGS & Z) >> Z_BIT;
 	uint8_t rcode = (query->FLAGS & RCODE) >> RCODE_BIT;
 
+	/*
 	char deb[256];
 	sprintf (deb, "got mDNS Query: %i %i %i %i %i %i %i %i %i %i %i %i %i",
 		query->ID,
@@ -260,7 +261,8 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 		query->ANCOUNT,
 		query->NSCOUNT,
 		query->ARCOUNT);
-	//debug_str (deb);
+	debug_str (deb);
+	*/
 	buf_ptr += sizeof (DNS_Query);
 
 	uint_fast8_t i;

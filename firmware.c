@@ -761,12 +761,9 @@ setup ()
 	systick_disable ();
 	systick_init ((SYSTICK_RELOAD_VAL + 1)/10 - 1); // systick every 100us = every 7200 cycles on a maple mini @72MHz
 
-	// create EUI-32 and EUI-48 from unique identifier
-	eui_init ();
-
-	// initialize random number generator based on EUI_32
-	uint32_t *seed = (uint32_t *)&EUI_32[0];
-	srand (*seed);
+	// initialize random number generator based on UID96
+	uint32_t seed = uid_seed ();
+	srand (seed);
 
 	// init eeprom for I2C1
 	eeprom_init (I2C1);

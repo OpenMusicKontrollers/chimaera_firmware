@@ -108,14 +108,11 @@ tuio2_long_header_enable (uint_fast8_t on)
 
 	if (on)
 	{
-		// use EUI_64
-		//int32_t addr = (EUI_64[0] << 24) | (EUI_64[1] << 16) | (EUI_64[2] << 8) | EUI_64[3];
-		//int32_t inst = (EUI_64[4] << 24) | (EUI_64[5] << 16) | (EUI_64[6] << 8) | EUI_64[7];
-
-		// or use EUI_48 + port
+		// MAC address + port
 		uint16_t port = config.output.socket.port[SRC_PORT];
-		int32_t addr = (EUI_48[0] << 24) | (EUI_48[1] << 16) | (EUI_48[2] << 8) | EUI_48[3];
-		int32_t inst = (EUI_48[4] << 24) | (EUI_48[5] << 16) | (port & 0xff00) | (port & 0xff);
+		uint8_t *mac = config.comm.mac;
+		int32_t addr = (mac[0] << 24) | (mac[1] << 16) | (mac[2] << 8) | mac[3];
+		int32_t inst = (mac[4] << 24) | (mac[5] << 16) | (port & 0xff00) | (port & 0xff);
 
 		nosc_message_set_string (frm, 2, config.name);
 		nosc_message_set_int32 (frm, 3, addr);

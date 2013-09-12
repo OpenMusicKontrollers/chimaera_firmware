@@ -76,10 +76,7 @@ struct _Stop_Watch {
 void stop_watch_start (Stop_Watch *sw);
 void stop_watch_stop (Stop_Watch *sw);
 
-extern uint8_t EUI_32 [4];
-extern uint8_t EUI_48 [6];
-extern uint8_t EUI_64 [8];
-extern char EUI_96_STR [96/8*2+1];
-void eui_init ();
+uint32_t uid_seed ();
+void uid_str (char *str);
 
 #endif

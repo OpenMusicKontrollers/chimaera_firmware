@@ -39,20 +39,7 @@
 	); \
 	(uint16_t)y; \
 })
-
 #define swap32		__builtin_bswap32
-/*
-#define swap32(x) \
-({ \
-	uint32_t y; \
-	asm volatile ("\trev	%[Y], %[X]\n" \
-		: [Y]"=r" (y) \
-		: [X]"r" (x) \
-	); \
-	(uint32_t)y; \
-})
-*/
-
 #define swap64		__builtin_bswap64
 
 #define hton		swap16

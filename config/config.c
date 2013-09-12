@@ -37,6 +37,8 @@
 #include <midi.h>
 #include <calibration.h>
 
+char string_buf [64];
+
 const char *success_str = "/success";
 const char *fail_str = "/fail";
 const char *wrong_ip_port_error_str = "wrong range: all numbers in IP must be < 0x100";
@@ -298,9 +300,8 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 		}
 		else
 		{
-			char buf[64];
-			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, buf);
+			sprintf (string_buf, "value %i is out of range [%i, %i]", arg, min, max);
+			size = CONFIG_FAIL ("is", id, string_buf);
 		}
 	}
 
@@ -329,9 +330,8 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 		}
 		else
 		{
-			char buf[64];
-			sprintf (buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, buf);
+			sprintf (string_buf, "value %i is out of range [%i, %i]", arg, min, max);
+			size = CONFIG_FAIL ("is", id, string_buf);
 		}
 	}
 
@@ -360,9 +360,8 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 		}
 		else
 		{
-			char buf[64];
-			sprintf (buf, "value %f is out of range [%f, %f]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, buf);
+			sprintf (string_buf, "value %f is out of range [%f, %f]", arg, min, max);
+			size = CONFIG_FAIL ("is", id, string_buf);
 		}
 	}
 
@@ -377,13 +376,12 @@ _version (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	char version[20]; // FIXME share string buffer space between config methods
-	sprintf (version, "%i.%i.%i Rev%i",
+	sprintf (string_buf, "%i.%i.%i Rev%i",
 		config.version.part.major,
 		config.version.part.minor,
 		config.version.part.patch,
 		config.version.part.revision);
-	size = CONFIG_SUCCESS ("is", id, version);
+	size = CONFIG_SUCCESS ("is", id, string_buf);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -562,9 +560,8 @@ _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		char mac_str[MAC_STR_LEN];
-		mac2str (config.comm.mac, mac_str);
-		size = CONFIG_SUCCESS ("is", id, mac_str);
+		mac2str (config.comm.mac, string_buf);
+		size = CONFIG_SUCCESS ("is", id, string_buf);
 	}
 	else
 	{
@@ -597,10 +594,9 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	if (argc == 1) // query
 	{
-		char ip_str_cidr[IP_STR_CIDR_LEN];
 		uint8_t mask = subnet_to_cidr(config.comm.subnet);
-		ip2strCIDR (config.comm.ip, mask, ip_str_cidr);
-		size = CONFIG_SUCCESS ("is", id, ip_str_cidr);
+		ip2strCIDR (config.comm.ip, mask, string_buf);
+		size = CONFIG_SUCCESS ("is", id, string_buf);
 	}
 	else
 	{
@@ -658,9 +654,8 @@ _comm_gateway (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 
 	if (argc == 1) // query
 	{
-		char ip_str[IP_STR_LEN];
-		ip2str (config.comm.gateway, ip_str);
-		size = CONFIG_SUCCESS ("is", id, ip_str);
+		ip2str (config.comm.gateway, string_buf);
+		size = CONFIG_SUCCESS ("is", id, string_buf);
 	}
 	else
 	{
@@ -688,9 +683,8 @@ _comm_subnet (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 
 	if (argc == 1) // query
 	{
-		char ip_str[IP_STR_LEN];
-		ip2str (config.comm.subnet, ip_str);
-		size = CONFIG_SUCCESS ("is", id, ip_str);
+		ip2str (config.comm.subnet, string_buf);
+		size = CONFIG_SUCCESS ("is", id, string_buf);
 	}
 	else
 	{
@@ -814,9 +808,8 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t
 
 	if (argc == 1) // query
 	{
-		char addr[ADDR_STR_LEN];
-		addr2str (socket->ip, socket->port[DST_PORT], addr);
-		size = CONFIG_SUCCESS ("is", id, addr);
+		addr2str (socket->ip, socket->port[DST_PORT], string_buf);
+		size = CONFIG_SUCCESS ("is", id, string_buf);
 	}
 	else
 	{
@@ -1618,7 +1611,8 @@ _uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	size = CONFIG_SUCCESS ("is", id, EUI_96_STR);
+	uid_str (string_buf);
+	size = CONFIG_SUCCESS ("is", id, string_buf);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;

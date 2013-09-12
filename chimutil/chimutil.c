@@ -224,36 +224,26 @@ stop_watch_stop (Stop_Watch *sw)
 	}
 }
 
-uint8_t EUI_32 [4];
-uint8_t EUI_48 [6];
-uint8_t EUI_64 [8];
-char EUI_96_STR [96/8*2+1]; // (96bit/8bit)byte + '\0'
+uint32_t
+uid_seed()
+{
+	union _seed {
+		uint32_t i;
+		uint8_t b [4];
+	} seed;
+
+	seed.b[0] =	UID_BASE[11] ^ UID_BASE[7] ^ UID_BASE[3];
+	seed.b[1] =	UID_BASE[10] ^ UID_BASE[6] ^ UID_BASE[2];
+	seed.b[2] =	UID_BASE[9]  ^ UID_BASE[5] ^ UID_BASE[1];
+	seed.b[3] =	UID_BASE[8]  ^ UID_BASE[4] ^ UID_BASE[0];
+
+	return seed.i;
+}
 
 void
-eui_init ()
+uid_str(char *str)
 {
-	EUI_32[0] =	UID_BASE[11] ^ UID_BASE[7] ^ UID_BASE[3];
-	EUI_32[1] =	UID_BASE[10] ^ UID_BASE[6] ^ UID_BASE[2];
-	EUI_32[2] =	UID_BASE[9]  ^ UID_BASE[5] ^ UID_BASE[1];
-	EUI_32[3] =	UID_BASE[8]  ^ UID_BASE[4] ^ UID_BASE[0];
-
-	EUI_48[0] =	UID_BASE[11] ^ UID_BASE[5];
-	EUI_48[1] =	UID_BASE[10] ^ UID_BASE[4];
-	EUI_48[2] =	UID_BASE[9]  ^ UID_BASE[3];
-	EUI_48[3] =	UID_BASE[8]  ^ UID_BASE[2];
-	EUI_48[4] =	UID_BASE[7]  ^ UID_BASE[1];
-	EUI_48[5] =	UID_BASE[6]  ^ UID_BASE[0];
-
-	EUI_64[0] = EUI_48[0];
-	EUI_64[1] = EUI_48[1];
-	EUI_64[2] = EUI_48[2];
-	EUI_64[3] = 0xfe;
-	EUI_64[4] = 0xff;
-	EUI_64[5] = EUI_48[3];
-	EUI_64[6] = EUI_48[4];
-	EUI_64[7] = EUI_48[5];
-
-	sprintf (EUI_96_STR, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+	sprintf (str, "%02x%02x%02x%02x-%02x%02x%02x%02x-%02x%02x%02x%02x",
 		UID_BASE[11],
 		UID_BASE[10],
 		UID_BASE[9],
@@ -266,4 +256,5 @@ eui_init ()
 		UID_BASE[2],
 		UID_BASE[1],
 		UID_BASE[0]);
+
 }
