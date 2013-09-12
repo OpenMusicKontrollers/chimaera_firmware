@@ -4,8 +4,6 @@
 #export SENSORS := 96 # 6 sensor units aka Chimaera Midi
 export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
 
-export CCACHE := ccache
-
 export BOARD := F303CB
 export MEMORY_TARGET := jtag
 export USER_MODULES := $(shell pwd)
