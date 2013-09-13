@@ -1396,16 +1396,7 @@ _calibration_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	// initialize sensor range
-	uint_fast8_t i;
-	for (i=0; i<SENSOR_N; i++)
-	{
-		// moving average over 16 samples
-		range.qui[i] = ADC_HALF_BITDEPTH << 4;
-		
-		arr[POLE_SOUTH][i] = range.qui[i];
-		arr[POLE_NORTH][i] = range.qui[i];
-	}
+	range_init ();
 
 	// enable calibration
 	zeroing = 1;

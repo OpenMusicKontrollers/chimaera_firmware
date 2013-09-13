@@ -35,7 +35,6 @@ struct _Calibration {
 
 extern float Y1;
 extern Calibration range;
-extern uint16_t arr [2][SENSOR_N];
 extern uint_fast8_t zeroing;
 extern uint_fast8_t calibrating;
 
@@ -44,6 +43,7 @@ uint_fast8_t range_reset ();
 uint_fast8_t range_save (uint_fast8_t pos);
 void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 
+void range_init ();
 void range_update_quiescent ();
 void range_update_b0 ();
 void range_update_b1 ();

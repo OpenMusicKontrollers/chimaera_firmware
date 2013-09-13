@@ -612,7 +612,7 @@ udp_send_block (uint8_t sock)
 
 	if (!success)
 	{
-		//FIXME do something else?
+		// or do something else?
 		_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
 		return success;
 	}
@@ -713,7 +713,7 @@ udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
 
 	if (!success)
 	{
-		//FIXME do something else?
+		// or do something else?
 		_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
 		return success;
 	}

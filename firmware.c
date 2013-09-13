@@ -276,6 +276,7 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	mdns_dispatch (buf, len);
 }
 
+// loops are explicitely unrolled which makes it fast but cumbersome to read
 static void
 adc_fill (uint_fast8_t raw_ptr)
 {
@@ -536,7 +537,7 @@ loop ()
 				stop_watch_start (&sw_output_block);
 #endif
 			if (cmc_job && send_status) // block for end of sending of last cycles tuio output
-				udp_send_block (config.output.socket.sock); //FIXME check return status
+				udp_send_block (config.output.socket.sock); //TODO check return status
 
 			if (job) // switch output buffer
 				buf_o_ptr ^= 1;

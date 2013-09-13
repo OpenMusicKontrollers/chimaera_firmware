@@ -29,7 +29,17 @@
 
 float Y1 = 0.7;
 Calibration range __CCM__;
-uint16_t arr [2][SENSOR_N]; //FIXME reuse some other memory
+/*
+ * when calibrating, we use the output buffer as temporary memory,
+ * as only the dump engine can be active at that moment
+ * we use the remaining memory here up to CHIMAERA_BUFSIZE
+ * throw an error if there is not enough memory, though
+ */
+#define CALIBRATION_OFFSET (CHIMAERA_BUFSIZE - 4*SENSOR_N)
+#if(CALIBRATION_OFFSET < (2*SENSOR_N + 2*WIZ_SEND_OFFSET + 32))
+#error "Calibration array does not fit into output buffer"
+#endif
+Calibration_Array *arr = (Calibration_Array *)&buf_o[0][CALIBRATION_OFFSET];
 uint_fast8_t zeroing = 0;
 uint_fast8_t calibrating = 0;
 
@@ -73,7 +83,7 @@ range_reset ()
 	for (i=0; i<SENSOR_N; i++)
 	{
 		range.thresh[i] = 0;
-		range.qui[i] = 0x7ff;
+		range.qui[i] = ADC_HALF_BITDEPTH;
 		range.as_1_sc_1[i] = 1.0;
 		range.bmin_sc_1 = 0.0;
 	}
@@ -94,7 +104,7 @@ range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order
 {
 	uint_fast8_t i;
 	uint_fast8_t pos;
-
+	
 	// fill rela vector from raw vector
 	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
@@ -102,11 +112,13 @@ range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order
 		rela[pos] = raw12[i];
 	}
 
+#if (ADC_SING_LENGTH > 0)
 	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
 	{
 		pos = order3[i];
 		rela[pos] = raw3[i];
 	}
+#endif
 
 	// do the calibration
 	for (i=0; i<SENSOR_N; i++)
@@ -120,18 +132,33 @@ range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order
 			range.qui[i] += rela[i];
 		}
 
-		//TODO is this the best way to get a mean of min and max?
-		if (rela[i] > (avg = arr[POLE_SOUTH][i] >> 4) )
+		// TODO is this the best way to get a mean of min and max?
+		if (rela[i] > (avg = arr->arr[POLE_SOUTH][i] >> 4) )
 		{
-			arr[POLE_SOUTH][i] -= avg;
-			arr[POLE_SOUTH][i] += rela[i];
+			arr->arr[POLE_SOUTH][i] -= avg;
+			arr->arr[POLE_SOUTH][i] += rela[i];
 		}
 
-		if (rela[i] < (avg =arr[POLE_NORTH][i] >> 4) )
+		if (rela[i] < (avg =arr->arr[POLE_NORTH][i] >> 4) )
 		{
-			arr[POLE_NORTH][i] -= avg;
-			arr[POLE_NORTH][i] += rela[i];
+			arr->arr[POLE_NORTH][i] -= avg;
+			arr->arr[POLE_NORTH][i] += rela[i];
 		}
+	}
+}
+
+// initialize sensor range
+void
+range_init ()
+{
+	uint_fast8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		// moving average over 16 samples
+		range.qui[i] = ADC_HALF_BITDEPTH << 4;
+		
+		arr->arr[POLE_SOUTH][i] = range.qui[i];
+		arr->arr[POLE_NORTH][i] = range.qui[i];
 	}
 }
 
@@ -140,15 +167,14 @@ void
 range_update_quiescent ()
 {
 	uint_fast8_t i;
-
 	for (i=0; i<SENSOR_N; i++)
 	{
 		// final average over last 16 samples
 		range.qui[i] >>= 4;
 
 		// reset array to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i] << 4;
-		arr[POLE_NORTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }
 
@@ -161,17 +187,17 @@ range_update_b0 ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
-		arr[POLE_NORTH][i] >>= 4;
+		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr->arr[POLE_NORTH][i] >>= 4;
 
-		thresh_s = arr[POLE_SOUTH][i] - range.qui[i];
-		thresh_n = range.qui[i] - arr[POLE_NORTH][i];
+		thresh_s = arr->arr[POLE_SOUTH][i] - range.qui[i];
+		thresh_n = range.qui[i] - arr->arr[POLE_NORTH][i];
 
 		range.thresh[i] = (thresh_s + thresh_n) / 2;
 
 		// reset thresh to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i] << 4;
-		arr[POLE_NORTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }
 
@@ -192,14 +218,14 @@ range_update_b1 ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
-		arr[POLE_NORTH][i] >>= 4;
+		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr->arr[POLE_NORTH][i] >>= 4;
 
-		as_1 = 1.0 / _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
+		as_1 = 1.0 / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
 
 		bmin = (float)range.thresh[i] * as_1;
-		bmax_s = ((float)arr[POLE_SOUTH][i] - (float)range.qui[i]) * as_1 / Y1;
-		bmax_n = ((float)range.qui[i] - (float)arr[POLE_NORTH][i]) * as_1 / Y1;
+		bmax_s = ((float)arr->arr[POLE_SOUTH][i] - (float)range.qui[i]) * as_1 / Y1;
+		bmax_n = ((float)range.qui[i] - (float)arr->arr[POLE_NORTH][i]) * as_1 / Y1;
 
 		m_bmin += bmin;
 		m_bmax += (bmax_s + bmax_n) / 2.0;
@@ -213,11 +239,11 @@ range_update_b1 ()
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		as_1 = 1.0 / _as (range.qui[i], arr[POLE_SOUTH][i], arr[POLE_NORTH][i], b);
+		as_1 = 1.0 / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
 		range.as_1_sc_1[i] = as_1 * sc_1;
 
 		// reset thresh to quiescent value
-		arr[POLE_SOUTH][i] = range.qui[i] << 4;
-		arr[POLE_NORTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
 }

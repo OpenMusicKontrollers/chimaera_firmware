@@ -110,7 +110,7 @@ typedef enum _Reset_Mode {
 #define EEPROM_CONFIG_OFFSET 0x0000
 #define EEPROM_GROUP_OFFSET 0x0c00
 #define EEPROM_RANGE_OFFSET 0x1000
-#define EEPROM_RANGE_SIZE 0x0500
+#define EEPROM_RANGE_SIZE 0x0510
 #define EEPROM_RANGE_MAX 2 // we have place for three slots: 0, 1, 2
 
 // STM32F3 flash memory size (16bit)
