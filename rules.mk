@@ -36,6 +36,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/dummy
 BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
 BUILDDIRS += $(BUILD_PATH)/$(d)/arp
 BUILDDIRS += $(BUILD_PATH)/$(d)/calibration
+BUILDDIRS += $(BUILD_PATH)/$(d)/linalg
 
 ### Local flags: these control how the compiler gets called.
 
@@ -99,7 +100,8 @@ cSRCS_$(d) += dummy/dummy.c
 cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += arp/arp.c
 cSRCS_$(d) += calibration/calibration.c
-cSRCS_$(d) += lookup.c
+cSRCS_$(d) += linalg/linalg.c
+#cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own

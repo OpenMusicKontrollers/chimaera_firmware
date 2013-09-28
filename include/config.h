@@ -133,11 +133,13 @@ struct _Config {
 		Socket_Config socket;
 	} dhcpc;
 
+	/*
 	struct _curve {
 		float A;
 		float B;
 		float C;
 	} curve;
+	*/
 
 	struct _movingaverage {
 		uint8_t enabled;

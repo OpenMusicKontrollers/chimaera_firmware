@@ -169,11 +169,13 @@ Config config = {
 		}
 	},
 
+	/*
 	.curve = {
 		.A = 0.7700,
 		.B = 0.2289,
 		.C = 0.0000
 	},
+	*/
 
 	.movingaverage = {
 		.enabled = 1,
@@ -183,7 +185,7 @@ Config config = {
 	.interpolation = {
 		//.order = 0, // use no interpolation at all
 		//.order = 1, // use linear interpolation
-		.order = 2, // use quadratic, aka hyperbolic interpolation
+		.order = 2, // use quadratic, aka parabolic interpolation
 		//.order = 3, // use cubic interpolation
 	},
 
@@ -208,6 +210,14 @@ config_load ()
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
+
+	// update callbacks
+	config.output.socket.cb = output_enable;
+	config.config.socket.cb = config_enable;
+	config.sntp.socket.cb = sntp_enable;
+	config.debug.socket.cb = debug_enable;
+	config.mdns.socket.cb = mdns_enable;
+	config.dhcpc.socket.cb = dhcpc_enable;
 
 	return 1;
 }
@@ -535,13 +545,15 @@ static uint_fast8_t
 str2addr (char *str, uint8_t *ip, uint16_t *port)
 {
 	uint16_t sip [4];
+	uint16_t sport;
 	uint_fast8_t res;
 	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
-		sip, sip+1, sip+2, sip+3, port) == 5;
+		sip, sip+1, sip+2, sip+3, &sport) == 5;
 	ip[0] = sip[0];
 	ip[1] = sip[1];
 	ip[2] = sip[2];
 	ip[3] = sip[3];
+	*port = sport;
 	return res;
 }
 
@@ -1242,6 +1254,7 @@ _reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
+/*
 static uint_fast8_t
 _curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -1265,6 +1278,7 @@ _curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	return 1;
 }
+*/
 
 static uint_fast8_t
 _movingaverage_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
@@ -1459,24 +1473,161 @@ _calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	Y1 = args[1].f;
+	float y = args[1].f;
 
-	// update new range
-	range_update_b1 ();
+	// update mid range
+	range_update_b1 (y);
 
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_max (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	// update max range
+	range_update_b2 ();
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	float y = args[1].f;
+
+	// update max range
+	range_update_b3 (y);
+
+	// end calibration procedure
+	calibrating = 0;
+
+	// output sensor sensitivities
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/sc_1_sc_1", "if", i, (float)range.as_1_sc_1[i]);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/U", "if", i, (float)range.U[i]);
 		udp_send (config.config.socket.sock, buf_o_ptr, size);
 	}
 
-	calibrating = 0;
-
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/bmin_sc_1", "f", (float)range.bmin_sc_1);
+	// output minimal offset
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/W", "f", (float)range.W);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
+	// output curve parameters
+	//TODO
+
 	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+// get calibration data per sensor
+static uint_fast8_t
+_calibration_sensor (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	int32_t n = args[1].i;
+	if (n < SENSOR_N)
+		size = CONFIG_SUCCESS ("iiif", id, range.qui[n], range.thresh[n], range.U[n]);
+	else
+		size = CONFIG_FAIL ("is", id, "requested sensor is out of bounds");
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+// get calibration data in one blob
+static uint_fast8_t
+_calibration_quiescence (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	// convert to network-byte-order
+	uint_fast8_t i;
+	uint16_t *src = range.qui;
+	uint16_t *dst = (uint16_t *)shared_buf;
+	for (i=0; i<SENSOR_N; i++)
+		*dst++ = hton(*src++);
+
+	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_threshold (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	// convert to network-byte-order
+	uint_fast8_t i;
+	uint16_t *src = range.thresh;
+	uint16_t *dst = (uint16_t *)shared_buf;
+	for (i=0; i<SENSOR_N; i++)
+		*dst++ = hton(*src++);
+
+	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_sensitivity (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	// convert to network-byte-order
+	uint_fast8_t i;
+	uint32_t *src = (uint32_t *)range.U;
+	uint32_t *dst = (uint32_t *)shared_buf;
+	for (i=0; i<SENSOR_N; i++)
+		*dst++ = htonl(*src++);
+
+	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(float), shared_buf);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	size = CONFIG_SUCCESS ("if", id, range.W);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	size = CONFIG_SUCCESS ("ifff", id, range.C[0], range.C[1], range.C[2]);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1542,51 +1693,6 @@ _calibration_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 }
 
 static uint_fast8_t
-_curvefit_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	curvefit_nr = args[1].i;
-	curvefit_north = 0;
-	curvefit_south = 0;
-	curvefitting = 1;
-
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint_fast8_t
-_curvefit_next (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	float vicinity = args[1].f;
-
-	size = CONFIG_SUCCESS ("ifii", id, vicinity, curvefit_south, curvefit_north);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint_fast8_t
-_curvefit_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	curvefitting = 0;
-
-	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint_fast8_t
 _uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1606,6 +1712,38 @@ _ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].i;
 
 	size = nosc_message_serialize (args, "/pong", fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_test_leastsquares (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	int32_t order = args[1].i;
+	double x1 = args[2].d;
+	double y1 = args[3].d;
+	double x2 = args[4].d;
+	double y2 = args[5].d;
+	double x3 = args[6].d;
+	double y3 = args[7].d;
+
+	double C [3];
+
+	switch(order)
+	{
+		case 2:
+			linalg_least_squares_quadratic(x1, y1, x2, y2, x3, y3, &C[0], &C[1]);
+			size = CONFIG_SUCCESS ("idd", id, C[0], C[1]);
+			break;
+		case 3:
+			linalg_least_squares_cubic(x1, y1, x2, y2, x3, y3, &C[0], &C[1], &C[2]);
+			size = CONFIG_SUCCESS ("iddd", id, C[0], C[1], C[2]);
+			break;
+	}
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
@@ -1681,8 +1819,8 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/ipv4ll/enabled", "i*", _ipv4ll_enabled},
 
-	{"/chimaera/curve", "i", _curve},
-	{"/chimaera/curve", "ifff", _curve},
+	//{"/chimaera/curve", "i", _curve},
+	//{"/chimaera/curve", "ifff", _curve},
 
 	{"/chimaera/movingaverage/enabled", "i*", _movingaverage_enabled},
 	{"/chimaera/movingaverage/samples", "i*", _movingaverage_samples},
@@ -1703,12 +1841,20 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/zero", "i", _calibration_zero},
 	{"/chimaera/calibration/min", "i", _calibration_min},
 	{"/chimaera/calibration/mid", "if", _calibration_mid},
+	{"/chimaera/calibration/max", "i", _calibration_max},
+	{"/chimaera/calibration/end", "if", _calibration_end},
 
-	{"/chimaera/curvefit/start", "ii", _curvefit_start},
-	{"/chimaera/curvefit/next", "if", _curvefit_next},
-	{"/chimaera/curvefit/end", "i", _curvefit_end},
+	{"/chimaera/calibration/sensor", "ii", _calibration_sensor},
+	{"/chimaera/calibration/quiescence", "i", _calibration_quiescence},
+	{"/chimaera/calibration/threshold", "i", _calibration_threshold},
+	{"/chimaera/calibration/sensitivity", "i", _calibration_sensitivity},
+	{"/chimaera/calibration/offset", "i", _calibration_offset},
+	{"/chimaera/calibration/curve", "i", _calibration_curve},
 
 	{"/chimaera/ping", NULL, _ping},
+
+	{"/chimaera/test/leastsquares", "iidddddd", _test_leastsquares},
+
 	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 
 	{NULL, NULL, NULL} // terminator

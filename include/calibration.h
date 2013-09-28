@@ -29,31 +29,28 @@ typedef struct _Calibration Calibration;
 struct _Calibration {
 	uint16_t qui [SENSOR_N]; // quiscent value
 	uint16_t thresh [SENSOR_N]; // threshold value
-	float as_1_sc_1 [SENSOR_N]; // AS^(-1) * Sc^(-1)
-	float bmin_sc_1; // Bmin * Sc^(-1)
+	float U [SENSOR_N]; // AS^(-1) * Sc^(-1)
+	float W; // Bmin * Sc^(-1)
+	float C [3];
 };
 
-extern float Y1;
 extern Calibration range;
 extern uint_fast8_t zeroing;
 extern uint_fast8_t calibrating;
+extern float curve [0x800]; // lookup table for distance-magnetic-flux relationship
 
 uint_fast8_t range_load (uint_fast8_t pos);
 uint_fast8_t range_reset ();
 uint_fast8_t range_save (uint_fast8_t pos);
-void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 
+void range_curve_update ();
+
+void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 void range_init ();
 void range_update_quiescent ();
 void range_update_b0 ();
-void range_update_b1 ();
-
-/*
- * curvefitting
- */
-extern uint_fast8_t curvefit_nr;
-extern int16_t curvefit_south;
-extern int16_t curvefit_north;
-extern uint_fast8_t curvefitting;
+void range_update_b1 (float y);
+void range_update_b2 ();
+void range_update_b3 (float y);
 
 #endif

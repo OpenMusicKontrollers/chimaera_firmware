@@ -21,14 +21,19 @@
  *     distribution.
  */
 
+#include <math.h>
+
 #include <chimaera.h>
+#include <chimutil.h>
 #include <eeprom.h>
+#include <linalg.h>
 #include "../cmc/cmc_private.h"
 
 #include "calibration_private.h"
 
-float Y1 = 0.7;
 Calibration range __CCM__;
+Calibration_Point point;
+
 /*
  * when calibrating, we use the output buffer as temporary memory,
  * as only the dump engine can be active at that moment
@@ -39,14 +44,14 @@ Calibration range __CCM__;
 #if(CALIBRATION_OFFSET < (2*SENSOR_N + 2*WIZ_SEND_OFFSET + 32))
 #error "Calibration array does not fit into output buffer"
 #endif
-Calibration_Array *arr = (Calibration_Array *)&buf_o[0][CALIBRATION_OFFSET];
+//Calibration_Array *arr = (Calibration_Array *)&buf_o[0][CALIBRATION_OFFSET];
+Calibration_Array *arr = (Calibration_Array *)shared_buf;
 uint_fast8_t zeroing = 0;
 uint_fast8_t calibrating = 0;
 
-uint_fast8_t curvefitting = 0;
-uint_fast8_t curvefit_nr = 0;
-int16_t curvefit_south = 0;
-int16_t curvefit_north = 0;
+uint_fast8_t b1_state = 1;
+
+float curve [0x800];
 
 static float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
@@ -58,6 +63,7 @@ _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
 
 	return _qui / _b * (_out_s - _out_n) / (_out_s + _out_n);
 }
+
 
 uint_fast8_t
 range_load (uint_fast8_t pos)
@@ -72,6 +78,8 @@ range_load (uint_fast8_t pos)
 	}
 	*/
 	eeprom_bulk_read (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
+	
+	range_curve_update ();
 
 	return 1;
 }
@@ -84,9 +92,13 @@ range_reset ()
 	{
 		range.thresh[i] = 0;
 		range.qui[i] = ADC_HALF_BITDEPTH;
-		range.as_1_sc_1[i] = 1.0;
-		range.bmin_sc_1 = 0.0;
+		range.U[i] = 1.f;
 	}
+	
+	range.W = 0.f;
+	range.C[0] = 0.f; // ~ cbrt(x)
+	range.C[1] = 1.f; // ~ sqrt(x)
+	range.C[2] = 0.f; // ~ x
 
 	return 1;
 }
@@ -97,6 +109,20 @@ range_save (uint_fast8_t pos)
 	eeprom_bulk_write (eeprom_24LC64, EEPROM_RANGE_OFFSET + pos*EEPROM_RANGE_SIZE, (uint8_t *)&range, sizeof (range));
 
 	return 1;
+}
+
+void
+range_curve_update ()
+{
+	uint32_t i;
+
+	for(i=0; i<0x800; i++)
+	{
+		float x = (float)i / (float)0x7ff;
+		float y = range.C[0]*cbrtf(x) + range.C[1]*sqrtf(x) + range.C[2]*x;
+		y = y < 0.f ? 0.f : (y > 1.f ? 1.f : y);
+		curve[i] = y;
+	}
 }
 
 void
@@ -160,6 +186,8 @@ range_init ()
 		arr->arr[POLE_SOUTH][i] = range.qui[i];
 		arr->arr[POLE_NORTH][i] = range.qui[i];
 	}
+
+	b1_state = 1;
 }
 
 // calibrate quiescent current
@@ -199,48 +227,173 @@ range_update_b0 ()
 		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
 		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
+
+	// search for smallest value
+	point.B0 = 0xfff;
+	for (i=0; i<SENSOR_N; i++)
+		if (range.thresh[i] < point.B0)
+		{
+			point.i = i; // that'll be the sensor we will fit the distance-magnetic flux relationship curve to
+			point.B0 = range.thresh[i];
+		}
+}
+
+// calibrate distance-magnetic flux relationship curve
+void
+range_update_b1 (float y)
+{
+	uint_fast8_t i;
+	uint16_t b_s, b_n;
+
+	i = point.i;
+	{
+		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr->arr[POLE_NORTH][i] >>= 4;
+
+		b_s = arr->arr[POLE_SOUTH][i] - range.qui[i];
+		b_n = range.qui[i] - arr->arr[POLE_NORTH][i];
+
+		switch (b1_state)
+		{
+			case 1:
+				point.y1 = y;
+				point.B1 = (b_s + b_n) / 2.f;
+				b1_state++;
+				break;
+			case 2:
+				point.y2 = y;
+				point.B2 = (b_s + b_n) / 2.f;
+				b1_state++;
+				break;
+			case 3:
+				point.y3 = y;
+				point.B3 = (b_s + b_n) / 2.f;
+				b1_state++;
+				break;
+		}
+	}
+
+	for (i=0; i<SENSOR_N; i++)
+	{
+		// reset arr to quiescent values
+		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
+	}
 }
 
 // calibrate amplification and sensitivity
 void
-range_update_b1 ()
+range_update_b2 ()
 {
-	//FIXME approximate Y1, so that MAX ( (0x7ff * as_1_sc1[i]) - bmin_sc_1) == 1
-	//FIXME or calculate Y1' out of A, B, C
 	uint_fast8_t i;
-	uint16_t b = (float)0x7ff * Y1;
+	uint16_t b_s, b_n;
+
+	i = point.i;
+	{
+		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
+		arr->arr[POLE_NORTH][i] >>= 4;
+
+		b_s = arr->arr[POLE_SOUTH][i] - range.qui[i];
+		b_n = range.qui[i] - arr->arr[POLE_NORTH][i];
+		
+		float Br = (b_s + b_n)/2.f - point.B0;
+
+		switch (b1_state)
+		{
+			case 2: // quadratic curve fit
+			{
+				point.B1 = (point.B1 - point.B0) / Br;
+					DEBUG("ff", point.y1, point.B1);
+				linalg_solve_quadratic (point.y1, point.B1, &range.C[0], &range.C[1]);
+					DEBUG("ff", range.C[0], range.C[1]);
+				break;
+			}
+			case 3: // cubic curve fit
+			{
+				point.B1 = (point.B1 - point.B0) / Br;
+				point.B2 = (point.B2 - point.B0) / Br;
+					DEBUG("ffff", point.y1, point.B1, point.y2, point.B2);
+				linalg_solve_cubic (point.y1, point.B1, point.y2, point.B1, &range.C[0], &range.C[1], &range.C[2]);
+					DEBUG("fff", range.C[0], range.C[1], range.C[2]);
+				break;
+			}
+			case 4: // least square fit
+			{
+				point.B1 = (point.B1 - point.B0) / Br;
+				point.B2 = (point.B2 - point.B0) / Br;
+				point.B3 = (point.B3 - point.B0) / Br;
+
+				double C [3];
+					DEBUG("ffffff", point.B1, point.y1, point.B2, point.y2, point.B3, point.y3);
+				linalg_least_squares_quadratic (point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1]);
+					DEBUG("dd", C[0], C[1]);
+				linalg_least_squares_cubic (point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1], &C[2]);
+					DEBUG("ddd", C[0], C[1], C[2]);
+				range.C[0] = C[0];
+				range.C[1] = C[1];
+				range.C[2] = C[2];
+			}
+		}
+
+		range_curve_update ();
+	}
+
+	for (i=0; i<SENSOR_N; i++)
+	{
+		// reset thresh to quiescent value
+		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
+		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
+	}
+}
+
+// calibrate amplification and sensitivity
+void
+range_update_b3 (float y)
+{
+	uint_fast8_t i;
 	float as_1;
 	float bmin, bmax_s, bmax_n;
 	float sc_1;
 
-	float m_bmin = 0;
-	float m_bmax = 0;
+	// find magnetic flux b corresponding to distance y
+	uint16_t b;
+	float bf;
+	for (b=0; b<0x800; b++)
+	{
+		bf = (float)b / (float)0x7ff;
+		float _y = range.C[0]*cbrt(bf) + range.C[1]*sqrt(bf) + range.C[2]*bf;
+		if(_y > y)
+			break;
+	}
+
+	float m_bmin = 0.f;
+	float m_bmax = 0.f;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
 		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
 		arr->arr[POLE_NORTH][i] >>= 4;
 
-		as_1 = 1.0 / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
+		as_1 = 1.f / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
 
 		bmin = (float)range.thresh[i] * as_1;
-		bmax_s = ((float)arr->arr[POLE_SOUTH][i] - (float)range.qui[i]) * as_1 / Y1;
-		bmax_n = ((float)range.qui[i] - (float)arr->arr[POLE_NORTH][i]) * as_1 / Y1;
+		bmax_s = ((float)arr->arr[POLE_SOUTH][i] - (float)range.qui[i]) * as_1 / bf;
+		bmax_n = ((float)range.qui[i] - (float)arr->arr[POLE_NORTH][i]) * as_1 / bf;
 
 		m_bmin += bmin;
-		m_bmax += (bmax_s + bmax_n) / 2.0;
+		m_bmax += (bmax_s + bmax_n) / 2.f;
 	}
 
 	m_bmin /= (float)SENSOR_N;
 	m_bmax /= (float)SENSOR_N;
 
-	sc_1 = 1.0 / (m_bmax - m_bmin);
-	range.bmin_sc_1 = m_bmin * sc_1;
+	sc_1 = 1.f / (m_bmax - m_bmin);
+	range.W = m_bmin * sc_1;
 
 	for (i=0; i<SENSOR_N; i++)
 	{
-		as_1 = 1.0 / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
-		range.as_1_sc_1[i] = as_1 * sc_1;
+		as_1 = 1.f / _as (range.qui[i], arr->arr[POLE_SOUTH][i], arr->arr[POLE_NORTH][i], b);
+		range.U[i] = as_1 * sc_1;
 
 		// reset thresh to quiescent value
 		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;

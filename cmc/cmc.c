@@ -88,30 +88,25 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	/*
 	 * find areas of interest
 	 */
-
 	n_aoi = 0;
 	uint_fast8_t pos;
 	for (pos=0; pos<SENSOR_N; pos++)
 	{
+		uint_fast8_t newpos = pos+1;
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
-		if ( (aval << 2) > range.thresh[pos] ) // thresh0 == thresh1 / 4, TODO make this configurable?
+		if ( (aval << 2) > range.thresh[pos] ) // aval > thresh / 4, TODO make this configurable?
 		{
-			uint_fast8_t newpos = pos+1;
 			aoi[n_aoi++] = newpos;
 
 			cmc.n[newpos] = val < 0 ? POLE_NORTH : POLE_SOUTH;
 			cmc.a[newpos] = aval > range.thresh[pos];
 
-			//float b = (float)aval * range.as_1[pos]; // calculate magnetic field, aval == |raw(i) - qui(i)|
-			//cmc.v[newpos] = (b - range.bmin) * range.sc_1; // rescale to [0,1]
-
-			// this is the same as the above, just in one function
-			float y = ((float)aval * range.as_1_sc_1[pos]) - range.bmin_sc_1;
+			float y = ((float)aval * range.U[pos]) - range.W;
 			cmc.v[newpos] = y; //FIXME get rid of cmc structure.
 		}
 		else
-			cmc.v[pos+1] = 0.0; //FIXME necessary?
+			cmc.v[newpos] = 0.0; //FIXME neccessary?
 	}
 
 	uint_fast8_t changed = 1; //TODO actually check for changes
@@ -174,11 +169,10 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 			{
         float y1 = cmc.v[P];
 
-				if (y1 < 0.0) y1 = 0.0;
-				if (y1 > 1.0) y1 = 1.0;
+				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
 
-				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
-				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+				// lookup distance
+				y1 = curve[(uint16_t)(y1*0x7FF)]; // FIXME incorporate *0x7ff into range.u and range.W
 
         x = cmc.x[P]; 
         y = y1;
@@ -205,16 +199,12 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
           y0 = tp1;
 				}
 
-				if (y0 < 0.0) y0 = 0.0;
-				if (y0 > 1.0) y0 = 1.0;
-				if (y1 < 0.0) y1 = 0.0;
-				if (y1 > 1.0) y1 = 1.0;
+				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
 
-				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
-				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
-
-				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
-				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
+				// lookup distance
+				y0 = curve[(uint16_t)(y0*0x7FF)];
+				y1 = curve[(uint16_t)(y1*0x7FF)];
 
         x = x1 + cmc.d * y0 / (y1+y0);
         a = (y1-y0) / (x1-x0);
@@ -229,34 +219,27 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				float y1 = cmc.v[P];
 				float y2 = cmc.v[P+1];
 
-				if (y0 < 0.0) y0 = 0.0;
-				if (y0 > 1.0) y0 = 1.0;
-				if (y1 < 0.0) y1 = 0.0;
-				if (y1 > 1.0) y1 = 1.0;
-				if (y2 < 0.0) y2 = 0.0;
-				if (y2 > 1.0) y2 = 1.0;
+				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
 
-				// lookup square root
-				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
-				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
-				float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
-
-				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
-				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
-				y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
+				// lookup distance
+				y0 = curve[(uint16_t)(y0*0x7FF)];
+				y1 = curve[(uint16_t)(y1*0x7FF)];
+				y2 = curve[(uint16_t)(y2*0x7FF)];
 
 				// parabolic interpolation
-				float divisor = y0 - 2.0*y1 + y2;
+				float divisor = y0 - 2.f*y1 + y2;
 				//float divisor = y0 - (y1<<1) + y2;
 
-				if (divisor == 0.0)
+				if (divisor == 0.f)
 				{
 					x = cmc.x[P];
 					y = y1;
 				}
 				else
 				{
-					float divisor_1 = 1.0 / divisor;
+					float divisor_1 = 1.f / divisor;
 
 					//float x = cmc.x[P] + cmc.d_2*(y0 - y2) / divisor;
 					x = cmc.x[P] + cmc.d_2*(y0 - y2) * divisor_1; // multiplication instead of division
@@ -264,7 +247,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					//float y = y1; // dummy
 
 					//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
-					float dividend = y0*(y1 - 0.125*y0 + 0.25*y2) + y2*(y1 - 0.125*y2) - y1*y1*2.0; // 7 multiplications, 5 additions/subtractions
+					float dividend = y0*(y1 - 0.125f*y0 + 0.25f*y2) + y2*(y1 - 0.125f*y2) - y1*y1*2.f; // 7 multiplications, 5 additions/subtractions
 					//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
 
 					//float y = dividend / divisor;
@@ -297,25 +280,16 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					y3 = cmc.v[P+2]; //FIXME caution
 				}
 
-				if (y0 < 0.0) y0 = 0.0;
-				if (y0 > 1.0) y0 = 1.0;
-				if (y1 < 0.0) y1 = 0.0;
-				if (y1 > 1.0) y1 = 1.0;
-				if (y2 < 0.0) y2 = 0.0;
-				if (y2 > 1.0) y2 = 1.0;
-				if (y3 < 0.0) y3 = 0.0;
-				if (y3 > 1.0) y3 = 1.0;
+				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
+				y3 = y3 < 0.f ? 0.f : (y3 > 1.f ? 1.f : y3);
 
-				// lookup square root
-				float sqrt0 = lookup_sqrt[(uint16_t)(y0*0x7FF)];
-				float sqrt1 = lookup_sqrt[(uint16_t)(y1*0x7FF)];
-				float sqrt2 = lookup_sqrt[(uint16_t)(y2*0x7FF)];
-				float sqrt3 = lookup_sqrt[(uint16_t)(y3*0x7FF)];
-
-				y0 = config.curve.A * sqrt0 + config.curve.B * y0; // + config.curve.C;
-				y1 = config.curve.A * sqrt1 + config.curve.B * y1; // + config.curve.C;
-				y2 = config.curve.A * sqrt2 + config.curve.B * y2; // + config.curve.C;
-				y3 = config.curve.A * sqrt3 + config.curve.B * y3; // + config.curve.C;
+				// lookup distance
+				y0 = curve[(uint16_t)(y0*0x7FF)];
+				y1 = curve[(uint16_t)(y1*0x7FF)];
+				y2 = curve[(uint16_t)(y2*0x7FF)];
+				y3 = curve[(uint16_t)(y3*0x7FF)];
 
 				// simple cubic splines
 				//float a0 = y3 - y2 - y0 + y1;
@@ -324,33 +298,33 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				//float a3 = y1;
 			
 				// catmull-rom splines
-				float a0 = -0.5*y0 + 1.5*y1 - 1.5*y2 + 0.5*y3;
-				float a1 = y0 - 2.5*y1 + 2.0*y2 - 0.5*y3;
-				float a2 = -0.5*y0 + 0.5*y2;
+				float a0 = -0.5f*y0 + 1.5f*y1 - 1.5f*y2 + 0.5f*y3;
+				float a1 = y0 - 2.5f*y1 + 2.f*y2 - 0.5f*y3;
+				float a2 = -0.5f*y0 + 0.5f*y2;
 				float a3 = y1;
 
-        float A = 3.0 * a0;
-        float B = 2.0 * a1;
+        float A = 3.f * a0;
+        float B = 2.f * a1;
         float C = a2;
 
 				float mu;
 
-        if (A == 0.0)
+        if (A == 0.f)
         {
-          mu = 0.0; // TODO what to do here? fall back to quadratic?
+          mu = 0.f; // TODO what to do here? fall back to quadratic?
         }
         else // A != 0.0
         {
-          if (C == 0.0)
+          if (C == 0.f)
             mu = -B / A;
           else
           {
-            float A2 = 2.0*A;
-            float D = B*B - 2.0*A2*C;
-            if (D < 0.0) // bad, this'd give an imaginary solution
-              D = 0.0;
+            float A2 = 2.f*A;
+            float D = B*B - 2.f*A2*C;
+            if (D < 0.f) // bad, this'd give an imaginary solution
+              D = 0.f;
             else
-              D = sqrt(D);
+              D = sqrtf(D); // FIXME use a lookup table
             mu = (-B - D) / A2;
           }
         }
@@ -363,10 +337,8 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 			}
 		}
 
-		if (x < 0.0) x = 0.0;
-		if (x > 1.0) x = 1.0;
-		if (y < 0.0) y = 0.0;
-		if (y > 1.0) y = 1.0;
+		x = x < 0.f ? 0.f : (x > 1.f ? 1.f : x); // 0 <= x <= 1
+		y = y < 0.f ? 0.f : (y > 1.f ? 1.f : y); // 0 <= y <= 1
 
 		CMC_Blob *blob = &cmc_neu[cmc.J];
 		blob->sid = -1; // not assigned yet

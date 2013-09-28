@@ -31,7 +31,7 @@ for B in range (0x800):
 
 print ('};\n')
 
-print ('const float lookup_crt [0x800] = {')
+print ('const float lookup_cbrt [0x800] = {')
 
 for B in range (0x800):
 	b = pow (B / 0x7ff, 1/3)

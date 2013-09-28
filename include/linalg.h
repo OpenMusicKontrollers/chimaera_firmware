@@ -21,16 +21,13 @@
  *     distribution.
  */
 
-#include <chimaera.h>
+#ifndef _LINALG_H_
+#define _LINALG_H_
 
-uint_fast8_t buf_o_ptr = 0;
-uint8_t buf_o[2][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose output buffer
-uint8_t buf_i_o[32] __attribute__((aligned(4))); // TODO how big?
-uint8_t buf_i_i[CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose input buffer;
-// the buffers should be aligned to 32bit, as most we write to it is a multiple of 32bit (OSC, SNTP, DHCP, ARP, etc.)
+void linalg_solve_quadratic (float y1, float B1, float *c0, float *c1);
+void linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1, float *c2);
 
-uint8_t shared_buf [SHARED_BUFSIZE];
+void linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1);
+void linalg_least_squares_cubic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2);
 
-timer_dev *adc_timer;
-timer_dev *sntp_timer;
-timer_dev *dhcpc_timer;
+#endif

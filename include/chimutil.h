@@ -29,6 +29,7 @@
 #include <libmaple/adc.h>
 
 #include <nosc.h>
+#include <wiz.h>
 
 void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
 

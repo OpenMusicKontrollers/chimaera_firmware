@@ -28,9 +28,16 @@
 #include <calibration.h>
 
 typedef struct _Calibration_Array Calibration_Array;
+typedef struct _Calibration_Point Calibration_Point;
 
 struct _Calibration_Array {
 	uint16_t arr [2][SENSOR_N];
+};
+
+struct _Calibration_Point {
+	uint16_t i;
+	float y1, y2, y3;
+	float B0, B1, B2, B3;
 };
 
 #endif

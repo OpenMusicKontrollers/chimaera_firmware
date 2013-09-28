@@ -86,6 +86,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define SOFT_RESET PA14
 
 #define CHIMAERA_BUFSIZE 0x400
+#define SHARED_BUFSIZE 0x300
 
 #define ADC_DMA_PRIORITY 0x2
 #define SPI_RX_DMA_PRIORITY 0x3
@@ -124,8 +125,10 @@ extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i_o [];
 extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
+extern uint8_t shared_buf [SHARED_BUFSIZE];
+
 extern const float lookup_sqrt [];
-extern const float lookup_crt [];
+extern const float lookup_cbrt [];
 
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;
