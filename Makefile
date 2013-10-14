@@ -4,6 +4,9 @@ export SENSORS := 48 # 3 sensor units aka Chimaera Mini
 #export SENSORS := 96 # 6 sensor units aka Chimaera Midi
 #export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
 
+export WIZ_CHIP := W5200
+#export WIZ_CHIP := W5500
+
 export BOARD := F303CB
 export MEMORY_TARGET := jtag
 export USER_MODULES := $(shell pwd)

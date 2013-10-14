@@ -56,6 +56,7 @@ CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 # custom preprocessor flags
 #CFLAGS_$(d) += -DBENCHMARK
 CFLAGS_$(d) += -DSENSORS_$(SENSORS)
+CFLAGS_$(d) += -DWIZ_CHIP_$(WIZ_CHIP)
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a
@@ -80,6 +81,12 @@ $(USER_MODULES)/lookup.c: lookup.py
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
 cSRCS_$(d) += wiz/wiz.c
+ifeq ($(WIZ_CHIP), W5200)
+cSRCS_$(d) += wiz/W5200.c
+endif
+ifeq ($(WIZ_CHIP), W5500)
+cSRCS_$(d) += wiz/W5500.c
+endif
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
 cSRCS_$(d) += dump/dump.c

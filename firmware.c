@@ -806,9 +806,9 @@ setup ()
 		IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
 
 	wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-	wiz_socket_irq_set(config.config.socket.sock, wiz_config_irq, SnIR_RECV); //TODO put this into config_enable
-	wiz_socket_irq_set(config.mdns.socket.sock, wiz_mdns_irq, SnIR_RECV); //TODO put this into config_enable
-	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, SnIR_RECV); //TODO put this into config_enable
+	wiz_socket_irq_set(config.config.socket.sock, wiz_config_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
+	wiz_socket_irq_set(config.mdns.socket.sock, wiz_mdns_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
+	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
 
 	// initialize timers
 	adc_timer = TIMER1;

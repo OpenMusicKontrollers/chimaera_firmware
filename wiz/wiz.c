@@ -23,7 +23,11 @@
 
 #include <string.h>
 
-#include "wiz_private.h"
+#if defined(WIZ_CHIP_W5200)
+#	include "W5200_private.h"
+#elif defined(WIZ_CHIP_W5500)
+#	include "W5500_private.h"
+#endif
 
 #include <tube.h>
 #include <netdef.h>
@@ -33,52 +37,160 @@
 #include <libmaple/spi.h>
 #include <libmaple/systick.h>
 
+Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
+volatile uint_fast8_t wiz_jobs_todo;
+volatile uint_fast8_t wiz_jobs_done;
+
 const uint8_t wiz_nil_ip [] = {0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-
-#define SPI_CMD_SIZE 4
-
-#define INPUT_BUF_SEND 0
-#define INPUT_BUF_RECV 1
 
 gpio_dev *ss_dev;
 uint8_t ss_bit;
 uint_fast8_t tmp_buf_o_ptr = 0;
 uint8_t *tmp_buf_i = buf_i_o;
 
-uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
-uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
-
-uint16_t SBASE [WIZ_MAX_SOCK_NUM];
-uint16_t RBASE [WIZ_MAX_SOCK_NUM];
-
-uint16_t SMASK [WIZ_MAX_SOCK_NUM];
-uint16_t RMASK [WIZ_MAX_SOCK_NUM];
-
-uint16_t Sn_Tx_WR[8];
-uint16_t Sn_Rx_RD[8];
-
 uint16_t nonblocklen;
 
 Wiz_IRQ_Cb irq_cb = NULL;
 Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
 
-__always_inline static void
-setSS ()
-{
-	gpio_write_bit (ss_dev, ss_bit, 0);
-	//SPI2->regs->CR1 |= SPI_CR1_SPE;
-}
+uint16_t SSIZE [WIZ_MAX_SOCK_NUM];
+uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 
-__always_inline static void
-resetSS ()
-{
-	//SPI2->regs->CR1 &= ~SPI_CR1_SPE;
-	gpio_write_bit (ss_dev, ss_bit, 1);
-}
+uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
+uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 
 static void
+_wiz_job_irq() //FIXME handle SPI and DMA errors
+{
+	Wiz_Job *job = &wiz_jobs[wiz_jobs_todo++];
+	uint8_t isr_rx;
+	uint8_t isr_tx;
+	uint8_t spi_sr;
+
+	if(job->rw == WIZ_TXRX)
+	{
+		isr_rx = dma_get_isr_bits(DMA1, DMA_CH4);
+		isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
+
+		if(isr_rx & DMA_ISR_TCIF) // RX DMA transfer complete
+		{
+			dma_clear_isr_bits(DMA1, DMA_CH5);
+			dma_clear_isr_bits(DMA1, DMA_CH4);
+
+			dma_disable(DMA1, DMA_CH5); // Tx
+			dma_disable(DMA1, DMA_CH4); // Rx
+
+			resetSS();
+
+			if(++wiz_jobs_done < wiz_jobs_todo)
+				return wiz_job_run_single();
+		}
+	}
+	else if(job->rw & WIZ_TX)
+	{
+		isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
+
+		if(isr_tx & DMA_ISR_TCIF) // Tx DMA transfer complete
+		{
+			do {
+				spi_sr = SPI2_BASE->SR;
+			} while (spi_sr & SPI_SR_FTLVL); // TX FIFO not empty
+
+			do {
+				spi_sr = SPI2_BASE->SR;
+			} while (spi_sr & SPI_SR_BSY); // wait for BSY==0
+
+			do
+			{
+				//spi_sr = SPI2_BASE->DR;
+				spi_sr = spi_rx_reg(SPI2);
+				spi_sr = SPI2_BASE->SR;
+			} while ( (spi_sr & SPI_SR_FRLVL) || (spi_sr & SPI_SR_RXNE) || (spi_sr & SPI_SR_OVR) ); // empty buffer and clear OVR flag
+
+			dma_clear_isr_bits(DMA1, DMA_CH5);
+
+			dma_disable(DMA1, DMA_CH5); // Tx
+
+			resetSS();
+
+			if(++wiz_jobs_done < wiz_jobs_todo)
+				return wiz_job_run_single();
+		}
+	}
+}
+
+void
+wiz_job_clear()
+{
+	wiz_jobs_todo = 0;
+}
+
+void
+wiz_job_add(uint16_t addr, uint16_t len, uint8_t *buf, uint8_t opmode, uint8_t rw)
+{
+	Wiz_Job *job = &wiz_jobs[wiz_jobs_todo++];
+	job->addr = addr;
+	job->len = len;
+	job->buf = buf;
+	job->opmode = opmode;
+	job->rw = rw;
+}
+
+void
+wiz_job_run_single()
+{
+	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
+
+	wiz_job_set_frame();
+
+	uint16_t len2 = job->len + WIZ_SEND_OFFSET;
+
+	setSS();
+
+	if(job->rw & WIZ_RX)
+	{
+		spi_rx_dma_enable(SPI2); // enable RX DMA on SPI2
+		//dma_set_mem_address(DMA1, DMA_CH4, job->buf - WIZ_SEND_OFFSET); TODO?
+		dma_set_num_transfers(DMA1, DMA_CH4, len2); // Rx
+		dma_enable(DMA1, DMA_CH4); // Rx
+	}
+	else
+		spi_rx_dma_disable(SPI2); // disable RX DMA on SPI2
+
+	if(job->rw & WIZ_TX)
+	{
+		spi_tx_dma_enable(SPI2); // enable TX DMA on SPI2
+		dma_set_mem_address(DMA1, DMA_CH5, job->buf - WIZ_SEND_OFFSET);
+		dma_set_num_transfers(DMA1, DMA_CH5, len2); // Tx
+		dma_enable(DMA1, DMA_CH5); // Tx
+	}
+	else
+		spi_tx_dma_disable(SPI2); // disable TX DMA on SPI2
+}
+
+void
+wiz_job_run_nonblocking()
+{
+	if(!wiz_jobs_todo)
+		return;
+
+	dma_attach_interrupt(DMA1, DMA_CH5, _wiz_job_irq);
+	wiz_jobs_done = 0;
+	wiz_job_run_single();
+}
+
+void
+wiz_job_run_block()
+{
+	while(wiz_jobs_done < wiz_jobs_todo)
+		;
+
+	dma_detach_interrupt(DMA1, DMA_CH5);
+}
+
+void
 _spi_dma_run (uint16_t len, uint8_t io_flags)
 {
 	if (io_flags & WIZ_RX)
@@ -101,7 +213,7 @@ _spi_dma_run (uint16_t len, uint8_t io_flags)
 		spi_tx_dma_disable (SPI2);
 }
 
-static uint_fast8_t
+uint_fast8_t
 _spi_dma_block (uint8_t io_flags)
 {
 	uint_fast8_t ret = 1;
@@ -175,55 +287,7 @@ _spi_dma_block (uint8_t io_flags)
 	return ret;
 }
 
-__always_inline static void
-_dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	uint8_t *buf = buf_o[tmp_buf_o_ptr];
-
-	*buf++ = addr >> 8;
-	*buf++ = addr & 0xFF;
-	*buf++ = (0x80 | ((len & 0x7F00) >> 8));
-	*buf++ = len & 0x00FF;
-	
-	memcpy (buf, dat, len);
-	buf += len;
-
-	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
-	setSS ();
-	_spi_dma_run (buflen, WIZ_TX);
-	while (!_spi_dma_block (WIZ_TX))
-		_spi_dma_run (buflen, WIZ_TX);
-	resetSS ();
-}
-
-__always_inline static uint8_t *
-_dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	*buf++ = addr >> 8;
-	*buf++ = addr & 0xFF;
-	*buf++ = (0x80 | ((len & 0x7F00) >> 8));
-	*buf++ = len & 0x00FF;
-	
-	memcpy (buf, dat, len);
-	buf += len;
-
-	return buf;
-}
-
-__always_inline static uint8_t *
-_dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
-{
-	*buf++ = addr >> 8;
-	*buf++ = addr & 0xFF;
-	*buf++ = (0x80 | ((len & 0x7F00) >> 8));
-	*buf++ = len & 0x00FF;
-	
-	buf += len; // advance for the data size
-
-	return buf;
-}
-
-__always_inline static uint_fast8_t
+__always_inline uint_fast8_t
 _dma_write_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -232,7 +296,7 @@ _dma_write_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-__always_inline static uint_fast8_t
+__always_inline uint_fast8_t
 _dma_write_nonblocking_out ()
 {
 	uint_fast8_t res = _spi_dma_block (WIZ_TX);
@@ -240,7 +304,7 @@ _dma_write_nonblocking_out ()
 	return res;
 }
 
-__always_inline static uint_fast8_t
+__always_inline uint_fast8_t
 _dma_read_nonblocking_in (uint8_t *buf)
 {
 	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
@@ -249,7 +313,7 @@ _dma_read_nonblocking_in (uint8_t *buf)
 	return 1;
 }
 
-__always_inline static uint_fast8_t
+__always_inline uint_fast8_t
 _dma_read_nonblocking_out ()
 {
 	uint_fast8_t res = _spi_dma_block (WIZ_TXRX);
@@ -257,180 +321,38 @@ _dma_read_nonblocking_out ()
 	return res;
 }
 
-__always_inline static void
-_dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	uint8_t *buf = buf_o[tmp_buf_o_ptr];
-
-	*buf++ = addr >> 8;
-	*buf++ = addr & 0xFF;
-	*buf++ = (0x00 | ((len & 0x7F00) >> 8));
-	*buf++ = len & 0x00FF;
-	
-	memset (buf, 0x00, len);
-	buf += len;
-
-	uint16_t buflen = buf - buf_o[tmp_buf_o_ptr];
-	setSS ();
-	_spi_dma_run (buflen, WIZ_TXRX);
-	while (!_spi_dma_block (WIZ_TXRX))
-		_spi_dma_run (buflen, WIZ_TXRX);
-	resetSS ();
-
-	memcpy (dat, &tmp_buf_i[SPI_CMD_SIZE], len);
-}
-
-__always_inline static uint8_t *
-_dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len)
-{
-	*buf++ = addr >> 8;
-	*buf++ = addr & 0xFF;
-	*buf++ = (0x00 | ((len & 0x7F00) >> 8));
-	*buf++ = len & 0x00FF;
-	
-	memset (buf, 0x00, len);
-	buf += len;
-
-	return buf;
-}
-
-__always_inline static void
-_dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	// transform relative socket registry address to absolute registry address
-	_dma_write (CH_BASE + sock*CH_SIZE + addr, dat, len);
-}
-
-__always_inline static uint8_t *
-_dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	// transform relative socket registry address to absolute registry address
-	return _dma_write_append (buf, CH_BASE + sock*CH_SIZE + addr, dat, len);
-}
-
-__always_inline static void
-_dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat)
-{
-	uint16_t _dat = hton (dat);
-	_dma_write_sock (sock, addr, (uint8_t *)&_dat, 2);
-}
-
-__always_inline static uint8_t *
-_dma_write_sock_16_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint16_t dat)
-{
-	uint16_t _dat = hton (dat);
-	return _dma_write_sock_append (buf, sock, addr, (uint8_t *)&_dat, 2);
-}
-
-__always_inline static void
-_dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
-{
-	// transform relative socket registry address to absolute registry address
-	_dma_read (CH_BASE + sock*CH_SIZE + addr, dat, len);
-}
-
-__always_inline static void
-_dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
-{
-	_dma_read_sock (sock, addr, (uint8_t*)dat, 2);
-	*dat = hton (*dat);
-}
-
-void
-wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
-{
-	int status;
-
-	ss_dev = dev;
-	ss_bit = bit;
-
-	tmp_buf_i = buf_i_o;
-
-	// set up dma for SPI2RX
-	spi2_rx_tube.tube_dst = tmp_buf_i;
-	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	//dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
-	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
-
-	// set up dma for SPI2TX
-	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	//dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
-	//nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
-
-	// init udp
-	uint_fast8_t sock;
-	uint8_t flag;
-
-	flag = MR_RST;
-	_dma_write (MR, &flag, 1);
-	do {
-		_dma_read (MR, &flag, 1);
-	} while (flag & MR_RST);
-
-	// initialize all socket memory TX and RX sizes to their corresponding sizes
-  for (sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
-	{
-		// initialize tx registers
-		SSIZE[sock] = (uint16_t)tx_mem[sock] * 0x0400;
-		SMASK[sock] = SSIZE[sock] - 1;
-		if (sock>0)
-			SBASE[sock] = SBASE[sock-1] + SSIZE[sock-1];
-		else
-			SBASE[sock] = TX_BUF_BASE;
-
-		flag = tx_mem[sock];
-		if (flag == 0x10)
-			flag = 0x0f; // special case
-		_dma_write_sock (sock, SnTX_MS, &flag, 1); // TX_MEMSIZE
-
-		// initialize rx registers
-		RSIZE[sock] = (uint16_t)rx_mem[sock] * 0x0400;
-		RMASK[sock] = RSIZE[sock] - 1;
-		if (sock>0)
-			RBASE[sock] = RBASE[sock-1] + RSIZE[sock-1];
-		else
-			RBASE[sock] = RX_BUF_BASE;
-
-		flag = rx_mem[sock];
-		if (flag == 0x10) 
-			flag = 0x0f; // special case
-		_dma_write_sock (sock, SnRX_MS, &flag, 1); // RX_MEMSIZE
-  }
-}
+//FIXME move
 
 uint_fast8_t
 wiz_link_up ()
 {
 	uint8_t physr;
-	_dma_read (PHYSR, &physr, 1);
-	return ( (physr & PHYSR_LINK) == PHYSR_LINK);
+	_dma_read (WIZ_PHYCFGR, &physr, 1);
+	return ( (physr & WIZ_PHYCFGR_LNK) == WIZ_PHYCFGR_LNK);
 }
 
 void
 wiz_mac_set (uint8_t *mac)
 {
-	_dma_write (SHAR, mac, 6);
+	_dma_write (WIZ_SHAR, mac, 6);
 }
 
 void
 wiz_ip_set (uint8_t *ip)
 {
-	_dma_write (SIPR, ip, 4);
+	_dma_write (WIZ_SIPR, ip, 4);
 }
 
 void
 wiz_gateway_set (uint8_t *gateway)
 {
-	_dma_write (GAR, gateway, 4);
+	_dma_write (WIZ_GAR, gateway, 4);
 }
 
 void
 wiz_subnet_set (uint8_t *subnet)
 {
-	_dma_write (SUBR, subnet, 4);
+	_dma_write (WIZ_SUBR, subnet, 4);
 }
 
 void
@@ -448,10 +370,10 @@ udp_end (uint8_t sock)
 	uint8_t flag;
 
 	// close socket
-	flag = SnCR_CLOSE;
-	_dma_write_sock (sock, SnCR, &flag, 1);
-	do _dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_CLOSED);
+	flag = WIZ_Sn_CR_CLOSE;
+	_dma_write_sock (sock, WIZ_Sn_CR, &flag, 1);
+	do _dma_read_sock (sock, WIZ_Sn_SR, &flag, 1);
+	while (flag != WIZ_Sn_SR_CLOSED);
 }
 
 void
@@ -463,24 +385,24 @@ udp_begin (uint8_t sock, uint16_t port, uint_fast8_t multicast)
 	udp_end (sock);
 
 	// clear socket interrupt register
-	_dma_write_sock (sock, SnIR, &flag, 1);
+	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
 
 	// set socket mode to UDP
 	if (multicast)
-		flag = SnMR_UDP | SnMR_MULTI;
+		flag = WIZ_Sn_MR_UDP | WIZ_Sn_MR_MULTI;
 	else
-		flag = SnMR_UDP;
-	_dma_write_sock (sock, SnMR, &flag, 1);
+		flag = WIZ_Sn_MR_UDP;
+	_dma_write_sock (sock, WIZ_Sn_MR, &flag, 1);
 
 	// set outgoing port
-	_dma_write_sock_16 (sock, SnPORT, port);
+	_dma_write_sock_16 (sock, WIZ_Sn_PORT, port);
 
 	// open socket
-	flag = SnCR_OPEN;
-	_dma_write_sock (sock, SnCR, &flag, 1);
+	flag = WIZ_Sn_CR_OPEN;
+	_dma_write_sock (sock, WIZ_Sn_CR, &flag, 1);
 	do
-		_dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_UDP);
+		_dma_read_sock (sock, WIZ_Sn_SR, &flag, 1);
+	while (flag != WIZ_Sn_SR_UDP);
 
 	udp_update_read_write_pointers (sock);
 }
@@ -489,20 +411,20 @@ __always_inline void
 udp_update_read_write_pointers (uint8_t sock)
 {
 	// get write pointer
-	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_TX_WR, &Sn_Tx_WR[sock]);
 
 	// get read pointer
-	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_RX_RD, &Sn_Rx_RD[sock]);
 }
 
 __always_inline void
 udp_reset_read_write_pointers (uint8_t sock)
 {
-	_dma_read_sock_16 (sock, SnTX_RD, &Sn_Tx_WR[sock]);
-	_dma_write_sock_16 (sock, SnTX_WR, Sn_Tx_WR[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_TX_RD, &Sn_Tx_WR[sock]);
+	_dma_write_sock_16 (sock, WIZ_Sn_TX_WR, Sn_Tx_WR[sock]);
 
-	_dma_read_sock_16 (sock, SnRX_WR, &Sn_Rx_RD[sock]);
-	_dma_write_sock_16 (sock, SnRX_RD, Sn_Rx_RD[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_RX_WR, &Sn_Rx_RD[sock]);
+	_dma_write_sock_16 (sock, WIZ_Sn_RX_RD, Sn_Rx_RD[sock]);
 }
 
 uint_fast8_t
@@ -537,17 +459,17 @@ udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port)
 	}
 
 	// set remote ip
-	_dma_write_sock (sock, SnDIPR, ip, 4);
+	_dma_write_sock (sock, WIZ_Sn_DIPR, ip, 4);
 
 	// set remote port
-	_dma_write_sock_16 (sock, SnDPORT, port);
+	_dma_write_sock_16 (sock, WIZ_Sn_DPORT, port);
 }
 
 void 
 udp_set_remote_har (uint8_t sock, uint8_t *har)
 {
 	// remote hardware address, e.g. needed for UDP multicast
-	_dma_write_sock (sock, SnDHAR, har, 6);
+	_dma_write_sock (sock, WIZ_Sn_DHAR, har, 6);
 }
 
 uint_fast8_t
@@ -559,88 +481,11 @@ udp_send (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 	return success;
 }
 
-uint_fast8_t 
-udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
-{
-	if ( !len || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) || (len > SSIZE[sock]) ) // return when buffer exceeds given size
-		return 0;
-
-	// switch DMA memory source to right buffer, input buffer is on SEND by default
-	if (tmp_buf_o_ptr != buf_ptr)
-	{
-		tmp_buf_o_ptr = buf_ptr;
-
-		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
-		//int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-		//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	}
-
-	uint8_t *buf = buf_o[buf_ptr];
-
-	uint16_t ptr = Sn_Tx_WR[sock];
-  uint16_t offset = ptr & SMASK[sock];
-  uint16_t dstAddr = offset + SBASE[sock];
-
-  if ( (offset + len) > SSIZE[sock]) 
-  {
-    // Wrap around circular buffer
-    uint16_t size = SSIZE[sock] - offset;
-		buf = _dma_write_inline (buf, dstAddr, size);
-		memmove (buf + SPI_CMD_SIZE, buf, len-size); // add 4byte padding between chunks
-		buf = _dma_write_inline (buf, SBASE[sock], len-size);
-  } 
-  else
-		buf = _dma_write_inline (buf, dstAddr, len);
-
-  ptr += len;
-	Sn_Tx_WR[sock] = ptr;
-	buf = _dma_write_sock_16_append (buf, sock, SnTX_WR, ptr);
-
-	// send data
-	uint8_t flag;
-	flag = SnCR_SEND;
-	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
-
-	return _dma_write_nonblocking_in (buf);
-}
-
-uint_fast8_t 
-udp_send_block (uint8_t sock)
-{
-	uint_fast8_t success = _dma_write_nonblocking_out ();
-
-	if (!success)
-	{
-		// or do something else?
-		_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
-		return success;
-	}
-
-	uint8_t ir;
-	uint8_t flag;
-	do
-	{
-		_dma_read_sock (sock, SnIR, &ir, 1);
-		if (ir & SnIR_TIMEOUT) // ARPto occured, SEND failed
-		{
-			flag = SnIR_SEND_OK | SnIR_TIMEOUT; // set SEND_OK flag and clear TIMEOUT flag
-			_dma_write_sock (sock, SnIR, &flag, 1);
-			success = 0;
-		}
-	} while ( (ir & SnIR_SEND_OK) != SnIR_SEND_OK);
-
-	flag = SnIR_SEND_OK; // clear SEND_OK flag
-	_dma_write_sock (sock, SnIR, &flag, 1);
-
-	return success;
-}
-
 __always_inline uint16_t
 udp_available (uint8_t sock)
 {
 	uint16_t len;
-	_dma_read_sock_16 (sock, SnRX_RSR, &len);
+	_dma_read_sock_16 (sock, WIZ_Sn_RX_RSR, &len);
 	return len;
 }
 
@@ -649,88 +494,6 @@ udp_receive (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
 	uint16_t wrap = udp_receive_nonblocking (sock, buf_ptr, len);
 	return udp_receive_block (sock, wrap, len);
-}
-
-uint16_t
-udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
-{
-	if (len > (CHIMAERA_BUFSIZE - 4) ) // return when buffer exceedes given size
-		return;
-
-	if (tmp_buf_o_ptr != buf_ptr)
-	{
-		tmp_buf_o_ptr = buf_ptr;
-
-		spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
-		//int status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
-		//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	}
-
-	tmp_buf_i = buf_i_i;
-
-	spi2_rx_tube.tube_dst = tmp_buf_i;
-	dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
-	//int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-
-	uint16_t ptr = Sn_Rx_RD[sock];
-
-	uint16_t size = 0;
-	uint16_t offset = ptr & RMASK[sock];
-	uint16_t dstAddr = offset + RBASE[sock];
-
-	uint8_t *buf = buf_o[tmp_buf_o_ptr];
-
-	// read message
-	if ( (offset + len) > RSIZE[sock])
-	{
-		size = RSIZE[sock] - offset;
-		buf = _dma_read_append (buf, dstAddr, size);
-		buf = _dma_read_append (buf, RBASE[sock], len-size);
-	}
-	else
-		buf = _dma_read_append (buf, dstAddr, len);
-
-	//TODO what if something fails when receiving?
-	ptr += len;
-	Sn_Rx_RD[sock] = ptr;
-	buf = _dma_write_sock_16_append (buf, sock, SnRX_RD, ptr);
-
-	uint8_t flag;
-	flag = SnCR_RECV;
-	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
-
-	_dma_read_nonblocking_in (buf);
-
-	return size;
-}
-
-uint_fast8_t
-udp_receive_block (uint8_t sock, uint16_t size, uint16_t len)
-{
-	uint_fast8_t success = _dma_read_nonblocking_out ();
-
-	if (!success)
-	{
-		// or do something else?
-		_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
-		return success;
-	}
-
-	// remove 4byte padding between chunks
-	if (size)
-		memmove (tmp_buf_i + SPI_CMD_SIZE + size, tmp_buf_i + SPI_CMD_SIZE + size + SPI_CMD_SIZE, len-size);
-
-	// switch back to RECV buffer
-	tmp_buf_i = buf_i_o;
-
-	spi2_rx_tube.tube_dst = tmp_buf_i;
-	dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
-	//int status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
-	//ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-
-	return success;
 }
 
 __always_inline void
@@ -742,11 +505,11 @@ _wiz_advance_read_ptr (uint8_t sock, uint16_t len)
 
 	ptr += len;
 	Sn_Rx_RD[sock] = ptr;
-	buf = _dma_write_sock_16_append (buf, sock, SnRX_RD, ptr);
+	buf = _dma_write_sock_16_append (buf, sock, WIZ_Sn_RX_RD, ptr);
 
 	uint8_t flag;
-	flag = SnCR_RECV;
-	buf = _dma_write_sock_append (buf, sock, SnCR, &flag, 1);
+	flag = WIZ_Sn_CR_RECV;
+	buf = _dma_write_sock_append (buf, sock, WIZ_Sn_CR, &flag, 1);
 
 	_dma_read_nonblocking_in (buf);
 	_dma_read_nonblocking_out ();
@@ -763,7 +526,7 @@ udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t 
 		if (!udp_receive (sock, ptr, 8))
 			return;
 
-		uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE;
+		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
 
 		uint8_t ip[4];
 		memcpy(ip, buf_in_ptr, 4);
@@ -787,27 +550,27 @@ macraw_begin (uint8_t sock, uint_fast8_t mac_filter)
 	macraw_end (sock);
 
 	// clear socket interrupt register
-	_dma_write_sock (sock, SnIR, &flag, 1);
+	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
 
 	// set socket mode to MACRAW
 	if (mac_filter) // only look for packages addressed to our MAC or broadcast
-		flag = SnMR_MACRAW | SnMR_MF;
+		flag = WIZ_Sn_MR_MACRAW | WIZ_Sn_MR_MF;
 	else
-		flag = SnMR_MACRAW;
-	_dma_write_sock (sock, SnMR, &flag, 1);
+		flag = WIZ_Sn_MR_MACRAW;
+	_dma_write_sock (sock, WIZ_Sn_MR, &flag, 1);
 
 	// open socket
-	flag = SnCR_OPEN;
-	_dma_write_sock (sock, SnCR, &flag, 1);
-	do _dma_read_sock (sock, SnSR, &flag, 1);
-	while (flag != SnSR_MACRAW)
+	flag = WIZ_Sn_CR_OPEN;
+	_dma_write_sock (sock, WIZ_Sn_CR, &flag, 1);
+	do _dma_read_sock (sock, WIZ_Sn_SR, &flag, 1);
+	while (flag != WIZ_Sn_SR_MACRAW)
 		;
 
 	// get write pointer
-	_dma_read_sock_16 (sock, SnTX_WR, &Sn_Tx_WR[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_TX_WR, &Sn_Tx_WR[sock]);
 
 	// get read pointer
-	_dma_read_sock_16 (sock, SnRX_RD, &Sn_Rx_RD[sock]);
+	_dma_read_sock_16 (sock, WIZ_Sn_RX_RD, &Sn_Rx_RD[sock]);
 }
 
 void
@@ -845,7 +608,7 @@ macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void
 		if (!macraw_receive (sock, ptr, 2))
 			return;
 			
-		uint8_t *buf_in_ptr = buf_i_i + SPI_CMD_SIZE;
+		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
 		uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
 
 		// receive payload
@@ -866,22 +629,22 @@ wiz_irq_handle (void)
 	// main interrupt
 	if(irq_cb)
 	{
-		_dma_read(IR, &ir, 1);
+		_dma_read(WIZ_IR, &ir, 1);
 		irq_cb(ir);
-		_dma_write(IR, &ir, 1); // clear main IRQ flags
+		_dma_write(WIZ_IR, &ir, 1); // clear main IRQ flags
 	}
 
 	// socket interrupts
-	_dma_read(IR2, &ir2, 1);
+	_dma_read(WIZ_SIR, &ir2, 1);
 	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
 	{
 		if( (1U << sock) & ir2) // there was an IRQ for this socket
 			if(irq_socket_cb[sock])
 			{
 				uint8_t sock_ir;
-				_dma_read_sock(sock, SnIR, &sock_ir, 1); // get socket IRQ
+				_dma_read_sock(sock, WIZ_Sn_IR, &sock_ir, 1); // get socket IRQ
 				irq_socket_cb[sock](sock_ir);
-				_dma_write_sock(sock, SnIR, &sock_ir, 1); // clear socket IRQ flags (this automatically clears IR2[sock]
+				_dma_write_sock(sock, WIZ_Sn_IR, &sock_ir, 1); // clear socket IRQ flags (this automatically clears WIZ_SIR[sock]
 			}
 	}
 }
@@ -891,7 +654,7 @@ wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask)
 {
 	irq_cb = cb;
 
-	_dma_write(IMR, &mask , 1); // set mask
+	_dma_write(WIZ_IMR, &mask , 1); // set mask
 }
 
 void
@@ -900,7 +663,7 @@ wiz_irq_unset()
 	irq_cb = NULL;
 
 	uint8_t mask = 0;
-	_dma_write(IMR, &mask , 1); // clear mask
+	_dma_write(WIZ_IMR, &mask , 1); // clear mask
 }
 
 void
@@ -909,11 +672,11 @@ wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask)
 	irq_socket_cb[socket] = cb;
 
 	uint8_t mask2;
-	_dma_read(IMR2, &mask2, 1);
+	_dma_read(WIZ_SIMR, &mask2, 1);
 	mask2 |= (1U << socket); // enable socket IRQs
-	_dma_write(IMR2, &mask2, 1);
+	_dma_write(WIZ_SIMR, &mask2, 1);
 
-	_dma_write_sock(socket, SnIMR, &mask, 1); // set mask
+	_dma_write_sock(socket, WIZ_Sn_IMR, &mask, 1); // set mask
 }
 
 void
@@ -922,10 +685,10 @@ wiz_socket_irq_unset(uint8_t socket)
 	irq_socket_cb[socket] = NULL;
 
 	uint8_t mask2;
-	_dma_read(IMR2, &mask2, 1);
+	_dma_read(WIZ_SIMR, &mask2, 1);
 	mask2 &= ~(1U << socket); // disable socket IRQs
-	_dma_write(IMR2, &mask2, 1);
+	_dma_write(WIZ_SIMR, &mask2, 1);
 
 	uint8_t mask = 0;
-	_dma_write_sock(socket, SnIMR, &mask, 1); // clear mask
+	_dma_write_sock(socket, WIZ_Sn_IMR, &mask, 1); // clear mask
 }

@@ -32,20 +32,25 @@ extern const uint8_t wiz_nil_ip [];
 extern const uint8_t wiz_nil_mac [];
 extern const uint8_t wiz_broadcast_mac [];
 
-#define WIZ_UDP_HDR_SIZE 8
-#define WIZ_SEND_OFFSET 4
+#define WIZ_UDP_HDR_SIZE			8
 
-#define WIZ_MAX_SOCK_NUM 8
+#if defined(WIZ_CHIP_W5200)
+#	define WIZ_MAX_SOCK_NUM			8
+#	define WIZ_SEND_OFFSET			4
+#elif defined(WIZ_CHIP_W5500)
+#	define WIZ_MAX_SOCK_NUM 		8
+#	define WIZ_SEND_OFFSET			3
+#endif
 
 /* socket interrupt masks */
-#define SnIR_PRECV						(1U << 7) // valid only on socket 0 & PPPoE
-#define SnIR_PFAIL						(1U << 6) // valid only on socket 0 & PPPoE
-#define SnIR_PNEXT						(1U << 5) // valid only on socket 0 & PPPoE
-#define SnIR_SEND_OK					(1U << 4)
-#define SnIR_TIMEOUT					(1U << 3)
-#define SnIR_RECV							(1U << 2)
-#define SnIR_DISCON						(1U << 1)
-#define SnIR_CON							(1U << 0)
+#define WIZ_Sn_IR_PRECV						(1U << 7) // valid only on socket 0 & PPPoE and W5200
+#define WIZ_Sn_IR_PFAIL						(1U << 6) // valid only on socket 0 & PPPoE and W5200
+#define WIZ_Sn_IR_PNEXT						(1U << 5) // valid only on socket 0 & PPPoE and W5200
+#define WIZ_Sn_IR_SEND_OK					(1U << 4)
+#define WIZ_Sn_IR_TIMEOUT					(1U << 3)
+#define WIZ_Sn_IR_RECV						(1U << 2)
+#define WIZ_Sn_IR_DISCON					(1U << 1)
+#define WIZ_Sn_IR_CON							(1U << 0)
 
 typedef void (*Wiz_UDP_Dispatch_Cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
 typedef void (*Wiz_IRQ_Cb) (uint8_t isr);
