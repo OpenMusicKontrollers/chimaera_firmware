@@ -34,24 +34,11 @@
 Calibration range __CCM__;
 Calibration_Point point;
 
-/*
- * when calibrating, we use the output buffer as temporary memory,
- * as only the dump engine can be active at that moment
- * we use the remaining memory here up to CHIMAERA_BUFSIZE
- * throw an error if there is not enough memory, though
- */
-#define CALIBRATION_OFFSET (CHIMAERA_BUFSIZE - 4*SENSOR_N)
-#if(CALIBRATION_OFFSET < (2*SENSOR_N + 2*WIZ_SEND_OFFSET + 32))
-#error "Calibration array does not fit into output buffer"
-#endif
-//Calibration_Array *arr = (Calibration_Array *)&buf_o[0][CALIBRATION_OFFSET];
-Calibration_Array *arr = (Calibration_Array *)shared_buf;
+float curve [0x800];
+// when calibrating, we use the curve buffer as temporary memory, it's big enough and not used during calibration
+Calibration_Array *arr = (Calibration_Array *)curve;
 uint_fast8_t zeroing = 0;
 uint_fast8_t calibrating = 0;
-
-uint_fast8_t b1_state = 1;
-
-float curve [0x800];
 
 static float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
@@ -187,7 +174,7 @@ range_init ()
 		arr->arr[POLE_NORTH][i] = range.qui[i];
 	}
 
-	b1_state = 1;
+	point.state = 1;
 }
 
 // calibrate quiescent current
@@ -253,22 +240,22 @@ range_update_b1 (float y)
 		b_s = arr->arr[POLE_SOUTH][i] - range.qui[i];
 		b_n = range.qui[i] - arr->arr[POLE_NORTH][i];
 
-		switch (b1_state)
+		switch (point.state)
 		{
 			case 1:
 				point.y1 = y;
 				point.B1 = (b_s + b_n) / 2.f;
-				b1_state++;
+				point.state++;
 				break;
 			case 2:
 				point.y2 = y;
 				point.B2 = (b_s + b_n) / 2.f;
-				b1_state++;
+				point.state++;
 				break;
 			case 3:
 				point.y3 = y;
 				point.B3 = (b_s + b_n) / 2.f;
-				b1_state++;
+				point.state++;
 				break;
 		}
 	}
@@ -298,7 +285,8 @@ range_update_b2 ()
 		
 		float Br = (b_s + b_n)/2.f - point.B0;
 
-		switch (b1_state)
+		//TODO remove unnecessary code
+		switch (point.state)
 		{
 			case 2: // quadratic curve fit
 			{
@@ -334,8 +322,6 @@ range_update_b2 ()
 				range.C[2] = C[2];
 			}
 		}
-
-		range_curve_update ();
 	}
 
 	for (i=0; i<SENSOR_N; i++)
@@ -399,4 +385,7 @@ range_update_b3 (float y)
 		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
 		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
+
+	// update curve lookup table
+	range_curve_update ();
 }

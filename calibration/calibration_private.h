@@ -35,7 +35,8 @@ struct _Calibration_Array {
 };
 
 struct _Calibration_Point {
-	uint16_t i;
+	uint_fast8_t i;
+	uint_fast8_t state;
 	float y1, y2, y3;
 	float B0, B1, B2, B3;
 };

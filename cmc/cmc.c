@@ -120,21 +120,8 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	uint_fast8_t p1 = aoi[0];
 	for (a=1; a<n_aoi; a++)
 	{
-		//uint_fast8_t p0 = aoi[a-1]; //TODO optimize
-		//uint_fast8_t p1 = aoi[a]; //TODO optimize
 		uint_fast8_t p0 = p1;
 		p1 = aoi[a];
-
-		/*
-		if (p1 > p0+1) // new local AOI
-		{
-			if (up)
-				peaks[n_peaks++] = p0;
-			else
-				up = 1;
-			continue; //FIXME
-		}
-		*/
 
 		if (up)
 		{

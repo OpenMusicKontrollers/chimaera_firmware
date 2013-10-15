@@ -169,14 +169,6 @@ Config config = {
 		}
 	},
 
-	/*
-	.curve = {
-		.A = 0.7700,
-		.B = 0.2289,
-		.C = 0.0000
-	},
-	*/
-
 	.movingaverage = {
 		.enabled = 1,
 		.bitshift = 3 // moving average over 8(2³) samples
@@ -1254,32 +1246,6 @@ _reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-/*
-static uint_fast8_t
-_curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (argc == 1) // query
-	{
-		size = CONFIG_SUCCESS ("ifff", id, (float)config.curve.A, (float)config.curve.B, (float)config.curve.C);
-	}
-	else
-	{
-		config.curve.A = args[1].f;
-		config.curve.B = args[2].f;
-		config.curve.B = args[3].f;
-
-		size = CONFIG_SUCCESS ("i", id);
-	}
-
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-*/
-
 static uint_fast8_t
 _movingaverage_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -1513,20 +1479,21 @@ _calibration_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	// end calibration procedure
 	calibrating = 0;
 
-	// output sensor sensitivities
+	// debug output TODO remove
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/U", "if", i, (float)range.U[i]);
+		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/U", "if", i, range.U[i]);
 		udp_send (config.config.socket.sock, buf_o_ptr, size);
 	}
 
 	// output minimal offset
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/W", "f", (float)range.W);
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/W", "f", range.W);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	// output curve parameters
-	//TODO
+	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
+	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
@@ -1718,38 +1685,6 @@ _ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_test_leastsquares (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	int32_t order = args[1].i;
-	double x1 = args[2].d;
-	double y1 = args[3].d;
-	double x2 = args[4].d;
-	double y2 = args[5].d;
-	double x3 = args[6].d;
-	double y3 = args[7].d;
-
-	double C [3];
-
-	switch(order)
-	{
-		case 2:
-			linalg_least_squares_quadratic(x1, y1, x2, y2, x3, y3, &C[0], &C[1]);
-			size = CONFIG_SUCCESS ("idd", id, C[0], C[1]);
-			break;
-		case 3:
-			linalg_least_squares_cubic(x1, y1, x2, y2, x3, y3, &C[0], &C[1], &C[2]);
-			size = CONFIG_SUCCESS ("iddd", id, C[0], C[1], C[2]);
-			break;
-	}
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
-
-	return 1;
-}
-
-static uint_fast8_t
 _non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1819,9 +1754,6 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/ipv4ll/enabled", "i*", _ipv4ll_enabled},
 
-	//{"/chimaera/curve", "i", _curve},
-	//{"/chimaera/curve", "ifff", _curve},
-
 	{"/chimaera/movingaverage/enabled", "i*", _movingaverage_enabled},
 	{"/chimaera/movingaverage/samples", "i*", _movingaverage_samples},
 
@@ -1852,8 +1784,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/curve", "i", _calibration_curve},
 
 	{"/chimaera/ping", NULL, _ping},
-
-	{"/chimaera/test/leastsquares", "iidddddd", _test_leastsquares},
 
 	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 
