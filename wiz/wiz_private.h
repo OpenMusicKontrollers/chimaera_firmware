@@ -88,16 +88,16 @@ uint_fast8_t _dma_write_nonblocking_out ();
 uint_fast8_t _dma_read_nonblocking_in (uint8_t *buf);
 uint_fast8_t _dma_read_nonblocking_out ();
 
-void _dma_write (uint16_t addr, uint8_t *dat, uint16_t len);
-uint8_t * _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len);
-uint8_t * _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len);
+void _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
+uint8_t * _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
+uint8_t * _dma_write_inline (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len);
 void _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 uint8_t * _dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 void _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat);
 uint8_t * _dma_write_sock_16_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint16_t dat);
 
-void _dma_read (uint16_t addr, uint8_t *dat, uint16_t len);
-uint8_t * _dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len);
+void _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
+uint8_t * _dma_read_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len);
 void _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 void _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat);
 

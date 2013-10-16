@@ -52,7 +52,7 @@ wiz_job_set_frame()
 }
 
 __always_inline void
-_dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
+_dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = buf_o[tmp_buf_o_ptr];
 
@@ -73,7 +73,7 @@ _dma_write (uint16_t addr, uint8_t *dat, uint16_t len)
 }
 
 __always_inline uint8_t *
-_dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
+_dma_write_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
@@ -87,7 +87,7 @@ _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t *dat, uint16_t len)
 }
 
 __always_inline uint8_t *
-_dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
+_dma_write_inline (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len)
 {
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
@@ -100,7 +100,7 @@ _dma_write_inline (uint8_t *buf, uint16_t addr, uint16_t len)
 }
 
 __always_inline void
-_dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
+_dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
 	uint8_t *buf = buf_o[tmp_buf_o_ptr];
 
@@ -123,7 +123,7 @@ _dma_read (uint16_t addr, uint8_t *dat, uint16_t len)
 }
 
 __always_inline uint8_t *
-_dma_read_append (uint8_t *buf, uint16_t addr, uint16_t len)
+_dma_read_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len)
 {
 	*buf++ = addr >> 8;
 	*buf++ = addr & 0xFF;
@@ -140,14 +140,14 @@ __always_inline void
 _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
-	_dma_write (CH_BASE + sock*CH_SIZE + addr, dat, len);
+	_dma_write (CH_BASE + sock*CH_SIZE + addr, 0, dat, len);
 }
 
 __always_inline uint8_t *
 _dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
-	return _dma_write_append (buf, CH_BASE + sock*CH_SIZE + addr, dat, len);
+	return _dma_write_append (buf, CH_BASE + sock*CH_SIZE + addr, 0, dat, len);
 }
 
 __always_inline void
@@ -168,7 +168,7 @@ __always_inline void
 _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
-	_dma_read (CH_BASE + sock*CH_SIZE + addr, dat, len);
+	_dma_read (CH_BASE + sock*CH_SIZE + addr, 0, dat, len);
 }
 
 __always_inline void
@@ -207,9 +207,9 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	uint8_t flag;
 
 	flag = WIZ_MR_RST;
-	_dma_write (WIZ_MR, &flag, 1);
+	_dma_write (WIZ_MR, 0, &flag, 1);
 	do {
-		_dma_read (WIZ_MR, &flag, 1);
+		_dma_read (WIZ_MR, 0, &flag, 1);
 	} while (flag & WIZ_MR_RST);
 
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
@@ -278,11 +278,11 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 	if ( (offset + len) > RSIZE[sock])
 	{
 		size = RSIZE[sock] - offset;
-		buf = _dma_read_append (buf, dstAddr, size);
-		buf = _dma_read_append (buf, RBASE[sock], len-size);
+		buf = _dma_read_append (buf, dstAddr, 0, size);
+		buf = _dma_read_append (buf, RBASE[sock], 0, len-size);
 	}
 	else
-		buf = _dma_read_append (buf, dstAddr, len);
+		buf = _dma_read_append (buf, dstAddr, 0, len);
 
 	//TODO what if something fails when receiving?
 	ptr += len;
@@ -352,12 +352,12 @@ udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
   {
     // Wrap around circular buffer
     uint16_t size = SSIZE[sock] - offset;
-		buf = _dma_write_inline (buf, dstAddr, size);
+		buf = _dma_write_inline (buf, dstAddr, 0, size);
 		memmove (buf + WIZ_SEND_OFFSET, buf, len-size); // add 4byte padding between chunks
-		buf = _dma_write_inline (buf, SBASE[sock], len-size);
+		buf = _dma_write_inline (buf, SBASE[sock], 0, len-size);
   } 
   else
-		buf = _dma_write_inline (buf, dstAddr, len);
+		buf = _dma_write_inline (buf, dstAddr, 0, len);
 
   ptr += len;
 	Sn_Tx_WR[sock] = ptr;

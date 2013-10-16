@@ -47,24 +47,6 @@ struct _W5500_Socket_Sel {
 	uint8_t rx_buf;
 };
 
-#define W5500_SOCKET_SEL_ENTRY(s) \
-	[s] = { \
-		.reg = (s*4)+1 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.tx_buf = (s*4)+2 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.rx_buf = (s*4)+3 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-	}
-
-const W5500_Socket_Sel W5500_socket_sel [8] = {
-	W5500_SOCKET_SEL_ENTRY(0),
-	W5500_SOCKET_SEL_ENTRY(1),
-	W5500_SOCKET_SEL_ENTRY(2),
-	W5500_SOCKET_SEL_ENTRY(3),
-	W5500_SOCKET_SEL_ENTRY(4),
-	W5500_SOCKET_SEL_ENTRY(5),
-	W5500_SOCKET_SEL_ENTRY(6),
-	W5500_SOCKET_SEL_ENTRY(7),
-};
-
 #define WIZ_MR								0x0000	// mode
 #define WIZ_GAR								0x0001	// gateway address
 #define WIZ_SUBR							0x0005	// subnet mask address

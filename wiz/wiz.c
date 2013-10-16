@@ -327,32 +327,32 @@ uint_fast8_t
 wiz_link_up ()
 {
 	uint8_t physr;
-	_dma_read (WIZ_PHYCFGR, &physr, 1);
+	_dma_read (WIZ_PHYCFGR, 0, &physr, 1);
 	return ( (physr & WIZ_PHYCFGR_LNK) == WIZ_PHYCFGR_LNK);
 }
 
 void
 wiz_mac_set (uint8_t *mac)
 {
-	_dma_write (WIZ_SHAR, mac, 6);
+	_dma_write (WIZ_SHAR, 0, mac, 6);
 }
 
 void
 wiz_ip_set (uint8_t *ip)
 {
-	_dma_write (WIZ_SIPR, ip, 4);
+	_dma_write (WIZ_SIPR, 0, ip, 4);
 }
 
 void
 wiz_gateway_set (uint8_t *gateway)
 {
-	_dma_write (WIZ_GAR, gateway, 4);
+	_dma_write (WIZ_GAR, 0, gateway, 4);
 }
 
 void
 wiz_subnet_set (uint8_t *subnet)
 {
-	_dma_write (WIZ_SUBR, subnet, 4);
+	_dma_write (WIZ_SUBR, 0, subnet, 4);
 }
 
 void
@@ -629,13 +629,13 @@ wiz_irq_handle (void)
 	// main interrupt
 	if(irq_cb)
 	{
-		_dma_read(WIZ_IR, &ir, 1);
+		_dma_read(WIZ_IR, 0, &ir, 1);
 		irq_cb(ir);
-		_dma_write(WIZ_IR, &ir, 1); // clear main IRQ flags
+		_dma_write(WIZ_IR, 0, &ir, 1); // clear main IRQ flags
 	}
 
 	// socket interrupts
-	_dma_read(WIZ_SIR, &ir2, 1);
+	_dma_read(WIZ_SIR, 0, &ir2, 1);
 	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
 	{
 		if( (1U << sock) & ir2) // there was an IRQ for this socket
@@ -654,7 +654,7 @@ wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask)
 {
 	irq_cb = cb;
 
-	_dma_write(WIZ_IMR, &mask , 1); // set mask
+	_dma_write(WIZ_IMR, 0, &mask , 1); // set mask
 }
 
 void
@@ -663,7 +663,7 @@ wiz_irq_unset()
 	irq_cb = NULL;
 
 	uint8_t mask = 0;
-	_dma_write(WIZ_IMR, &mask , 1); // clear mask
+	_dma_write(WIZ_IMR, 0, &mask , 1); // clear mask
 }
 
 void
@@ -672,9 +672,9 @@ wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask)
 	irq_socket_cb[socket] = cb;
 
 	uint8_t mask2;
-	_dma_read(WIZ_SIMR, &mask2, 1);
+	_dma_read(WIZ_SIMR, 0, &mask2, 1);
 	mask2 |= (1U << socket); // enable socket IRQs
-	_dma_write(WIZ_SIMR, &mask2, 1);
+	_dma_write(WIZ_SIMR, 0, &mask2, 1);
 
 	_dma_write_sock(socket, WIZ_Sn_IMR, &mask, 1); // set mask
 }
@@ -685,9 +685,9 @@ wiz_socket_irq_unset(uint8_t socket)
 	irq_socket_cb[socket] = NULL;
 
 	uint8_t mask2;
-	_dma_read(WIZ_SIMR, &mask2, 1);
+	_dma_read(WIZ_SIMR, 0, &mask2, 1);
 	mask2 &= ~(1U << socket); // disable socket IRQs
-	_dma_write(WIZ_SIMR, &mask2, 1);
+	_dma_write(WIZ_SIMR, 0, &mask2, 1);
 
 	uint8_t mask = 0;
 	_dma_write_sock(socket, WIZ_Sn_IMR, &mask, 1); // clear mask
