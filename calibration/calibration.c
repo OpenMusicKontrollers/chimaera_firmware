@@ -194,7 +194,7 @@ range_update_quiescent ()
 }
 
 // calibrate threshold
-void
+uint_fast8_t
 range_update_b0 ()
 {
 	uint_fast8_t i;
@@ -223,6 +223,8 @@ range_update_b0 ()
 			point.i = i; // that'll be the sensor we will fit the distance-magnetic flux relationship curve to
 			point.B0 = range.thresh[i];
 		}
+
+	return point.i;
 }
 
 // calibrate distance-magnetic flux relationship curve
@@ -317,9 +319,9 @@ range_update_b2 ()
 					DEBUG("dd", C[0], C[1]);
 				linalg_least_squares_cubic (point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1], &C[2]);
 					DEBUG("ddd", C[0], C[1], C[2]);
-				range.C[0] = C[0];
-				range.C[1] = C[1];
-				range.C[2] = C[2];
+				range.C[0] = (float)C[0];
+				range.C[1] = (float)C[1];
+				range.C[2] = (float)C[2];
 			}
 		}
 	}

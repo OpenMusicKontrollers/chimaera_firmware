@@ -1418,7 +1418,7 @@ _calibration_min (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	int32_t id = args[0].i;
 
 	// update new range
-	range_update_b0 ();
+	uint_fast8_t si = range_update_b0 ();
 
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
@@ -1427,7 +1427,7 @@ _calibration_min (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 		udp_send (config.config.socket.sock, buf_o_ptr, size);
 	}
 
-	size = CONFIG_SUCCESS ("i", id);
+	size = CONFIG_SUCCESS ("ii", id, si);
 	udp_send (config.config.socket.sock, buf_o_ptr, size);
 
 	return 1;
