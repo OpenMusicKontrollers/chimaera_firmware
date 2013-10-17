@@ -42,7 +42,6 @@ struct _Wiz_Job {
 	uint8_t rw;
 };
 
-void wiz_job_clear();
 void wiz_job_add(uint16_t addr, uint16_t len, uint8_t *buf, uint8_t opmode, uint8_t rw);
 void wiz_job_set_frame();
 void wiz_job_run_single();
@@ -51,7 +50,7 @@ void wiz_job_run_block();
 
 #define WIZ_MAX_JOB_NUM 8
 
-extern Wiz_Job wiz_jobs [];
+extern Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
 volatile uint_fast8_t wiz_jobs_todo;
 volatile uint_fast8_t wiz_jobs_done;
 

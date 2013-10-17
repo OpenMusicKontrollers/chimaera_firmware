@@ -43,12 +43,12 @@ __always_inline void
 wiz_job_set_frame()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
-	uint8_t *buf = job->buf - WIZ_SEND_OFFSET;
+	uint8_t *frame = job->buf - WIZ_SEND_OFFSET;
 
-	buf[0] = job->addr >> 8;
-	buf[1] = job->addr & 0xFF;
-	buf[2] = (job->rw & WIZ_TX ? 0x80 : 0x00) | ((job->len & 0x7F00) >> 8);
-	buf[3] = job->len & 0x00FF;
+	frame[0] = job->addr >> 8;
+	frame[1] = job->addr & 0xFF;
+	frame[2] = (job->rw & WIZ_TX ? 0x80 : 0x00) | ((job->len & 0x7F00) >> 8);
+	frame[3] = job->len & 0x00FF;
 }
 
 __always_inline void
@@ -372,6 +372,47 @@ udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 }
 
 uint_fast8_t 
+udp_send_nonblocking2 (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+{
+	if(!len)
+		return 0;
+
+	// switch DMA memory source to right buffer, input buffer is on SEND by default
+	if (tmp_buf_o_ptr != buf_ptr)
+		tmp_buf_o_ptr = buf_ptr;
+
+	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
+
+	uint16_t ptr = Sn_Tx_WR[sock];
+  uint16_t offset = ptr & SMASK[sock];
+  uint16_t dstAddr = offset + SBASE[sock];
+
+  if ( (offset + len) > SSIZE[sock]) 
+  {
+    uint16_t size = SSIZE[sock] - offset;
+		wiz_job_add(dstAddr, size, buf, 0, WIZ_TX);
+		wiz_job_add(SBASE[sock], len-size, buf+size, 0, WIZ_TX);
+  } 
+  else
+		wiz_job_add(dstAddr, len, buf, 0, WIZ_TX);
+
+  ptr += len;
+	Sn_Tx_WR[sock] = ptr;
+
+	uint8_t *flag = buf+len;
+	flag[0] = ptr >> 8;
+	flag[1] = ptr & 0xFF;
+	wiz_job_add(CH_BASE + sock*CH_SIZE + WIZ_Sn_TX_WR, 2, &flag[0], 0, WIZ_TX);
+
+	// send data
+	flag[3] = WIZ_Sn_CR_SEND;
+	wiz_job_add(CH_BASE + sock*CH_SIZE + WIZ_Sn_CR, 1, &flag[3], 0, WIZ_TX);
+
+	wiz_job_run_nonblocking();
+	return 1;
+}
+
+uint_fast8_t 
 udp_send_block (uint8_t sock)
 {
 	uint_fast8_t success = _dma_write_nonblocking_out ();
@@ -400,4 +441,27 @@ udp_send_block (uint8_t sock)
 	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
 
 	return success;
+}
+
+uint_fast8_t
+udp_send_block2 (uint8_t sock)
+{
+	wiz_job_run_block();
+
+	uint8_t ir;
+	uint8_t flag;
+	do
+	{
+		_dma_read_sock (sock, WIZ_Sn_IR, &ir, 1);
+		if (ir & WIZ_Sn_IR_TIMEOUT) // ARPto occured, SEND failed
+		{
+			flag = WIZ_Sn_IR_SEND_OK | WIZ_Sn_IR_TIMEOUT; // set SEND_OK flag and clear TIMEOUT flag
+			_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
+		}
+	} while ( (ir & WIZ_Sn_IR_SEND_OK) != WIZ_Sn_IR_SEND_OK);
+
+	flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
+	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
+
+	return 1;
 }

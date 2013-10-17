@@ -91,6 +91,10 @@ uint_fast8_t udp_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint_fast8_t udp_send_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint_fast8_t udp_send_block (uint8_t sock);
 
+//FIXME remove
+uint_fast8_t udp_send_nonblocking2 (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+uint_fast8_t udp_send_block2 (uint8_t sock);
+
 uint16_t udp_available (uint8_t sock);
 
 uint_fast8_t udp_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
