@@ -37,26 +37,25 @@ typedef struct _Wiz_Job Wiz_Job;
 struct _Wiz_Job {
 	uint16_t addr;
 	uint16_t len;
-	uint8_t *buf;
+	uint8_t *tx;
+	uint8_t *rx;
 	uint8_t opmode; // only for W5500
 	uint8_t rw;
 };
 
-void wiz_job_add(uint16_t addr, uint16_t len, uint8_t *buf, uint8_t opmode, uint8_t rw);
+void wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmode, uint8_t rw);
 void wiz_job_set_frame();
 void wiz_job_run_single();
 void wiz_job_run_nonblocking();
 void wiz_job_run_block();
+
+void wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
 
 #define WIZ_MAX_JOB_NUM 8
 
 extern Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
 volatile uint_fast8_t wiz_jobs_todo;
 volatile uint_fast8_t wiz_jobs_done;
-
-extern const uint8_t wiz_nil_ip [];
-extern const uint8_t wiz_nil_mac [];
-extern const uint8_t wiz_broadcast_mac [];
 
 extern gpio_dev *ss_dev;
 extern uint8_t ss_bit;
@@ -65,10 +64,6 @@ extern uint8_t ss_bit;
 
 extern uint_fast8_t tmp_buf_o_ptr;
 extern uint8_t *tmp_buf_i;
-#define INPUT_BUF_SEND 0
-#define INPUT_BUF_RECV 1
-
-extern uint16_t nonblocklen;
 
 extern Wiz_IRQ_Cb irq_cb;
 extern Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
@@ -79,24 +74,11 @@ extern uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 extern uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
 extern uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 
-void _spi_dma_run (uint16_t len, uint8_t io_flags);
-uint_fast8_t _spi_dma_block (uint8_t io_flags);
-
-uint_fast8_t _dma_write_nonblocking_in (uint8_t *buf);
-uint_fast8_t _dma_write_nonblocking_out ();
-uint_fast8_t _dma_read_nonblocking_in (uint8_t *buf);
-uint_fast8_t _dma_read_nonblocking_out ();
-
 void _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
-uint8_t * _dma_write_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
-uint8_t * _dma_write_inline (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len);
 void _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
-uint8_t * _dma_write_sock_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 void _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat);
-uint8_t * _dma_write_sock_16_append (uint8_t *buf, uint8_t sock, uint16_t addr, uint16_t dat);
 
 void _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
-uint8_t * _dma_read_append (uint8_t *buf, uint16_t addr, uint8_t cntrl, uint16_t len);
 void _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 void _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat);
 

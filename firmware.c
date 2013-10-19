@@ -424,7 +424,7 @@ loop ()
 	nOSC_Item nest_bndl [ENGINE_MAX];
 	char nest_fmt [ENGINE_MAX+1];
 
-	uint_fast8_t send_status = 0;
+	uint_fast8_t cmc_stat;
 	uint_fast8_t cmc_job = 0;
 	uint_fast16_t cmc_len = 0;
 	uint_fast16_t len = 0;
@@ -470,7 +470,7 @@ loop ()
 			stop_watch_start (&sw_output_send);
 #endif
 			if (cmc_job) // start nonblocking sending of last cycles tuio output
-				send_status = udp_send_nonblocking2 (config.output.socket.sock, !buf_o_ptr, cmc_len); //FIXME
+				cmc_stat = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
 
 		// fill adc_rela
 #ifdef BENCHMARK
@@ -537,8 +537,8 @@ loop ()
 #ifdef BENCHMARK
 				stop_watch_start (&sw_output_block);
 #endif
-			if (cmc_job && send_status) // block for end of sending of last cycles tuio output
-				udp_send_block2 (config.output.socket.sock); //TODO check return status FIXME
+			if (cmc_job && cmc_stat) // block for end of sending of last cycles tuio output
+				udp_send_block (config.output.socket.sock);
 
 			if (job) // switch output buffer
 				buf_o_ptr ^= 1;

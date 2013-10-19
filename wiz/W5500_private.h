@@ -130,11 +130,11 @@ struct _W5500_Socket_Sel {
 #define WIZ_Sn_CR_SEND_KEEP 	0x22
 #define WIZ_Sn_CR_RECV    		0x40
 
-#define WIZ_Sn_IR_SEND_OK			(1U << 4)
-#define WIZ_Sn_IR_TIMEOUT			(1U << 3)
-#define WIZ_Sn_IR_RECV				(1U << 2)
-#define WIZ_Sn_IR_DISCON			(1U << 1)
-#define WIZ_Sn_IR_CON					(1U << 0)
+//#define WIZ_Sn_IR_SEND_OK			(1U << 4)
+//#define WIZ_Sn_IR_TIMEOUT			(1U << 3)
+//#define WIZ_Sn_IR_RECV				(1U << 2)
+//#define WIZ_Sn_IR_DISCON			(1U << 1)
+//#define WIZ_Sn_IR_CON					(1U << 0)
 
 #define WIZ_Sn_SR_CLOSED 			0x00
 #define WIZ_Sn_SR_INIT   			0x13

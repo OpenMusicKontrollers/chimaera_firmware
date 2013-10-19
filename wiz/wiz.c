@@ -32,6 +32,8 @@
 #include <tube.h>
 #include <netdef.h>
 #include <chimaera.h>
+#include <chimutil.h>
+#include <config.h>
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
@@ -50,8 +52,6 @@ uint8_t ss_bit;
 uint_fast8_t tmp_buf_o_ptr = 0;
 uint8_t *tmp_buf_i = buf_i_o;
 
-uint16_t nonblocklen;
-
 Wiz_IRQ_Cb irq_cb = NULL;
 Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
 
@@ -61,170 +61,62 @@ uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 
+__always_inline void
+_dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
+{
+	uint8_t *buf = buf_o[tmp_buf_o_ptr] + WIZ_SEND_OFFSET;
+	
+	memcpy (buf, dat, len);
+
+	wiz_job_add(addr, len, buf, NULL, cntrl, WIZ_TX);
+
+	wiz_job_run_nonblocking();
+	wiz_job_run_block();
+}
+
+__always_inline void
+_dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
+{
+	uint8_t *buf = buf_o[tmp_buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_i = buf_i_o + WIZ_SEND_OFFSET;
+	
+	wiz_job_add(addr, len, buf, tmp_buf_i, cntrl, WIZ_TXRX);
+
+	wiz_job_run_nonblocking();
+	wiz_job_run_block();
+
+	memcpy (dat, tmp_buf_i, len);
+}
+
+__always_inline void
+_dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat)
+{
+	uint16_t _dat = hton (dat);
+	_dma_write_sock (sock, addr, (uint8_t *)&_dat, 2);
+}
+
+__always_inline void
+_dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
+{
+	_dma_read_sock (sock, addr, (uint8_t*)dat, 2);
+	*dat = hton (*dat);
+}
+
 static void
-_wiz_job_irq() //FIXME handle SPI and DMA errors
+_wiz_job_irq()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
 	uint8_t isr_rx;
 	uint8_t isr_tx;
 	uint8_t spi_sr;
 
-	if(job->rw == WIZ_TXRX)
-	{
-		do {
-			isr_rx = dma_get_isr_bits(DMA1, DMA_CH4);
-			spi_sr = SPI2_BASE->SR; //TODO
-		} while(!(isr_rx & DMA_ISR_TCIF)); // Rx DMA transfer complete
-
-		dma_clear_isr_bits(DMA1, DMA_CH5);
-		dma_clear_isr_bits(DMA1, DMA_CH4);
-
-		dma_disable(DMA1, DMA_CH5); // Tx
-		dma_disable(DMA1, DMA_CH4); // Rx
-	}
-	else if(job->rw & WIZ_TX)
-	{
-		do {
-			isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
-			spi_sr = SPI2_BASE->SR; //TODO check for errors
-		} while(!(isr_tx & DMA_ISR_TCIF)); // Tx DMA transfer complete
-
-		do {
-			spi_sr = SPI2_BASE->SR;
-		} while (spi_sr & SPI_SR_FTLVL); // TX FIFO not empty
-
-		do {
-			spi_sr = SPI2_BASE->SR;
-		} while (spi_sr & SPI_SR_BSY); // wait for BSY==0
-
-		do {
-			//spi_sr = SPI2_BASE->DR;
-			spi_sr = spi_rx_reg(SPI2);
-			spi_sr = SPI2_BASE->SR;
-		} while ( (spi_sr & SPI_SR_FRLVL) || (spi_sr & SPI_SR_RXNE) || (spi_sr & SPI_SR_OVR) ); // empty buffer and clear OVR flag
-
-		dma_clear_isr_bits(DMA1, DMA_CH5);
-		dma_disable(DMA1, DMA_CH5); // Tx
-	}
-
-	resetSS();
-
-	wiz_jobs_done++;
-
-	if(wiz_jobs_done < wiz_jobs_todo)
-		wiz_job_run_single();
-	else
-		wiz_jobs_todo = 0;
-}
-
-void
-wiz_job_add(uint16_t addr, uint16_t len, uint8_t *buf, uint8_t opmode, uint8_t rw)
-{
-	Wiz_Job *job = &wiz_jobs[wiz_jobs_todo];
-	job->addr = addr;
-	job->len = len;
-	job->buf = buf;
-	job->opmode = opmode;
-	job->rw = rw;
-
-	wiz_jobs_todo++;
-}
-
-void
-wiz_job_run_single()
-{
-	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
-
-	wiz_job_set_frame();
-
-	uint8_t *frame = job->buf - WIZ_SEND_OFFSET;
-	uint16_t len2 = job->len + WIZ_SEND_OFFSET;
-
-	setSS();
+	uint_fast8_t ret = 1;
 
 	if(job->rw & WIZ_RX)
 	{
-		spi_rx_dma_enable(SPI2); // enable RX DMA on SPI2
-		//spi2_rx_tube.tube_dst = job->buf; TODO?
-		//dma_set_mem_address(DMA1, DMA_CH4, job->buf - WIZ_SEND_OFFSET); TODO?
-		dma_set_num_transfers(DMA1, DMA_CH4, len2); // Rx
-		dma_enable(DMA1, DMA_CH4); // Rx
-	}
-	else
-		spi_rx_dma_disable(SPI2); // disable RX DMA on SPI2
-
-	if(job->rw & WIZ_TX)
-	{
-		spi_tx_dma_enable(SPI2); // enable TX DMA on SPI2
-		spi2_tx_tube.tube_dst = frame; //TODO not needed?
-		dma_set_mem_addr(DMA1, DMA_CH5, frame);
-		dma_set_num_transfers(DMA1, DMA_CH5, len2); // Tx
-		dma_enable(DMA1, DMA_CH5); // Tx
-	}
-	else
-		spi_tx_dma_disable(SPI2); // disable TX DMA on SPI2
-}
-
-void
-wiz_job_run_nonblocking()
-{
-	dma_channel_regs(DMA1, DMA_CH5)->CCR |= DMA_CCR_TCIE; // enable transfer-complete IRQ
-	dma_attach_interrupt(DMA1, DMA_CH5, _wiz_job_irq);
-
-	wiz_jobs_done = 0;
-	if(wiz_jobs_done < wiz_jobs_todo)
-		wiz_job_run_single();
-}
-
-void
-wiz_job_run_block()
-{
-	while(wiz_jobs_todo > 0)
-		; // wait until all jobs are done
-
-	dma_detach_interrupt(DMA1, DMA_CH5);
-	dma_channel_regs(DMA1, DMA_CH5)->CCR &= ~DMA_CCR_TCIE; // disable transfer-complete IRQ
-
-	dma_set_mem_addr(DMA1, DMA_CH5, buf_o[tmp_buf_o_ptr]);
-}
-
-__always_inline void
-_spi_dma_run (uint16_t len, uint8_t io_flags)
-{
-	if (io_flags & WIZ_RX)
-	{
-		spi_rx_dma_enable (SPI2); // Enables RX DMA on SPI2
-		dma_set_num_transfers (DMA1, DMA_CH4, len); // Rx
-
-		dma_enable (DMA1, DMA_CH4); // Rx
-	}
-	else
-		spi_rx_dma_disable (SPI2);
-
-	if (io_flags & WIZ_TX)
-	{
-		spi_tx_dma_enable (SPI2); // Enables TX DMA on SPI2
-		dma_set_num_transfers (DMA1, DMA_CH5, len); // Tx
-		dma_enable (DMA1, DMA_CH5); // Tx
-	}
-	else
-		spi_tx_dma_disable (SPI2);
-}
-
-__always_inline uint_fast8_t
-_spi_dma_block (uint8_t io_flags)
-{
-	uint_fast8_t ret = 1;
-	uint8_t isr_rx;
-	uint8_t isr_tx;
-	uint16_t spi_sr;
-
-	if (io_flags == WIZ_TXRX)
-	{
-		do
-		{
-			isr_rx = dma_get_isr_bits (DMA1, DMA_CH4);
-			isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+		do {
+			isr_rx = dma_get_isr_bits(DMA1, DMA_CH4);
+			isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
 			spi_sr = SPI2_BASE->SR;
 
 			// check for errors in DMA and SPI status registers
@@ -239,19 +131,19 @@ _spi_dma_block (uint8_t io_flags)
 
 			if (spi_sr & SPI_SR_MODF) // SPI mode fault
 				ret = 0;
-		} while (!(isr_rx & DMA_ISR_TCIF) && ret); // RX DMA transfer complete
+		} while(!(isr_rx & DMA_ISR_TCIF) && ret); // Rx DMA transfer complete
+		//this is not ideal (e.g. to wait in an IRQ), but there is no other way for ASIO
 
-		dma_clear_isr_bits (DMA1, DMA_CH4);
-		dma_clear_isr_bits (DMA1, DMA_CH5);
+		dma_clear_isr_bits(DMA1, DMA_CH5);
+		dma_clear_isr_bits(DMA1, DMA_CH4);
 
-		dma_disable (DMA1, DMA_CH5); // Tx
-		dma_disable (DMA1, DMA_CH4); // Rx
+		dma_disable(DMA1, DMA_CH5); // Tx
+		dma_disable(DMA1, DMA_CH4); // Rx
 	}
-	else if (io_flags & WIZ_TX)
+	else // job->rw & WIZ_TX
 	{
-		do
-		{
-			isr_tx = dma_get_isr_bits (DMA1, DMA_CH5);
+		do {
+			isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
 			spi_sr = SPI2_BASE->SR;
 
 			// check for errors in DMA and SPI status registers
@@ -260,7 +152,7 @@ _spi_dma_block (uint8_t io_flags)
 
 			if (spi_sr & SPI_SR_MODF) // SPI mode fault
 				ret = 0;
-		} while (!(isr_tx & DMA_ISR_TCIF) && ret); // TX DMA transfer complete
+		} while(!(isr_tx & DMA_ISR_TCIF) && ret); // Tx DMA transfer complete
 
 		do {
 			spi_sr = SPI2_BASE->SR;
@@ -270,53 +162,132 @@ _spi_dma_block (uint8_t io_flags)
 			spi_sr = SPI2_BASE->SR;
 		} while ( (spi_sr & SPI_SR_BSY) && ret); // wait for BSY==0
 
-		do
-		{
+		do {
 			//spi_sr = SPI2_BASE->DR;
 			spi_sr = spi_rx_reg(SPI2);
 			spi_sr = SPI2_BASE->SR;
 		} while ( (spi_sr & SPI_SR_FRLVL) || (spi_sr & SPI_SR_RXNE) || (spi_sr & SPI_SR_OVR) ); // empty buffer and clear OVR flag
 
-		dma_clear_isr_bits (DMA1, DMA_CH5);
+		dma_clear_isr_bits(DMA1, DMA_CH5);
 
-		dma_disable (DMA1, DMA_CH5); // Tx
+		dma_disable(DMA1, DMA_CH5); // Tx
 	}
 
-	return ret;
+	resetSS();
+
+	if(ret) // no error
+		wiz_jobs_done++;
+	else // error: resend current job
+		;
+	
+	if(wiz_jobs_done < wiz_jobs_todo)
+		wiz_job_run_single();
+	else
+		wiz_jobs_todo = 0;
 }
 
-__always_inline uint_fast8_t
-_dma_write_nonblocking_in (uint8_t *buf)
+void
+wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmode, uint8_t rw)
 {
-	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
-	setSS ();
-	_spi_dma_run (nonblocklen, WIZ_TX);
-	return 1;
+	Wiz_Job *job = &wiz_jobs[wiz_jobs_todo];
+	job->addr = addr;
+	job->len = len;
+	job->tx = tx;
+	job->rx = rx;
+	job->opmode = opmode;
+	job->rw = rw;
+
+	wiz_jobs_todo++;
 }
 
-__always_inline uint_fast8_t
-_dma_write_nonblocking_out ()
+void
+wiz_job_run_single()
 {
-	uint_fast8_t res = _spi_dma_block (WIZ_TX);
-	resetSS ();
-	return res;
+	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
+
+	wiz_job_set_frame();
+
+	uint16_t len2 = job->len + WIZ_SEND_OFFSET;
+
+	setSS();
+
+	if(job->rw & WIZ_RX)
+	{
+		uint8_t *frm_rx = job->rx - WIZ_SEND_OFFSET;
+		spi_rx_dma_enable(SPI2); // enable RX DMA on SPI2
+		spi2_rx_tube.tube_dst = frm_rx;
+		dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
+		dma_set_num_transfers(DMA1, DMA_CH4, len2); // Rx
+		dma_enable(DMA1, DMA_CH4); // Rx
+	}
+	else
+		spi_rx_dma_disable(SPI2); // disable RX DMA on SPI2
+
+	if(job->rw & WIZ_TX)
+	{
+		uint8_t *frm_tx = job->tx - WIZ_SEND_OFFSET;
+		spi_tx_dma_enable(SPI2); // enable TX DMA on SPI2
+		spi2_tx_tube.tube_dst = frm_tx;
+		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
+		dma_set_num_transfers(DMA1, DMA_CH5, len2); // Tx
+		dma_enable(DMA1, DMA_CH5); // Tx
+	}
+	else
+		spi_tx_dma_disable(SPI2); // disable TX DMA on SPI2
 }
 
-__always_inline uint_fast8_t
-_dma_read_nonblocking_in (uint8_t *buf)
+void
+wiz_job_run_nonblocking()
 {
-	nonblocklen = buf - buf_o[tmp_buf_o_ptr];
-	setSS ();
-	_spi_dma_run (nonblocklen, WIZ_TXRX);
-	return 1;
+	wiz_jobs_done = 0;
+	if(wiz_jobs_done < wiz_jobs_todo)
+		wiz_job_run_single();
 }
 
-__always_inline uint_fast8_t
-_dma_read_nonblocking_out ()
+void
+wiz_job_run_block()
 {
-	uint_fast8_t res = _spi_dma_block (WIZ_TXRX);
-	resetSS ();
-	return res;
+	while(wiz_jobs_todo)
+		; // wait until all jobs are done
+}
+
+void
+wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
+{
+	int status;
+
+	ss_dev = dev;
+	ss_bit = bit;
+
+	tmp_buf_i = buf_i_o;
+
+	// set up dma for SPI2RX
+	spi2_rx_tube.tube_dst = tmp_buf_i;
+	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
+	nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
+
+	// set up dma for SPI2TX
+	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
+	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
+	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
+	nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
+
+	// attach interrupt
+	dma_attach_interrupt(DMA1, DMA_CH5, _wiz_job_irq);
+
+	// init udp
+	uint8_t flag;
+
+	flag = WIZ_MR_RST;
+	_dma_write (WIZ_MR, 0, &flag, 1);
+	do {
+		_dma_read (WIZ_MR, 0, &flag, 1);
+	} while (flag & WIZ_MR_RST);
+
+	wiz_sockets_set(tx_mem, rx_mem);
 }
 
 uint_fast8_t
@@ -468,13 +439,38 @@ udp_set_remote_har (uint8_t sock, uint8_t *har)
 	_dma_write_sock (sock, WIZ_Sn_DHAR, har, 6);
 }
 
-uint_fast8_t
+void
+udp_receive_block (uint8_t sock)
+{
+	wiz_job_run_block();
+}
+
+void
+udp_send_block (uint8_t sock)
+{
+	wiz_job_run_block();
+
+	uint8_t ir;
+	uint8_t flag;
+	do
+	{
+		_dma_read_sock (sock, WIZ_Sn_IR, &ir, 1);
+		if (ir & WIZ_Sn_IR_TIMEOUT) // ARPto occured, SEND failed
+		{
+			flag = WIZ_Sn_IR_SEND_OK | WIZ_Sn_IR_TIMEOUT; // set SEND_OK flag and clear TIMEOUT flag
+			_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
+		}
+	} while ( (ir & WIZ_Sn_IR_SEND_OK) != WIZ_Sn_IR_SEND_OK);
+
+	flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
+	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
+}
+
+void
 udp_send (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
-	uint_fast8_t success = 0;
-	if (udp_send_nonblocking (sock, buf_ptr, len))
-		success = udp_send_block (sock);
-	return success;
+	if(udp_send_nonblocking(sock, buf_ptr, len))
+		udp_send_block(sock);
 }
 
 __always_inline uint16_t
@@ -485,30 +481,11 @@ udp_available (uint8_t sock)
 	return len;
 }
 
-uint_fast8_t
+void
 udp_receive (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
-	uint16_t wrap = udp_receive_nonblocking (sock, buf_ptr, len);
-	return udp_receive_block (sock, wrap, len);
-}
-
-__always_inline void
-_wiz_advance_read_ptr (uint8_t sock, uint16_t len)
-{
-	uint16_t ptr = Sn_Rx_RD[sock];
-
-	uint8_t *buf = buf_o[tmp_buf_o_ptr];
-
-	ptr += len;
-	Sn_Rx_RD[sock] = ptr;
-	buf = _dma_write_sock_16_append (buf, sock, WIZ_Sn_RX_RD, ptr);
-
-	uint8_t flag;
-	flag = WIZ_Sn_CR_RECV;
-	buf = _dma_write_sock_append (buf, sock, WIZ_Sn_CR, &flag, 1);
-
-	_dma_read_nonblocking_in (buf);
-	_dma_read_nonblocking_out ();
+	if(udp_receive_nonblocking(sock, buf_ptr, len))
+		udp_receive_block(sock);
 }
 
 void 
@@ -519,8 +496,7 @@ udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t 
 	while ( (len = udp_available (sock)) )
 	{
 		// read UDP header
-		if (!udp_receive (sock, ptr, 8))
-			return;
+		udp_receive (sock, ptr, 8);
 
 		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
 
@@ -530,8 +506,7 @@ udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t 
 		uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
 
 		// read UDP payload
-		if (!udp_receive (sock, ptr, size))
-			return;
+		udp_receive (sock, ptr, size);
 
 		cb (ip, port, buf_in_ptr, size);
 	}
@@ -570,30 +545,6 @@ macraw_begin (uint8_t sock, uint_fast8_t mac_filter)
 }
 
 void
-macraw_end (uint8_t sock)
-{
-	udp_end (sock);
-}
-
-uint_fast8_t
-macraw_send (uint8_t sock, uint_fast8_t ptr, uint16_t len)
-{
-	return udp_send (sock, ptr, len);
-}
-
-__always_inline uint16_t
-macraw_available (uint8_t sock)
-{
-	return udp_available (sock);
-}
-
-uint_fast8_t
-macraw_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len)
-{
-	return udp_receive (sock, ptr, len);
-}
-
-void
 macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
@@ -601,15 +552,13 @@ macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void
 	while ( (len = macraw_available (sock)) )
 	{
 		// receive packet MACRAW size
-		if (!macraw_receive (sock, ptr, 2))
-			return;
+		macraw_receive (sock, ptr, 2);
 			
 		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
 		uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
 
 		// receive payload
-		if (!macraw_receive (sock, ptr, size-2))
-			return;
+		macraw_receive (sock, ptr, size-2);
 			
 		cb (buf_in_ptr, size-2, user_data);
 	}

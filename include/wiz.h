@@ -87,19 +87,15 @@ void udp_reset_read_write_pointers (uint8_t sock);
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);
 
-uint_fast8_t udp_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+void udp_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
 uint_fast8_t udp_send_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint_fast8_t udp_send_block (uint8_t sock);
-
-//FIXME remove
-uint_fast8_t udp_send_nonblocking2 (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint_fast8_t udp_send_block2 (uint8_t sock);
+void udp_send_block (uint8_t sock);
 
 uint16_t udp_available (uint8_t sock);
 
-uint_fast8_t udp_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint16_t udp_receive_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint_fast8_t udp_receive_block (uint8_t sock, uint16_t wrap, uint16_t len);
+void udp_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+uint_fast8_t udp_receive_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+void udp_receive_block (uint8_t sock);
 
 void udp_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_UDP_Dispatch_Cb cb);
 
@@ -121,10 +117,12 @@ struct _MACRAW_Header {
 typedef void (*Wiz_MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
 
 void macraw_begin (uint8_t sock, uint_fast8_t mac_filter);
-void macraw_end (uint8_t sock);
-uint_fast8_t macraw_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint16_t macraw_available (uint8_t sock);
-uint_fast8_t macraw_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+#define macraw_end udp_end
+
+#define macraw_send udp_send
+#define macraw_available udp_available
+#define macraw_receive udp_receive
+
 void macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *data);
 
 #endif
