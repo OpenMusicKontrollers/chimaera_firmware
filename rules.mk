@@ -55,7 +55,7 @@ CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 
 # custom preprocessor flags
 #CFLAGS_$(d) += -DBENCHMARK
-CFLAGS_$(d) += -DSENSORS_$(SENSORS)
+CFLAGS_$(d) += -DSENSOR_N=$(SENSORS)
 CFLAGS_$(d) += -DWIZ_CHIP_$(WIZ_CHIP)
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
