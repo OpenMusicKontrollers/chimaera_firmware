@@ -100,16 +100,6 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define OSC_ARGS_MAX 12
 
-#if defined(MCU_STM32F303CC)
-# define UDP_PWDN PB11
-# define UDP_SS BOARD_SPI2_NSS_PIN
-# define UDP_INT PA8
-#elif defined(MCU_STM32F303CB)
-# define UDP_PWDN PB12
-# define UDP_SS PA9
-# define UDP_INT PA10
-#endif
-
 #define SOFT_RESET PA14
 
 #define CHIMAERA_BUFSIZE 0x400
@@ -140,6 +130,33 @@ typedef enum _Reset_Mode {
 #define EEPROM_RANGE_OFFSET 0x1000
 #define EEPROM_RANGE_SIZE 0x0510
 #define EEPROM_RANGE_MAX 2 // we have place for three slots: 0, 1, 2
+
+// WIZnet interfacing
+#define WIZ_SPI_DEV SPI2
+#define WIZ_SPI_BAS SPI2_BASE
+
+#define WIZ_SPI_NSS_PIN BOARD_SPI2_NSS_PIN
+#define WIZ_SPI_SCK_PIN BOARD_SPI2_SCK_PIN
+#define WIZ_SPI_MISO_PIN BOARD_SPI2_MISO_PIN
+#define WIZ_SPI_MOSI_PIN BOARD_SPI2_MOSI_PIN
+
+#define WIZ_SPI_RX_DMA_DEV DMA1
+#define WIZ_SPI_RX_DMA_TUB DMA_CH4
+#define WIZ_SPI_RX_DMA_SRC DMA_REQ_SRC_SPI2_RX
+
+#define WIZ_SPI_TX_DMA_DEV DMA1
+#define WIZ_SPI_TX_DMA_TUB DMA_CH5
+#define WIZ_SPI_TX_DMA_SRC DMA_REQ_SRC_SPI2_TX
+
+#if defined(MCU_STM32F303CC)
+# define UDP_PWDN PB11
+# define UDP_SS BOARD_SPI2_NSS_PIN
+# define UDP_INT PA8
+#elif defined(MCU_STM32F303CB)
+# define UDP_PWDN PB12
+# define UDP_SS PA9
+# define UDP_INT PA10
+#endif
 
 // STM32F3 flash memory size (16bit)
 #define FSIZE_BASE  ((const uint16_t *)0x1FFFF7CC)

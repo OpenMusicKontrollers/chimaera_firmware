@@ -95,7 +95,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		uint_fast8_t newpos = pos+1;
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
-		if ( (aval << 2) > range.thresh[pos] ) // aval > thresh / 4, TODO make this configurable?
+		if ( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
 		{
 			aoi[n_aoi++] = newpos;
 

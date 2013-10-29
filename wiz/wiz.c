@@ -115,9 +115,9 @@ _wiz_job_irq()
 	if(job->rw & WIZ_RX)
 	{
 		do {
-			isr_rx = dma_get_isr_bits(DMA1, DMA_CH4);
-			isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
-			spi_sr = SPI2_BASE->SR;
+			isr_rx = dma_get_isr_bits(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB);
+			isr_tx = dma_get_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
+			spi_sr = WIZ_SPI_BAS->SR;
 
 			// check for errors in DMA and SPI status registers
 			if (isr_rx & DMA_ISR_TEIF) // RX DMA transfer error
@@ -134,17 +134,17 @@ _wiz_job_irq()
 		} while(!(isr_rx & DMA_ISR_TCIF) && ret); // Rx DMA transfer complete
 		//this is not ideal (e.g. to wait in an IRQ), but there is no other way for ASIO
 
-		dma_clear_isr_bits(DMA1, DMA_CH5);
-		dma_clear_isr_bits(DMA1, DMA_CH4);
+		dma_clear_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
+		dma_clear_isr_bits(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB);
 
-		dma_disable(DMA1, DMA_CH5); // Tx
-		dma_disable(DMA1, DMA_CH4); // Rx
+		dma_disable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
+		dma_disable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
 	}
 	else // job->rw & WIZ_TX
 	{
 		do {
-			isr_tx = dma_get_isr_bits(DMA1, DMA_CH5);
-			spi_sr = SPI2_BASE->SR;
+			isr_tx = dma_get_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
+			spi_sr = WIZ_SPI_BAS->SR;
 
 			// check for errors in DMA and SPI status registers
 			if (isr_tx & DMA_ISR_TEIF) // TX DMA transfer error
@@ -155,22 +155,22 @@ _wiz_job_irq()
 		} while(!(isr_tx & DMA_ISR_TCIF) && ret); // Tx DMA transfer complete
 
 		do {
-			spi_sr = SPI2_BASE->SR;
+			spi_sr = WIZ_SPI_BAS->SR;
 		} while ( (spi_sr & SPI_SR_FTLVL) && ret); // TX FIFO not empty
 
 		do {
-			spi_sr = SPI2_BASE->SR;
+			spi_sr = WIZ_SPI_BAS->SR;
 		} while ( (spi_sr & SPI_SR_BSY) && ret); // wait for BSY==0
 
 		do {
-			//spi_sr = SPI2_BASE->DR;
-			spi_sr = spi_rx_reg(SPI2);
-			spi_sr = SPI2_BASE->SR;
+			//spi_sr = WIZ_SPI_BAS->DR;
+			spi_sr = spi_rx_reg(WIZ_SPI_DEV);
+			spi_sr = WIZ_SPI_BAS->SR;
 		} while ( (spi_sr & SPI_SR_FRLVL) || (spi_sr & SPI_SR_RXNE) || (spi_sr & SPI_SR_OVR) ); // empty buffer and clear OVR flag
 
-		dma_clear_isr_bits(DMA1, DMA_CH5);
+		dma_clear_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
 
-		dma_disable(DMA1, DMA_CH5); // Tx
+		dma_disable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
 	}
 
 	resetSS();
@@ -200,7 +200,7 @@ wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmod
 	wiz_jobs_todo++;
 }
 
-void
+__always_inline void
 wiz_job_run_single()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
@@ -214,29 +214,29 @@ wiz_job_run_single()
 	if(job->rw & WIZ_RX)
 	{
 		uint8_t *frm_rx = job->rx - WIZ_SEND_OFFSET;
-		spi_rx_dma_enable(SPI2); // enable RX DMA on SPI2
-		spi2_rx_tube.tube_dst = frm_rx;
-		dma_set_mem_addr(DMA1, DMA_CH4, spi2_rx_tube.tube_dst);
-		dma_set_num_transfers(DMA1, DMA_CH4, len2); // Rx
-		dma_enable(DMA1, DMA_CH4); // Rx
+		spi_rx_dma_enable(WIZ_SPI_DEV); // enable RX DMA on WIZ_SPI_DEV
+		spi_rx_tube.tube_dst = frm_rx;
+		dma_set_mem_addr(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, spi_rx_tube.tube_dst);
+		dma_set_num_transfers(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, len2); // Rx
+		dma_enable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
 	}
 	else
-		spi_rx_dma_disable(SPI2); // disable RX DMA on SPI2
+		spi_rx_dma_disable(WIZ_SPI_DEV); // disable RX DMA on WIZ_SPI_DEV
 
 	if(job->rw & WIZ_TX)
 	{
 		uint8_t *frm_tx = job->tx - WIZ_SEND_OFFSET;
-		spi_tx_dma_enable(SPI2); // enable TX DMA on SPI2
-		spi2_tx_tube.tube_dst = frm_tx;
-		dma_set_mem_addr(DMA1, DMA_CH5, spi2_tx_tube.tube_dst);
-		dma_set_num_transfers(DMA1, DMA_CH5, len2); // Tx
-		dma_enable(DMA1, DMA_CH5); // Tx
+		spi_tx_dma_enable(WIZ_SPI_DEV); // enable TX DMA on WIZ_SPI_DEV
+		spi_tx_tube.tube_dst = frm_tx;
+		dma_set_mem_addr(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, spi_tx_tube.tube_dst);
+		dma_set_num_transfers(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, len2); // Tx
+		dma_enable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
 	}
 	else
-		spi_tx_dma_disable(SPI2); // disable TX DMA on SPI2
+		spi_tx_dma_disable(WIZ_SPI_DEV); // disable TX DMA on WIZ_SPI_DEV
 }
 
-void
+__always_inline void
 wiz_job_run_nonblocking()
 {
 	wiz_jobs_done = 0;
@@ -244,7 +244,7 @@ wiz_job_run_nonblocking()
 		wiz_job_run_single();
 }
 
-void
+__always_inline void
 wiz_job_run_block()
 {
 	while(wiz_jobs_todo)
@@ -261,22 +261,22 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 
 	tmp_buf_i = buf_i_o;
 
-	// set up dma for SPI2RX
-	spi2_rx_tube.tube_dst = tmp_buf_i;
-	status = dma_tube_cfg (DMA1, DMA_CH4, &spi2_rx_tube);
+	// set up dma for SPI RX
+	spi_rx_tube.tube_dst = tmp_buf_i;
+	status = dma_tube_cfg (WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, &spi_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH4, DMA_PRIORITY_HIGH);
-	nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
+	dma_set_priority (WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, DMA_PRIORITY_HIGH);
+	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
 
-	// set up dma for SPI2TX
-	spi2_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
-	status = dma_tube_cfg (DMA1, DMA_CH5, &spi2_tx_tube);
+	// set up dma for SPI TX
+	spi_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
+	status = dma_tube_cfg (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, &spi_tx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH5, DMA_PRIORITY_HIGH);
-	nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
+	dma_set_priority (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, DMA_PRIORITY_HIGH);
+	//nvic_irq_set_priority (NVIC_DMA_CH5, SPI_TX_DMA_PRIORITY);
 
 	// attach interrupt
-	dma_attach_interrupt(DMA1, DMA_CH5, _wiz_job_irq);
+	dma_attach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, _wiz_job_irq);
 
 	// init udp
 	uint8_t flag;

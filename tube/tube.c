@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include <chimaera.h>
 #include <tube.h>
 
 #include <libmaple/adc.h>
@@ -50,35 +51,24 @@ dma_tube_config adc_tube3 = {
 	.tube_req_src = DMA_REQ_SRC_ADC3
 };
 
-dma_tube_config spi2_rx_tube = {
-	.tube_src = &SPI2_BASE->DR,
+dma_tube_config spi_rx_tube = {
+	.tube_src = &WIZ_SPI_BAS->DR,
 	.tube_src_size = DMA_SIZE_8BITS,
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_8BITS,
 	.tube_nr_xfers = 0, //set me
 	.tube_flags = DMA_CFG_DST_INC,
 	.target_data = NULL,
-	.tube_req_src = DMA_REQ_SRC_SPI2_RX
+	.tube_req_src = WIZ_SPI_RX_DMA_SRC
 };
 
-dma_tube_config spi2_tx_tube = {
-	.tube_src = &SPI2_BASE->DR,
+dma_tube_config spi_tx_tube = {
+	.tube_src = &WIZ_SPI_BAS->DR,
 	.tube_src_size = DMA_SIZE_8BITS,
 	.tube_dst = NULL, //set me
 	.tube_dst_size = DMA_SIZE_8BITS,
 	.tube_nr_xfers = 0, //set me
 	.tube_flags = DMA_CFG_DST_INC | DMA_CCR_DIR_FROM_MEM | DMA_CFG_CMPLT_IE,
 	.target_data = NULL,
-	.tube_req_src = DMA_REQ_SRC_SPI2_TX
-};
-
-dma_tube_config mem2mem_tube = {
-	.tube_src = NULL, //set me
-	.tube_src_size = DMA_SIZE_8BITS,
-	.tube_dst = NULL, //set me
-	.tube_dst_size = DMA_SIZE_8BITS,
-	.tube_nr_xfers = 0, //set me
-	.tube_flags = DMA_CFG_SRC_INC | DMA_CFG_DST_INC | DMA_CCR_MEM2MEM | DMA_CFG_CMPLT_IE,
-	.target_data = NULL,
-	.tube_req_src = DMA_REQ_SRC_SPI1_RX,
+	.tube_req_src = WIZ_SPI_TX_DMA_SRC
 };
