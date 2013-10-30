@@ -18,6 +18,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
 BUILDDIRS += $(BUILD_PATH)/$(d)/wiz
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
 BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
+BUILDDIRS += $(BUILD_PATH)/$(d)/tuio1
 BUILDDIRS += $(BUILD_PATH)/$(d)/dump
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
 BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
@@ -89,6 +90,7 @@ cSRCS_$(d) += wiz/W5500.c
 endif
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += tuio2/tuio2.c
+cSRCS_$(d) += tuio1/tuio1.c
 cSRCS_$(d) += dump/dump.c
 cSRCS_$(d) += config/config.c
 cSRCS_$(d) += sntp/sntp.c

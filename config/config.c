@@ -72,10 +72,13 @@ Config config = {
 		.subnet = {255, 255, 255, 0},
 	},
 
-	.tuio = {
+	.tuio2 = {
 		.enabled = 0,
-		.version = 2, //TODO implement
 		.long_header = 0
+	},
+
+	.tuio1 = {
+		.enabled = 0
 	},
 
 	.dump = {
@@ -737,7 +740,8 @@ static uint_fast8_t
 _output_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	config.dump.enabled = 0;
-	config.tuio.enabled = 0;
+	config.tuio2.enabled = 0;
+	config.tuio1.enabled = 0;
 	config.scsynth.enabled = 0;
 	config.oscmidi.enabled = 0;
 	config.dummy.enabled = 0;
@@ -982,14 +986,14 @@ _sntp_tau (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_tuio_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
 	if (argc == 1) // query
 	{
-		size = CONFIG_SUCCESS ("ii", id, config.tuio.long_header ? 1 : 0);
+		size = CONFIG_SUCCESS ("ii", id, config.tuio2.long_header ? 1 : 0);
 	}
 	else
 	{
@@ -1003,9 +1007,17 @@ _tuio_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 }
 
 static uint_fast8_t
-_tuio_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio2_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.tuio.enabled);
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.tuio2.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+static uint_fast8_t
+_tuio1_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.tuio1.enabled);
 	cmc_engines_update ();
 	return res;
 }
@@ -1724,8 +1736,10 @@ const nOSC_Method config_serv [] = {
 
 	{"/chimaera/dump/enabled", "i*", _dump_enabled},
 
-	{"/chimaera/tuio/enabled", "i*", _tuio_enabled},
-	{"/chimaera/tuio/long_header", "i*", _tuio_long_header},
+	{"/chimaera/tuio2/enabled", "i*", _tuio2_enabled},
+	{"/chimaera/tuio2/long_header", "i*", _tuio2_long_header},
+
+	{"/chimaera/tuio1/enabled", "i*", _tuio1_enabled},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
 	{"/chimaera/scsynth/group", "ii*", _scsynth_group},

@@ -76,11 +76,14 @@ struct _Config {
 		uint8_t enabled;
 	} dump;
 
-	struct _tuio {
+	struct _tuio2 {
 		uint8_t enabled;
-		uint8_t version;
 		uint8_t long_header;
-	} tuio;
+	} tuio2;
+
+	struct _tuio1 {
+		uint8_t enabled;
+	} tuio1;
 
 	struct _scsynth {
 		uint8_t enabled;

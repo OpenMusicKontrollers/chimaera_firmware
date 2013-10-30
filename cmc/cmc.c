@@ -33,6 +33,7 @@
 
 // engines
 #include <tuio2.h>
+#include <tuio1.h>
 #include <scsynth.h>
 #include <oscmidi.h>
 #include <dummy.h>
@@ -95,7 +96,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		uint_fast8_t newpos = pos+1;
 		int16_t val = rela[pos];
 		uint16_t aval = abs (val);
-		if ( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
+		if ( (aval << 2) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
 		{
 			aoi[n_aoi++] = newpos;
 
@@ -652,8 +653,11 @@ cmc_engines_update ()
 {
 	cmc_engines_active = 0;
 
-	if (config.tuio.enabled)
+	if (config.tuio2.enabled)
 		engines[cmc_engines_active++] = &tuio2_engine;
+
+	if (config.tuio1.enabled)
+		engines[cmc_engines_active++] = &tuio1_engine;
 
 	if (config.scsynth.enabled)
 		engines[cmc_engines_active++] = &scsynth_engine;

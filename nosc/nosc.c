@@ -375,6 +375,16 @@ nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, u
 				buf_ptr[3] = arg->c;
 				buf_ptr += 4;
 				break;
+
+			case nOSC_INT32_ZERO:
+				fmt[i+1] = nOSC_INT32;
+				// fall-through
+			case nOSC_FLOAT_ZERO:
+				fmt[i+1] = nOSC_FLOAT;
+				ref_htonl (buf_ptr, 0);
+				buf_ptr += len;
+				arg--; // there is no argument for those types
+				break;
 		}
 		arg++;
 	}

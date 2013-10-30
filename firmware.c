@@ -50,6 +50,7 @@
 #include <config.h>
 #include <tube.h>
 #include <tuio2.h>
+#include <tuio1.h>
 #include <scsynth.h>
 #include <dump.h>
 #include <ipv4ll.h>
@@ -530,8 +531,11 @@ loop ()
 
 				if (blobs) // was there any update?
 				{
-					if (config.tuio.enabled)
+					if (config.tuio2.enabled)
 						nosc_item_bundle_set (nest_bndl, job++, tuio2_osc.bndl, tuio2_osc.tt, tuio2_osc.fmt);
+
+					if (config.tuio1.enabled)
+						nosc_item_bundle_set (nest_bndl, job++, tuio1_osc.bndl, tuio1_osc.tt, tuio1_osc.fmt);
 
 					if (config.scsynth.enabled)
 						nosc_item_bundle_set (nest_bndl, job++, scsynth_osc.bndl, scsynth_osc.tt, scsynth_osc.fmt);
@@ -957,6 +961,7 @@ setup ()
 	cmc_init ();
 	dump_init (sizeof(adc_swap), adc_swap);
 	tuio2_init ();
+	tuio1_init ();
 	scsynth_init ();
 	oscmidi_init ();
 	dummy_init ();

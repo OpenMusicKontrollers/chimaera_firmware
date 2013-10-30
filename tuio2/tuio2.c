@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <math.h>
 
 #include <chimaera.h>
 #include <chimutil.h>
@@ -29,21 +30,21 @@
 
 #include "tuio2_private.h"
 
-const char *frm_str = "/tuio2/frm";
-const char *tok_str = "/tuio2/tok";
-const char *alv_str = "/tuio2/alv";
+static const char *frm_str = "/tuio2/frm";
+static const char *tok_str = "/tuio2/tok";
+static const char *alv_str = "/tuio2/alv";
 
-const char *frm_fmt_short = "it";
-const char *frm_fmt_long = "itsiii";
-const char *tok_fmt = "iiifff";
-char alv_fmt [BLOB_MAX+1]; // this has a variable string len
+static const char *frm_fmt_short = "it";
+static const char *frm_fmt_long = "itsiii";
+static const char *tok_fmt = "iiifff";
+static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
-nOSC_Arg frm [6];
-Tuio2_Tok tok [BLOB_MAX];
-nOSC_Arg alv [BLOB_MAX];
+static nOSC_Arg frm [6];
+static Tuio2_Tok tok [BLOB_MAX];
+static nOSC_Arg alv [BLOB_MAX];
 
-nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
-char tuio2_fmt [TUIO2_MAX+1];
+static nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
+static char tuio2_fmt [TUIO2_MAX+1];
 
 nOSC_Bundle_Item tuio2_osc = {
 	.bndl = tuio2_bndl,
@@ -51,8 +52,8 @@ nOSC_Bundle_Item tuio2_osc = {
 	.fmt = tuio2_fmt
 };
 
-uint_fast8_t old_end = BLOB_MAX;
-uint_fast8_t counter = 0;
+static uint_fast8_t old_end = BLOB_MAX;
+static uint_fast8_t counter = 0;
 
 void
 tuio2_init ()
@@ -70,14 +71,13 @@ tuio2_init ()
 		nosc_item_message_set (tuio2_bndl, i+1, tok[i], (char *)tok_str, (char *)tok_fmt);
 
 	nosc_item_message_set (tuio2_bndl, BLOB_MAX + 1, alv, (char *)alv_str, alv_fmt);
-	for (i=0; i<BLOB_MAX; i++)
 
 	// initialize frame
 	nosc_message_set_int32 (frm, 0, 0);
 	nosc_message_set_timestamp (frm, 1, nOSC_IMMEDIATE);
 
 	// long header
-	tuio2_long_header_enable (config.tuio.long_header);
+	tuio2_long_header_enable (config.tuio2.long_header);
 
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
@@ -104,7 +104,7 @@ tuio2_init ()
 void
 tuio2_long_header_enable (uint_fast8_t on)
 {
-	config.tuio.long_header = on;
+	config.tuio2.long_header = on;
 
 	if (on)
 	{
@@ -154,7 +154,6 @@ tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 		alv_fmt[end] = nOSC_END;
 
 		// prepend alv message
-		//nosc_item_message_set (tuio2_bndl, end + 1, tuio2_bndl[BLOB_MAX+1].message.msg, tuio2_bndl[BLOB_MAX+1].message.path, tuio2_bndl[BLOB_MAX+1].message.fmt); TODO remove me
 		nosc_item_message_set (tuio2_bndl, end + 1, alv, (char *)alv_str, alv_fmt);
 
 		// unlink bundle
@@ -176,7 +175,7 @@ tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 	msg[2].i = gid;
 	msg[3].f = x;
 	msg[4].f = y;
-	//msg[5].f = 0; // not used
+	msg[5].f = pid == 0x80 ? 0.f : M_PI; //TODO use POLE_NORTH
 
 	nosc_message_set_int32 (alv, counter, sid);
 

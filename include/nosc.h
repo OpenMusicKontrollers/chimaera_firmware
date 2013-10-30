@@ -49,6 +49,8 @@ typedef uint_fast8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint_
 typedef void (*nOSC_Bundle_Start_Cb) (nOSC_Timestamp timestamp);
 typedef void (*nOSC_Bundle_End_Cb) ();
 
+#define nOSC_INITIALIZED 0x7f
+
 typedef enum _nOSC_Type {
 	nOSC_INT32 = 'i',
 	nOSC_FLOAT = 'f',
@@ -67,6 +69,9 @@ typedef enum _nOSC_Type {
 	nOSC_SYMBOL = 'S',
 	nOSC_CHAR = 'c',
 	nOSC_MIDI = 'm',
+
+	nOSC_INT32_ZERO = 'j',
+	nOSC_FLOAT_ZERO = 'g',
 
 	nOSC_END = '\0'
 } nOSC_Type;
