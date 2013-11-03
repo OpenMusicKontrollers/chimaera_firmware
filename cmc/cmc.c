@@ -211,6 +211,16 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
 				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
 
+//TODO use this linear lookup interpolation
+// e.g. y0 = LOOKUP(y0);
+#define LOOKUP(y) \
+({ \
+	float _y = (float)(y)*0x7ff; \
+	uint32_t _b = floor(_y); \
+	float _r = trunc(_y); \
+	(float)(curve[_b] + _r*(curve[_b+1] - curve[_b])); \
+})
+
 				// lookup distance
 				y0 = curve[(uint16_t)(y0*0x7FF)];
 				y1 = curve[(uint16_t)(y1*0x7FF)];
@@ -325,6 +335,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 			}
 		}
 
+		//TODO check for NaN
 		x = x < 0.f ? 0.f : (x > 1.f ? 1.f : x); // 0 <= x <= 1
 		y = y < 0.f ? 0.f : (y > 1.f ? 1.f : y); // 0 <= y <= 1
 
@@ -467,6 +478,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		{
 			uint_fast8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
 
+			//FIXME remove duplicate instructions
 			if (newJ != j)
 				memmove (&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
 

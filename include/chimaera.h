@@ -113,7 +113,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define CONFIG_TIMER_PRIORITY 0x7
 #define DHCPC_TIMER_PRIORITY 0x8
 
-#define ENGINE_MAX 5 // tuio, scsynth, oscmidi, dummy, rtpmidi
+#define ENGINE_MAX 6 // tuio1, tuio2, scsynth, oscmidi, dummy, rtpmidi
 
 #define BOOT_MODE_REG 0xF
 
