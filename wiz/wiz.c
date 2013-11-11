@@ -59,10 +59,12 @@ uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 
+uint8_t buf_o_i [WIZ_SEND_OFFSET + 6];
+
 __always_inline void
 _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o_i + WIZ_SEND_OFFSET;
 	
 	memcpy (buf, dat, len);
 
@@ -75,7 +77,7 @@ _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 __always_inline void
 _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o_i + WIZ_SEND_OFFSET;
 	uint8_t *tmp_buf_i = buf_i_o + WIZ_SEND_OFFSET;
 	
 	wiz_job_add(addr, len, buf, tmp_buf_i, cntrl, WIZ_TXRX);

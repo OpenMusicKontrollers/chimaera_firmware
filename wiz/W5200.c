@@ -119,7 +119,7 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
 	tmp_buf_i = buf_i_i + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
@@ -161,7 +161,7 @@ udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Tx_WR[sock];
   uint16_t offset = ptr & SMASK[sock];
