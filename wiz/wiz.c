@@ -48,7 +48,6 @@ const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 gpio_dev *ss_dev;
 uint8_t ss_bit;
-uint8_t *tmp_buf_i = buf_i_o;
 
 Wiz_IRQ_Cb irq_cb = NULL;
 Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
@@ -59,16 +58,17 @@ uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
 uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 
-uint8_t buf_o_i [WIZ_SEND_OFFSET + 6];
+uint8_t buf_o2 [WIZ_SEND_OFFSET + 6] __attribute__((aligned(4)));
+uint8_t buf_i2 [WIZ_SEND_OFFSET + 6] __attribute__((aligned(4)));
 
 __always_inline void
 _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o_i + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
 	
-	memcpy (buf, dat, len);
+	memcpy (tmp_buf_o, dat, len);
 
-	wiz_job_add(addr, len, buf, NULL, cntrl, WIZ_TX);
+	wiz_job_add(addr, len, tmp_buf_o, NULL, cntrl, WIZ_TX);
 
 	wiz_job_run_nonblocking();
 	wiz_job_run_block();
@@ -77,10 +77,10 @@ _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 __always_inline void
 _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o_i + WIZ_SEND_OFFSET;
-	uint8_t *tmp_buf_i = buf_i_o + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_i = buf_i2 + WIZ_SEND_OFFSET;
 	
-	wiz_job_add(addr, len, buf, tmp_buf_i, cntrl, WIZ_TXRX);
+	wiz_job_add(addr, len, tmp_buf_o, tmp_buf_i, cntrl, WIZ_TXRX);
 
 	wiz_job_run_nonblocking();
 	wiz_job_run_block();
@@ -264,17 +264,15 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	ss_dev = dev;
 	ss_bit = bit;
 
-	tmp_buf_i = buf_i_o;
-
 	// set up dma for SPI RX
-	spi_rx_tube.tube_dst = tmp_buf_i;
+	spi_rx_tube.tube_dst = BUF_I_BASE(buf_i_ptr);
 	status = dma_tube_cfg (WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, &spi_rx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, DMA_PRIORITY_HIGH);
 	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
 
 	// set up dma for SPI TX
-	spi_tx_tube.tube_dst = buf_o[buf_o_ptr];
+	spi_tx_tube.tube_dst = BUF_O_BASE(buf_o_ptr);
 	status = dma_tube_cfg (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, &spi_tx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, DMA_PRIORITY_HIGH);
@@ -473,9 +471,9 @@ udp_send_block (uint8_t sock)
 }
 
 void
-udp_send (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_send (uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
-	if(udp_send_nonblocking(sock, buf_ptr, len))
+	if(udp_send_nonblocking(sock, o_buf, len))
 		udp_send_block(sock);
 }
 
@@ -488,33 +486,33 @@ udp_available (uint8_t sock)
 }
 
 void
-udp_receive (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_receive (uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
-	if(udp_receive_nonblocking(sock, buf_ptr, len))
+	if(udp_receive_nonblocking(sock, i_buf, len))
 		udp_receive_block(sock);
 }
 
 void 
-udp_dispatch (uint8_t sock, uint_fast8_t ptr, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+udp_dispatch (uint8_t sock, uint8_t *i_buf, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
 	uint16_t len;
 
 	while ( (len = udp_available (sock)) )
 	{
 		// read UDP header
-		udp_receive (sock, ptr, 8);
+		udp_receive (sock, i_buf, 8);
 
-		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
+		uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
 
 		uint8_t ip[4];
-		memcpy(ip, buf_in_ptr, 4);
-		uint16_t port = (buf_in_ptr[4] << 8) | buf_in_ptr[5];
-		uint16_t size = (buf_in_ptr[6] << 8) | buf_in_ptr[7];
+		memcpy(ip, tmp_buf_i_ptr, 4);
+		uint16_t port = (tmp_buf_i_ptr[4] << 8) | tmp_buf_i_ptr[5];
+		uint16_t size = (tmp_buf_i_ptr[6] << 8) | tmp_buf_i_ptr[7];
 
 		// read UDP payload
-		udp_receive (sock, ptr, size);
+		udp_receive (sock, i_buf, size);
 
-		cb (ip, port, buf_in_ptr, size);
+		cb (ip, port, tmp_buf_i_ptr, size);
 	}
 }
 
@@ -551,22 +549,22 @@ macraw_begin (uint8_t sock, uint_fast8_t mac_filter)
 }
 
 void
-macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *user_data)
+macraw_dispatch (uint8_t sock, uint8_t *i_buf, Wiz_MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
 
 	while ( (len = macraw_available (sock)) )
 	{
 		// receive packet MACRAW size
-		macraw_receive (sock, ptr, 2);
+		macraw_receive (sock, i_buf, 2);
 			
-		uint8_t *buf_in_ptr = buf_i_i + WIZ_SEND_OFFSET;
-		uint16_t size = (buf_in_ptr[0] << 8) | buf_in_ptr[1];
+		uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
+		uint16_t size = (tmp_buf_i_ptr[0] << 8) | tmp_buf_i_ptr[1];
 
 		// receive payload
-		macraw_receive (sock, ptr, size-2);
+		macraw_receive (sock, i_buf, size-2);
 			
-		cb (buf_in_ptr, size-2, user_data);
+		cb (tmp_buf_i_ptr, size-2, user_data);
 	}
 }
 

@@ -44,8 +44,8 @@ const char *fail_str = "/fail";
 const char *wrong_ip_port_error_str = "wrong range: all numbers in IP must be < 0x100";
 const char *group_err_str = "group not found";
 
-#define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...) (nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], fail_str, __VA_ARGS__))
+#define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
 
 #define IP_BROADCAST {255, 255, 255, 255}
 
@@ -280,7 +280,7 @@ _check_bool (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -310,7 +310,7 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 		}
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -340,7 +340,7 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 		}
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -370,7 +370,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 		}
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -387,7 +387,7 @@ _version (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		config.version.part.patch,
 		config.version.part.revision);
 	size = CONFIG_SUCCESS ("is", id, string_buf);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -414,7 +414,7 @@ _name (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL ("is", id, "name is too long");
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -426,7 +426,7 @@ _sensors (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].i;
 
 	size = CONFIG_SUCCESS("ii", id, SENSOR_N);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -442,7 +442,7 @@ _config_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	else
 		size = CONFIG_FAIL ("is", id, "loading of configuration from EEPROM failed");
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -458,7 +458,7 @@ _config_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	else
 		size = CONFIG_FAIL ("is", id, "saving configuration to EEPROM failed");
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -584,7 +584,7 @@ _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL ("is", id, "wrong range: all numbers in MAC must be <0x100");
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -618,7 +618,7 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			else // return
 			{
 				CONFIG_FAIL("is", id, "gatway invalid, format: x.x.x.x");
-				udp_send (config.config.socket.sock, buf_o_ptr, size);
+				udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 				return 1;
 			}
 		}
@@ -648,7 +648,7 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL ("is", id, "ip invalid, format: x.x.x.x/x");
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -677,7 +677,7 @@ _comm_gateway (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 			size = CONFIG_FAIL ("is", id, wrong_ip_port_error_str);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -706,7 +706,7 @@ _comm_subnet (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 			size = CONFIG_FAIL ("is", id, wrong_ip_port_error_str);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -725,7 +725,7 @@ _socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -810,7 +810,7 @@ _address_dns_cb (uint8_t *ip, void *data)
 	debug_int32 (ip[2]);
 	debug_int32 (ip[3]);
 	//size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	//udp_send (config.config.socket.sock, buf_o_ptr, size);
+	//udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
 static uint_fast8_t
@@ -853,7 +853,7 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t
 		}
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -900,7 +900,7 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 	debug_str ("_host_address_dns_cb");
 
 	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
 static uint_fast8_t
@@ -929,7 +929,7 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 		}
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -974,7 +974,7 @@ _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1001,7 +1001,7 @@ _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1078,7 +1078,7 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1156,7 +1156,7 @@ _output_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1193,7 +1193,7 @@ _rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		size = CONFIG_SUCCESS ("i", id);
 	}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1206,7 +1206,7 @@ _reset_soft (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	int32_t sec;
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	// reset factory reset flag
 	bkp_enable_writes();
@@ -1226,7 +1226,7 @@ _reset_hard (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	int32_t sec;
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	// set factory reset flag
 	bkp_enable_writes();
@@ -1246,7 +1246,7 @@ _reset_flash (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	int32_t sec;
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	// set bootloader flag
 	bkp_enable_writes();
@@ -1293,7 +1293,7 @@ _movingaverage_samples (const char *path, const char *fmt, uint_fast8_t argc, nO
 				size = CONFIG_FAIL ("is", id, "valid sample windows are 2, 4 and 8");
 		}
 
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1313,7 +1313,7 @@ _group_clear (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	cmc_group_clear ();
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1332,7 +1332,7 @@ _group_get (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		size = CONFIG_SUCCESS ("iiff", id, pid, x0, x1);
 	else
 		size = CONFIG_FAIL ("is", id, group_err_str);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1347,7 +1347,7 @@ _group_set (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		size = CONFIG_SUCCESS ("i", id);
 	else
 		size = CONFIG_FAIL ("is", id, group_err_str);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1362,7 +1362,7 @@ _group_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 		size = CONFIG_SUCCESS ("i", id);
 	else
 		size = CONFIG_FAIL ("is", id, "groups could not be loaded from EEPROM");
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1377,7 +1377,7 @@ _group_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 		size = CONFIG_SUCCESS ("i", id);
 	else
 		size = CONFIG_FAIL ("is", id, "groups could not be saved to EEPROM");
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1395,7 +1395,7 @@ _calibration_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	calibrating = 1;
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1413,12 +1413,12 @@ _calibration_zero (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
-		udp_send (config.config.socket.sock, buf_o_ptr, size);
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 	}
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1435,12 +1435,12 @@ _calibration_min (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/thresh", "ii", i, range.thresh[i]);
-		udp_send (config.config.socket.sock, buf_o_ptr, size);
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/thresh", "ii", i, range.thresh[i]);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 	}
 
 	size = CONFIG_SUCCESS ("ii", id, si);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1457,7 +1457,7 @@ _calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	range_update_b1 (y);
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1472,7 +1472,7 @@ _calibration_max (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	range_update_b2 ();
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1495,20 +1495,20 @@ _calibration_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/U", "if", i, range.U[i]);
-		udp_send (config.config.socket.sock, buf_o_ptr, size);
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/U", "if", i, range.U[i]);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 	}
 
 	// output minimal offset
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/W", "f", range.W);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/W", "f", range.W);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	// output curve parameters
-	size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1525,7 +1525,7 @@ _calibration_sensor (const char *path, const char *fmt, uint_fast8_t argc, nOSC_
 		size = CONFIG_SUCCESS ("iiif", id, range.qui[n], range.thresh[n], range.U[n]);
 	else
 		size = CONFIG_FAIL ("is", id, "requested sensor is out of bounds");
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1545,7 +1545,7 @@ _calibration_quiescence (const char *path, const char *fmt, uint_fast8_t argc, n
 		*dst++ = hton(*src++);
 
 	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1564,7 +1564,7 @@ _calibration_threshold (const char *path, const char *fmt, uint_fast8_t argc, nO
 		*dst++ = hton(*src++);
 
 	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1583,7 +1583,7 @@ _calibration_sensitivity (const char *path, const char *fmt, uint_fast8_t argc, 
 		*dst++ = htonl(*src++);
 
 	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(float), shared_buf);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1595,7 +1595,7 @@ _calibration_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_
 	int32_t id = args[0].i;
 
 	size = CONFIG_SUCCESS ("if", id, range.W);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1607,7 +1607,7 @@ _calibration_curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	int32_t id = args[0].i;
 
 	size = CONFIG_SUCCESS ("ifff", id, range.C[0], range.C[1], range.C[2]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1629,7 +1629,7 @@ _calibration_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	range_save (pos);
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1651,7 +1651,7 @@ _calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	range_load (pos);
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1666,7 +1666,7 @@ _calibration_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	range_reset ();
 
 	size = CONFIG_SUCCESS ("i", id);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1679,7 +1679,7 @@ _uid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	uid_str (string_buf);
 	size = CONFIG_SUCCESS ("is", id, string_buf);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1690,8 +1690,9 @@ _ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	size = nosc_message_serialize (args, "/pong", fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	//FIXME send back to real sender Ip
+	size = nosc_message_serialize (args, "/pong", fmt, BUF_O_OFFSET(buf_o_ptr));
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -1703,7 +1704,7 @@ _non (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	int32_t id = args[0].i;
 
 	size = CONFIG_FAIL ("isss", id, "unknown method for path or format", path, fmt);
-	udp_send (config.config.socket.sock, buf_o_ptr, size);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }

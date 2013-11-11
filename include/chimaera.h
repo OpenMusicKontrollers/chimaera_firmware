@@ -165,14 +165,18 @@ typedef enum _Reset_Mode {
 #define UID_BASE  ((const uint8_t *)0x1FFFF7AC)
 
 extern uint_fast8_t buf_o_ptr;
+extern const uint_fast8_t buf_i_ptr;
+
 extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
-extern uint8_t buf_i_o [];
-extern uint8_t buf_i_i [CHIMAERA_BUFSIZE]; // general purpose input buffer
+extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
+
+#define BUF_O_BASE(ptr) (buf_o[ptr])
+#define BUF_I_BASE(ptr) (buf_i[ptr])
+
+#define BUF_O_OFFSET(ptr) (buf_o[ptr] + WIZ_SEND_OFFSET)
+#define BUF_I_OFFSET(ptr) (buf_i[ptr] + WIZ_SEND_OFFSET)
 
 extern uint8_t shared_buf [SHARED_BUFSIZE];
-
-extern const float lookup_sqrt [];
-extern const float lookup_cbrt [];
 
 extern timer_dev *adc_timer;
 extern timer_dev *sntp_timer;

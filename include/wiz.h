@@ -87,17 +87,17 @@ void udp_reset_read_write_pointers (uint8_t sock);
 void udp_set_remote (uint8_t sock, uint8_t *ip, uint16_t port);
 void udp_set_remote_har (uint8_t sock, uint8_t *har);
 
-void udp_send (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint_fast8_t udp_send_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+void udp_send (uint8_t sock, uint8_t *o_buf, uint16_t len);
+uint_fast8_t udp_send_nonblocking (uint8_t sock, uint8_t *o_buf, uint16_t len);
 void udp_send_block (uint8_t sock);
 
 uint16_t udp_available (uint8_t sock);
 
-void udp_receive (uint8_t sock, uint_fast8_t ptr, uint16_t len);
-uint_fast8_t udp_receive_nonblocking (uint8_t sock, uint_fast8_t ptr, uint16_t len);
+void udp_receive (uint8_t sock, uint8_t *i_buf, uint16_t len);
+uint_fast8_t udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len);
 void udp_receive_block (uint8_t sock);
 
-void udp_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_UDP_Dispatch_Cb cb);
+void udp_dispatch (uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
 
 /*
  * MACRAW
@@ -112,7 +112,7 @@ struct _MACRAW_Header {
 } __attribute((packed,aligned(2)));
 
 #define MACRAW_HEADER_SIZE sizeof(MACRAW_Header)
-#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
+#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload) //TODO does not belong here
 
 typedef void (*Wiz_MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
 
@@ -123,6 +123,6 @@ void macraw_begin (uint8_t sock, uint_fast8_t mac_filter);
 #define macraw_available udp_available
 #define macraw_receive udp_receive
 
-void macraw_dispatch (uint8_t sock, uint_fast8_t ptr, Wiz_MACRAW_Dispatch_Cb cb, void *data);
+void macraw_dispatch (uint8_t sock, uint8_t *i_buf, Wiz_MACRAW_Dispatch_Cb cb, void *data);
 
 #endif

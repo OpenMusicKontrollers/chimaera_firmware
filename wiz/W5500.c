@@ -98,23 +98,23 @@ wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_N
 }
 
 uint_fast8_t
-udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
-	tmp_buf_i = buf_i_i + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = BUF_O_OFFSET(buf_o_ptr); //FIXME use single channel SPI-DMA for receiving
+	uint8_t *tmp_buf_i = i_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
 
 	// read message
-	wiz_job_add(ptr, len, buf, tmp_buf_i, W5500_socket_sel[sock].rx_buf, WIZ_TXRX);
+	wiz_job_add(ptr, len, tmp_buf_o, tmp_buf_i, W5500_socket_sel[sock].rx_buf, WIZ_TXRX);
 
   ptr += len;
 	Sn_Rx_RD[sock] = ptr;
 
-	uint8_t *flag = buf+len;
+	uint8_t *flag = tmp_buf_o+len;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(WIZ_Sn_RX_RD, 2, &flag[0], NULL, W5500_socket_sel[sock].reg, WIZ_TX);
@@ -129,21 +129,21 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 }
 
 uint_fast8_t 
-udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_send_nonblocking (uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = o_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Tx_WR[sock];
 
-	wiz_job_add(ptr, len, buf, NULL, W5500_socket_sel[sock].tx_buf, WIZ_TX);
+	wiz_job_add(ptr, len, tmp_buf_o, NULL, W5500_socket_sel[sock].tx_buf, WIZ_TX);
 
   ptr += len;
 	Sn_Tx_WR[sock] = ptr;
 
-	uint8_t *flag = buf+len;
+	uint8_t *flag = tmp_buf_o+len;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(WIZ_Sn_TX_WR, 2, &flag[0], NULL, W5500_socket_sel[sock].reg, WIZ_TX);

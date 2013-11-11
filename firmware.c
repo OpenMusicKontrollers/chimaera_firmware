@@ -506,7 +506,7 @@ loop ()
 			stop_watch_start (&sw_output_send);
 #endif
 			if (cmc_job) // start nonblocking sending of last cycles tuio output
-				cmc_stat = udp_send_nonblocking (config.output.socket.sock, !buf_o_ptr, cmc_len);
+				cmc_stat = udp_send_nonblocking (config.output.socket.sock, buf_o[!buf_o_ptr], cmc_len);
 
 		// fill adc_rela
 #ifdef BENCHMARK
@@ -547,7 +547,7 @@ loop ()
 						nosc_item_bundle_set (nest_bndl, job++, dummy_osc.bndl, dummy_osc.tt, dummy_osc.fmt);
 
 					if (config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
-						cmc_len = rtpmidi_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+						cmc_len = rtpmidi_serialize (BUF_O_OFFSET(buf_o_ptr));
 				}
 			}
 
@@ -561,12 +561,12 @@ loop ()
 					memset (nest_fmt, nOSC_BUNDLE, job);
 					nest_fmt[job] = nOSC_TERM;
 
-					cmc_len = nosc_bundle_serialize (nest_bndl, nOSC_IMMEDIATE, nest_fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+					cmc_len = nosc_bundle_serialize (nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr));
 				}
 				else // job == 1, there's no need to send a nested bundle in this case
 				{
 					nOSC_Item *first = &nest_bndl[0];
-					cmc_len = nosc_bundle_serialize (first->bundle.bndl, first->bundle.tt, first->bundle.fmt, &buf_o[buf_o_ptr][WIZ_SEND_OFFSET]);
+					cmc_len = nosc_bundle_serialize (first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr));
 				}
 			}
 
@@ -605,7 +605,7 @@ loop ()
 		// run osc config server
 		if (config.config.socket.enabled && config_should_listen)
 		{
-			udp_dispatch (config.config.socket.sock, buf_o_ptr, config_cb);
+			udp_dispatch (config.config.socket.sock, BUF_I_BASE(buf_i_ptr), config_cb);
 			config_should_listen = 0;
 		}
 		
@@ -615,7 +615,7 @@ loop ()
 			// listen for sntp request answer
 			if (sntp_should_listen)
 			{
-				udp_dispatch (config.sntp.socket.sock, buf_o_ptr, sntp_cb);
+				udp_dispatch (config.sntp.socket.sock, BUF_I_BASE(buf_i_ptr), sntp_cb);
 				sntp_should_listen = 0;
 			}
 
@@ -623,8 +623,8 @@ loop ()
 			if (sntp_should_request)
 			{
 				sntp_timestamp_refresh (&now, NULL);
-				len = sntp_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], now);
-				udp_send (config.sntp.socket.sock, buf_o_ptr, len);
+				len = sntp_request (BUF_O_OFFSET(buf_o_ptr), now);
+				udp_send (config.sntp.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				sntp_should_request = 0;
 			}
 		}
@@ -632,7 +632,7 @@ loop ()
 		// run ZEROCONF server
 		if (config.mdns.socket.enabled && mdns_should_listen)
 		{
-			udp_dispatch (config.mdns.socket.sock, buf_o_ptr, mdns_cb);
+			udp_dispatch (config.mdns.socket.sock, BUF_I_BASE(buf_i_ptr), mdns_cb);
 			mdns_should_listen = 0;
 		}
 

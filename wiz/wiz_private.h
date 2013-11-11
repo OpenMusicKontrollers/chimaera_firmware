@@ -62,8 +62,6 @@ extern uint8_t ss_bit;
 #define setSS()		gpio_write_bit (ss_dev, ss_bit, 0)
 #define resetSS()	gpio_write_bit (ss_dev, ss_bit, 1)
 
-extern uint8_t *tmp_buf_i;
-
 extern Wiz_IRQ_Cb irq_cb;
 extern Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
 

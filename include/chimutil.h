@@ -42,8 +42,8 @@ void broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet);
 ({ \
 	if (config.debug.socket.enabled) { \
 		uint16_t size; \
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/debug", __VA_ARGS__); \
-		udp_send (config.debug.socket.sock, buf_o_ptr, size); \
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/debug", __VA_ARGS__); \
+		udp_send (config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size); \
 	} \
 })
 

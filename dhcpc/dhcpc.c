@@ -262,8 +262,8 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 		{
 			case DISCOVER:
 				secs = systick_uptime() / 10000 + 1;
-				len = dhcpc_discover (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				len = dhcpc_discover (BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case OFFER:
 				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
@@ -278,7 +278,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 
 				if (dhcpc.state == REQUEST) // reset timeout for REQUEST
 				{
@@ -288,8 +288,8 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				break;
 			case REQUEST:
 				secs = systick_uptime() / 10000 + 1;
-				len = dhcpc_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case ACK:
 				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
@@ -304,13 +304,13 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 				break;
 			case DECLINE:
 				//TODO needs to be tested
 				secs = systick_uptime() / 10000 + 1;
-				len = dhcpc_decline (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
 				dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
@@ -364,8 +364,8 @@ dhcpc_refresh ()
 		{
 			case REQUEST:
 				secs = systick_uptime() / 10000 + 1;
-				len = dhcpc_request (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case ACK:
 				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
@@ -380,13 +380,13 @@ dhcpc_refresh ()
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, buf_o_ptr, dhcpc_cb);
+				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 				break;
 			case DECLINE:
 				//TODO needs to be tested
 				secs = systick_uptime() / 10000 + 1;
-				len = dhcpc_decline (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], secs);
-				udp_send (config.dhcpc.socket.sock, buf_o_ptr, len);
+				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
 				dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;

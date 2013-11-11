@@ -216,8 +216,8 @@ stop_watch_stop (Stop_Watch *sw)
 	if (sw->counter > sw->thresh)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], "/stop_watch", "si", sw->id, sw->ticks * 100 / sw->thresh); // 1 tick = 100 us
-		udp_send (config.debug.socket.sock, buf_o_ptr, size);
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * 100 / sw->thresh); // 1 tick = 100 us
+		udp_send (config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 		sw->ticks = 0;
 		sw->counter = 0;

@@ -143,10 +143,10 @@ arp_probe (uint8_t sock, uint8_t *ip)
 	for (i=ARP_PROBE_NUM; i>0; i--)
 	{
 		// serialize MACRAW packet with ARP payload
-		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
-		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		memcpy (&BUF_O_BASE(buf_o_ptr)[WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
+		memcpy (&BUF_O_BASE(buf_o_ptr)[WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
 		// send packet
-		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
+		macraw_send (sock, BUF_O_BASE(buf_o_ptr), MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
 		
 		// delay between probes
 		if (i>1)
@@ -154,7 +154,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 			tick = systick_uptime ();
 			arp_timeout = _random_ticks (ARP_PROBE_MIN, ARP_PROBE_MAX);
 			while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
-				macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+				macraw_dispatch (sock, BUF_O_BASE(buf_o_ptr), arp_reply_cb, ip);
 		}
 	}
 
@@ -162,7 +162,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 	tick = systick_uptime ();
 	arp_timeout = 10000*ARP_ANNOUNCE_WAIT;
 	while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
-		macraw_dispatch (sock, buf_o_ptr, arp_reply_cb, ip);
+		macraw_dispatch (sock, BUF_O_BASE(buf_o_ptr), arp_reply_cb, ip);
 
 	// close MACRAW socket
 	macraw_end (sock);
@@ -185,10 +185,10 @@ arp_announce (uint8_t sock, uint8_t *ip)
 	for (i=ARP_ANNOUNCE_NUM; i>0; i--)
 	{
 		// serialize MACRAW packet with ARP payload
-		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
-		memcpy (&buf_o[buf_o_ptr][WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
+		memcpy (&BUF_O_BASE(buf_o_ptr)[WIZ_SEND_OFFSET], &header, MACRAW_HEADER_SIZE);
+		memcpy (&BUF_O_BASE(buf_o_ptr)[WIZ_SEND_OFFSET + MACRAW_HEADER_SIZE], &payload, ARP_PAYLOAD_SIZE);
 		// send packet
-		macraw_send (sock, buf_o_ptr, MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
+		macraw_send (sock, BUF_O_BASE(buf_o_ptr), MACRAW_HEADER_SIZE + ARP_PAYLOAD_SIZE);
 
 		// delay between announces
 		if (i>1)

@@ -95,7 +95,7 @@ dns_question (DNS_Query *query, uint8_t *buf)
 			a->TTL = htonl (0x00000078);
 			a->RLEN = hton (0x0004);
 
-			uint8_t *ref = &buf_o[buf_o_ptr][WIZ_SEND_OFFSET];
+			uint8_t *ref = BUF_O_OFFSET(buf_o_ptr);
 			uint8_t *ptr = ref;
 
 			memcpy (ptr, q, sizeof (DNS_Query));
@@ -114,7 +114,7 @@ dns_question (DNS_Query *query, uint8_t *buf)
 			memcpy (ptr, config.comm.ip, 4);
 			ptr += 4;
 
-			udp_send (config.mdns.socket.sock, buf_o_ptr, ptr-ref);
+			udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), ptr-ref);
 
 			break;
 		}
@@ -312,7 +312,7 @@ mdns_resolve (const char *name, mDNS_Resolve_Cb cb, void *data)
 	quest.QTYPE = hton (0x0001); // A (host address)
 	quest.QCLASS = hton (0x0001); // IN
 
-	uint8_t *ref = &buf_o[buf_o_ptr][WIZ_SEND_OFFSET];
+	uint8_t *ref = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *ptr = ref;
 
 	memcpy (ptr, &query, sizeof (DNS_Query));
@@ -329,5 +329,5 @@ mdns_resolve (const char *name, mDNS_Resolve_Cb cb, void *data)
 	memcpy (ptr, &quest, sizeof (DNS_Question));
 	ptr += sizeof (DNS_Question);
 
-	udp_send (config.mdns.socket.sock, buf_o_ptr, ptr-ref);
+	udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), ptr-ref);
 }

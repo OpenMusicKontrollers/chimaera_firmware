@@ -114,13 +114,13 @@ wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_N
 }
 
 uint_fast8_t
-udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
-	tmp_buf_i = buf_i_i + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = BUF_O_OFFSET(buf_o_ptr); //FIXME use single channel SPI-DMA for receiving
+	uint8_t *tmp_buf_i = i_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
 
@@ -132,16 +132,16 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 	{
 		uint16_t size = RSIZE[sock] - offset;
 		// read overflown part first to not overwrite buffer!
-		wiz_job_add(RBASE[sock], len-size, buf+size, tmp_buf_i+size, 0, WIZ_TXRX);
-		wiz_job_add(dstAddr, size, buf, tmp_buf_i, 0, WIZ_TXRX);
+		wiz_job_add(RBASE[sock], len-size, tmp_buf_o+size, tmp_buf_i+size, 0, WIZ_TXRX);
+		wiz_job_add(dstAddr, size, tmp_buf_o, tmp_buf_i, 0, WIZ_TXRX);
 	}
 	else
-		wiz_job_add(dstAddr, len, buf, tmp_buf_i, 0, WIZ_TXRX);
+		wiz_job_add(dstAddr, len, tmp_buf_o, tmp_buf_i, 0, WIZ_TXRX);
 
   ptr += len;
 	Sn_Rx_RD[sock] = ptr;
 
-	uint8_t *flag = buf+len;
+	uint8_t *flag = tmp_buf_o+len;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(SOCK_OFFSET[sock] + WIZ_Sn_RX_RD, 2, &flag[0], NULL, 0, WIZ_TX);
@@ -156,12 +156,12 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 }
 
 uint_fast8_t 
-udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
+udp_send_nonblocking (uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
 		return 0;
 
-	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *tmp_buf_o = o_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Tx_WR[sock];
   uint16_t offset = ptr & SMASK[sock];
@@ -170,16 +170,16 @@ udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
   if ( (offset + len) > SSIZE[sock]) 
   {
     uint16_t size = SSIZE[sock] - offset;
-		wiz_job_add(dstAddr, size, buf, NULL, 0, WIZ_TX);
-		wiz_job_add(SBASE[sock], len-size, buf+size, NULL, 0, WIZ_TX);
+		wiz_job_add(dstAddr, size, tmp_buf_o, NULL, 0, WIZ_TX);
+		wiz_job_add(SBASE[sock], len-size, tmp_buf_o+size, NULL, 0, WIZ_TX);
   } 
   else
-		wiz_job_add(dstAddr, len, buf, NULL, 0, WIZ_TX);
+		wiz_job_add(dstAddr, len, tmp_buf_o, NULL, 0, WIZ_TX);
 
   ptr += len;
 	Sn_Tx_WR[sock] = ptr;
 
-	uint8_t *flag = buf+len;
+	uint8_t *flag = tmp_buf_o+len;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(SOCK_OFFSET[sock] + WIZ_Sn_TX_WR, 2, &flag[0], NULL, 0, WIZ_TX);
