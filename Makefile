@@ -1,23 +1,17 @@
-# LIB_MAPLE_HOME needs to be defined in your environment 
+# Note: LIB_MAPLE_HOME needs to be defined in your environment 
 
-#export SENSORS := 16 # 1 sensor units aka Chimaera Mini
-#export SENSORS := 32 # 2 sensor units aka Chimaera Mini
-#export SENSORS := 48 # 3 sensor units aka Chimaera Mini
-#export SENSORS := 64 # 4 sensor units aka Chimaera Mini
-#export SENSORS := 80 # 5 sensor units aka Chimaera Mini
-export SENSORS := 96 # 6 sensor units aka Chimaera Midi
-#export SENSORS := 112 # 7 sensor units aka Chimaera Midi
-#export SENSORS := 128 # 8 sensor units aka Chimaera Midi
-#export SENSORS := 144 # 9 sensor units aka Chimaera Maxi
-#export SENSORS := 160 # 10 sensor units aka Chimaera XL
+# set number of sensors: 16, 32, 48, 64, 80, 96, 112, 128, 144, 160
+export SENSORS := 96 # 6 sensor units
 
+# set WIZnet chip version: W5200, W5500
 export WIZ_CHIP := W5200
-#export WIZ_CHIP := W5500
 
+# set STM32F303Cx chip version: F303CB, F303CC
 export BOARD := F303CB
 export MEMORY_TARGET := jtag
 export USER_MODULES := $(shell pwd)
 
+# set DfuSe USB vendor and product IDs
 export DFU_VENDOR := 0x0483
 export DFU_PRODUCT := 0xdf11
 

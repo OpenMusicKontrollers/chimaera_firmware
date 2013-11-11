@@ -100,13 +100,10 @@ wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_N
 uint_fast8_t
 udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
-	if( (len == 0) || (len > CHIMAERA_BUFSIZE + 2*WIZ_SEND_OFFSET + 3) )
+	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
 
-	if (tmp_buf_o_ptr != buf_ptr)
-		tmp_buf_o_ptr = buf_ptr;
-
-	uint8_t *buf = buf_o[tmp_buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
 	tmp_buf_i = buf_i_i + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
@@ -134,14 +131,10 @@ udp_receive_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 uint_fast8_t 
 udp_send_nonblocking (uint8_t sock, uint_fast8_t buf_ptr, uint16_t len)
 {
-	if( (len == 0) || (len > CHIMAERA_BUFSIZE + 2*WIZ_SEND_OFFSET + 3) )
+	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
 
-	// switch DMA memory source to right buffer, input buffer is on SEND by default
-	if (tmp_buf_o_ptr != buf_ptr)
-		tmp_buf_o_ptr = buf_ptr;
-
-	uint8_t *buf = buf_o[buf_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Tx_WR[sock];
 

@@ -23,9 +23,9 @@
 
 #include <string.h>
 
-#if defined(WIZ_CHIP_W5200)
+#if WIZ_CHIP == W5200
 #	include "W5200_private.h"
-#elif defined(WIZ_CHIP_W5500)
+#elif WIZ_CHIP == W5500
 #	include "W5500_private.h"
 #endif
 
@@ -37,7 +37,6 @@
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
-#include <libmaple/systick.h>
 
 Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
 volatile uint_fast8_t wiz_jobs_todo = 0;
@@ -49,7 +48,6 @@ const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 gpio_dev *ss_dev;
 uint8_t ss_bit;
-uint_fast8_t tmp_buf_o_ptr = 0;
 uint8_t *tmp_buf_i = buf_i_o;
 
 Wiz_IRQ_Cb irq_cb = NULL;
@@ -64,7 +62,7 @@ uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 __always_inline void
 _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o[tmp_buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
 	
 	memcpy (buf, dat, len);
 
@@ -77,7 +75,7 @@ _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 __always_inline void
 _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
-	uint8_t *buf = buf_o[tmp_buf_o_ptr] + WIZ_SEND_OFFSET;
+	uint8_t *buf = buf_o[buf_o_ptr] + WIZ_SEND_OFFSET;
 	uint8_t *tmp_buf_i = buf_i_o + WIZ_SEND_OFFSET;
 	
 	wiz_job_add(addr, len, buf, tmp_buf_i, cntrl, WIZ_TXRX);
@@ -274,7 +272,7 @@ wiz_init (gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t 
 	//nvic_irq_set_priority (NVIC_DMA_CH4, SPI_RX_DMA_PRIORITY);
 
 	// set up dma for SPI TX
-	spi_tx_tube.tube_dst = buf_o[tmp_buf_o_ptr];
+	spi_tx_tube.tube_dst = buf_o[buf_o_ptr];
 	status = dma_tube_cfg (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, &spi_tx_tube);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
 	dma_set_priority (WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, DMA_PRIORITY_HIGH);
