@@ -80,6 +80,7 @@ _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
 	uint8_t *tmp_buf_i = buf_i2 + WIZ_SEND_OFFSET;
 	
+	// more efficient than WIZ_RX for such short reads
 	wiz_job_add(addr, len, tmp_buf_o, tmp_buf_i, cntrl, WIZ_TXRX);
 
 	wiz_job_run_nonblocking();
@@ -123,10 +124,16 @@ _wiz_rx_irq()
 	dma_disable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
 	dma_disable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
 
-	resetSS();
-
 	if( !rx_err && (isr_rx & DMA_ISR_TCIF) ) // no error and Rx DMA transfer complete
-		wiz_jobs_done++;
+	{
+		if( (job->rw & WIZ_TX) || job->rx_hdr_sent)
+		{
+			wiz_jobs_done++;
+			resetSS();
+		}
+		else
+			job->rx_hdr_sent = 1;
+	}
 
 	if(wiz_jobs_done < wiz_jobs_todo)
 		wiz_job_run_single();
@@ -149,8 +156,6 @@ _wiz_tx_irq()
 	dma_clear_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
 	dma_disable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
 
-	resetSS();
-
 	if( !tx_err && (isr_tx & DMA_ISR_TCIF) ) // no error and Tx DMA transfer complete
 	{
 		do {
@@ -170,6 +175,8 @@ _wiz_tx_irq()
 		wiz_jobs_done++;
 	}
 
+	resetSS();
+
 	if(wiz_jobs_done < wiz_jobs_todo)
 		wiz_job_run_single();
 	else
@@ -186,6 +193,7 @@ wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmod
 	job->rx = rx;
 	job->opmode = opmode;
 	job->rw = rw;
+	job->rx_hdr_sent = 0;
 
 	wiz_jobs_todo++;
 }
@@ -193,52 +201,101 @@ wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmod
 __always_inline void
 wiz_job_run_single()
 {
+	uint8_t *frm_rx = NULL;
+	uint8_t *frm_tx = NULL;
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
 
-	wiz_job_set_frame();
+	if(!job->rx_hdr_sent)
+		wiz_job_set_frame(); //TODO move into switch statement?
 
 	uint16_t len2 = job->len + WIZ_SEND_OFFSET;
 
-	setSS();
-
-	if(job->rw == WIZ_TXRX)
+	switch(job->rw)
 	{
-		dma_channel_regs(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
-		dma_attach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, _wiz_rx_irq);
+		case WIZ_TX:
 
-		dma_detach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
-	}
-	else // job_rw == WIZ_TX
-	{
-		dma_channel_regs(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
-		dma_attach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, _wiz_tx_irq);
+			dma_channel_regs(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
+			dma_attach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, _wiz_tx_irq);
 
-		dma_detach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB);
-	}
+			dma_detach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB);
+			
+			spi_rx_dma_disable(WIZ_SPI_DEV); // disable RX DMA on WIZ_SPI_DEV
 
-	if(job->rw & WIZ_RX)
-	{
-		uint8_t *frm_rx = job->rx - WIZ_SEND_OFFSET;
-		spi_rx_dma_enable(WIZ_SPI_DEV); // enable RX DMA on WIZ_SPI_DEV
-		spi_rx_tube.tube_dst = frm_rx;
-		dma_set_mem_addr(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, spi_rx_tube.tube_dst);
-		dma_set_num_transfers(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, len2); // Rx
-		dma_enable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
-	}
-	else
-		spi_rx_dma_disable(WIZ_SPI_DEV); // disable RX DMA on WIZ_SPI_DEV
+			setSS();
 
-	if(job->rw & WIZ_TX)
-	{
-		uint8_t *frm_tx = job->tx - WIZ_SEND_OFFSET;
-		spi_tx_dma_enable(WIZ_SPI_DEV); // enable TX DMA on WIZ_SPI_DEV
-		spi_tx_tube.tube_dst = frm_tx;
-		dma_set_mem_addr(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, spi_tx_tube.tube_dst);
-		dma_set_num_transfers(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, len2); // Tx
-		dma_enable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
+			frm_tx = job->tx - WIZ_SEND_OFFSET;
+			spi_tx_dma_enable(WIZ_SPI_DEV); // enable TX DMA on WIZ_SPI_DEV
+			spi_tx_tube.tube_dst = frm_tx;
+			dma_set_mem_addr(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, spi_tx_tube.tube_dst);
+			dma_set_num_transfers(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, len2); // Tx
+			dma_enable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
+
+			break;
+
+		case WIZ_RX:
+			dma_channel_regs(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
+			dma_attach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, _wiz_rx_irq);
+			
+			dma_detach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
+
+			if(!job->rx_hdr_sent)
+			{
+				setSS();
+				spi_tx_dma_enable(WIZ_SPI_DEV); // enable TX DMA on WIZ_SPI_DEV
+
+				len2 = WIZ_SEND_OFFSET; // only send header
+				frm_rx = job->rx - WIZ_SEND_OFFSET;
+			}
+			else // job->rx_hdr_sent
+			{
+				// SS is already set
+				spi_tx_dma_disable(WIZ_SPI_DEV); // disable TX DMA on WIZ_SPI_DEV
+
+				len2 -= WIZ_SEND_OFFSET;
+				frm_rx = job->rx;
+			}
+
+			spi_rx_dma_enable(WIZ_SPI_DEV); // enable RX DMA on WIZ_SPI_DEV
+			spi_rx_tube.tube_dst = frm_rx;
+			dma_set_mem_addr(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, spi_rx_tube.tube_dst);
+			dma_set_num_transfers(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, len2); // Rx
+			dma_enable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
+
+			if(!job->rx_hdr_sent) //TODO merge with upper conditional
+			{
+				frm_tx = job->tx - WIZ_SEND_OFFSET;
+				spi_tx_tube.tube_dst = frm_tx;
+				dma_set_mem_addr(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, spi_tx_tube.tube_dst);
+				dma_set_num_transfers(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, len2); // Tx
+				dma_enable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
+			}
+
+			break;
+
+		case WIZ_TXRX:
+			dma_channel_regs(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
+			dma_attach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, _wiz_rx_irq);
+			
+			dma_detach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
+
+			setSS();
+
+			frm_rx = job->rx - WIZ_SEND_OFFSET;
+			spi_rx_dma_enable(WIZ_SPI_DEV); // enable RX DMA on WIZ_SPI_DEV
+			spi_rx_tube.tube_dst = frm_rx;
+			dma_set_mem_addr(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, spi_rx_tube.tube_dst);
+			dma_set_num_transfers(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, len2); // Rx
+			dma_enable(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB); // Rx
+
+			frm_tx = job->tx - WIZ_SEND_OFFSET;
+			spi_tx_dma_enable(WIZ_SPI_DEV); // enable TX DMA on WIZ_SPI_DEV
+			spi_tx_tube.tube_dst = frm_tx;
+			dma_set_mem_addr(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, spi_tx_tube.tube_dst);
+			dma_set_num_transfers(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, len2); // Tx
+			dma_enable(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB); // Tx
+
+			break;
 	}
-	else
-		spi_tx_dma_disable(WIZ_SPI_DEV); // disable TX DMA on WIZ_SPI_DEV
 }
 
 __always_inline void

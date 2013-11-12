@@ -27,9 +27,9 @@
 #include <wiz.h>
 
 enum {
-	WIZ_TX		= 0b01,
-	WIZ_RX		= 0b10,
-	WIZ_TXRX	= 0b11
+	WIZ_TX		= 1,
+	WIZ_RX		= 2,
+	WIZ_TXRX	= 3
 };
 
 typedef struct _Wiz_Job Wiz_Job;
@@ -41,6 +41,7 @@ struct _Wiz_Job {
 	uint8_t *rx;
 	uint8_t opmode; // only for W5500
 	uint8_t rw;
+	uint8_t rx_hdr_sent;
 };
 
 void wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmode, uint8_t rw);
@@ -70,6 +71,9 @@ extern uint16_t RSIZE [WIZ_MAX_SOCK_NUM];
 
 extern uint16_t Sn_Tx_WR[WIZ_MAX_SOCK_NUM];
 extern uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
+
+extern uint8_t buf_o2 [];
+extern uint8_t buf_i2 [];
 
 void _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
 void _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);

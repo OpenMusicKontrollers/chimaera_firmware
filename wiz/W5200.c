@@ -119,7 +119,7 @@ udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
 		return 0;
 
-	uint8_t *tmp_buf_o = BUF_O_OFFSET(buf_o_ptr); //FIXME use single channel SPI-DMA for receiving
+	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
 	uint8_t *tmp_buf_i = i_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
@@ -132,21 +132,21 @@ udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 	{
 		uint16_t size = RSIZE[sock] - offset;
 		// read overflown part first to not overwrite buffer!
-		wiz_job_add(RBASE[sock], len-size, tmp_buf_o+size, tmp_buf_i+size, 0, WIZ_TXRX);
-		wiz_job_add(dstAddr, size, tmp_buf_o, tmp_buf_i, 0, WIZ_TXRX);
+		wiz_job_add(RBASE[sock], len-size, tmp_buf_o, tmp_buf_i+size, 0, WIZ_RX);
+		wiz_job_add(dstAddr, size, tmp_buf_o, tmp_buf_i, 0, WIZ_RX);
 	}
 	else
-		wiz_job_add(dstAddr, len, tmp_buf_o, tmp_buf_i, 0, WIZ_TXRX);
+		wiz_job_add(dstAddr, len, tmp_buf_o, tmp_buf_i, 0, WIZ_RX);
 
   ptr += len;
 	Sn_Rx_RD[sock] = ptr;
 
-	uint8_t *flag = tmp_buf_o+len;
+	uint8_t *flag = tmp_buf_o;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(SOCK_OFFSET[sock] + WIZ_Sn_RX_RD, 2, &flag[0], NULL, 0, WIZ_TX);
 
-	// send data
+	// receive data
 	flag[2] = WIZ_Sn_CR_RECV;
 	wiz_job_add(SOCK_OFFSET[sock] + WIZ_Sn_CR, 1, &flag[2], NULL, 0, WIZ_TX);
 

@@ -55,11 +55,11 @@ __always_inline void
 wiz_job_set_frame()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
-	uint8_t *buf = job->tx - WIZ_SEND_OFFSET;
+	uint8_t *frm-tx = job->tx - WIZ_SEND_OFFSET;
 
-	buf[0] = job->addr >> 8;
-	buf[1] = job->addr & 0xFF;
-	buf[2] = job->opmode | (job->rw & WIZ_RX ? W5500_CNTRL_PHASE_READ : W5500_CNTRL_PHASE_WRITE);
+	frm_tx[0] = job->addr >> 8;
+	frm_tx[1] = job->addr & 0xFF;
+	frm_tx[2] = job->opmode | (job->rw & WIZ_RX ? W5500_CNTRL_PHASE_READ : W5500_CNTRL_PHASE_WRITE);
 }
 
 __always_inline void
@@ -103,23 +103,23 @@ udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
 
-	uint8_t *tmp_buf_o = BUF_O_OFFSET(buf_o_ptr); //FIXME use single channel SPI-DMA for receiving
+	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
 	uint8_t *tmp_buf_i = i_buf + WIZ_SEND_OFFSET;
 
 	uint16_t ptr = Sn_Rx_RD[sock];
 
 	// read message
-	wiz_job_add(ptr, len, tmp_buf_o, tmp_buf_i, W5500_socket_sel[sock].rx_buf, WIZ_TXRX);
+	wiz_job_add(ptr, len, tmp_buf_o, tmp_buf_i, W5500_socket_sel[sock].rx_buf, WIZ_RX);
 
   ptr += len;
 	Sn_Rx_RD[sock] = ptr;
 
-	uint8_t *flag = tmp_buf_o+len;
+	uint8_t *flag = tmp_buf_o;
 	flag[0] = ptr >> 8;
 	flag[1] = ptr & 0xFF;
 	wiz_job_add(WIZ_Sn_RX_RD, 2, &flag[0], NULL, W5500_socket_sel[sock].reg, WIZ_TX);
 
-	// send data
+	// receive data
 	flag[2] = WIZ_Sn_CR_RECV;
 	wiz_job_add(WIZ_Sn_CR, 1, &flag[2], NULL, W5500_socket_sel[sock].reg, WIZ_TX);
 
