@@ -82,10 +82,10 @@ $(USER_MODULES)/lookup.c: lookup.py
 # cSRCS_$(d) are the C source files we want compiled.
 cSRCS_$(d) := cmc/cmc.c
 cSRCS_$(d) += wiz/wiz.c
-ifeq ($(WIZ_CHIP), W5200)
+ifeq ($(WIZ_CHIP), 5200)
 cSRCS_$(d) += wiz/W5200.c
 endif
-ifeq ($(WIZ_CHIP), W5500)
+ifeq ($(WIZ_CHIP), 5500)
 cSRCS_$(d) += wiz/W5500.c
 endif
 cSRCS_$(d) += nosc/nosc.c

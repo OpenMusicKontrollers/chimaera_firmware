@@ -63,12 +63,12 @@ dma_tube_config spi_rx_tube = {
 };
 
 dma_tube_config spi_tx_tube = {
-	.tube_src = &WIZ_SPI_BAS->DR,
+	.tube_src = NULL, //set me
 	.tube_src_size = DMA_SIZE_8BITS,
-	.tube_dst = NULL, //set me
+	.tube_dst = &WIZ_SPI_BAS->DR,
 	.tube_dst_size = DMA_SIZE_8BITS,
 	.tube_nr_xfers = 0, //set me
-	.tube_flags = DMA_CFG_DST_INC | DMA_CCR_DIR_FROM_MEM,
+	.tube_flags = DMA_CFG_SRC_INC,
 	.target_data = NULL,
 	.tube_req_src = WIZ_SPI_TX_DMA_SRC
 };

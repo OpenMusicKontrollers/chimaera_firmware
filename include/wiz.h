@@ -34,10 +34,10 @@ extern const uint8_t wiz_broadcast_mac [];
 
 #define WIZ_UDP_HDR_SIZE			8
 
-#if WIZ_CHIP == W5200
+#if WIZ_CHIP == 5200
 #	define WIZ_MAX_SOCK_NUM			8
 #	define WIZ_SEND_OFFSET			4
-#elif WIZ_CHIP == W5500
+#elif WIZ_CHIP == 5500
 #	define WIZ_MAX_SOCK_NUM 		8
 #	define WIZ_SEND_OFFSET			3
 #endif

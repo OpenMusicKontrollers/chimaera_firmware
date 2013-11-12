@@ -55,7 +55,7 @@ __always_inline void
 wiz_job_set_frame()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
-	uint8_t *frm-tx = job->tx - WIZ_SEND_OFFSET;
+	uint8_t *frm_tx = job->tx - WIZ_SEND_OFFSET;
 
 	frm_tx[0] = job->addr >> 8;
 	frm_tx[1] = job->addr & 0xFF;
