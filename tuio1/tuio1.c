@@ -29,13 +29,16 @@
 
 #include "tuio1_private.h"
 
-static const char *obj2D_str = "/tuio/2Dobj";
+static const char *profile_str [2] = { "/tuio/2Dobj", "/tuio/_sixya" };
 static const char *fseq_str = "fseq";
 static const char *set_str = "set";
 static const char *alive_str = "alive";
 
 static const char *frm_fmt = "si";
-static const char *tok_fmt = "siifffggggg"; // "set" s i x y a X Y A m r
+static const char *tok_fmt [2] = {
+	"siifffggggg", // "set" s i x y a X Y A m r
+	"siifff" // "set" s i x y a
+};
 static char alv_fmt [BLOB_MAX+2]; // this has a variable string len
 
 static nOSC_Arg frm [2];
@@ -64,12 +67,15 @@ tuio1_init ()
 	tuio1_fmt[TUIO1_MAX] = nOSC_TERM;
 
 	// initialize bundle
-	nosc_item_message_set (tuio1_bndl, 0, alv, (char *)obj2D_str, alv_fmt);
+	char *profile = (char *)profile_str[config.tuio1.custom_profile];
+	char *tokfmt = (char *)tok_fmt[config.tuio1.custom_profile];
+
+	nosc_item_message_set (tuio1_bndl, 0, alv, profile, alv_fmt);
 
 	for (i=0; i<BLOB_MAX; i++)
-		nosc_item_message_set (tuio1_bndl, i+1, tok[i], (char *)obj2D_str, (char *)tok_fmt);
+		nosc_item_message_set (tuio1_bndl, i+1, tok[i], profile, tokfmt);
 
-	nosc_item_message_set (tuio1_bndl, BLOB_MAX + 1, frm, (char *)obj2D_str, (char *)frm_fmt);
+	nosc_item_message_set (tuio1_bndl, BLOB_MAX + 1, frm, profile, (char *)frm_fmt);
 
 	// initialize frame
 	nosc_message_set_string (frm, 0, (char *)fseq_str);
@@ -102,6 +108,11 @@ tuio1_init ()
 void
 tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
+	char *profile = (char *)profile_str[config.tuio1.custom_profile];
+	char *tokfmt = (char *)tok_fmt[config.tuio1.custom_profile];
+
+	tuio1_bndl[0].message.path = profile;
+
 	frm[1].i = fid;
 
 	tuio1_osc.tt = offset;
@@ -112,10 +123,10 @@ tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 		// relink alv message
 		alv_fmt[1+old_end] = nOSC_INT32;
 
-		nosc_item_message_set (tuio1_bndl, old_end + 1, tok[old_end], (char *)obj2D_str, (char *)tok_fmt);
+		nosc_item_message_set (tuio1_bndl, old_end + 1, tok[old_end], profile, tokfmt);
 
 		if (old_end < BLOB_MAX-1)
-			nosc_item_message_set (tuio1_bndl, old_end + 2, tok[old_end+1], (char *)obj2D_str, (char *)tok_fmt);
+			nosc_item_message_set (tuio1_bndl, old_end + 2, tok[old_end+1], profile, tokfmt);
 
 		tuio1_fmt[old_end+2] = nOSC_MESSAGE;
 	}
@@ -127,7 +138,7 @@ tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 		alv_fmt[1+end] = nOSC_END;
 
 		// prepend frm message
-		nosc_item_message_set (tuio1_bndl, end + 1, frm, (char *)obj2D_str, (char *)frm_fmt);
+		nosc_item_message_set (tuio1_bndl, end + 1, frm, profile, (char *)frm_fmt);
 
 		// unlink bundle
 		tuio1_fmt[end+2] = nOSC_TERM;

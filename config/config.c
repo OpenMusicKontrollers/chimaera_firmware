@@ -78,7 +78,8 @@ Config config = {
 	},
 
 	.tuio1 = {
-		.enabled = 0
+		.enabled = 0,
+		.custom_profile = 0
 	},
 
 	.dump = {
@@ -1023,6 +1024,12 @@ _tuio1_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 }
 
 static uint_fast8_t
+_tuio1_custom_profile (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return _check_bool(path, fmt, argc, args, &config.tuio1.custom_profile);
+}
+
+static uint_fast8_t
 _dump_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint_fast8_t res = _check_bool (path, fmt, argc, args, &config.dump.enabled);
@@ -1741,6 +1748,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/tuio2/long_header", "i*", _tuio2_long_header},
 
 	{"/chimaera/tuio1/enabled", "i*", _tuio1_enabled},
+	{"/chimaera/tuio1/custom_profile", "i*", _tuio1_custom_profile},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
 	{"/chimaera/scsynth/group", "ii*", _scsynth_group},

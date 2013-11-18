@@ -83,6 +83,7 @@ struct _Config {
 
 	struct _tuio1 {
 		uint8_t enabled;
+		uint8_t custom_profile;
 	} tuio1;
 
 	struct _scsynth {
