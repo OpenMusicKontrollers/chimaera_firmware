@@ -84,7 +84,7 @@ oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
-void
+void 
 oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint8_t ch = gid % 0xf;

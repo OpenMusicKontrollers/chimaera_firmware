@@ -43,13 +43,13 @@ nOSC_Bundle_Item dump_osc = {
 	.fmt = dump_fmt
 };
 
-inline void
+void
 dump_init (int32_t size, int16_t *swap)
 {
 	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t *)swap);
 }
 
-inline void
+__always_inline void
 dump_update (nOSC_Timestamp now, nOSC_Timestamp offset)
 {
 	dump_osc.tt = offset;

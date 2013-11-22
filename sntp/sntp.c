@@ -32,7 +32,7 @@
 
 nOSC_Timestamp t0 = 0ULLK;
 
-uint16_t 
+uint16_t __CCM__
 sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 {
 	uint16_t len = sizeof (sntp_t);
@@ -51,7 +51,7 @@ sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 	return len;
 }
 
-void
+void __CCM__
 sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 {
 	sntp_t *answer = (sntp_t *)buf;
@@ -91,7 +91,7 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 		t0 += clock_offset;
 }
 
-void
+void __CCM__
 sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
 	*now = t0 + systick_uptime() * 0.0001ULLK; // that many 100us

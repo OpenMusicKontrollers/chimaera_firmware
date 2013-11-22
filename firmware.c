@@ -149,26 +149,26 @@ volatile uint_fast8_t wiz_needs_attention = 0;
 
 nOSC_Timestamp now;
 
-static void
+static void __CCM__
 adc_timer_irq ()
 {
 	adc_time_up = 1;
 	timer_pause (adc_timer);
 }
 
-static void
+static void __CCM__
 sntp_timer_irq ()
 {
 	sntp_should_request = 1;
 }
 
-static void
+static void __CCM__
 dhcpc_timer_irq ()
 {
 	dhcpc_needs_refresh = 1;
 }
 
-static void
+static void __CCM__
 soft_irq ()
 {
 	bkp_enable_writes();
@@ -176,31 +176,31 @@ soft_irq ()
 	bkp_disable_writes();
 }
 
-static void
+static void __CCM__
 wiz_irq ()
 {
 	wiz_needs_attention = 1;
 }
 
-static void
+static void __CCM__
 wiz_config_irq(uint8_t isr)
 {
 	config_should_listen = 1;
 }
 
-static void
+static void __CCM__
 wiz_mdns_irq(uint8_t isr)
 {
 	mdns_should_listen = 1;
 }
 
-static void
+static void __CCM__
 wiz_sntp_irq(uint8_t isr)
 {
 	sntp_should_listen = 1;
 }
 
-void
+void __CCM__
 __irq_adc1_2 ()
 //adc1_2_irq (adc_callback_data *data)
 {
@@ -223,7 +223,7 @@ __irq_adc1_2 ()
 	}
 }
 
-void
+void __CCM__
 __irq_adc3 ()
 //adc3_irq (adc_callback_data *data)
 {
@@ -231,7 +231,7 @@ __irq_adc3 ()
 	//ADC3->regs->ISR |= data->irq_flags; // clear flags
 }
 
-static void
+static void __CCM__
 adc12_dma_irq ()
 {
 	uint8_t isr = dma_get_isr_bits (DMA1, DMA_CH1);
@@ -243,7 +243,7 @@ adc12_dma_irq ()
 	adc12_dma_done = 1;
 }
 
-static void
+static void __CCM__
 adc3_dma_irq ()
 {
 	uint8_t isr = dma_get_isr_bits (DMA2, DMA_CH5);
@@ -277,44 +277,27 @@ adc_dma_block()
 	adc_raw_ptr ^= 1;
 }
 
-//TODO move to config.c
-static void
-config_bndl_start_cb (nOSC_Timestamp timestamp)
-{
-	//TODO only for testing
-	debug_str ("bndl_start");
-	debug_timestamp (timestamp);
-}
-
-static void
-config_bndl_end_cb ()
-{
-	//TODO only for testing
-	debug_str ("bndl_end");
-}
-
-static void
+static void __CCM__
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	nosc_method_dispatch ((nOSC_Method *)config_serv, buf, len, config_bndl_start_cb, config_bndl_end_cb);
+	nosc_method_dispatch ((nOSC_Method *)config_serv, buf, len, NULL, NULL);
 }
 
-static void
+static void __CCM__
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
 }
 
-static void
+static void __CCM__
 mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	mdns_dispatch (buf, len);
 }
 
 // loops are explicitely unrolled which makes it fast but cumbersome to read
-void adc_fill (uint_fast8_t raw_ptr) __CCM__;
-void
+static void __CCM__
 adc_fill (uint_fast8_t raw_ptr)
 {
 	uint_fast8_t i;

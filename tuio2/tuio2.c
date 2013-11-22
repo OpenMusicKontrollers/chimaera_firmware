@@ -125,7 +125,6 @@ tuio2_long_header_enable (uint_fast8_t on)
 		nosc_item_message_set (tuio2_bndl, 0, frm, (char *)frm_str, (char *)frm_fmt_short);
 }
 
-void tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end) __CCM__;
 void
 tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
@@ -166,7 +165,6 @@ tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 	counter = 0; // reset token pointer
 }
 
-void tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y) __CCM__;
 void
 tuio2_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
