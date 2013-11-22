@@ -17,4 +17,4 @@ The outcome was a device that is best described as a polyphonic theremin, based 
 
 The device therefore features two continuous dimensions. The X-dimension tells about the fingers position in the sensor array and most of the time will correspond to pitch. The P-dimension tells about finger proximity to the sensor array and may correspond to amplitude, filter cutoff frequency, modulation, etc.
 
-<http://open-music-kontrollers.ch/?p=chimaera&s=about>
+<http://open-music-kontrollers.ch/chimaera/about/>
