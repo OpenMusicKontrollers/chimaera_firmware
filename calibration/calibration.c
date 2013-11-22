@@ -31,7 +31,7 @@
 
 #include "calibration_private.h"
 
-Calibration range __CCM__;
+Calibration range;
 Calibration_Point point;
 
 float curve [0x800];

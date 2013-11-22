@@ -83,6 +83,7 @@ cmc_init ()
 	cmc_neu = cmc.blobs[cmc.neu];
 }
 
+uint_fast8_t cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines) __CCM__;
 uint_fast8_t
 cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines)
 {

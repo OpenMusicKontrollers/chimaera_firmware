@@ -225,6 +225,7 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundl
  * Bundle
  */
 
+uint16_t nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf) __CCM__;
 uint16_t
 nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf)
 {
@@ -272,6 +273,7 @@ nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, ui
  * (de)serialization
  */
 
+uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, uint8_t *buf) __CCM__;
 uint16_t
 nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, uint8_t *buf)
 {

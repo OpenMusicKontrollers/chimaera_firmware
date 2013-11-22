@@ -125,13 +125,13 @@ uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
 int16_t adc12_raw[2][MUX_MAX*ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
 int16_t adc3_raw[2][MUX_MAX*ADC_SING_LENGTH] __attribute__((aligned(4)));
 
-int16_t adc_sum[SENSOR_N] __CCM__;
-int16_t adc_rela[SENSOR_N] __CCM__;
-int16_t adc_swap[SENSOR_N] __CCM__;
+int16_t adc_sum[SENSOR_N];
+int16_t adc_rela[SENSOR_N];
+int16_t adc_swap[SENSOR_N];
 
 uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
-uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2] __CCM__;
-uint8_t order3 [MUX_MAX*ADC_SING_LENGTH] __CCM__;
+uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
+uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
 volatile uint_fast8_t adc12_dma_done = 0;
 volatile uint_fast8_t adc12_dma_err = 0;
@@ -313,7 +313,8 @@ mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 }
 
 // loops are explicitely unrolled which makes it fast but cumbersome to read
-static void
+void adc_fill (uint_fast8_t raw_ptr) __CCM__;
+void
 adc_fill (uint_fast8_t raw_ptr)
 {
 	uint_fast8_t i;
