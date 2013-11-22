@@ -31,10 +31,10 @@
  * static variabled
  */
 
-nOSC_Arg dispatch_msg [OSC_ARGS_MAX];
-nOSC_Arg vararg_msg [OSC_ARGS_MAX];
+static nOSC_Arg dispatch_msg [OSC_ARGS_MAX];
+static nOSC_Arg vararg_msg [OSC_ARGS_MAX];
 
-const char *bundle_str = "#bundle";
+static const char *bundle_str = "#bundle";
 
 /*
  * Method

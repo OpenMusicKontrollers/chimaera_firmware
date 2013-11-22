@@ -34,6 +34,7 @@ struct _Calibration {
 	float C [3];
 };
 
+// globals
 extern Calibration range;
 extern uint_fast8_t zeroing;
 extern uint_fast8_t calibrating;

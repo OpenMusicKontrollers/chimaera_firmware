@@ -55,8 +55,8 @@ void wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_S
 #define WIZ_MAX_JOB_NUM 8
 
 extern Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
-volatile uint_fast8_t wiz_jobs_todo;
-volatile uint_fast8_t wiz_jobs_done;
+extern volatile uint_fast8_t wiz_jobs_todo;
+extern volatile uint_fast8_t wiz_jobs_done;
 
 extern gpio_dev *ss_dev;
 extern uint8_t ss_bit;

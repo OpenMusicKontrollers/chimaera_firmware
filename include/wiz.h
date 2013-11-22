@@ -112,7 +112,6 @@ struct _MACRAW_Header {
 } __attribute((packed,aligned(2)));
 
 #define MACRAW_HEADER_SIZE sizeof(MACRAW_Header)
-#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload) //TODO does not belong here
 
 typedef void (*Wiz_MACRAW_Dispatch_Cb) (uint8_t *buf, uint16_t len, void *data);
 

@@ -32,10 +32,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-DNS_Query _q;
-DNS_Answer _a;
-DNS_Resolve resolve;
-const char *localdomain = "local";
+static DNS_Query _q;
+static DNS_Answer _a;
+static DNS_Resolve resolve;
+static const char *localdomain = "local";
 
 static uint8_t *
 dns_question (DNS_Query *query, uint8_t *buf)

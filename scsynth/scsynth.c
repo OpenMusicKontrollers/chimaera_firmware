@@ -31,35 +31,35 @@
 
 #include "scsynth_private.h"
 
-SCSynth_Group scsynth_groups [GROUP_MAX];
+static SCSynth_Group scsynth_groups [GROUP_MAX];
 
-nOSC_Item scsynth_early_bndl [BLOB_MAX];
-nOSC_Item scsynth_late_bndl [BLOB_MAX];
-nOSC_Item scsynth_bndl [2];
+static nOSC_Item scsynth_early_bndl [BLOB_MAX];
+static nOSC_Item scsynth_late_bndl [BLOB_MAX];
+static nOSC_Item scsynth_bndl [2];
 
-char scsynth_early_fmt [BLOB_MAX+1];
-char scsynth_late_fmt [BLOB_MAX+1];
-char scsynth_fmt [3];
+static char scsynth_early_fmt [BLOB_MAX+1];
+static char scsynth_late_fmt [BLOB_MAX+1];
+static char scsynth_fmt [3];
 
-SCSynth_Msg msgs[BLOB_MAX*2];
+static SCSynth_Msg msgs[BLOB_MAX*2];
 
-const char *gate_str = "gate";
-const char *out_str = "out";
+static const char *gate_str = "gate";
+static const char *out_str = "out";
 
-const char *on_str = "/s_new";
-const char *set_str = "/n_set";
+static const char *on_str = "/s_new";
+static const char *set_str = "/n_set";
 
-const char *on_fmt = "siiisisi";
-const char *on_set_fmt = "iififiisi";
-const char *off_fmt = "isi";
-const char *set_fmt = "iififii";
+static const char *on_fmt = "siiisisi";
+static const char *on_set_fmt = "iififiisi";
+static const char *off_fmt = "isi";
+static const char *set_fmt = "iififii";
 
-const char *default_fmt = "group%02i";
+static const char *default_fmt = "group%02i";
 
-nOSC_Timestamp tt;
+static nOSC_Timestamp tt;
 
-uint_fast8_t early_i = 0;
-uint_fast8_t late_i = 0;
+static uint_fast8_t early_i = 0;
+static uint_fast8_t late_i = 0;
 
 nOSC_Bundle_Item scsynth_osc = {
 	.bndl = scsynth_bndl,
@@ -95,7 +95,7 @@ scsynth_init ()
 	}
 }
 
-void
+static void
 scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	scsynth_early_fmt[0] = nOSC_TERM;
@@ -110,7 +110,7 @@ scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 	scsynth_fmt[1] = nOSC_TERM;
 }
 
-void
+static void
 scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id;
@@ -164,7 +164,7 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	}
 }
 
-void
+static void
 scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint32_t id;
@@ -186,7 +186,7 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 	}
 }
 
-void
+static void
 scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id;

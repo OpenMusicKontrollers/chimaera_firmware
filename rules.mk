@@ -53,6 +53,7 @@ EXAMPLE_INCLUDE_DIR := $(d)/include
 CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 # We'll also want our local include directory
 CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
+CFLAGS_$(d) += -I$(d)/engines
 
 # custom preprocessor flags
 #CFLAGS_$(d) += -DBENCHMARK

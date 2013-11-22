@@ -26,8 +26,8 @@
 
 #include "oscmidi_private.h"
 
-nOSC_Item oscmidi_bndl [1];
-char oscmidi_fmt [2] = {nOSC_MESSAGE, nOSC_TERM};
+static nOSC_Item oscmidi_bndl [1];
+static char oscmidi_fmt [2] = {nOSC_MESSAGE, nOSC_TERM};
 
 nOSC_Bundle_Item oscmidi_osc = {
 	.bndl = oscmidi_bndl,
@@ -35,14 +35,14 @@ nOSC_Bundle_Item oscmidi_osc = {
 	.fmt = oscmidi_fmt
 };
 
-OSCMidi_Msg msg;
+static OSCMidi_Msg msg;
 
-const char *midi_str = "/midi";
-char midi_fmt [OSCMIDI_MAX+1];
+static const char *midi_str = "/midi";
+static char midi_fmt [OSCMIDI_MAX+1];
 
-MIDI_Hash oscmidi_hash [BLOB_MAX];
+static MIDI_Hash oscmidi_hash [BLOB_MAX];
 
-uint_fast8_t oscmidi_tok;
+static uint_fast8_t oscmidi_tok;
 
 void
 oscmidi_init ()
@@ -53,7 +53,7 @@ oscmidi_init ()
 	config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
 }
 
-void
+static void
 oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint8_t ch;
@@ -71,7 +71,7 @@ oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
-void
+static void
 oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
@@ -84,7 +84,7 @@ oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
-void 
+static void 
 oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint8_t ch = gid % 0xf;
@@ -95,7 +95,7 @@ oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
-void
+static void
 oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;

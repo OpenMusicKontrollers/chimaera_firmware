@@ -26,11 +26,11 @@
 
 #include <ipv4ll.h>
 
-const uint8_t link_local_gateway [] = {169, 254, 0, 0};
-const uint8_t link_local_subnet [] = {255, 255, 0, 0};
+static const uint8_t link_local_gateway [] = {169, 254, 0, 0};
+static const uint8_t link_local_subnet [] = {255, 255, 0, 0};
 
 static void 
-IPv4LL_random (uint8_t *ip)
+_IPv4LL_random (uint8_t *ip)
 {
 	ip[0] = 169;
 	ip[1] = 254;
@@ -44,7 +44,7 @@ IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 	uint8_t link_local_ip [4];
 
 	do {
-		IPv4LL_random (link_local_ip);
+		_IPv4LL_random (link_local_ip);
 	} while (arp_probe (0, link_local_ip)); // collision?
 
 	arp_announce (0, link_local_ip);

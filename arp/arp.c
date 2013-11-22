@@ -32,9 +32,9 @@
 
 #include <libmaple/systick.h>
 
-MACRAW_Header header;
-ARP_Payload payload;
-volatile uint_fast8_t arp_collision = 0;
+static MACRAW_Header header;
+static ARP_Payload payload;
+static volatile uint_fast8_t arp_collision = 0;
 
 /*
  * fill macraw packet with ARP payload

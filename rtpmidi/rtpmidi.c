@@ -28,9 +28,9 @@
 
 //TODO implement RTCP (Real Time Control Protocol)
 
-uint16_t sequence_number = 0;
+static uint16_t sequence_number = 0;
 
-RTP_Header rtp_header = {
+static RTP_Header rtp_header = {
 	.V_P_X_CC = 0b10000000, // version=0b10(2), padding=0b0, extension=0b0, csrc_count=0b0000
 	.M_PT = 0b01100000, // marker=0b0, payload_type=0b1100000(96) RTP_MIDI
 	.sequence_number = 0x0000,
@@ -38,24 +38,24 @@ RTP_Header rtp_header = {
 	.SSRC = 0x00000000
 };
 
-RTP_MIDI_Session rtp_midi_session = {
+static RTP_MIDI_Session rtp_midi_session = {
 	.rate = 48000.0 //TODO make this configurable via RTCP
 };
 
-RTP_MIDI_Header rtp_midi_header = {
+static RTP_MIDI_Header rtp_midi_header = {
 	.B_J_Z_P_LEN1 = 0b10000000, // B=0b1(len=12bits), J=0b0, Z=0b0, P = 0b0
 	.LEN2 = 0b00000000
 };
 
-RTP_MIDI_List rtp_midi_list [BLOB_MAX*3];
-uint_fast8_t nlist = 0;
+static RTP_MIDI_List rtp_midi_list [BLOB_MAX*3];
+static uint_fast8_t nlist = 0;
 
-uint16_t seq_offset;
-uint16_t seq_num;
-uint32_t timestamp;
-nOSC_Timestamp last_tt;
+static uint16_t seq_offset;
+static uint16_t seq_num;
+static uint32_t timestamp;
+static nOSC_Timestamp last_tt;
 
-MIDI_Hash rtpmidi_hash [BLOB_MAX];
+static MIDI_Hash rtpmidi_hash [BLOB_MAX];
 
 void
 rtpmidi_init ()
@@ -104,7 +104,7 @@ rtpmidi_serialize (uint8_t *buf)
 	return buf_ptr - buf;
 }
 
-void
+static void
 rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	seq_num = seq_offset + fid;
@@ -123,7 +123,7 @@ rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 	nlist = 0;
 }
 
-void
+static void
 rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
@@ -140,7 +140,7 @@ rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	nlist++;
 }
 
-void
+static void
 rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
@@ -155,7 +155,7 @@ rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 	nlist++;
 }
 
-void
+static void
 rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;

@@ -36,33 +36,6 @@
 #include <config.h>
 #include <wiz.h>
 
-volatile uint_fast8_t mem2mem_dma_done = 0;
-
-void
-_mem2mem_dma_irq (void)
-{
-	mem2mem_dma_done = 1;
-}
-
-void 
-dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len)
-{
-	mem2mem_tube.tube_src = src;
-	mem2mem_tube.tube_dst = dst;
-	mem2mem_tube.tube_nr_xfers = len;
-
-	int status = dma_tube_cfg (DMA1, DMA_CH2, &mem2mem_tube);
-	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
-	dma_set_priority (DMA1, DMA_CH2, DMA_PRIORITY_HIGH);
-	dma_attach_interrupt (DMA1, DMA_CH2, _mem2mem_dma_irq);
-
-	mem2mem_dma_done = 0;
-	dma_enable (DMA1, DMA_CH2);
-	while (!mem2mem_dma_done)
-		;
-	dma_disable (DMA1, DMA_CH2);
-}
-
 uint_fast8_t
 ip_part_of_subnet (uint8_t *ip)
 {

@@ -30,19 +30,18 @@
 #include <wiz.h>
 #include <config.h>
 
-uint32_t xid = 0x3903F326; // TODO make this random or based on uid?
-
+// global
 DHCPC dhcpc = {
 	.state = DISCOVER
 };
 
-const uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
-uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
-const uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
-//const uint8_t parameter_request_list [4] = {OPTION_SUBNET_MASK, OPTION_ROUTER, OPTION_DOMAIN_NAME, OPTION_DOMAIN_NAME_SERVER};
-const uint8_t parameter_request_list [2] = {OPTION_SUBNET_MASK, OPTION_ROUTER};
+static uint32_t xid = 0x3903F326; // TODO make this random or based on uid?
+static const uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
+static uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
+static const uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
+static const uint8_t parameter_request_list [2] = {OPTION_SUBNET_MASK, OPTION_ROUTER};
 
-BOOTP_Option dhcp_discover_options [] = {
+static BOOTP_Option dhcp_discover_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_discover),
 	BOOTP_OPTION (OPTION_CLIENT_IDENTIFIER, 7, client_identifier),
 	BOOTP_OPTION (OPTION_HOST_NAME, 8, (uint8_t *)host_name),
@@ -50,27 +49,27 @@ BOOTP_Option dhcp_discover_options [] = {
 	BOOTP_OPTION_END
 };
 
-const uint8_t dhcp_message_type_request [1] = {DHCPREQUEST};
-uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
-uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
+static const uint8_t dhcp_message_type_request [1] = {DHCPREQUEST};
+static uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
+static uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
 
-BOOTP_Option dhcp_request_options [] = {
+static BOOTP_Option dhcp_request_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_request),
 	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, 4, dhcp_request_ip),
 	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
-const uint8_t dhcp_message_type_decline [1] = {DHCPDECLINE};
+static const uint8_t dhcp_message_type_decline [1] = {DHCPDECLINE};
 
-BOOTP_Option dhcp_decline_options [] = {
+static BOOTP_Option dhcp_decline_options [] = {
 	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_decline),
 	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, 4, (uint8_t *)dhcp_request_ip),
 	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
-DHCP_Packet_Packed dhcp_packet = {
+static DHCP_Packet_Packed dhcp_packet = {
 	.bootp = {
 		.op = BOOTP_OP_REQUEST,
 		.htype = BOOTP_HTYPE_ETHERNET,
@@ -111,7 +110,7 @@ _dhcp_packet_serialize (DHCP_Packet_Packed *packet, uint8_t *buf)
 	return buf_ptr-buf;
 }
 
-uint16_t
+static uint16_t
 dhcpc_discover (uint8_t *buf, uint16_t secs)
 {
 	dhcp_packet.bootp.xid = htonl (++xid);
@@ -128,7 +127,7 @@ dhcpc_discover (uint8_t *buf, uint16_t secs)
 	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
 
-uint16_t
+static uint16_t
 dhcpc_request (uint8_t *buf, uint16_t secs)
 {
 	dhcp_packet.bootp.xid = htonl (xid);
@@ -147,7 +146,7 @@ dhcpc_request (uint8_t *buf, uint16_t secs)
 	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
 
-uint16_t
+static uint16_t
 dhcpc_decline (uint8_t *buf, uint16_t secs)
 {
 	dhcp_packet.bootp.xid = htonl (xid);
@@ -166,7 +165,7 @@ dhcpc_decline (uint8_t *buf, uint16_t secs)
 	return _dhcp_packet_serialize (&dhcp_packet, buf);
 }
 
-void
+static void
 dhcpc_dispatch (uint8_t *buf, uint16_t size)
 {
 	DHCP_Packet_Unpacked *recv = (DHCP_Packet_Unpacked *)buf;

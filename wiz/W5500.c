@@ -40,7 +40,7 @@
 		.rx_buf = (s*4)+3 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
 	}
 
-const W5500_Socket_Sel W5500_socket_sel [8] = {
+static const W5500_Socket_Sel W5500_socket_sel [8] = {
 	W5500_SOCKET_SEL_ENTRY(0),
 	W5500_SOCKET_SEL_ENTRY(1),
 	W5500_SOCKET_SEL_ENTRY(2),

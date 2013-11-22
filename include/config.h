@@ -160,7 +160,6 @@ struct _Config {
 };
 
 extern Config config;
-
 extern const nOSC_Method config_serv [];
 
 uint_fast8_t version_match ();

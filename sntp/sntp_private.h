@@ -66,6 +66,4 @@ struct _sntp_t {
 	timestamp64_t transmit_timestamp;
 };
 
-extern nOSC_Timestamp t0;
-
 #endif

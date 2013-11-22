@@ -33,13 +33,13 @@
 #include <libmaple/spi.h>
 #include <libmaple/systick.h>
 
-uint16_t SBASE [WIZ_MAX_SOCK_NUM];
-uint16_t RBASE [WIZ_MAX_SOCK_NUM];
+static uint16_t SBASE [WIZ_MAX_SOCK_NUM];
+static uint16_t RBASE [WIZ_MAX_SOCK_NUM];
 
-uint16_t SMASK [WIZ_MAX_SOCK_NUM];
-uint16_t RMASK [WIZ_MAX_SOCK_NUM];
+static uint16_t SMASK [WIZ_MAX_SOCK_NUM];
+static uint16_t RMASK [WIZ_MAX_SOCK_NUM];
 
-const uint16_t SOCK_OFFSET [WIZ_MAX_SOCK_NUM] = {
+static const uint16_t SOCK_OFFSET [WIZ_MAX_SOCK_NUM] = {
 	CH_BASE + 0*CH_SIZE,
 	CH_BASE + 1*CH_SIZE,
 	CH_BASE + 2*CH_SIZE,

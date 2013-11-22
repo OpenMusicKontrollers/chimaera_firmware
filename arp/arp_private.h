@@ -61,4 +61,6 @@ struct _ARP_Payload {
 	uint8_t tpa [4];	// target IP address
 } __attribute((packed,aligned(2)));
 
+#define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
+
 #endif

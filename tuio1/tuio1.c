@@ -105,7 +105,7 @@ tuio1_init ()
 	alv_fmt[1+BLOB_MAX] = nOSC_END;
 }
 
-void
+static void
 tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
 	char *profile = (char *)profile_str[config.tuio1.custom_profile];
@@ -149,7 +149,7 @@ tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 	counter = 0; // reset token pointer
 }
 
-void
+static void
 tuio1_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg = tok[counter];

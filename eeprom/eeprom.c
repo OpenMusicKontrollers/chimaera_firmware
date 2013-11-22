@@ -32,14 +32,14 @@
 #define TIMEOUT 10 // ms
 #define EEPROM_24xx_BASE_ADDR 0b1010000
 
-EEPROM_24xx _24LC64 = {
+static EEPROM_24xx _24LC64 = {
 	.page_size = 0x20,			// = 32byte
 	.storage_size = 0x2000,	// = 64kbit
 	.address_size = 2,			// 2byte
 	.page_write_time = 2		// ms
 };
 
-EEPROM_24xx _24AA025E48 = {
+static EEPROM_24xx _24AA025E48 = {
 	.page_size = 0x10,			// = 16byte 
 	.storage_size = 0x100,	// = 2kbit
 	.address_size = 1,			// 1byte
@@ -49,11 +49,11 @@ EEPROM_24xx _24AA025E48 = {
 EEPROM_24xx *eeprom_24LC64 = &_24LC64;
 EEPROM_24xx *eeprom_24AA025E48 = &_24AA025E48;
 
-i2c_msg write_msg;
-uint8_t write_msg_data [0x22]; // = address_size + page_size
-i2c_msg read_msg;
+static i2c_msg write_msg;
+static uint8_t write_msg_data [0x22]; // = address_size + page_size
+static i2c_msg read_msg;
 
-inline void
+static inline void
 _set_address (EEPROM_24xx *eeprom, uint16_t addr)
 {
 	write_msg.addr = eeprom->slave_addr;
@@ -71,7 +71,7 @@ _set_address (EEPROM_24xx *eeprom, uint16_t addr)
 	}
 }
 
-inline void
+static inline void
 _eeprom_check_res (i2c_dev *dev, int32_t res)
 {
 	if (res != 0)
@@ -81,7 +81,7 @@ _eeprom_check_res (i2c_dev *dev, int32_t res)
 	}
 }
 	
-inline void
+static inline void
 _eeprom_ack_poll (EEPROM_24xx *eeprom)
 {
 	//delay_us (eeprom->page_write_time*1e3);

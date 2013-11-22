@@ -49,105 +49,99 @@
 #include <sntp.h>
 #include <config.h>
 #include <tube.h>
-#include <tuio2.h>
-#include <tuio1.h>
-#include <scsynth.h>
-#include <dump.h>
 #include <ipv4ll.h>
 #include <mdns.h>
 #include <dns_sd.h>
 #include <dhcpc.h>
 #include <arp.h>
-#include <rtpmidi.h>
-#include <oscmidi.h>
-#include <dummy.h>
+#include <engines.h>
 #include <wiz.h>
 #include <calibration.h>
 
-uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
+static uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
 
 #if SENSOR_N == 16
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 0 };
 #elif SENSOR_N == 32
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 1, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 1, 0 };
 #elif SENSOR_N == 48
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 2, 1, 0};
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 2, 1, 0};
 #elif SENSOR_N == 64
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 3, 1, 2, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 3, 1, 2, 0 };
 #elif SENSOR_N == 80
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA4}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 4, 2, 3, 1, 0};
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA4}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 4, 2, 3, 1, 0};
 #elif SENSOR_N == 96
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 5, 2, 4, 1, 3, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 5, 2, 4, 1, 3, 0 };
 #elif SENSOR_N == 112
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 6, 3, 5, 2, 4, 1, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 6, 3, 5, 2, 4, 1, 0 };
 #elif SENSOR_N == 128
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 7, 3, 6, 2, 5, 1, 4, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 7, 3, 6, 2, 5, 1, 4, 0 };
 #elif SENSOR_N == 144
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3 FIXME PB1 in rev3
-uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3 FIXME PB1 in rev3
+static uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
 #elif SENSOR_N == 160
-uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1, PB0}; // analog input pins read out by the ADC3
-uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
+static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
+static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
+static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1, PB0}; // analog input pins read out by the ADC3
+static uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
 #endif
 
-uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
-uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
+static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
+static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
+static uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
 
-int16_t adc12_raw[2][MUX_MAX*ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
-int16_t adc3_raw[2][MUX_MAX*ADC_SING_LENGTH] __attribute__((aligned(4)));
+static int16_t adc12_raw[2][MUX_MAX*ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
+static int16_t adc3_raw[2][MUX_MAX*ADC_SING_LENGTH] __attribute__((aligned(4)));
 
-int16_t adc_sum[SENSOR_N];
-int16_t adc_rela[SENSOR_N];
-int16_t adc_swap[SENSOR_N];
+static int16_t adc_sum[SENSOR_N];
+static int16_t adc_rela[SENSOR_N];
+static int16_t adc_swap[SENSOR_N];
 
-uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
-uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
-uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
+static uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
+static uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
+static uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
-volatile uint_fast8_t adc12_dma_done = 0;
-volatile uint_fast8_t adc12_dma_err = 0;
-volatile uint_fast8_t adc3_dma_done = 0;
-volatile uint_fast8_t adc3_dma_err = 0;
-volatile uint_fast8_t adc_time_up = 1;
-volatile uint_fast8_t adc_raw_ptr = 1;
-volatile uint_fast8_t mux_counter = MUX_MAX;
-volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
-volatile uint_fast8_t sntp_should_listen = 0;
-volatile uint_fast8_t mdns_should_listen = 0;
-volatile uint_fast8_t config_should_listen = 0;
-volatile uint_fast8_t dhcpc_needs_refresh = 0;
-volatile uint_fast8_t wiz_needs_attention = 0;
+static volatile uint_fast8_t adc12_dma_done = 0;
+static volatile uint_fast8_t adc12_dma_err = 0;
+static volatile uint_fast8_t adc3_dma_done = 0;
+static volatile uint_fast8_t adc3_dma_err = 0;
+static volatile uint_fast8_t adc_time_up = 1;
+static volatile uint_fast8_t adc_raw_ptr = 1;
+static volatile uint_fast8_t mux_counter = MUX_MAX;
+static volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
+static volatile uint_fast8_t sntp_should_listen = 0;
+static volatile uint_fast8_t mdns_should_listen = 0;
+static volatile uint_fast8_t config_should_listen = 0;
+static volatile uint_fast8_t dhcpc_needs_refresh = 0;
+static volatile uint_fast8_t wiz_needs_attention = 0;
 
-nOSC_Timestamp now;
+static nOSC_Timestamp now;
 
 static void __CCM__
 adc_timer_irq ()

@@ -39,20 +39,23 @@
 #include <dummy.h>
 #include <rtpmidi.h>
 
-uint16_t idle_word = 0;
-uint8_t idle_bit = 0;
-CMC cmc;
-
-uint_fast8_t n_aoi;
-uint8_t aoi[BLOB_MAX*13]; //TODO how big? BLOB_MAX * 5,7,9 ?
-
-uint_fast8_t n_peaks;
-uint8_t peaks[BLOB_MAX];
-
+// globals
 CMC_Engine *engines [ENGINE_MAX+1];
+uint_fast8_t cmc_engines_active = 0;
 
-CMC_Blob *cmc_old;
-CMC_Blob *cmc_neu;
+// locals
+static uint16_t idle_word = 0;
+static uint8_t idle_bit = 0;
+static CMC cmc;
+
+static uint_fast8_t n_aoi;
+static uint8_t aoi[BLOB_MAX*13]; //TODO how big? BLOB_MAX * 5,7,9 ?
+
+static uint_fast8_t n_peaks;
+static uint8_t peaks[BLOB_MAX];
+
+static CMC_Blob *cmc_old;
+static CMC_Blob *cmc_neu;
 
 void
 cmc_init ()
@@ -657,8 +660,6 @@ cmc_group_buf_get (uint16_t *size)
 		*size = GROUP_MAX * sizeof (CMC_Group);
 	return (uint8_t *)cmc.groups;
 }
-
-uint_fast8_t cmc_engines_active = 0;
 
 void
 cmc_engines_update ()

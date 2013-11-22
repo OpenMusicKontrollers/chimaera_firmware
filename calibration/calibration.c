@@ -31,14 +31,15 @@
 
 #include "calibration_private.h"
 
+// globals
 Calibration range;
-Calibration_Point point;
-
-float curve [0x800];
-// when calibrating, we use the curve buffer as temporary memory, it's big enough and not used during calibration
-Calibration_Array *arr = (Calibration_Array *)curve;
 uint_fast8_t zeroing = 0;
 uint_fast8_t calibrating = 0;
+float curve [0x800];
+
+// when calibrating, we use the curve buffer as temporary memory, it's big enough and not used during calibration
+static Calibration_Array *arr = (Calibration_Array *)curve;
+static Calibration_Point point;
 
 static float
 _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
@@ -50,7 +51,6 @@ _as (uint16_t qui, uint16_t out_s, uint16_t out_n, uint16_t b)
 
 	return _qui / _b * (_out_s - _out_n) / (_out_s + _out_n);
 }
-
 
 uint_fast8_t
 range_load (uint_fast8_t pos)

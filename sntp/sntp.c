@@ -30,7 +30,7 @@
 #include <chimutil.h>
 #include <config.h>
 
-nOSC_Timestamp t0 = 0ULLK;
+static nOSC_Timestamp t0 = 0ULLK;
 
 uint16_t __CCM__
 sntp_request (uint8_t *buf, nOSC_Timestamp t3)

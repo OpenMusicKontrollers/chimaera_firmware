@@ -37,12 +37,11 @@
 #include <midi.h>
 #include <calibration.h>
 
-char string_buf [64];
-
-const char *success_str = "/success";
-const char *fail_str = "/fail";
-const char *wrong_ip_port_error_str = "wrong range: all numbers in IP must be < 0x100";
-const char *group_err_str = "group not found";
+static char string_buf [64];
+static const char *success_str = "/success";
+static const char *fail_str = "/fail";
+static const char *wrong_ip_port_error_str = "wrong range: all numbers in IP must be < 0x100";
+static const char *group_err_str = "group not found";
 
 #define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
 #define CONFIG_FAIL(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))

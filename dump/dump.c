@@ -25,14 +25,14 @@
 
 #include "dump_private.h"
 
-uint32_t frame = 0;
-nOSC_Arg dump_msg [2];
+static uint32_t frame = 0;
+static nOSC_Arg dump_msg [2];
 
-nOSC_Item dump_bndl [] = {
+static nOSC_Item dump_bndl [] = {
 	nosc_message(dump_msg, "/dump", "ib")
 };
 
-char dump_fmt [] = {
+static char dump_fmt [] = {
 	nOSC_MESSAGE,
 	nOSC_TERM
 };

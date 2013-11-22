@@ -21,17 +21,15 @@
  *     distribution.
  */
 
-#include <chimaera.h>
+#ifndef _ENGINES_H_
+#define _ENGINES_H_
 
-uint_fast8_t buf_o_ptr = 0;
-const uint_fast8_t buf_i_ptr = 0;
+#include <dump.h>
+#include <tuio2.h>
+#include <tuio1.h>
+#include <dummy.h>
+#include <oscmidi.h>
+#include <rtpmidi.h>
+#include <scsynth.h>
 
-// the buffers should be aligned to 32bit, as most we write to it is a multiple of 32bit (OSC, SNTP, DHCP, ARP, etc.)
-uint8_t buf_o [2][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose output buffer
-uint8_t buf_i [1][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose input buffer;
-
-uint8_t shared_buf [SHARED_BUFSIZE];
-
-timer_dev *adc_timer;
-timer_dev *sntp_timer;
-timer_dev *dhcpc_timer;
+#endif

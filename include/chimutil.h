@@ -31,8 +31,6 @@
 #include <nosc.h>
 #include <wiz.h>
 
-void dma_memcpy (uint8_t *dst, uint8_t *src, uint16_t len);
-
 uint_fast8_t ip_part_of_subnet (uint8_t *ip);
 void cidr_to_subnet(uint8_t *subnet, uint8_t mask);
 uint8_t subnet_to_cidr(uint8_t *subnet);

@@ -31,28 +31,29 @@
 
 #include "dummy_private.h"
 
-nOSC_Item dummy_bndl [BLOB_MAX];
-char dummy_fmt [BLOB_MAX+1];
+static nOSC_Item dummy_bndl [BLOB_MAX];
+static char dummy_fmt [BLOB_MAX+1];
 
+// global
 nOSC_Bundle_Item dummy_osc = {
 	.bndl = dummy_bndl,
 	.tt = nOSC_IMMEDIATE,
 	.fmt = dummy_fmt
 };
 
-Dummy_Msg msgs [BLOB_MAX];
+static Dummy_Msg msgs [BLOB_MAX];
 
-const char *dummy_idle_str = "/idle";
-const char *dummy_on_str = "/on";
-const char *dummy_off_str ="/off";
-const char *dummy_set_str ="/set";
+static const char *dummy_idle_str = "/idle";
+static const char *dummy_on_str = "/on";
+static const char *dummy_off_str ="/off";
+static const char *dummy_set_str ="/set";
 
-const char *dummy_idle_fmt = "";
-const char *dummy_on_fmt = "iiiff";
-const char *dummy_off_fmt = "iii";
-const char *dummy_set_fmt = "iiiff";
+static const char *dummy_idle_fmt = "";
+static const char *dummy_on_fmt = "iiiff";
+static const char *dummy_off_fmt = "iii";
+static const char *dummy_set_fmt = "iiiff";
 
-uint_fast8_t dummy_tok;
+static uint_fast8_t dummy_tok;
 
 void
 dummy_init ()
@@ -60,7 +61,7 @@ dummy_init ()
 	// do nothing
 }
 
-void
+static void
 dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	dummy_osc.tt = offset;
@@ -79,7 +80,7 @@ dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 	dummy_fmt[dummy_tok] = nOSC_TERM;
 }
 
-void
+static void
 dummy_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
@@ -96,7 +97,7 @@ dummy_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	dummy_fmt[dummy_tok] = nOSC_TERM;
 }
 
-void
+static void
 dummy_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	nOSC_Message msg;
@@ -111,7 +112,7 @@ dummy_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 	dummy_fmt[dummy_tok] = nOSC_TERM;
 }
 
-void
+static void
 dummy_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
