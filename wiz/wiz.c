@@ -101,7 +101,7 @@ _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 	*dat = hton (*dat);
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 _wiz_rx_irq()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
@@ -141,7 +141,7 @@ _wiz_rx_irq()
 		wiz_jobs_todo = 0;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 _wiz_tx_irq()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
@@ -183,7 +183,7 @@ _wiz_tx_irq()
 		wiz_jobs_todo = 0;
 }
 
-void __CCM__
+void __CCM_TEXT__
 wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmode, uint8_t rw)
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_todo];
@@ -198,7 +198,7 @@ wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmod
 	wiz_jobs_todo++;
 }
 
-void __CCM__
+void __CCM_TEXT__
 wiz_job_run_single()
 {
 	static uint8_t dummy_byte = 0xff;
@@ -515,13 +515,13 @@ udp_set_remote_har (uint8_t sock, uint8_t *har)
 	_dma_write_sock (sock, WIZ_Sn_DHAR, har, 6);
 }
 
-void __CCM__
+void __CCM_TEXT__
 udp_receive_block (uint8_t sock)
 {
 	wiz_job_run_block();
 }
 
-void __CCM__
+void __CCM_TEXT__
 udp_send_block (uint8_t sock)
 {
 	wiz_job_run_block();
@@ -564,7 +564,7 @@ udp_receive (uint8_t sock, uint8_t *i_buf, uint16_t len)
 		udp_receive_block(sock);
 }
 
-void __CCM__
+void __CCM_TEXT__
 udp_dispatch (uint8_t sock, uint8_t *i_buf, void (*cb) (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
 {
 	uint16_t len;
@@ -620,7 +620,7 @@ macraw_begin (uint8_t sock, uint_fast8_t mac_filter)
 	_dma_read_sock_16 (sock, WIZ_Sn_RX_RD, &Sn_Rx_RD[sock]);
 }
 
-void __CCM__
+void __CCM_TEXT__
 macraw_dispatch (uint8_t sock, uint8_t *i_buf, Wiz_MACRAW_Dispatch_Cb cb, void *user_data)
 {
 	uint16_t len;
@@ -640,7 +640,7 @@ macraw_dispatch (uint8_t sock, uint8_t *i_buf, Wiz_MACRAW_Dispatch_Cb cb, void *
 	}
 }
 
-void __CCM__
+void __CCM_TEXT__
 wiz_irq_handle (void)
 {
 	uint8_t ir;

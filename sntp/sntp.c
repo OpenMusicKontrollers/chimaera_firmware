@@ -32,7 +32,7 @@
 
 static nOSC_Timestamp t0 = 0ULLK;
 
-uint16_t __CCM__
+uint16_t __CCM_TEXT__
 sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 {
 	uint16_t len = sizeof (sntp_t);
@@ -51,7 +51,7 @@ sntp_request (uint8_t *buf, nOSC_Timestamp t3)
 	return len;
 }
 
-void __CCM__
+void __CCM_TEXT__
 sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 {
 	sntp_t *answer = (sntp_t *)buf;
@@ -60,7 +60,7 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 	if ( (answer->li_vn_mode & 0x3f) != (SNTP_VERSION_4 | SNTP_MODE_SERVER) )
 		return;
 
-	timestamp64_t t1, t2, t3, _t4;
+	volatile timestamp64_t t1, t2, t3, _t4;
 
 	t1.osc.sec = ntohl (answer->originate_timestamp.ntp.sec);
 	t1.osc.frac = ntohl (answer->originate_timestamp.ntp.frac);
@@ -91,7 +91,7 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 		t0 += clock_offset;
 }
 
-void __CCM__
+void __CCM_TEXT__
 sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
 	*now = t0 + systick_uptime() * 0.0001ULLK; // that many 100us

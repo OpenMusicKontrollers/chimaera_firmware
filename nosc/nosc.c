@@ -40,7 +40,7 @@ static const char *bundle_str = "#bundle";
  * Method
  */
 
-uint_fast8_t __CCM__
+uint_fast8_t __CCM_TEXT__
 pattern_match (char *pattern , char *string)
 {
 	char *qm;
@@ -52,7 +52,7 @@ pattern_match (char *pattern , char *string)
 		return !strcmp (pattern, string);
 }
 
-void __CCM__
+void __CCM_TEXT__
 _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 {
 	nOSC_Message msg = dispatch_msg;
@@ -74,7 +74,7 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 	}
 }
 
-void __CCM__
+void __CCM_TEXT__
 _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 {
 	nOSC_Message msg = dispatch_msg;
@@ -178,7 +178,7 @@ _nosc_message_deserialize (uint8_t *buf, uint16_t size, char **path, char **fmt)
 	}
 }
 
-void __CCM__
+void __CCM_TEXT__
 nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end)
 {
 	if (!strncmp (buf, bundle_str, 8))
@@ -225,7 +225,7 @@ nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundl
  * Bundle
  */
 
-uint16_t __CCM__
+uint16_t __CCM_TEXT__
 nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
@@ -272,7 +272,7 @@ nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, ui
  * (de)serialization
  */
 
-uint16_t __CCM__
+uint16_t __CCM_TEXT__
 nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, uint8_t *buf)
 {
 	uint_fast8_t i, rem;
@@ -392,7 +392,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, u
 	return buf_ptr - buf;
 }
 
-uint16_t __CCM__
+uint16_t __CCM_TEXT__
 nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...)
 {
 	nOSC_Message msg = vararg_msg;

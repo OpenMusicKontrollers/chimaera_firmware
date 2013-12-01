@@ -58,7 +58,8 @@
 #include <wiz.h>
 #include <calibration.h>
 
-static uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
+#define MUX_MR PB8
+#define MUX_CP PB9
 
 #if SENSOR_N == 16
 static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
@@ -123,7 +124,7 @@ static int16_t adc_sum[SENSOR_N];
 static int16_t adc_rela[SENSOR_N];
 static int16_t adc_swap[SENSOR_N];
 
-static uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
+static uint8_t mux_order [MUX_MAX] = { 0xf, 0x4, 0xb, 0x3, 0xd, 0x6, 0x9, 0x1, 0xe, 0x5, 0xa, 0x2, 0xc, 0x7, 0x8, 0x0 };
 static uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
 static uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
@@ -143,26 +144,26 @@ static volatile uint_fast8_t wiz_needs_attention = 0;
 
 static nOSC_Timestamp now;
 
-static void __CCM__
+static void __CCM_TEXT__
 adc_timer_irq ()
 {
 	adc_time_up = 1;
 	timer_pause (adc_timer);
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 sntp_timer_irq ()
 {
 	sntp_should_request = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 dhcpc_timer_irq ()
 {
 	dhcpc_needs_refresh = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 soft_irq ()
 {
 	bkp_enable_writes();
@@ -170,41 +171,49 @@ soft_irq ()
 	bkp_disable_writes();
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 wiz_irq ()
 {
 	wiz_needs_attention = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 wiz_config_irq(uint8_t isr)
 {
 	config_should_listen = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 wiz_mdns_irq(uint8_t isr)
 {
 	mdns_should_listen = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 wiz_sntp_irq(uint8_t isr)
 {
 	sntp_should_listen = 1;
 }
 
-void __CCM__
+void __CCM_TEXT__
 __irq_adc1_2 ()
 //adc1_2_irq (adc_callback_data *data)
 {
 	ADC1->regs->ISR |= ADC_ISR_EOS;
 	//ADC1->regs->ISR |= data->irq_flags; // clear flags
 
-	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
-	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
-	pin_write_bit (mux_sequence[2], mux_counter & 0b0100);
-	pin_write_bit (mux_sequence[3], mux_counter & 0b1000);
+	if(mux_counter == 0)
+	{
+		pin_write_bit (MUX_MR, 0);
+		pin_write_bit (MUX_CP, 1);
+		pin_write_bit (MUX_MR, 1);
+		pin_write_bit (MUX_CP, 0);
+	}
+	else // mux_counter < 0
+	{
+		pin_write_bit (MUX_CP, 1);
+		pin_write_bit (MUX_CP, 0);
+	}
 
 	if (mux_counter < MUX_MAX)
 	{
@@ -217,7 +226,7 @@ __irq_adc1_2 ()
 	}
 }
 
-void __CCM__
+void __CCM_TEXT__
 __irq_adc3 ()
 //adc3_irq (adc_callback_data *data)
 {
@@ -225,7 +234,7 @@ __irq_adc3 ()
 	//ADC3->regs->ISR |= data->irq_flags; // clear flags
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 adc12_dma_irq ()
 {
 	uint8_t isr = dma_get_isr_bits (DMA1, DMA_CH1);
@@ -237,7 +246,7 @@ adc12_dma_irq ()
 	adc12_dma_done = 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 adc3_dma_irq ()
 {
 	uint8_t isr = dma_get_isr_bits (DMA2, DMA_CH5);
@@ -271,27 +280,27 @@ adc_dma_block()
 	adc_raw_ptr ^= 1;
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	nosc_method_dispatch ((nOSC_Method *)config_serv, buf, len, NULL, NULL);
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	sntp_timestamp_refresh (&now, NULL);
 	sntp_dispatch (buf, now);
 }
 
-static void __CCM__
+static void __CCM_TEXT__
 mdns_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	mdns_dispatch (buf, len);
 }
 
 // loops are explicitely unrolled which makes it fast but cumbersome to read
-static void __CCM__
+static void __CCM_TEXT__
 adc_fill (uint_fast8_t raw_ptr)
 {
 	uint_fast8_t i;
@@ -726,12 +735,15 @@ setup ()
 		soft_irq,
 		EXTI_RISING);
 
-	pin_set_modef (BOARD_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit (BOARD_LED_PIN, 1);
+	pin_set_modef (CHIM_LED_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit (CHIM_LED_PIN, 0);
 
 	// setup pins to switch the muxes
-	for (i=0; i<MUX_LENGTH; i++)
-		pin_set_modef (mux_sequence[i], GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_set_modef (MUX_MR, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_set_modef (MUX_CP, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+
+	pin_write_bit (MUX_MR, 1);
+	pin_write_bit (MUX_CP, 0);
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
@@ -742,23 +754,20 @@ setup ()
 	for (i=0; i<ADC_SING_LENGTH; i++)
 		pin_set_modef (adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
 
-	// SPI for W5200
-	spi_init(SPI2);
-	spi_data_size(SPI2, SPI_DATA_SIZE_8_BIT);
-	spi_master_enable(SPI2, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
+	// SPI for W5500
+	spi_init(WIZ_SPI_DEV);
+	spi_data_size(WIZ_SPI_DEV, SPI_DATA_SIZE_8_BIT);
+	spi_master_enable(WIZ_SPI_DEV, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
 													SPI_CR1_BIDIMODE_2_LINE | SPI_FRAME_MSB | SPI_CR1_SSM | SPI_CR1_SSI);
-	spi_config_gpios(SPI2, 1,
-		PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_device, PIN_MAP[BOARD_SPI2_NSS_PIN].gpio_bit,
-		PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_device, PIN_MAP[BOARD_SPI2_SCK_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MISO_PIN].gpio_bit, PIN_MAP[BOARD_SPI2_MOSI_PIN].gpio_bit);
-	pin_set_af(BOARD_SPI2_NSS_PIN, GPIO_AF_0); // we want to handle NSS by software
-	pin_set_modef(BOARD_SPI2_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
-	pin_write_bit(BOARD_SPI2_NSS_PIN, 1);
+	spi_config_gpios(WIZ_SPI_DEV, 1,
+		PIN_MAP[WIZ_SPI_NSS_PIN].gpio_device, PIN_MAP[WIZ_SPI_NSS_PIN].gpio_bit,
+		PIN_MAP[WIZ_SPI_SCK_PIN].gpio_device, PIN_MAP[WIZ_SPI_SCK_PIN].gpio_bit, PIN_MAP[WIZ_SPI_MISO_PIN].gpio_bit, PIN_MAP[WIZ_SPI_MOSI_PIN].gpio_bit);
+	pin_set_af(WIZ_SPI_NSS_PIN, GPIO_AF_0); // we want to handle NSS by software
+	pin_set_modef(WIZ_SPI_NSS_PIN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP); // we want to handle NSS by software
+	pin_write_bit(WIZ_SPI_NSS_PIN, 1);
 
 	pin_set_modef(UDP_SS, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit(UDP_SS, 1);
-
-	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_write_bit(UDP_PWDN, 0);
 
 	pin_set_modef (UDP_INT, GPIO_MODE_INPUT, GPIO_PUPDR_NOPUPD);
 	exti_attach_interrupt((exti_num)(PIN_MAP[UDP_INT].gpio_bit),
@@ -774,10 +783,10 @@ setup ()
 	uint32_t seed = uid_seed ();
 	srand (seed);
 
-	// init eeprom for I2C1
-	eeprom_init (I2C1);
-	eeprom_slave_init (eeprom_24LC64, I2C1, 0b000);
-	eeprom_slave_init (eeprom_24AA025E48, I2C1, 0b001);
+	// init eeprom for I2C2
+	eeprom_init (I2C2);
+	eeprom_slave_init (eeprom_24LC64, I2C2, 0b000);
+	eeprom_slave_init (eeprom_24AA025E48, I2C2, 0b001);
 
 	// load config or use factory settings?
 	if(reset_mode == RESET_MODE_FLASH_SOFT)
@@ -797,8 +806,6 @@ setup ()
 	dma_init (DMA1);
 	dma_init (DMA2);
 
-	pin_write_bit (BOARD_LED_PIN, 0);
-
 	// initialize wiz820io
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
@@ -808,8 +815,6 @@ setup ()
 	// wait for link up before proceeding
 	while (!wiz_link_up ()) // TODO monitor this and go to sleep mode when link is down
 		;
-
-	pin_write_bit (BOARD_LED_PIN, 1);
 
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
@@ -947,6 +952,8 @@ setup ()
 
 	// load saved groups
 	groups_load ();
+
+pin_write_bit (CHIM_LED_PIN, 1);
 
 	DEBUG("si", "reset_mode", reset_mode);
 	DEBUG("si", "config size", sizeof(Config));

@@ -113,7 +113,7 @@ wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_N
   }
 }
 
-uint_fast8_t __CCM__
+uint_fast8_t __CCM_TEXT__
 udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )
@@ -155,7 +155,7 @@ udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 	return 1;
 }
 
-uint_fast8_t  __CCM__
+uint_fast8_t  __CCM_TEXT__
 udp_send_nonblocking (uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET - 3) )

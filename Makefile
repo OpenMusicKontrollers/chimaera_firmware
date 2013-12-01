@@ -1,10 +1,10 @@
 # Note: LIB_MAPLE_HOME needs to be defined in your environment 
 
 # set number of sensors: 16, 32, 48, 64, 80, 96, 112, 128, 144, 160
-export SENSORS := 96 # 6 sensor units
+export SENSORS := 160 # 6 sensor units
 
 # set WIZnet chip version: 5200, 5500
-export WIZ_CHIP := 5200
+export WIZ_CHIP := 5500
 
 # set STM32F303Cx chip version: F303CB, F303CC
 export BOARD := F303CB
