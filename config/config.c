@@ -54,7 +54,7 @@ Config config = {
 	.version = {
 		//.all = VERSION;
 		.part = {
-			.revision = VERSION_REVISION,
+			.revision = REVISION,
 			.major = VERSION_MAJOR,
 			.minor = VERSION_MINOR,
 			.patch = VERSION_PATCH
@@ -192,10 +192,19 @@ Config config = {
 uint_fast8_t
 version_match ()
 {
-	uint32_t version;
-	eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&version, sizeof(version));
+	struct {
+		uint8_t revision;	// board layout revision
+		uint8_t major;		// major version
+		uint8_t minor;		// minor version
+		uint8_t patch;		// patch level
+	} part;
+	eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&part, sizeof(part));
 
-	return version == config.version.all; // check whether EEPROM and FLASH version numbers match
+	// check whether EEPROM and FLASH version numbers match
+	// board revision is excluded from the check
+	return (part.major == config.version.part.major)
+		&& (part.minor == config.version.part.minor)
+		&& (part.patch == config.version.part.patch);
 }
 
 uint_fast8_t

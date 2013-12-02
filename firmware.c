@@ -57,61 +57,7 @@
 #include <engines.h>
 #include <wiz.h>
 #include <calibration.h>
-
-#define MUX_MR PB8
-#define MUX_CP PB9
-
-#if SENSOR_N == 16
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 0 };
-#elif SENSOR_N == 32
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 1, 0 };
-#elif SENSOR_N == 48
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 2, 1, 0};
-#elif SENSOR_N == 64
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 3, 1, 2, 0 };
-#elif SENSOR_N == 80
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA4}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 4, 2, 3, 1, 0};
-#elif SENSOR_N == 96
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 5, 2, 4, 1, 3, 0 };
-#elif SENSOR_N == 112
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 6, 3, 5, 2, 4, 1, 0 };
-#elif SENSOR_N == 128
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 7, 3, 6, 2, 5, 1, 4, 0 };
-#elif SENSOR_N == 144
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3 FIXME PB1 in rev3
-static uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
-#elif SENSOR_N == 160
-static uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
-static uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-static uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1, PB0}; // analog input pins read out by the ADC3
-static uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
-#endif
+#include <sensors.h>
 
 static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
@@ -124,7 +70,13 @@ static int16_t adc_sum[SENSOR_N];
 static int16_t adc_rela[SENSOR_N];
 static int16_t adc_swap[SENSOR_N];
 
+#if REVISION == 3 //TODO streamline mux_order
+static uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
+static uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
+#elif REVISION == 4
+static uint8_t mux_sequence [MUX_LENGTH] = {PB8, PB9}; // MR and CP pins of 4-bit counter
 static uint8_t mux_order [MUX_MAX] = { 0xf, 0x4, 0xb, 0x3, 0xd, 0x6, 0x9, 0x1, 0xe, 0x5, 0xa, 0x2, 0xc, 0x7, 0x8, 0x0 };
+#endif
 static uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
 static uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
@@ -202,18 +154,27 @@ __irq_adc1_2 ()
 	ADC1->regs->ISR |= ADC_ISR_EOS;
 	//ADC1->regs->ISR |= data->irq_flags; // clear flags
 
+#if REVISION == 3
+	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
+	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
+	pin_write_bit (mux_sequence[2], mux_counter & 0b0100);
+	pin_write_bit (mux_sequence[3], mux_counter & 0b1000);
+#elif REVISION == 4
 	if(mux_counter == 0)
 	{
-		pin_write_bit (MUX_MR, 0);
-		pin_write_bit (MUX_CP, 1);
-		pin_write_bit (MUX_MR, 1);
-		pin_write_bit (MUX_CP, 0);
+		// reset counter
+		pin_write_bit (mux_sequence[0], 0); // MR
+		pin_write_bit (mux_sequence[1], 1); // CP
+		pin_write_bit (mux_sequence[0], 1); // MR
+		pin_write_bit (mux_sequence[1], 0); // CP
 	}
-	else // mux_counter < 0
+	else
 	{
-		pin_write_bit (MUX_CP, 1);
-		pin_write_bit (MUX_CP, 0);
+		// trigger counter
+		pin_write_bit (mux_sequence[1], 1); // CP
+		pin_write_bit (mux_sequence[1], 0); // CP
 	}
+#endif
 
 	if (mux_counter < MUX_MAX)
 	{
@@ -739,11 +700,14 @@ setup ()
 	pin_write_bit (CHIM_LED_PIN, 0);
 
 	// setup pins to switch the muxes
-	pin_set_modef (MUX_MR, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
-	pin_set_modef (MUX_CP, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	for (i=0; i<MUX_LENGTH; i++)
+		pin_set_modef (mux_sequence[i], GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 
-	pin_write_bit (MUX_MR, 1);
-	pin_write_bit (MUX_CP, 0);
+#if REVISION == 4
+	// initialize counter
+	pin_write_bit (mux_sequence[0], 1); // MR
+	pin_write_bit (mux_sequence[1], 0); // CP
+#endif
 
 	// setup nalog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
@@ -753,6 +717,8 @@ setup ()
 	}
 	for (i=0; i<ADC_SING_LENGTH; i++)
 		pin_set_modef (adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+	for (i=0; i<ADC_LENGTH - 2*ADC_DUAL_LENGTH - ADC_SING_LENGTH; i++)
+		pin_set_modef (adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD);
 
 	// SPI for W5500
 	spi_init(WIZ_SPI_DEV);
@@ -769,6 +735,11 @@ setup ()
 	pin_set_modef(UDP_SS, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
 	pin_write_bit(UDP_SS, 1);
 
+#if WIZ_CHIP == 5200 //TODO move everything to wiz_init
+	pin_set_modef(UDP_PWDN, GPIO_MODE_OUTPUT, GPIO_MODEF_TYPE_PP);
+	pin_write_bit(UDP_PWDN, 0);
+#endif
+
 	pin_set_modef (UDP_INT, GPIO_MODE_INPUT, GPIO_PUPDR_NOPUPD);
 	exti_attach_interrupt((exti_num)(PIN_MAP[UDP_INT].gpio_bit),
 		gpio_exti_port(PIN_MAP[UDP_INT].gpio_device),
@@ -784,9 +755,9 @@ setup ()
 	srand (seed);
 
 	// init eeprom for I2C2
-	eeprom_init (I2C2);
-	eeprom_slave_init (eeprom_24LC64, I2C2, 0b000);
-	eeprom_slave_init (eeprom_24AA025E48, I2C2, 0b001);
+	eeprom_init (EEPROM_DEV);
+	eeprom_slave_init (eeprom_24LC64, EEPROM_DEV, 0b000);
+	eeprom_slave_init (eeprom_24AA025E48, EEPROM_DEV, 0b001);
 
 	// load config or use factory settings?
 	if(reset_mode == RESET_MODE_FLASH_SOFT)

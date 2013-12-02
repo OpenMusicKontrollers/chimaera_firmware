@@ -38,6 +38,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
 BUILDDIRS += $(BUILD_PATH)/$(d)/arp
 BUILDDIRS += $(BUILD_PATH)/$(d)/calibration
 BUILDDIRS += $(BUILD_PATH)/$(d)/linalg
+BUILDDIRS += $(BUILD_PATH)/$(d)/sensors
 
 ### Local flags: these control how the compiler gets called.
 
@@ -55,10 +56,19 @@ CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 CFLAGS_$(d) += -I$(d)/engines
 
+# set WIZnet chip version based on board revision: 5200, 5500
+ifeq ($(REVISION), 3)
+export WIZ_CHIP := 5200
+endif
+ifeq ($(REVISION), 4)
+export WIZ_CHIP := 5500
+endif
+
 # custom preprocessor flags
 #CFLAGS_$(d) += -DBENCHMARK
 CFLAGS_$(d) += -DSENSOR_N=$(SENSORS)
 CFLAGS_$(d) += -DWIZ_CHIP=$(WIZ_CHIP)
+CFLAGS_$(d) += -DREVISION=$(REVISION)
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a
@@ -111,6 +121,7 @@ cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += arp/arp.c
 cSRCS_$(d) += calibration/calibration.c
 cSRCS_$(d) += linalg/linalg.c
+cSRCS_$(d) += sensors/sensors.c
 #cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c
 
