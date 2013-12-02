@@ -90,6 +90,8 @@ extern const stm32_pin_info PIN_MAP [];
 #	error "invalid number of sensors given to Make (-DSENSOR_N)" SENSOR_N
 #endif
 
+#define ADC_UNUSED_LENGTH (10 - ADC_LENGTH)
+
 #define ADC_BITDEPTH 0xfff
 #define ADC_HALF_BITDEPTH 0x7ff
 

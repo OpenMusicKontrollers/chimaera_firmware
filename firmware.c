@@ -70,13 +70,13 @@ static int16_t adc_sum[SENSOR_N];
 static int16_t adc_rela[SENSOR_N];
 static int16_t adc_swap[SENSOR_N];
 
-#if REVISION == 3 //TODO streamline mux_order
-static uint8_t mux_sequence [MUX_LENGTH] = {PB5, PB4, PB3, PA15}; // digital out pins to switch MUX channels
-static uint8_t mux_order [MUX_MAX] = { 0xf, 0xe, 0xd, 0xc, 0xb, 0xa, 0x9, 0x8, 0x4, 0x5, 0x6, 0x7, 0x3, 0x2, 0x1, 0x0 };
+#if REVISION == 3
+static uint8_t mux_sequence [MUX_LENGTH] = {PA15, PB3, PB4, PB5}; // digital out pins to switch MUX channels
 #elif REVISION == 4
 static uint8_t mux_sequence [MUX_LENGTH] = {PB8, PB9}; // MR and CP pins of 4-bit counter
-static uint8_t mux_order [MUX_MAX] = { 0xf, 0x4, 0xb, 0x3, 0xd, 0x6, 0x9, 0x1, 0xe, 0x5, 0xa, 0x2, 0xc, 0x7, 0x8, 0x0 };
 #endif
+
+static uint8_t mux_order [MUX_MAX] = {0xf, 0x4, 0xb, 0x3, 0xd, 0x6, 0x9, 0x1, 0xe, 0x5, 0xa, 0x2, 0xc, 0x7, 0x8, 0x0};
 static uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
 static uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
@@ -147,13 +147,9 @@ wiz_sntp_irq(uint8_t isr)
 	sntp_should_listen = 1;
 }
 
-void __CCM_TEXT__
-__irq_adc1_2 ()
-//adc1_2_irq (adc_callback_data *data)
+static __always_inline void
+_counter_inc()
 {
-	ADC1->regs->ISR |= ADC_ISR_EOS;
-	//ADC1->regs->ISR |= data->irq_flags; // clear flags
-
 #if REVISION == 3
 	pin_write_bit (mux_sequence[0], mux_counter & 0b0001);
 	pin_write_bit (mux_sequence[1], mux_counter & 0b0010);
@@ -175,16 +171,28 @@ __irq_adc1_2 ()
 		pin_write_bit (mux_sequence[1], 0); // CP
 	}
 #endif
+}
+
+void __CCM_TEXT__
+__irq_adc1_2 ()
+//adc1_2_irq (adc_callback_data *data)
+{
+	ADC1->regs->ISR |= ADC_ISR_EOS;
+	//ADC1->regs->ISR |= data->irq_flags; // clear flags
+
+#if (ADC_DUAL_LENGTH > 0)
+	_counter_inc();
 
 	if (mux_counter < MUX_MAX)
 	{
 		mux_counter++;
 
 		ADC1->regs->CR |= ADC_CR_ADSTART; // start master(ADC1) and slave(ADC2) conversion
-#if (ADC_SING_LENGTH > 0)
+#	if (ADC_SING_LENGTH > 0)
 		ADC3->regs->CR |= ADC_CR_ADSTART;
-#endif
+#	endif
 	}
+#endif
 }
 
 void __CCM_TEXT__
@@ -193,6 +201,17 @@ __irq_adc3 ()
 {
 	ADC3->regs->ISR |= ADC_ISR_EOS;
 	//ADC3->regs->ISR |= data->irq_flags; // clear flags
+
+#if (ADC_DUAL_LENGTH == 0)
+	_counter_inc();
+
+	if (mux_counter < MUX_MAX)
+	{
+		mux_counter++;
+
+		ADC3->regs->CR |= ADC_CR_ADSTART;
+	}
+#endif
 }
 
 static void __CCM_TEXT__
@@ -225,19 +244,26 @@ adc_dma_run()
 	adc12_dma_done = 0;
 	adc3_dma_done = 0;
 	mux_counter = 0;
+#if (ADC_DUAL_LENGTH > 0)
 	__irq_adc1_2 ();
+#else
+	__irq_adc3 ();
+#endif
 }
 
 static __always_inline void
 adc_dma_block()
 { 
-#if (ADC_SING_LENGTH > 0)
-	while ( !adc12_dma_done || !adc3_dma_done )
-		;
-#else
-	while ( !adc12_dma_done )
-		;
+#if (ADC_DUAL_LENGTH  > 0)
+#	if (ADC_SING_LENGTH > 0)
+	while ( !adc12_dma_done || !adc3_dma_done ) // wait for all 3 ADCs to end
+#	else // ADC_SING_LENGTH == 0
+	while ( !adc12_dma_done ) // wait for ADC12 to end
+#	endif
+#else // ADC_DUAL_LENGTH == 0
+	while ( !adc3_dma_done ) // wait for ADC3 to end
 #endif
+		;
 	adc_raw_ptr ^= 1;
 }
 
@@ -279,11 +305,13 @@ adc_fill (uint_fast8_t raw_ptr)
 	uint_fast8_t movingaverage_enabled = config.movingaverage.enabled; // local copy
 	uint_fast8_t bitshift = config.movingaverage.bitshift; // local copy
 
+#if (ADC_DUAL_LENGTH > 0)
 	for (i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
 		pos = order12[i];
 		adc_rela[pos] = raw12[i];
 	}
+#endif
 
 #if (ADC_SING_LENGTH > 0)
 	for (i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
@@ -717,8 +745,8 @@ setup ()
 	}
 	for (i=0; i<ADC_SING_LENGTH; i++)
 		pin_set_modef (adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
-	for (i=0; i<ADC_LENGTH - 2*ADC_DUAL_LENGTH - ADC_SING_LENGTH; i++)
-		pin_set_modef (adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD);
+	for (i=0; i<ADC_UNUSED_LENGTH; i++)
+		pin_set_modef (adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD); // pull-down unused analog ins
 
 	// SPI for W5500
 	spi_init(WIZ_SPI_DEV);
@@ -856,25 +884,17 @@ setup ()
 		for (i=0; i<ADC_SING_LENGTH; i++)
 			order3[p*ADC_SING_LENGTH + i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
 
+	// set up ADC DMA tubes
+	int status;
+
 	// set channels in register
+#if (ADC_DUAL_LENGTH > 0)
 	adc_set_conv_seq (ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
 	adc_set_conv_seq (ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
-#if (ADC_SING_LENGTH > 0)
-	adc_set_conv_seq (ADC3, adc3_raw_sequence, ADC_SING_LENGTH);
-#endif
 
 	ADC1->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
 	nvic_irq_enable (NVIC_ADC1_2);
 	//adc_attach_interrupt (ADC1, ADC_IER_EOS, adc1_2_irq, NULL);
-
-#if (ADC_SING_LENGTH > 0)
-	ADC3->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
-	nvic_irq_enable (NVIC_ADC3);
-	//adc_attach_interrupt (ADC3, ADC_IER_EOS, adc3_irq, NULL);
-
-	ADC3->regs->CFGR |= ADC_CFGR_DMAEN; // enable DMA request
-	ADC3->regs->CFGR |= ADC_CFGR_DMACFG, // enable ADC circular mode for use with DMA
-#endif
 
 	ADC12_BASE->CCR |= ADC_MDMA_MODE_ENABLE_12_10_BIT; // enable ADC DMA in 12-bit dual mode
 	ADC12_BASE->CCR |= ADC_CCR_DMACFG; // enable ADC circular mode for use with DMA
@@ -882,13 +902,8 @@ setup ()
 
 	adc_enable (ADC1);
 	adc_enable (ADC2);
-#if (ADC_SING_LENGTH > 0)
-	adc_enable (ADC3);
-#endif
 
-	// set up ADC DMA tubes
-	int status;
-
+	// set up DMA tube
 	adc_tube12.tube_dst = (void *)adc12_raw;
 	status = dma_tube_cfg (DMA1, DMA_CH1, &adc_tube12);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);
@@ -898,8 +913,21 @@ setup ()
 	dma_attach_interrupt (DMA1, DMA_CH1, adc12_dma_irq);
 	dma_enable (DMA1, DMA_CH1);                //CCR1 EN bit 0
 	nvic_irq_set_priority (NVIC_DMA_CH1, ADC_DMA_PRIORITY);
+#endif
 
 #if (ADC_SING_LENGTH > 0)
+	adc_set_conv_seq (ADC3, adc3_raw_sequence, ADC_SING_LENGTH);
+
+	ADC3->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
+	nvic_irq_enable (NVIC_ADC3);
+	//adc_attach_interrupt (ADC3, ADC_IER_EOS, adc3_irq, NULL);
+
+	ADC3->regs->CFGR |= ADC_CFGR_DMAEN; // enable DMA request
+	ADC3->regs->CFGR |= ADC_CFGR_DMACFG, // enable ADC circular mode for use with DMA
+
+	adc_enable (ADC3);
+
+	// set up DMA tube
 	adc_tube3.tube_dst = (void *)adc3_raw;
 	status = dma_tube_cfg (DMA2, DMA_CH5, &adc_tube3);
 	ASSERT (status == DMA_TUBE_CFG_SUCCESS);

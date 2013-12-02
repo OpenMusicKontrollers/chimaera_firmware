@@ -28,60 +28,60 @@
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PB0};
 uint8_t adc_order [ADC_LENGTH] = { 0 };
 #elif SENSOR_N == 32
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA0, PA2, PA3, PA5, PA6, PA7, PB0, PB1};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA0, PA2, PA3, PA5, PA6, PA7, PB0, PB1};
 uint8_t adc_order [ADC_LENGTH] = { 1, 0 };
 #elif SENSOR_N == 48
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA0, PA2, PA3, PA5, PA6, PA7, PB0};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA0, PA2, PA3, PA5, PA6, PA7, PB0};
 uint8_t adc_order [ADC_LENGTH] = { 2, 1, 0};
 #elif SENSOR_N == 64
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA0, PA3, PA6, PA7, PB0, PB1};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA0, PA3, PA6, PA7, PB0, PB1};
 uint8_t adc_order [ADC_LENGTH] = { 3, 1, 2, 0 };
 #elif SENSOR_N == 80
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA0, PA3, PA6, PA7, PB0};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA0, PA3, PA6, PA7, PB0};
 uint8_t adc_order [ADC_LENGTH] = { 4, 2, 3, 1, 0};
 #elif SENSOR_N == 96
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA3, PA7, PB0, PB1};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA3, PA7, PB0, PB1};
 uint8_t adc_order [ADC_LENGTH] = { 5, 2, 4, 1, 3, 0 };
 #elif SENSOR_N == 112
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PA3, PA7, PB0};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PA3, PA7, PB0};
 uint8_t adc_order [ADC_LENGTH] = { 6, 3, 5, 2, 4, 1, 0 };
 #elif SENSOR_N == 128
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PB0, PB1};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PB0, PB1};
 uint8_t adc_order [ADC_LENGTH] = { 7, 3, 6, 2, 5, 1, 4, 0 };
 #elif SENSOR_N == 144
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
-uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {PB0};
+uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB0}; // analog input pins read out by the ADC3
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {PB1};
 uint8_t adc_order [ADC_LENGTH] = { 8, 4, 7, 3, 6, 2, 5, 1, 0 };
 #elif SENSOR_N == 160
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {PA1, PA2, PA0, PA3}; // analog input pins read out by the ADC1
 uint8_t adc2_sequence [ADC_DUAL_LENGTH] = {PA4, PA5, PA6, PA7}; // analog input pins read out by the ADC2
 uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1, PB0}; // analog input pins read out by the ADC3
-uint8_t adc_unused [] = {};
+uint8_t adc_unused [ADC_UNUSED_LENGTH] = {};
 uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
 #endif
