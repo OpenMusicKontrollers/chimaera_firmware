@@ -31,6 +31,7 @@
 #include <config.h>
 
 static nOSC_Timestamp t0 = 0ULLK;
+static fix_32_32_t PLL = 0.0001ULLK; // 100us
 
 uint16_t __CCM_TEXT__
 sntp_request (uint8_t *buf, nOSC_Timestamp t3)
@@ -85,16 +86,16 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.output.offset with this value by default?
 	clock_offset = 0.5LLK * ((fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix));
 
-	if (t0 == 0ULLK)
+	if (t0 == 0ULLK) // first sync
 		t0 = t3.fix;
 	else
-		t0 += clock_offset;
+		PLL = 0.0001ULLK * (t1.fix + clock_offset - t0) / (t1.fix - t0);
 }
 
 void __CCM_TEXT__
 sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
-	*now = t0 + systick_uptime() * 0.0001ULLK; // that many 100us
+	*now = t0 + systick_uptime() * PLL;
 
 	if (offset)
 	{
