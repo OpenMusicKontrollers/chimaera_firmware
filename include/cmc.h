@@ -49,9 +49,10 @@ extern uint_fast8_t cmc_engines_active;
 
 void cmc_init ();
 uint_fast8_t cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines);
+
 void cmc_group_clear ();
-uint_fast8_t cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1);
-uint_fast8_t cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1);
+uint_fast8_t cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1, uint8_t *scale);
+uint_fast8_t cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1, uint8_t scale);
 uint8_t *cmc_group_buf_get (uint16_t *size); //TODO this is ugly code, solve differently
 void cmc_engines_update ();
 

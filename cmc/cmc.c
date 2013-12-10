@@ -521,7 +521,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 					tar->group = ptr;
 
-					if ( (ptr->x0 != 0.0) || (ptr->m != 1.0) ) // we need scaling
+					if ( ptr->scale && ( (ptr->x0 != 0.0) || (ptr->m != 1.0) ) ) // we need scaling
 						tar->x = (tar->x - ptr->x0) * ptr->m;
 
 					break; // match found, do not search further
@@ -625,23 +625,25 @@ cmc_group_clear ()
 		grp->x0 = 0.0;
 		grp->x1 = 1.0;
 		grp->m = 1.0;
+		grp->scale = 0;
 	}
 }
 
 uint_fast8_t
-cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1)
+cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1, uint8_t *scale)
 {
 	CMC_Group *grp = &cmc.groups[gid];
 
 	*pid = grp->pid;
 	*x0 = grp->x0;
 	*x1 = grp->x1;
+	*scale = grp->scale;
 
 	return 1;
 }
 
 uint_fast8_t
-cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1)
+cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1, uint8_t scale)
 {
 	CMC_Group *grp = &cmc.groups[gid];
 
@@ -649,6 +651,7 @@ cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1)
 	grp->x0 = x0;
 	grp->x1 = x1;
 	grp->m = 1.0/(x1-x0);
+	grp->scale = scale;
 
 	return 1;
 }

@@ -63,6 +63,7 @@ struct _CMC_Group {
 	float m;
 	uint16_t gid; //TODO make uint8_t
 	uint16_t pid; //TODO make uint8_t
+	uint8_t scale;
 };
 
 struct _CMC {

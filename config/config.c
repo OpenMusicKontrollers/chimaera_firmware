@@ -1334,34 +1334,31 @@ _group_clear (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_group_get (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	uint16_t pid;
-	float x0;
-	float x1;
+	if(argc == 2) // request group info
+	{
+		uint16_t pid;
+		float x0;
+		float x1;
+		uint8_t scale;
 
-	if (cmc_group_get (args[1].i, &pid, &x0, &x1))
-		size = CONFIG_SUCCESS ("iiff", id, pid, x0, x1);
-	else
-		size = CONFIG_FAIL ("is", id, group_err_str);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		if (cmc_group_get (args[1].i, &pid, &x0, &x1, &scale))
+			size = CONFIG_SUCCESS ("iiffi", id, pid, x0, x1, scale);
+		else
+			size = CONFIG_FAIL ("is", id, group_err_str);
+	}
+	else // set group info
+	{
+		if (cmc_group_set (args[1].i, args[2].i, args[3].f, args[4].f, args[5].i))
+			size = CONFIG_SUCCESS ("i", id);
+		else
+			size = CONFIG_FAIL ("is", id, group_err_str);
+	}
 
-	return 1;
-}
-
-static uint_fast8_t
-_group_set (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (cmc_group_set (args[1].i, args[2].i, args[3].f, args[4].f))
-		size = CONFIG_SUCCESS ("i", id);
-	else
-		size = CONFIG_FAIL ("is", id, group_err_str);
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -1793,8 +1790,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 	{"/chimaera/group/clear", "i", _group_clear},
-	{"/chimaera/group/get", "ii", _group_get},
-	{"/chimaera/group/set", "iiiff", _group_set},
+	{"/chimaera/group", "ii", _group},
 
 	{"/chimaera/calibration/load", "i*", _calibration_load},
 	{"/chimaera/calibration/save", "i*", _calibration_save},
