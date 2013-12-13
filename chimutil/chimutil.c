@@ -35,6 +35,7 @@
 #include <dhcpc.h>
 #include <config.h>
 #include <wiz.h>
+#include <sntp.h>
 
 uint_fast8_t
 ip_part_of_subnet (uint8_t *ip)
@@ -189,7 +190,7 @@ stop_watch_stop (Stop_Watch *sw)
 	if (sw->counter > sw->thresh)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * 100 / sw->thresh); // 1 tick = 100 us
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
 		udp_send (config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 		sw->ticks = 0;

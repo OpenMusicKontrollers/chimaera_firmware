@@ -30,8 +30,11 @@
 #include <chimutil.h>
 #include <config.h>
 
+// globals
+fix_32_32_t roundtrip_delay;
+fix_s31_32_t clock_offset;
+
 static nOSC_Timestamp t0 = 0ULLK;
-static fix_32_32_t PLL = 0.0001ULLK; // 100us
 
 uint16_t __CCM_TEXT__
 sntp_request (uint8_t *buf, nOSC_Timestamp t3)
@@ -61,7 +64,7 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 	if ( (answer->li_vn_mode & 0x3f) != (SNTP_VERSION_4 | SNTP_MODE_SERVER) )
 		return;
 
-	volatile timestamp64_t t1, t2, t3, _t4;
+	volatile timestamp64_t t1, t2, t3;
 
 	t1.osc.sec = ntohl (answer->originate_timestamp.ntp.sec);
 	t1.osc.frac = ntohl (answer->originate_timestamp.ntp.frac);
@@ -72,8 +75,6 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 	t3.osc.sec = ntohl (answer->transmit_timestamp.ntp.sec);
 	t3.osc.frac = ntohl (answer->transmit_timestamp.ntp.frac);
 
-	_t4.fix = t4;
-
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
   //Transmit Timestamp      T3   time reply sent by server
@@ -82,20 +83,19 @@ sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4)
 	//The roundtrip delay d and local clock offset t are defined as
 	//d = (T4 - T1) - (T3 - T2)     t = ((T2 - T1) + (T3 - T4)) / 2.
 
-	fix_s31_32_t clock_offset;
-	//fix_32_32_t roundtrip_delay = (T4 - T1) - (T3 - T2); //TODO set config.output.offset with this value by default?
-	clock_offset = 0.5LLK * ((fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(_t4.fix - t3.fix));
+	roundtrip_delay = (t4 - t1.fix) - (t3.fix - t2.fix);
+	clock_offset = 0.5LLK * ((fix_s31_32_t)(t2.fix - t1.fix) - (fix_s31_32_t)(t4 - t3.fix));
 
 	if (t0 == 0ULLK) // first sync
-		t0 = t3.fix;
+		t0 = t3.fix + 0.5ULLK*roundtrip_delay - t4;
 	else
-		PLL = 0.0001ULLK * (t1.fix + clock_offset - t0) / (t1.fix - t0);
+		t0 += clock_offset;
 }
 
 void __CCM_TEXT__
-sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset)
+sntp_timestamp_refresh (uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
-	*now = t0 + systick_uptime() * PLL;
+	*now = t0 + tick*SNTP_SYSTICK_DURATION;
 
 	if (offset)
 	{

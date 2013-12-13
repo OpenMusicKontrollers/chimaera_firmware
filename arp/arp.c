@@ -29,6 +29,7 @@
 #include <wiz.h>
 #include <config.h>
 #include <chimaera.h>
+#include <sntp.h>
 
 #include <libmaple/systick.h>
 
@@ -118,7 +119,7 @@ static uint32_t
 _random_ticks (uint32_t minsecs, uint32_t maxsecs)
 {
 	uint32_t span = maxsecs - minsecs;
-	return 10000*(minsecs + (float)rand() / (RAND_MAX / span)); // 1 tick = 100us, 1 sec = 10000ticks //TODO use a define in chimaera.h
+	return SNTP_SYSTICK_RATE*(minsecs + (float)rand() / (RAND_MAX / span));
 }
 
 uint_fast8_t
@@ -160,7 +161,7 @@ arp_probe (uint8_t sock, uint8_t *ip)
 
 	// delay before first announce
 	tick = systick_uptime ();
-	arp_timeout = 10000*ARP_ANNOUNCE_WAIT;
+	arp_timeout = SNTP_SYSTICK_RATE*ARP_ANNOUNCE_WAIT;
 	while (!arp_collision && (systick_uptime() - tick < arp_timeout) )
 		macraw_dispatch (sock, BUF_O_BASE(buf_o_ptr), arp_reply_cb, ip);
 
@@ -194,7 +195,7 @@ arp_announce (uint8_t sock, uint8_t *ip)
 		if (i>1)
 		{
 			tick = systick_uptime ();
-			arp_timeout = 10000*ARP_ANNOUNCE_INTERVAL;
+			arp_timeout = SNTP_SYSTICK_RATE*ARP_ANNOUNCE_INTERVAL;
 			while (systick_uptime() - tick < arp_timeout)
 				; // wait for random delay
 		}

@@ -29,6 +29,7 @@
 
 #include <wiz.h>
 #include <config.h>
+#include <sntp.h>
 
 // global
 DHCPC dhcpc = {
@@ -252,7 +253,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 
 	dhcpc.state = DISCOVER;
 	dhcpc.delay = 4;
-	dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+	dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 	uint16_t secs;
 	uint16_t len;
@@ -260,7 +261,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 		switch (dhcpc.state)
 		{
 			case DISCOVER:
-				secs = systick_uptime() / 10000 + 1;
+				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
 				len = dhcpc_discover (BUF_O_OFFSET(buf_o_ptr), secs);
 				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
@@ -269,7 +270,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				{
 					dhcpc.state = DISCOVER;
 					dhcpc.delay *= 2;
-					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 					if (dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
@@ -282,11 +283,11 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				if (dhcpc.state == REQUEST) // reset timeout for REQUEST
 				{
 					dhcpc.delay = 4;
-					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 				}
 				break;
 			case REQUEST:
-				secs = systick_uptime() / 10000 + 1;
+				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
 				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
 				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
@@ -295,7 +296,7 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				{
 					dhcpc.state = REQUEST;
 					dhcpc.delay *= 2;
-					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 					if (dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
@@ -307,12 +308,12 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				break;
 			case DECLINE:
 				//TODO needs to be tested
-				secs = systick_uptime() / 10000 + 1;
+				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
 				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
 				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
-				dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+				dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 				break;
 			case LEASE:
 				if (arp_probe (0, dhcpc.ip)) // collision
@@ -354,7 +355,7 @@ dhcpc_refresh ()
 
 	dhcpc.state = REQUEST;
 	dhcpc.delay = 4;
-	dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+	dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 	uint16_t secs;
 	uint16_t len;
@@ -362,7 +363,7 @@ dhcpc_refresh ()
 		switch (dhcpc.state)
 		{
 			case REQUEST:
-				secs = systick_uptime() / 10000 + 1;
+				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
 				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
 				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
@@ -371,7 +372,7 @@ dhcpc_refresh ()
 				{
 					dhcpc.state = REQUEST;
 					dhcpc.delay *= 2;
-					dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 					if (dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
@@ -383,12 +384,12 @@ dhcpc_refresh ()
 				break;
 			case DECLINE:
 				//TODO needs to be tested
-				secs = systick_uptime() / 10000 + 1;
+				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
 				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
 				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
-				dhcpc.timeout = systick_uptime() + dhcpc.delay*10000;
+				dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
 				//TODO if refresh is declined or timed-out, claim a new IP after 7/8 of lease time
 				break;

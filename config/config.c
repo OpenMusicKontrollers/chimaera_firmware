@@ -36,6 +36,7 @@
 #include <scsynth.h>
 #include <midi.h>
 #include <calibration.h>
+#include <sntp.h>
 
 static char string_buf [64];
 static const char *success_str = "/success";
@@ -995,6 +996,34 @@ _sntp_tau (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
+_sntp_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	float offset = clock_offset;
+	size = CONFIG_SUCCESS ("if", id, offset);
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_sntp_roundtrip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t id = args[0].i;
+
+	float trip = roundtrip_delay;
+	size = CONFIG_SUCCESS ("if", id, trip);
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
 _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1770,6 +1799,8 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/sntp/enabled", "i*", _sntp_enabled},
 	{"/chimaera/sntp/address", "i*", _sntp_address},
 	{"/chimaera/sntp/tau", "i*", _sntp_tau},
+	{"/chimaera/sntp/offset", "i", _sntp_offset},
+	{"/chimaera/sntp/roundtrip", "i", _sntp_roundtrip},
 
 	{"/chimaera/debug/enabled", "i*", _debug_enabled},
 	{"/chimaera/debug/address", "i*", _debug_address},
@@ -1790,7 +1821,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 	{"/chimaera/group/clear", "i", _group_clear},
-	{"/chimaera/group", "ii", _group},
+	{"/chimaera/group", "ii*", _group},
 
 	{"/chimaera/calibration/load", "i*", _calibration_load},
 	{"/chimaera/calibration/save", "i*", _calibration_save},

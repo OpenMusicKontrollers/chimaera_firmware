@@ -29,7 +29,17 @@
 #include <netdef.h>
 #include <nosc.h>
 
-void sntp_timestamp_refresh (nOSC_Timestamp *now, nOSC_Timestamp *offset);
+#define SNTP_SYSTICK_RELOAD_VAL 719 // 10us
+#define SNTP_SYSTICK_DURATION 0.00001ULLK // 10us
+#define SNTP_SYSTICK_RATE 100000
+#define SNTP_SYSTICK_US 10
+
+extern fix_s31_32_t clock_offset;
+extern fix_32_32_t roundtrip_delay;
+
+uint32_t sntp_uptime ();
+
+void sntp_timestamp_refresh (uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
 
 uint16_t sntp_request (uint8_t *buf, nOSC_Timestamp t3);
 

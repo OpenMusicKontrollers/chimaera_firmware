@@ -38,6 +38,7 @@
 #include <libmaple/dma.h> // direct memory access
 #include <libmaple/bkp.h> // backup register
 #include <libmaple/syscfg.h> // syscfg register
+#include <libmaple/systick.h> // systick
 #include <series/simd.h> // SIMD instructions
 
 /*
@@ -93,6 +94,7 @@ static volatile uint_fast8_t mdns_should_listen = 0;
 static volatile uint_fast8_t config_should_listen = 0;
 static volatile uint_fast8_t dhcpc_needs_refresh = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
+static volatile uint32_t wiz_irq_tick;
 
 static nOSC_Timestamp now;
 
@@ -126,6 +128,7 @@ soft_irq ()
 static void __CCM_TEXT__
 wiz_irq ()
 {
+	wiz_irq_tick = systick_uptime();
 	wiz_needs_attention = 1;
 }
 
@@ -276,7 +279,7 @@ config_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void __CCM_TEXT__
 sntp_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	sntp_timestamp_refresh (&now, NULL);
+	sntp_timestamp_refresh (wiz_irq_tick, &now, NULL);
 	sntp_dispatch (buf, now);
 }
 
@@ -490,7 +493,7 @@ loop ()
 #endif
 			adc_fill (adc_raw_ptr);
 
-			sntp_timestamp_refresh (&now, &offset);
+			sntp_timestamp_refresh (systick_uptime(), &now, &offset);
 
 			if (config.dump.enabled) // dump output is functional even when calibrating
 			{
@@ -598,7 +601,7 @@ loop ()
 			// send sntp request
 			if (sntp_should_request)
 			{
-				sntp_timestamp_refresh (&now, NULL);
+				sntp_timestamp_refresh (systick_uptime(), &now, NULL);
 				len = sntp_request (BUF_O_OFFSET(buf_o_ptr), now);
 				udp_send (config.sntp.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				sntp_should_request = 0;
@@ -776,7 +779,10 @@ setup ()
 
 	// systick 
 	systick_disable ();
-	systick_init ((SYSTICK_RELOAD_VAL + 1)/10 - 1); // systick every 100us = every 7200 cycles on a maple mini @72MHz
+	systick_init(SNTP_SYSTICK_RELOAD_VAL);
+
+	nvic_irq_set_priority(NVIC_SYSTICK, 0x0); // needs highest priority
+	nvic_irq_set_priority((exti_num)(PIN_MAP[UDP_INT].gpio_bit), 0x1); // needs second highest priority
 
 	// initialize random number generator based on UID96
 	uint32_t seed = uid_seed ();
