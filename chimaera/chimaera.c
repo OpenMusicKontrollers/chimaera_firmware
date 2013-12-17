@@ -30,8 +30,6 @@ const uint_fast8_t buf_i_ptr = 0;
 uint8_t buf_o [2][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose output buffer
 uint8_t buf_i [1][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose input buffer;
 
-uint8_t shared_buf [SHARED_BUFSIZE];
-
 timer_dev *adc_timer;
 timer_dev *sntp_timer;
 timer_dev *dhcpc_timer;

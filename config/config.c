@@ -1571,64 +1571,6 @@ _calibration_sensor (const char *path, const char *fmt, uint_fast8_t argc, nOSC_
 	return 1;
 }
 
-// get calibration data in one blob
-static uint_fast8_t
-_calibration_quiescence (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	// convert to network-byte-order
-	uint_fast8_t i;
-	uint16_t *src = range.qui;
-	uint16_t *dst = (uint16_t *)shared_buf;
-	for (i=0; i<SENSOR_N; i++)
-		*dst++ = hton(*src++);
-
-	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
-}
-
-static uint_fast8_t
-_calibration_threshold (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	// convert to network-byte-order
-	uint_fast8_t i;
-	uint16_t *src = range.thresh;
-	uint16_t *dst = (uint16_t *)shared_buf;
-	for (i=0; i<SENSOR_N; i++)
-		*dst++ = hton(*src++);
-
-	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(uint16_t), shared_buf);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
-}
-
-static uint_fast8_t
-_calibration_sensitivity (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	// convert to network-byte-order
-	uint_fast8_t i;
-	uint32_t *src = (uint32_t *)range.U;
-	uint32_t *dst = (uint32_t *)shared_buf;
-	for (i=0; i<SENSOR_N; i++)
-		*dst++ = htonl(*src++);
-
-	size = CONFIG_SUCCESS ("ib", id, SENSOR_N*sizeof(float), shared_buf);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
-}
-
 static uint_fast8_t
 _calibration_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -1729,9 +1671,8 @@ static uint_fast8_t
 _ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	int32_t id = args[0].i;
 
-	//FIXME send back to real sender Ip
+	//FIXME send back to real sender IP or broadcast?
 	size = nosc_message_serialize (args, "/pong", fmt, BUF_O_OFFSET(buf_o_ptr));
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
@@ -1835,9 +1776,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/end", "if", _calibration_end},
 
 	{"/chimaera/calibration/sensor", "ii", _calibration_sensor},
-	{"/chimaera/calibration/quiescence", "i", _calibration_quiescence},
-	{"/chimaera/calibration/threshold", "i", _calibration_threshold},
-	{"/chimaera/calibration/sensitivity", "i", _calibration_sensitivity},
 	{"/chimaera/calibration/offset", "i", _calibration_offset},
 	{"/chimaera/calibration/curve", "i", _calibration_curve},
 
