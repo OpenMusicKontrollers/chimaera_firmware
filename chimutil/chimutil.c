@@ -81,7 +81,7 @@ broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet)
 	*brd_ptr = (*ip_ptr & *subnet_ptr) | (~(*subnet_ptr));
 }
 
-void 
+uint_fast8_t 
 output_enable (uint8_t b)
 {
 	Socket_Config *socket = &config.output.socket;
@@ -93,9 +93,10 @@ output_enable (uint8_t b)
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
+	return 1; //TODO
 }
 
-void 
+uint_fast8_t 
 config_enable (uint8_t b)
 {
 	Socket_Config *socket = &config.config.socket;
@@ -107,9 +108,10 @@ config_enable (uint8_t b)
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
+	return 1; //TODO
 }
 
-void 
+uint_fast8_t 
 sntp_enable (uint8_t b)
 {
 	timer_pause (sntp_timer);
@@ -126,9 +128,10 @@ sntp_enable (uint8_t b)
 
 		timer_resume (sntp_timer);
 	}
+	return 1; //TODO
 }
 
-void 
+uint_fast8_t 
 debug_enable (uint8_t b)
 {
 	Socket_Config *socket = &config.debug.socket;
@@ -140,9 +143,10 @@ debug_enable (uint8_t b)
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
+	return 1; //TODO
 }
 
-void 
+uint_fast8_t 
 mdns_enable (uint8_t b)
 {
 	Socket_Config *socket = &config.mdns.socket;
@@ -154,9 +158,10 @@ mdns_enable (uint8_t b)
 		udp_begin (socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
+	return 1; //TODO
 }
 
-void 
+uint_fast8_t 
 dhcpc_enable (uint8_t b)
 {
 	//timer_pause (dhcpc_timer); //todo we don't need this
@@ -173,6 +178,7 @@ dhcpc_enable (uint8_t b)
 
 		//timer_resume (dhcpc_timer); //TODO we don't need this
 	}
+	return 1; //TODO
 }
 
 void
@@ -231,4 +237,111 @@ uid_str(char *str)
 		UID_BASE[1],
 		UID_BASE[0]);
 
+}
+
+uint_fast8_t
+str2mac (char *str, uint8_t *mac)
+{
+	uint16_t smac [6];
+	uint_fast8_t res;
+	res = sscanf (str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
+		smac, smac+1, smac+2, smac+3, smac+4, smac+5) == 6;
+	if(res
+		&& (smac[0] < 0x100) && (smac[1] < 0x100) && (smac[2] < 0x100)
+		&& (smac[3] < 0x100) && (smac[4] < 0x100) && (smac[5] < 0x100) )
+	{
+		mac[0] = smac[0];
+		mac[1] = smac[1];
+		mac[2] = smac[2];
+		mac[3] = smac[3];
+		mac[4] = smac[4];
+		mac[5] = smac[5];
+	}
+	return res;
+}
+
+void
+mac2str (uint8_t *mac, char *str)
+{
+	sprintf (str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+uint_fast8_t
+str2ip (char *str, uint8_t *ip)
+{
+	uint16_t sip [4];
+	uint_fast8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu", // hhu only available in c99
+		sip, sip+1, sip+2, sip+3) == 4;
+	if(res
+		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) )
+	{
+		ip[0] = sip[0];
+		ip[1] = sip[1];
+		ip[2] = sip[2];
+		ip[3] = sip[3];
+	}
+	return res;
+}
+
+uint_fast8_t
+str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
+{
+	uint16_t sip [4];
+	uint16_t smask;
+	uint_fast8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu/%hu",
+		sip, sip+1, sip+2, sip+3, &smask) == 5;
+	if(res
+		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) && (smask <= 0x20) )
+	{
+		ip[0] = sip[0];
+		ip[1] = sip[1];
+		ip[2] = sip[2];
+		ip[3] = sip[3];
+		*mask = smask;
+	}
+	return res;
+}
+
+void
+ip2str (uint8_t *ip, char *str)
+{
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu",
+		ip[0], ip[1], ip[2], ip[3]);
+}
+
+void
+ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
+{
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu/%hhu",
+		ip[0], ip[1], ip[2], ip[3], mask);
+}
+
+uint_fast8_t
+str2addr (char *str, uint8_t *ip, uint16_t *port)
+{
+	uint16_t sip [4];
+	uint16_t sport;
+	uint_fast8_t res;
+	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
+		sip, sip+1, sip+2, sip+3, &sport) == 5;
+	if(res
+		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) )
+	{
+		ip[0] = sip[0];
+		ip[1] = sip[1];
+		ip[2] = sip[2];
+		ip[3] = sip[3];
+		*port = sport;
+	}
+	return res;
+}
+
+void
+addr2str (uint8_t *ip, uint16_t port, char *str)
+{
+	sprintf (str, "%hhu.%hhu.%hhu.%hhu:%hu",
+		ip[0], ip[1], ip[2], ip[3], port);
 }

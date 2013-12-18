@@ -41,8 +41,7 @@
 static char string_buf [64];
 static const char *success_str = "/success";
 static const char *fail_str = "/fail";
-static const char *wrong_ip_port_error_str = "wrong range: all numbers in IP must be < 0x100";
-static const char *group_err_str = "group not found";
+static const char *local_str = ".local";
 
 #define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
 #define CONFIG_FAIL(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
@@ -186,8 +185,6 @@ Config config = {
 	},
 
 	.rate = 2000, // update rate in Hz
-	.pacemaker = 0x0b, // pacemaker rate 2^11=2048
-	.calibration = 0, // use slot 0 as standard calibration
 };
 
 uint_fast8_t
@@ -231,20 +228,15 @@ uint_fast8_t
 config_save ()
 {
 	eeprom_bulk_write (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
+
 	return 1;
 }
 
 uint_fast8_t
 groups_load ()
 {
-	uint16_t size;
-	uint8_t *buf;
-
 	if (version_match ())
-	{
-		buf = cmc_group_buf_get (&size);
-		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
-	}
+		eeprom_bulk_read (eeprom_24LC64, EEPROM_GROUP_OFFSET, (uint8_t *)cmc_groups, GROUP_MAX*sizeof(CMC_Group));
 	else
 		groups_save ();
 
@@ -254,11 +246,7 @@ groups_load ()
 uint_fast8_t
 groups_save ()
 {
-	uint16_t size;
-	uint8_t *buf;
-
-	buf = cmc_group_buf_get (&size);
-	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, buf, size);
+	eeprom_bulk_write (eeprom_24LC64, EEPROM_GROUP_OFFSET, (uint8_t *)cmc_groups, GROUP_MAX*sizeof(CMC_Group));
 
 	return 1;
 }
@@ -278,7 +266,10 @@ _check_bool (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 		switch (fmt[1])
 		{
 			case nOSC_INT32:
-				*boolean = args[1].i ? 1 : 0;
+				*boolean = args[1].i != 0 ? 1 : 0;
+				break;
+			case nOSC_FLOAT:
+				*boolean = args[1].f != 0.f ? 1 : 0;
 				break;
 			case nOSC_TRUE:
 				*boolean = 1;
@@ -314,10 +305,7 @@ _check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const c
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-		{
-			sprintf (string_buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, string_buf);
-		}
+			size = CONFIG_FAIL ("isiii", id, "out of range", arg, min, max);
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -344,10 +332,7 @@ _check_range16 (uint16_t *val, uint16_t min, uint16_t max, const char *path, con
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-		{
-			sprintf (string_buf, "value %i is out of range [%i, %i]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, string_buf);
-		}
+			size = CONFIG_FAIL ("isiii", id, "out of range", arg, min, max);
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -374,10 +359,7 @@ _check_rangefloat (float *val, float min, float max, const char *path, const cha
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-		{
-			sprintf (string_buf, "value %f is out of range [%f, %f]", arg, min, max);
-			size = CONFIG_FAIL ("is", id, string_buf);
-		}
+			size = CONFIG_FAIL ("isfff", id, "out of range", arg, min, max);
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -417,7 +399,6 @@ _name (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		if (strlen (args[1].s) < NAME_LENGTH)
 		{
 			strcpy (config.name, args[1].s);
-
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
@@ -473,102 +454,6 @@ _config_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-//TODO move to chimutil
-#define MAC_STR_LEN 18
-#define IP_STR_LEN 16
-#define IP_STR_CIDR_LEN 19
-#define ADDR_STR_LEN 32
-
-static uint_fast8_t
-str2mac (char *str, uint8_t *mac)
-{
-	uint16_t smac [6];
-	uint_fast8_t res;
-	res = sscanf (str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
-		smac, smac+1, smac+2, smac+3, smac+4, smac+5) == 6;
-	mac[0] = smac[0];
-	mac[1] = smac[1];
-	mac[2] = smac[2];
-	mac[3] = smac[3];
-	mac[4] = smac[4];
-	mac[5] = smac[5];
-	return res;
-}
-
-static void
-mac2str (uint8_t *mac, char *str)
-{
-	sprintf (str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
-static uint_fast8_t
-str2ip (char *str, uint8_t *ip)
-{
-	uint16_t sip [4];
-	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu", // hhu only available in c99
-		sip, sip+1, sip+2, sip+3) == 4;
-	ip[0] = sip[0];
-	ip[1] = sip[1];
-	ip[2] = sip[2];
-	ip[3] = sip[3];
-	return res;
-}
-
-static uint_fast8_t
-str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
-{
-	uint16_t sip [4];
-	uint16_t smask;
-	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu/%hu",
-		sip, sip+1, sip+2, sip+3, &smask) == 5;
-	ip[0] = sip[0];
-	ip[1] = sip[1];
-	ip[2] = sip[2];
-	ip[3] = sip[3];
-	*mask = smask;
-	return res;
-}
-
-static void
-ip2str (uint8_t *ip, char *str)
-{
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu",
-		ip[0], ip[1], ip[2], ip[3]);
-}
-
-static void
-ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
-{
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu/%hhu",
-		ip[0], ip[1], ip[2], ip[3], mask);
-}
-
-static uint_fast8_t
-str2addr (char *str, uint8_t *ip, uint16_t *port)
-{
-	uint16_t sip [4];
-	uint16_t sport;
-	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
-		sip, sip+1, sip+2, sip+3, &sport) == 5;
-	ip[0] = sip[0];
-	ip[1] = sip[1];
-	ip[2] = sip[2];
-	ip[3] = sip[3];
-	*port = sport;
-	return res;
-}
-
-static void
-addr2str (uint8_t *ip, uint16_t port, char *str)
-{
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu:%hu",
-		ip[0], ip[1], ip[2], ip[3], port);
-}
-
 static uint_fast8_t
 _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -582,16 +467,14 @@ _comm_mac (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	}
 	else
 	{
-		uint8_t mac[6];
-		if (str2mac (args[1].s, mac)) // TODO check if mac is valid
+		if (str2mac (args[1].s, config.comm.mac))
 		{
-			memcpy (config.comm.mac, mac, 6);
 			wiz_mac_set (config.comm.mac);
 			config.comm.custom_mac = 1;
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-			size = CONFIG_FAIL ("is", id, "wrong range: all numbers in MAC must be <0x100");
+			size = CONFIG_FAIL ("is", id, "wrong format");
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -619,12 +502,8 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	{
 		if(argc == 3)
 		{
-			uint8_t gtw[4];
-			if(str2ip(args[2].s, gtw))
-			{
-				memcpy(config.comm.gateway, gtw, 4);
+			if(str2ip(args[2].s, config.comm.gateway))
 				wiz_gateway_set(config.comm.gateway);
-			}
 			else // return
 			{
 				CONFIG_FAIL("is", id, "gatway invalid, format: x.x.x.x");
@@ -633,11 +512,9 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			}
 		}
 
-		uint8_t ip[4];
 		uint8_t mask;
-		if(str2ipCIDR (args[1].s, ip, &mask))
+		if(str2ipCIDR(args[1].s, config.comm.ip, &mask))
 		{
-			memcpy (config.comm.ip, ip, 4);
 			wiz_ip_set (config.comm.ip);
 
 			cidr_to_subnet(config.comm.subnet, mask);
@@ -663,6 +540,7 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	return 1;
 }
 
+/*
 static uint_fast8_t
 _comm_gateway (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -676,50 +554,20 @@ _comm_gateway (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	}
 	else
 	{
-		uint8_t ip[4];
-		if (str2ip (args[1].s, ip)) //TODO check if valid
+		if (str2ip (args[1].s, config.comm.gateway))
 		{
-			memcpy (config.comm.gateway, ip, 4);
 			wiz_gateway_set (config.comm.gateway);
 			size = CONFIG_SUCCESS ("i", id);
 		}
 		else
-			size = CONFIG_FAIL ("is", id, wrong_ip_port_error_str);
+			size = CONFIG_FAIL ("is", id, "invalid format");
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
-
-static uint_fast8_t
-_comm_subnet (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (argc == 1) // query
-	{
-		ip2str (config.comm.subnet, string_buf);
-		size = CONFIG_SUCCESS ("is", id, string_buf);
-	}
-	else
-	{
-		uint8_t ip[4];
-		if (str2ip (args[1].s, ip)) //TODO check if valid
-		{
-			memcpy (config.comm.subnet, ip, 4);
-			wiz_subnet_set (config.comm.subnet);
-			size = CONFIG_SUCCESS ("i", id);
-		}
-		else
-			size = CONFIG_FAIL ("is", id, wrong_ip_port_error_str);
-	}
-
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
-}
+*/
 
 static uint_fast8_t
 _socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
@@ -731,8 +579,10 @@ _socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_
 		size = CONFIG_SUCCESS ("ii", id, socket->enabled ? 1 : 0);
 	else
 	{
-		socket->cb (args[1].i);
-		size = CONFIG_SUCCESS ("i", id);
+		if(socket->cb (args[1].i))
+			size = CONFIG_SUCCESS ("i", id);
+		else
+			size = CONFIG_FAIL("is", "socket could not be enabled");
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -777,6 +627,7 @@ _debug_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	return _socket_enabled (&config.debug.socket, path, fmt, argc, args);
 }
 
+//FIXME redesign with a mandatory reset
 static uint_fast8_t
 _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -788,7 +639,7 @@ _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 		if(dhcpc_claim(config.comm.ip, config.comm.gateway, config.comm.subnet)) // was claimed?
 		{
 			wiz_comm_set(config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-			//TODO report whether claim was successful 
+			//FIXME report whether claim was successful 
 		}
 		dhcpc_enable(0); // disable socket again
 	}
@@ -802,8 +653,6 @@ _mdns_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return _socket_enabled (&config.mdns.socket, path, fmt, argc, args);
 }
 
-const char *addr_err_str = "wrong range: port number must be < 0x10000 and numbers in IP must be < 0x100"; //TODO move me up
-
 static void
 _address_dns_cb (uint8_t *ip, void *data)
 {
@@ -814,12 +663,10 @@ _address_dns_cb (uint8_t *ip, void *data)
 	memcpy (socket->ip, ip, 4);
 	socket->cb (socket->enabled);
 
-	debug_str ("_address_dns_cb");
-	debug_int32 (ip[0]);
-	debug_int32 (ip[1]);
-	debug_int32 (ip[2]);
-	debug_int32 (ip[3]);
-	//size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
+	ip2str (ip, string_buf);
+	DEBUG("ss", "_address_dns_cb", string_buf);
+
+	//size = CONFIG_SUCCESS ("s", string_buf);
 	//udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
@@ -847,7 +694,7 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t
 		}
 		else
 		{
-			if (strstr (hostname, ".local")) // TODO use const localdomain
+			if (strstr (hostname, local_str)) // in the .local domain ?
 			{
 				char *port_str = strstr (hostname, ":");
 				port = atoi (port_str+1);
@@ -907,10 +754,11 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 	sntp_enable (config.sntp.socket.enabled);
 	debug_enable (config.debug.socket.enabled);
 
-	debug_str ("_host_address_dns_cb");
+	ip2str (ip, string_buf);
+	DEBUG("ss", "_host_address_dns_cb", string_buf);
 
-	size = CONFIG_SUCCESS ("iiii", ip[0], ip[1], ip[2], ip[3]);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	//size = CONFIG_SUCCESS ("s", string_buf);
+	//udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
 static uint_fast8_t
@@ -928,7 +776,7 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	}
 	else
 	{
-		if (strstr (hostname, ".local")) // resolve via mDNS
+		if (strstr (hostname, local_str)) // resolve via mDNS
 		{
 			mdns_resolve (hostname, _host_address_dns_cb, NULL);
 			size = CONFIG_SUCCESS ("i", id);
@@ -944,6 +792,7 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return 1;
 }
 
+//FIXME redesign with a mandatory reset
 static uint_fast8_t
 _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -1023,6 +872,7 @@ _sntp_roundtrip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	return 1;
 }
 
+//FIXME redesign with single boolean, not function
 static uint_fast8_t
 _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -1043,6 +893,8 @@ _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 
 	return 1;
 }
+
+//FIXME FIXME FIXME FIXME
 
 static uint_fast8_t
 _tuio2_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
@@ -1367,25 +1219,32 @@ _group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t id = args[0].i;
+	uint16_t gid = args[1].i;
+
+	uint16_t pid;
+	float x0;
+	float x1;
+	uint_fast8_t scale;
 
 	if(argc == 2) // request group info
 	{
-		uint16_t pid;
-		float x0;
-		float x1;
-		uint8_t scale;
 
-		if (cmc_group_get (args[1].i, &pid, &x0, &x1, &scale))
+		if (cmc_group_get (gid, &pid, &x0, &x1, &scale))
 			size = CONFIG_SUCCESS ("iiffi", id, pid, x0, x1, scale);
 		else
-			size = CONFIG_FAIL ("is", id, group_err_str);
+			size = CONFIG_FAIL ("is", id, "group not found");
 	}
 	else // set group info
 	{
-		if (cmc_group_set (args[1].i, args[2].i, args[3].f, args[4].f, args[5].i))
+		pid = args[2].i;
+		x0 = args[3].f;
+		x1 = args[4].f;
+		scale = args[5].i;
+
+		if(cmc_group_set (gid, pid, x0, x1, scale))
 			size = CONFIG_SUCCESS ("i", id);
 		else
-			size = CONFIG_FAIL ("is", id, group_err_str);
+			size = CONFIG_FAIL ("is", id, "group not found or wrong parameter range");
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -1600,18 +1459,16 @@ _calibration_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 {
 	uint16_t size;
 	int32_t id = args[0].i;
-	uint_fast8_t pos = config.calibration; // use default calibration
+	uint_fast8_t pos = args[1].i; // use given calibration
 
-	if (argc == 2)
-		pos = args[1].i; // use given calibration
-
-	if (pos > EEPROM_RANGE_MAX)
+	if (pos < EEPROM_RANGE_MAX)
+	{
+		range_save (pos);
+		size = CONFIG_SUCCESS ("i", id);
+	}
+	else
 		pos = EEPROM_RANGE_MAX;
 
-	// store new calibration range to EEPROM
-	range_save (pos);
-
-	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -1622,18 +1479,16 @@ _calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 {
 	uint16_t size;
 	int32_t id = args[0].i;
-	uint_fast8_t pos = config.calibration; // use default calibration
+	uint_fast8_t pos = args[1].i;
 
-	if (argc == 2)
-		pos = args[1].i; // use given calibration
+	if (pos < EEPROM_RANGE_MAX)
+	{
+		range_load (pos);
+		size = CONFIG_SUCCESS ("i", id);
+	}
+	else
+		size = CONFIG_FAIL ("is", id, "slot out of range");
 
-	if (pos > EEPROM_RANGE_MAX)
-		pos = EEPROM_RANGE_MAX;
-
-	// load calibration range from EEPROM
-	range_load (pos);
-
-	size = CONFIG_SUCCESS ("i", id);
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -1710,7 +1565,6 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/comm/mac", "i*", _comm_mac},
 	{"/chimaera/comm/ip", "i*", _comm_ip},
 	//{"/chimaera/comm/gateway", "i*", _comm_gateway},
-	//{"/chimaera/comm/subnet", "i*", _comm_subnet},
 
 	{"/chimaera/output/enabled", "i*", _output_enabled},
 	{"/chimaera/output/address", "i*", _output_address},
@@ -1726,7 +1580,8 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/tuio1/custom_profile", "i*", _tuio1_custom_profile},
 
 	{"/chimaera/scsynth/enabled", "i*", _scsynth_enabled},
-	{"/chimaera/scsynth/group", "ii*", _scsynth_group},
+	{"/chimaera/scsynth/group", "ii", _scsynth_group},
+	{"/chimaera/scsynth/group", "iisiiiiiiii", _scsynth_group},
 
 	{"/chimaera/oscmidi/enabled", "i*", _oscmidi_enabled},
 	{"/chimaera/oscmidi/offset", "i*", _oscmidi_offset},
@@ -1762,10 +1617,11 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/group/load", "i", _group_load},
 	{"/chimaera/group/save", "i", _group_save},
 	{"/chimaera/group/clear", "i", _group_clear},
-	{"/chimaera/group", "ii*", _group},
+	{"/chimaera/group", "ii", _group},
+	{"/chimaera/group", "iiiffi", _group},
 
-	{"/chimaera/calibration/load", "i*", _calibration_load},
-	{"/chimaera/calibration/save", "i*", _calibration_save},
+	{"/chimaera/calibration/load", "i", _calibration_load},
+	{"/chimaera/calibration/save", "i", _calibration_save},
 	{"/chimaera/calibration/reset", "i", _calibration_reset},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},

@@ -55,12 +55,12 @@ void adc_timer_reconfigure ();
 void sntp_timer_reconfigure ();
 void dhcpc_timer_reconfigure ();
 
-void output_enable (uint8_t b);
-void config_enable (uint8_t b);
-void sntp_enable (uint8_t b);
-void debug_enable (uint8_t b);
-void mdns_enable (uint8_t b);
-void dhcpc_enable (uint8_t b);
+uint_fast8_t output_enable (uint8_t b);
+uint_fast8_t config_enable (uint8_t b);
+uint_fast8_t sntp_enable (uint8_t b);
+uint_fast8_t debug_enable (uint8_t b);
+uint_fast8_t mdns_enable (uint8_t b);
+uint_fast8_t dhcpc_enable (uint8_t b);
 
 typedef struct _Stop_Watch Stop_Watch;
 
@@ -77,5 +77,17 @@ void stop_watch_stop (Stop_Watch *sw);
 
 uint32_t uid_seed ();
 void uid_str (char *str);
+
+/*
+ * str to/from ip, maC, cidr conversions
+*/
+uint_fast8_t str2mac (char *str, uint8_t *mac);
+void mac2str (uint8_t *mac, char *str);
+uint_fast8_t str2ip (char *str, uint8_t *ip);
+uint_fast8_t str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask);
+void ip2str (uint8_t *ip, char *str);
+void ip2strCIDR (uint8_t *ip, uint8_t mask, char *str);
+uint_fast8_t str2addr (char *str, uint8_t *ip, uint16_t *port);
+void addr2str (uint8_t *ip, uint16_t port, char *str);
 
 #endif

@@ -30,6 +30,7 @@ typedef void (*mDNS_Resolve_Cb) (uint8_t *ip, void *data);
 
 void mdns_dispatch (uint8_t *buf, uint16_t len);
 
+//FIXME use a lock or (even better a queue) to handle concurrently running queries
 void mdns_resolve (const char *name, mDNS_Resolve_Cb cb, void *data);
 
 #endif

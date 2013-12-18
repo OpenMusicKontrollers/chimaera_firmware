@@ -33,7 +33,7 @@
 #define DST_PORT 1
 #define NAME_LENGTH 16
 
-typedef void (*Socket_Enable_Cb) (uint8_t flag);
+typedef uint_fast8_t (*Socket_Enable_Cb) (uint8_t flag);
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
 
@@ -137,14 +137,6 @@ struct _Config {
 		Socket_Config socket;
 	} dhcpc;
 
-	/*
-	struct _curve {
-		float A;
-		float B;
-		float C;
-	} curve;
-	*/
-
 	struct _movingaverage {
 		uint8_t enabled;
 		uint8_t bitshift;
@@ -155,8 +147,6 @@ struct _Config {
 	} interpolation;
 
 	uint16_t rate; // the maximal update rate the chimaera should run at
-	uint8_t pacemaker;
-	uint8_t calibration;
 };
 
 extern Config config;

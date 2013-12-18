@@ -805,7 +805,7 @@ setup ()
 		eeprom_bulk_read (eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
 
 	// load calibrated sensor ranges from eeprom
-	range_load (config.calibration);
+	range_load (0);
 
 	// init DMA, which is used for SPI and ADC
 	dma_init (DMA1);
