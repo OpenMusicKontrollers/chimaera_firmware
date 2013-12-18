@@ -43,11 +43,7 @@ typedef enum {
 	CMC_BLOB_DISAPPEARED
 } CMC_Blob_State;
 
-typedef struct _CMC_Sensor CMC_Sensor;
-typedef struct _CMC_Sensor_State CMC_Sensor_State;
 typedef struct _CMC_Blob CMC_Blob;
-typedef struct _CMC_Group CMC_Group;
-typedef struct _CMC CMC;
 
 struct _CMC_Blob {
 	uint32_t sid;
@@ -56,31 +52,6 @@ struct _CMC_Blob {
 	uint16_t pid;
 	uint8_t above_thresh;
 	CMC_Blob_State state;
-};
-
-struct _CMC_Group {
-	float x0, x1;
-	float m;
-	uint16_t gid; //TODO make uint8_t
-	uint16_t pid; //TODO make uint8_t
-	uint8_t scale;
-};
-
-struct _CMC {
-	uint32_t fid, sid;
-	float d;
-	float d_2;
-
-	float x[SENSOR_N+2];
-	float v[SENSOR_N+2];
-	uint8_t n[SENSOR_N+2];
-	uint8_t a[SENSOR_N+2];
-	CMC_Blob blobs[2][BLOB_MAX];
-	CMC_Group groups[GROUP_MAX];
-
-	uint8_t I, J;
-	uint8_t old;
-	uint8_t neu;
 };
 
 #endif /* CMC_PRIVATE_H */
