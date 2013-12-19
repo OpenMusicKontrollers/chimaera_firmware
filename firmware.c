@@ -823,6 +823,7 @@ setup ()
 
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
 
+	//FIXME set all outputs to broadcast by default?
 	uint_fast8_t claimed = 0;
 	if (config.dhcpc.socket.enabled)
 	{

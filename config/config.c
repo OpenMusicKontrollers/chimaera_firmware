@@ -599,6 +599,9 @@ _output_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 static uint_fast8_t
 _output_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
+	uint16_t size;
+	int32_t id = args[0].i;
+
 	config.dump.enabled = 0;
 	config.tuio2.enabled = 0;
 	config.tuio1.enabled = 0;
@@ -606,6 +609,10 @@ _output_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	config.oscmidi.enabled = 0;
 	config.dummy.enabled = 0;
 	config.rtpmidi.enabled = 0;
+
+	size = CONFIG_SUCCESS ("i", id);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
 	return 1;
 }
 
@@ -627,24 +634,11 @@ _debug_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	return _socket_enabled (&config.debug.socket, path, fmt, argc, args);
 }
 
-//FIXME redesign with a mandatory reset
 static uint_fast8_t
 _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res;
-
-	res = _socket_enabled(&config.dhcpc.socket, path, fmt, argc, args);
-	if(config.dhcpc.socket.enabled) // it has just been enabled ^, aka dhcpc_enable(1) was called
-	{
-		if(dhcpc_claim(config.comm.ip, config.comm.gateway, config.comm.subnet)) // was claimed?
-		{
-			wiz_comm_set(config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-			//FIXME report whether claim was successful 
-		}
-		dhcpc_enable(0); // disable socket again
-	}
-
-	return res;
+	// needs a config save and reboot to take action
+	return _check_bool (path, fmt, argc, args, &config.ipv4ll.enabled);
 }
 
 static uint_fast8_t
@@ -792,50 +786,11 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return 1;
 }
 
-//FIXME redesign with a mandatory reset
 static uint_fast8_t
 _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	uint8_t *boolean = &config.ipv4ll.enabled;
-
-	if (argc == 1) // query
-	{
-		size = CONFIG_SUCCESS ("ii", id, *boolean ? 1 : 0);
-	}
-	else
-	{
-		switch (fmt[1])
-		{
-			case nOSC_INT32:
-				*boolean = args[1].i ? 1 : 0;
-				break;
-			case nOSC_TRUE:
-				*boolean = 1;
-				break;
-			case nOSC_FALSE:
-				*boolean = 0;
-				break;
-		}
-
-		if(*boolean)
-		{
-			IPv4LL_claim (config.comm.ip, config.comm.gateway, config.comm.subnet);
-			wiz_comm_set (config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-
-			uint8_t brd [4];
-			broadcast_address(brd, config.comm.ip, config.comm.subnet);
-			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
-		}
-
-		size = CONFIG_SUCCESS ("i", id);
-	}
-
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
+	// needs a config save and reboot to take action
+	return _check_bool (path, fmt, argc, args, &config.ipv4ll.enabled);
 }
 
 static uint_fast8_t
@@ -894,8 +849,6 @@ _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	return 1;
 }
 
-//FIXME FIXME FIXME FIXME
-
 static uint_fast8_t
 _tuio2_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -951,6 +904,7 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	uint8_t add_action;
 	uint8_t is_group;
 
+	//FIXME handle errors
 	if (argc == 2) // query
 	{
 		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
@@ -1351,7 +1305,7 @@ _calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	float y = args[1].f;
+	float y = args[1].f; //TODO check range [0..1]
 
 	// update mid range
 	range_update_b1 (y);
@@ -1467,7 +1421,7 @@ _calibration_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 		size = CONFIG_SUCCESS ("i", id);
 	}
 	else
-		pos = EEPROM_RANGE_MAX;
+		size = CONFIG_FAIL ("is", id, "slot out of range");
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
