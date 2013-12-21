@@ -664,7 +664,7 @@ cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1, uint_fast8_t *
 uint_fast8_t
 cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1, uint_fast8_t scale)
 {
-	if( (gid >= GROUP_MAX) || (x0 < 0.f) || (x0 > 1.f) || (x1 < 0.f) || (x1 > 0.f) )
+	if( (gid >= GROUP_MAX) || (x0 < 0.f) || (x0 > 1.f) || (x1 < 0.f) || (x1 > 1.f) )
 		return 0; // wrong parameter ranges
 
 	CMC_Group *grp = &cmc_groups[gid];
