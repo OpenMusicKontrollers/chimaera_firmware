@@ -28,6 +28,7 @@
 
 #include <libmaple/gpio.h>
 
+extern const uint8_t wiz_broadcast_ip [];
 extern const uint8_t wiz_nil_ip [];
 extern const uint8_t wiz_nil_mac [];
 extern const uint8_t wiz_broadcast_mac [];

@@ -40,6 +40,7 @@ Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];
 volatile uint_fast8_t wiz_jobs_todo = 0;
 volatile uint_fast8_t wiz_jobs_done;
 
+const uint8_t wiz_broadcast_ip [] = {0xff, 0xff, 0xff, 0xff};
 const uint8_t wiz_nil_ip [] = {0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
