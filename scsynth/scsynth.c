@@ -216,10 +216,13 @@ CMC_Engine scsynth_engine = {
 	scsynth_engine_set_cb
 };
 
-void
+uint_fast8_t
 scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
 										uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group)
 {
+	if(gid >= GROUP_MAX)
+		return 0;
+
 	SCSynth_Group *grp = &scsynth_groups[gid];
 
 	*name = grp->name;
@@ -231,12 +234,17 @@ scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group
 	*gate = grp->gate;
 	*add_action = grp->add_action;
 	*is_group = grp->is_group;
+
+	return 1;
 }
 
-void
+uint_fast8_t
 scsynth_group_set (uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
 										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
 {
+	if( (gid >= GROUP_MAX) || (strlen(name)+1>offsetof(SCSynth_Group, sid)) ) //TODO checks for remaining arguments
+		return 0;
+
 	SCSynth_Group *grp = &scsynth_groups[gid];
 
 	strcpy(grp->name, name);
@@ -248,4 +256,6 @@ scsynth_group_set (uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, u
 	grp->gate = gate;
 	grp->add_action = add_action;
 	grp->is_group = is_group;
+
+	return 1;
 }

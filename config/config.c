@@ -827,26 +827,10 @@ _sntp_roundtrip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	return 1;
 }
 
-//FIXME redesign with single boolean, not function
 static uint_fast8_t
 _tuio2_long_header (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
-	int32_t id = args[0].i;
-
-	if (argc == 1) // query
-	{
-		size = CONFIG_SUCCESS ("ii", id, config.tuio2.long_header ? 1 : 0);
-	}
-	else
-	{
-		tuio2_long_header_enable (args[1].i);
-		size = CONFIG_SUCCESS ("i", id);
-	}
-
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	return 1;
+	return _check_bool (path, fmt, argc, args, &config.tuio2.long_header);
 }
 
 static uint_fast8_t
@@ -904,14 +888,14 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	uint8_t add_action;
 	uint8_t is_group;
 
-	//FIXME handle errors
-	if (argc == 2) // query
+	if(argc == 2)
 	{
-		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
-
-		size = CONFIG_SUCCESS ("isiiiiiiii", id, name, sid, group, out, arg, alloc, gate, add_action, is_group);
+		if(scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group))
+			size = CONFIG_SUCCESS ("isiiiiiiii", id, name, sid, group, out, arg, alloc, gate, add_action, is_group);
+		else
+			size = CONFIG_FAIL ("is", id, "argument out of bounds");
 	}
-	else
+	else // argc == 11
 	{
 		name = args[2].s;
 		sid = args[3].i;
@@ -923,9 +907,10 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 		add_action = args[9].i;
 		is_group = args[10].i;
 
-		scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group);
-
-		size = CONFIG_SUCCESS ("i", id);
+		if(scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group))
+			size = CONFIG_SUCCESS ("i", id);
+		else
+			size = CONFIG_FAIL ("is", id, "argument out of bounds");
 	}
 
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -1305,12 +1290,19 @@ _calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	float y = args[1].f; //TODO check range [0..1]
+	float y = args[1].f;
 
-	// update mid range
-	range_update_b1 (y);
+	if( (y >= 0.f) && (y <= 1.f) )
+	{
 
-	size = CONFIG_SUCCESS ("i", id);
+		// update mid range
+		range_update_b1 (y);
+
+		size = CONFIG_SUCCESS ("i", id);
+	}
+	else
+		size = CONFIG_FAIL ("is", id, "argument out of bounds");
+
 	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -1345,7 +1337,7 @@ _calibration_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	// end calibration procedure
 	calibrating = 0;
 
-	// debug output TODO remove
+	// debug output
 	uint_fast8_t i;
 	for (i=0; i<SENSOR_N; i++)
 	{
@@ -1480,10 +1472,20 @@ static uint_fast8_t
 _ping (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
+	int32_t id = args[0].i;
 
-	//FIXME send back to real sender IP or broadcast?
-	size = nosc_message_serialize (args, "/pong", fmt, BUF_O_OFFSET(buf_o_ptr));
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	Socket_Config *socket = &config.config.socket;
+
+	// set remote to broadcast address
+	udp_set_remote (socket->sock, (uint8_t *)wiz_broadcast_ip, socket->port[DST_PORT]);
+
+	//TODO what should we send here, and how?
+	_uid(path, fmt, argc, args);
+	_comm_mac(path, fmt, argc, args);
+	_comm_ip(path, fmt, argc, args);
+
+	// reset remote to configured address
+	udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
 
 	return 1;
 }
@@ -1589,7 +1591,7 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/calibration/offset", "i", _calibration_offset},
 	{"/chimaera/calibration/curve", "i", _calibration_curve},
 
-	{"/chimaera/ping", NULL, _ping},
+	{"/chimaera/ping", "i", _ping},
 
 	{NULL, NULL, _non}, // if nothing else matches, we give back an error saying so
 

@@ -34,12 +34,13 @@ static const char *frm_str = "/tuio2/frm";
 static const char *tok_str = "/tuio2/tok";
 static const char *alv_str = "/tuio2/alv";
 
-static const char *frm_fmt_short = "it";
-static const char *frm_fmt_long = "itsiii";
+static const char *frm_fmt [2] = { "it", "itsiii" };
 static const char *tok_fmt = "iiifff";
 static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
-static nOSC_Arg frm [6];
+static nOSC_Arg frm_short [2];
+static nOSC_Arg frm_long [6];
+static nOSC_Arg * frm [2] = {frm_short, frm_long};
 static Tuio2_Tok tok [BLOB_MAX];
 static nOSC_Arg alv [BLOB_MAX];
 
@@ -59,25 +60,34 @@ void
 tuio2_init ()
 {
 	uint_fast8_t i;
+	uint_fast8_t long_header = config.tuio2.long_header;
 
 	// initialize bundle format
 	memset (tuio2_fmt, nOSC_MESSAGE, TUIO2_MAX);
 	tuio2_fmt[TUIO2_MAX] = nOSC_TERM;
 
 	// initialize bundle
-	nosc_item_message_set (tuio2_bndl, 0, frm, (char *)frm_str, (char *)frm_fmt_short);
+	nosc_item_message_set (tuio2_bndl, 0, frm[long_header], (char *)frm_str, (char *)frm_fmt[long_header]);
 
 	for (i=0; i<BLOB_MAX; i++)
 		nosc_item_message_set (tuio2_bndl, i+1, tok[i], (char *)tok_str, (char *)tok_fmt);
 
 	nosc_item_message_set (tuio2_bndl, BLOB_MAX + 1, alv, (char *)alv_str, alv_fmt);
 
-	// initialize frame
-	nosc_message_set_int32 (frm, 0, 0);
-	nosc_message_set_timestamp (frm, 1, nOSC_IMMEDIATE);
+	// initialize short frame
+	nosc_message_set_int32 (frm[0], 0, 0);
+	nosc_message_set_timestamp (frm[0], 1, nOSC_IMMEDIATE);
 
-	// long header
-	tuio2_long_header_enable (config.tuio2.long_header);
+	// initialize long frame
+	uint8_t *mac = config.comm.mac;
+	int32_t addr = (mac[2] << 24) | (mac[3] << 16) | (mac[4] << 8) | mac[5]; // MAC[2:5] last four bytes
+	int32_t inst = uid_seed(); // 32 bit conglomerate of unique ID
+	nosc_message_set_int32 (frm[1], 0, 0);
+	nosc_message_set_timestamp (frm[1], 1, nOSC_IMMEDIATE);
+	nosc_message_set_string (frm[1], 2, config.name);
+	nosc_message_set_int32 (frm[1], 3, addr);
+	nosc_message_set_int32 (frm[1], 4, inst);
+	nosc_message_set_int32 (frm[1], 5, (SENSOR_N << 16) | 1);
 
 	// initialize tok
 	for (i=0; i<BLOB_MAX; i++)
@@ -101,35 +111,16 @@ tuio2_init ()
 	alv_fmt[BLOB_MAX] = nOSC_END;
 }
 
-void
-tuio2_long_header_enable (uint_fast8_t on)
-{
-	config.tuio2.long_header = on;
-
-	if (on)
-	{
-		// MAC address + port
-		uint16_t port = config.output.socket.port[SRC_PORT];
-		uint8_t *mac = config.comm.mac;
-		int32_t addr = (mac[0] << 24) | (mac[1] << 16) | (mac[2] << 8) | mac[3];
-		int32_t inst = (mac[4] << 24) | (mac[5] << 16) | (port & 0xff00) | (port & 0xff);
-
-		nosc_message_set_string (frm, 2, config.name);
-		nosc_message_set_int32 (frm, 3, addr);
-		nosc_message_set_int32 (frm, 4, inst);
-		nosc_message_set_int32 (frm, 5, (SENSOR_N << 16) | 1);
-
-		nosc_item_message_set (tuio2_bndl, 0, frm, (char *)frm_str, (char *)frm_fmt_long);
-	}
-	else // off
-		nosc_item_message_set (tuio2_bndl, 0, frm, (char *)frm_str, (char *)frm_fmt_short);
-}
-
 static void
 tuio2_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
-	frm[0].i = fid;
-	frm[1].t = now;
+	uint_fast8_t long_header = config.tuio2.long_header;
+
+	frm[long_header][0].i = fid;
+	frm[long_header][1].t = now;
+	nOSC_Item *frm_itm = &tuio2_bndl[0];
+	frm_itm->message.msg = frm[long_header];
+	frm_itm->message.fmt = (char *)frm_fmt[long_header];
 
 	tuio2_osc.tt = offset;
 
