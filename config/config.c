@@ -1577,7 +1577,9 @@ const nOSC_Method config_serv [] = {
 	{"/chimaera/group", "iiiffi", _group},
 
 	{"/chimaera/calibration/load", "i", _calibration_load},
+	{"/chimaera/calibration/load", "ii", _calibration_load},
 	{"/chimaera/calibration/save", "i", _calibration_save},
+	{"/chimaera/calibration/save", "ii", _calibration_save},
 	{"/chimaera/calibration/reset", "i", _calibration_reset},
 
 	{"/chimaera/calibration/start", "i", _calibration_start},
