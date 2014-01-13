@@ -40,8 +40,8 @@ static const char *bundle_str = "#bundle";
  * Method
  */
 
-uint_fast8_t __CCM_TEXT__
-pattern_match (char *pattern , char *string)
+static __always_inline uint_fast8_t
+_pattern_match (char *pattern , char *string)
 {
 	char *qm;
 
@@ -52,7 +52,7 @@ pattern_match (char *pattern , char *string)
 		return !strcmp (pattern, string);
 }
 
-void __CCM_TEXT__
+static __always_inline void
 _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 {
 	nOSC_Message msg = dispatch_msg;
@@ -61,9 +61,9 @@ _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 	for (ptr=meth; ptr->cb!=NULL; ptr++)
 	{
 		// raw matches only of path and format strings
-		if ( !ptr->path || pattern_match (ptr->path, path) )
+		if ( !ptr->path || _pattern_match (ptr->path, path) )
 		{
-			if (!ptr->fmt || pattern_match (ptr->fmt, fmt) )
+			if (!ptr->fmt || _pattern_match (ptr->fmt, fmt) )
 			{
 				uint_fast8_t res = ptr->cb (path, fmt, strlen (fmt), msg);
 
