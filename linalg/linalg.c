@@ -32,9 +32,9 @@
 /*
  * algebraic solution for 3-point quadratic equation system
  *
- * y0 = C0*sqrt(B0) + C1*B0
- * y1 = C0*sqrt(B1) + C1*B1
- * y2 = C0*sqrt(B2) + C1*B2
+ * y0 = C0*sqrtf(B0) + C1*B0
+ * y1 = C0*sqrtf(B1) + C1*B1
+ * y2 = C0*sqrtf(B2) + C1*B2
  *
  * boundary conditions:
  * y0 = B0 = 0
@@ -57,10 +57,10 @@ linalg_solve_quadratic (float y1, float B1, float *c0, float *c1)
 /*
  * algebraic solution for 4-point cubic equation system
  *
- * y0 = C0*cbrt(B0) + C1*sqrt(B0) + C2*B0
- * y1 = C0*cbrt(B1) + C1*sqrt(B1) + C2*B1
- * y2 = C0*cbrt(B2) + C1*sqrt(B2) + C2*B2
- * y3 = C0*cbrt(B3) + C1*sqrt(B3) + C2*B3
+ * y0 = C0*cbrtf(B0) + C1*sqrtf(B0) + C2*B0
+ * y1 = C0*cbrtf(B1) + C1*sqrtf(B1) + C2*B1
+ * y2 = C0*cbrtf(B2) + C1*sqrtf(B2) + C2*B2
+ * y3 = C0*cbrtf(B3) + C1*sqrtf(B3) + C2*B3
  *
  * boundary conditions:
  * y0 = B0 = 0
@@ -96,11 +96,11 @@ linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1
 /*
  * algebraic least-squares fit for 5-point quadratic equation system
  *
- * y0 = C0*sqrt(x0) + C2*x0
- * y1 = C0*sqrt(x1) + C2*x1
- * y2 = C0*sqrt(x2) + C2*x2
- * y3 = C0*sqrt(x3) + C2*x3
- * y4 = C0*sqrt(x4) + C2*x4
+ * y0 = C0*sqrtf(x0) + C2*x0
+ * y1 = C0*sqrtf(x1) + C2*x1
+ * y2 = C0*sqrtf(x2) + C2*x2
+ * y3 = C0*sqrtf(x3) + C2*x3
+ * y4 = C0*sqrtf(x4) + C2*x4
  *
  * boundary conditions:
  * y0 = x0 = 0
@@ -144,11 +144,11 @@ linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, doub
 /*
  * algebraic least-squares fit for 5-point cubic equation system
  *
- * y0 = C0*cbrt(x0) + C1*sqrt(x0) + C2*x0
- * y1 = C0*cbrt(x1) + C1*sqrt(x1) + C2*x1
- * y2 = C0*cbrt(x2) + C1*sqrt(x2) + C2*x2
- * y3 = C0*cbrt(x3) + C1*sqrt(x3) + C2*x3
- * y4 = C0*cbrt(x4) + C1*sqrt(x4) + C2*x4
+ * y0 = C0*cbrtf(x0) + C1*sqrtf(x0) + C2*x0
+ * y1 = C0*cbrtf(x1) + C1*sqrtf(x1) + C2*x1
+ * y2 = C0*cbrtf(x2) + C1*sqrtf(x2) + C2*x2
+ * y3 = C0*cbrtf(x3) + C1*sqrtf(x3) + C2*x3
+ * y4 = C0*cbrtf(x4) + C1*sqrtf(x4) + C2*x4
  *
  * boundary conditions:
  * y0 = x0 = 0

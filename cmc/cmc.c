@@ -23,6 +23,8 @@
 
 #include "cmc_private.h"
 
+#include <series/simd.h>
+
 #include <math.h>
 #include <string.h>
 
@@ -187,24 +189,24 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 				break;
 			}
-			case 1: // linear interpolation
+			case 1: // linear interpolation FIXME remove this, it's not useful
 			{
 				float x0, y0, a, b;
 
-        float x1 = vx[P];
 				float tm1 = vy[P-1];
+				float x1 = vx[P];
 				float y1 = vy[P];
 				float tp1 = vy[P+1];
 
-				if (tm1 >= tp1)
+				if(tm1 >= tp1)
 				{
-          x0 = vx[P-1];
-          y0 = tm1;
+					x0 = vx[P-1];
+					y0 = tm1;
 				}
-				else // tp1 > tm1
+				else
 				{
-          x0 = vx[P+1];
-          y0 = tp1;
+					x0 = vx[P+1];
+					y0 = tp1;
 				}
 
 				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
@@ -214,9 +216,12 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				y0 = curve[(uint16_t)(y0*0x7FF)];
 				y1 = curve[(uint16_t)(y1*0x7FF)];
 
-        x = x1 + d * y0 / (y1+y0);
         a = (y1-y0) / (x1-x0);
         b = y0 - a*x0;
+				if(tm1 >= tp1)
+					x = x1 - d * y0 / (y1+y0);
+				else
+					x = x1 + d * y0 / (y1+y0);
         y = a*x + b;
 
 				break;
@@ -236,15 +241,19 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 #define LOOKUP(y) \
 ({ \
 	float _y = (float)(y)*0x7ff; \
-	uint32_t _b = floor(_y); \
-	float _r = trunc(_y); \
-	(float)(curve[_b] + _r*(curve[_b+1] - curve[_b])); \
+	float _b; \
+	float _r = modff(_y, &_b); \
+	uint32_t _bb = (uint32_t)_b; \
+	(float)(curve[_bb] + _r*(curve[_bb+1] - curve[_bb])); \
 })
 
 				// lookup distance
-				y0 = curve[(uint16_t)(y0*0x7FF)];
-				y1 = curve[(uint16_t)(y1*0x7FF)];
-				y2 = curve[(uint16_t)(y2*0x7FF)];
+				//y0 = curve[(uint16_t)(y0*0x7FF)];
+				//y1 = curve[(uint16_t)(y1*0x7FF)];
+				//y2 = curve[(uint16_t)(y2*0x7FF)];
+				y0 = LOOKUP(y0);
+				y1 = LOOKUP(y1);
+				y2 = LOOKUP(y2);
 
 				// parabolic interpolation
 				float divisor = y0 - 2.f*y1 + y2;
@@ -258,22 +267,13 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				else
 				{
 					float divisor_1 = 1.f / divisor;
-
-					//float x = vx[P] + d_2*(y0 - y2) / divisor;
 					x = vx[P] + d_2*(y0 - y2) * divisor_1; // multiplication instead of division
-
-					//float y = y1; // dummy
-
-					//float dividend = -y0*y0*0.125 + y0*y1 - y1*y1*2 + y0*y2*0.25 + y1*y2 - y2*y2*0.125; // 10 multiplications, 5 additions/subtractions
 					float dividend = y0*(y1 - 0.125f*y0 + 0.25f*y2) + y2*(y1 - 0.125f*y2) - y1*y1*2.f; // 7 multiplications, 5 additions/subtractions
-					//float dividend = y0*(y1 - (y0>>3) + (y2>>2)) + y2*(y1 - (y2>>3)) - y1*(y1<<1); // 3 multiplications, 4 bitshifts, 5 additions/subtractions
-
-					//float y = dividend / divisor;
 					y = dividend * divisor_1; // multiplication instead of division
 				}
 				break;
 			}
-			case 3: // cubic interpolation
+			case 3: // cubic interpolation: Catmull-Rom splines
 			{
 				float y0, y1, y2, y3, x1;
 
@@ -342,7 +342,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
             if (D < 0.f) // bad, this'd give an imaginary solution
               D = 0.f;
             else
-              D = sqrtf(D); // FIXME use a lookup table
+              D = sqrtf(D); // FIXME use a lookup table?
             mu = (-B - D) / A2;
           }
         }
@@ -352,6 +352,54 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				y = a0*mu2*mu + a1*mu2 + a2*mu + a3;
 
 				break;
+			}
+			case 4: // cubic interpolation: Lagrange Poylnomial
+			{
+				float y0, y1, y2, y3, x1;
+
+				float tm1 = vy[P-1];
+				float thi = vy[P];
+				float tp1 = vy[P+1];
+
+				x1 = vx[P];
+				y0 = vy[P-1];
+				y1 = vy[P];
+				y2 = vy[P+1];
+				y3 = vy[P+2]; // FIXME caution
+
+				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
+				y3 = y3 < 0.f ? 0.f : (y3 > 1.f ? 1.f : y3);
+
+				// lookup distance
+				y0 = curve[(uint16_t)(y0*0x7FF)];
+				y1 = curve[(uint16_t)(y1*0x7FF)];
+				y2 = curve[(uint16_t)(y2*0x7FF)];
+				y3 = curve[(uint16_t)(y3*0x7FF)];
+
+				float d2 = d * d;
+				float d3 = d2 * d;
+
+				float s1 = y0 - 2.f*y1 + y2;
+				float s2 = y0 - 3.f*y1 + 3.f*y2 - y3;
+				float sq = y0*(y0 - 9.f*y1 + 6.f*y2 + y3) + y1*(21.f*y1 - 39.f*y2 + 6.f*y3) + y2*(21.f*y2 - 9.f*y3) + y3*y3;
+
+				if(sq < 0.f) // bad, this'd give an imaginary solution
+					sq = 0.f;
+
+				if(s2 == 0)
+					x = x1; //FIXME what to do here?
+				else
+					x = (3.f*d*s1 + 3.f*x1*s2 + sqrtf(3.f)*d*sqrtf(
+						y0*(y0 - 9.f*y1 + 6.f*y2 + y3) + y1*(21.f*y1 - 39.f*y2 + 6.f*y3) + y2*(21.f*y2 - 9.f*y3) + y3*y3
+					)) / (3.f*s2);
+
+				float X1 = x - x1;
+				float X2 = X1 * X1;
+				float X3 = X2 * X1;
+
+				y = -(-6.f*d3*y1 + d2*X1*(2.f*y0 + 3.f*y1 - 6.f*y2 + y3) - 3.f*d*X2*s1 + X3*s2) / (6.f*d3);
 			}
 		}
 
