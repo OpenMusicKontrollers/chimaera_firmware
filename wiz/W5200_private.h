@@ -82,7 +82,8 @@
 #define WIZ_Sn_MR_IPRAW  						0x03
 #define WIZ_Sn_MR_MACRAW 						0x04 // valid only on socket 0
 #define WIZ_Sn_MR_PPPOE  						0x05 // valid only on socket 0
-#define WIZ_Sn_MR_ND_MC							(1U << 5)
+#define WIZ_Sn_MR_ND								(1U << 5)
+#define WIZ_Sn_MR_MC								(1U << 5)
 #define WIZ_Sn_MR_MF								(1U << 6)
 #define WIZ_Sn_MR_MULTI  						(1U << 7)
 

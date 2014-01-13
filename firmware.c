@@ -51,8 +51,7 @@
 #include <config.h>
 #include <tube.h>
 #include <ipv4ll.h>
-#include <mdns.h>
-#include <dns_sd.h>
+#include <mdns-sd.h>
 #include <dhcpc.h>
 #include <arp.h>
 #include <engines.h>
@@ -117,7 +116,7 @@ dhcpc_timer_irq ()
 	dhcpc_needs_refresh = 1;
 }
 
-static void __CCM_TEXT__
+static void
 soft_irq ()
 {
 	bkp_enable_writes();
@@ -682,7 +681,7 @@ dhcpc_timer_reconfigure ()
 	timer_attach_interrupt (dhcpc_timer, TIMER_CH1, dhcpc_timer_irq);
 	timer_generate_update (dhcpc_timer);
 
-	nvic_irq_set_priority (NVIC_TIMER2, DHCPC_TIMER_PRIORITY);
+	nvic_irq_set_priority (NVIC_TIMER4, DHCPC_TIMER_PRIORITY);
 }
 
 void
@@ -840,10 +839,6 @@ setup ()
 	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
 
 	// initialize timers
-	adc_timer = TIMER1;
-	sntp_timer = TIMER2;
-	dhcpc_timer = TIMER4;
-
 	timer_init (adc_timer);
 	timer_init (sntp_timer);
 	timer_init (dhcpc_timer);
@@ -859,6 +854,9 @@ setup ()
 	sntp_enable (config.sntp.socket.enabled);
 	debug_enable (config.debug.socket.enabled);
 	mdns_enable (config.mdns.socket.enabled);
+	
+	if(config.mdns.socket.enabled)
+		mdns_announce(); // announce new IP
 
 	// set up ADCs
 	adc_disable (ADC1);
@@ -962,7 +960,7 @@ setup ()
 pin_write_bit (CHIM_LED_PIN, 1);
 
 	DEBUG("si", "reset_mode", reset_mode);
-	DEBUG("si", "config size", sizeof(Config));
+	//DEBUG("si", "config size", sizeof(Config));
 }
 
 void

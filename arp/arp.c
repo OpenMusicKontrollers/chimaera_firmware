@@ -119,7 +119,8 @@ static uint32_t
 _random_ticks (uint32_t minsecs, uint32_t maxsecs)
 {
 	uint32_t span = maxsecs - minsecs;
-	return SNTP_SYSTICK_RATE*(minsecs + (float)rand() / (RAND_MAX / span));
+	//return SNTP_SYSTICK_RATE*(minsecs + (float)rand() / (RAND_MAX / span));
+	return SNTP_SYSTICK_RATE*(minsecs + (float)rand() / RAND_MAX * span);
 }
 
 uint_fast8_t

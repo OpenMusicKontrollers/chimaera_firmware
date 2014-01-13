@@ -83,8 +83,8 @@ range_reset ()
 	}
 	
 	range.W = 0.f;
-	range.C[0] = 0.f; // ~ cbrt(x)
-	range.C[1] = 1.f; // ~ sqrt(x)
+	range.C[0] = 0.f; // ~ cbrtf(x)
+	range.C[1] = 1.f; // ~ sqrtf(x)
 	range.C[2] = 0.f; // ~ x
 
 	return 1;
@@ -349,7 +349,7 @@ range_update_b3 (float y)
 	for (b=0; b<0x800; b++)
 	{
 		bf = (float)b / (float)0x7ff;
-		float _y = range.C[0]*cbrt(bf) + range.C[1]*sqrt(bf) + range.C[2]*bf;
+		float _y = range.C[0]*cbrtf(bf) + range.C[1]*sqrtf(bf) + range.C[2]*bf;
 		if(_y > y)
 			break;
 	}

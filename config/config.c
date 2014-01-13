@@ -506,7 +506,7 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 				wiz_gateway_set(config.comm.gateway);
 			else // return
 			{
-				CONFIG_FAIL("is", id, "gatway invalid, format: x.x.x.x");
+				CONFIG_FAIL("is", id, "gateway invalid, format: x.x.x.x");
 				udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 				return 1;
 			}
@@ -530,6 +530,9 @@ _comm_ip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			uint8_t brd [4];
 			broadcast_address(brd, config.comm.ip, config.comm.subnet);
 			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
+
+			if(config.mdns.socket.enabled)
+				mdns_announce(); // announce new IP
 		}
 		else
 			size = CONFIG_FAIL ("is", id, "ip invalid, format: x.x.x.x/x");
@@ -638,7 +641,7 @@ static uint_fast8_t
 _dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	// needs a config save and reboot to take action
-	return _check_bool (path, fmt, argc, args, &config.ipv4ll.enabled);
+	return _check_bool (path, fmt, argc, args, &config.dhcpc.socket.enabled);
 }
 
 static uint_fast8_t
@@ -690,12 +693,15 @@ _address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t
 		{
 			if (strstr (hostname, local_str)) // in the .local domain ?
 			{
-				char *port_str = strstr (hostname, ":");
+				char *port_str = strchr (hostname, ':');
+				*port_str = 0x0; // end name here
 				port = atoi (port_str+1);
-				socket->port[DST_PORT] = port;
+				socket->port[DST_PORT] = port; //TODO only do this when resolve successful
 
-				mdns_resolve (hostname, _address_dns_cb, socket);
-				size = CONFIG_SUCCESS ("i", id);
+				if(mdns_resolve (hostname, _address_dns_cb, socket))
+					size = CONFIG_SUCCESS ("i", id);
+				else
+					size = CONFIG_FAIL ("is", id, "there is a mDNS request already ongoing");
 			}
 			else
 			{
@@ -772,8 +778,10 @@ _host_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	{
 		if (strstr (hostname, local_str)) // resolve via mDNS
 		{
-			mdns_resolve (hostname, _host_address_dns_cb, NULL);
-			size = CONFIG_SUCCESS ("i", id);
+			if(mdns_resolve (hostname, _host_address_dns_cb, NULL))
+				size = CONFIG_SUCCESS ("i", id);
+			else
+				size = CONFIG_FAIL ("is", id, "there is a mDNS request already ongoing");
 		}
 		else // resolve via unicast DNS
 		{
@@ -1136,7 +1144,7 @@ _movingaverage_samples (const char *path, const char *fmt, uint_fast8_t argc, nO
 static uint_fast8_t
 _interpolation_order (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _check_range8 (&config.interpolation.order, 0, 3, path, fmt, argc, args);
+	return _check_range8 (&config.interpolation.order, 0, 4, path, fmt, argc, args);
 }
 
 static uint_fast8_t

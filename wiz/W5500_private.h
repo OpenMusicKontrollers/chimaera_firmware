@@ -115,6 +115,11 @@ struct _W5500_Socket_Sel {
 #define WIZ_Sn_MR_MULTI				(1U << 7)	// enable/disable multicast in UDP mode
 #define WIZ_Sn_MR_MF					(1U << 7)	// enalbe/disable MAC filter in MACRAW mode 
 #define WIZ_Sn_MR_BCASTB			(1U << 6)	// enalbe/disable broadcast blocking in UDP/MACRAW modes
+#define WIZ_Sn_MR_ND					(1U << 5)
+#define WIZ_Sn_MR_MC					(1U << 5)
+#define WIZ_Sn_MR_MMB					(1U << 5)
+#define WIZ_Sn_MR_UCASTB			(1U << 4)
+#define WIZ_Sn_MR_MIP6B				(1U << 4)
 #define WIZ_Sn_MR_CLOSE				0x00
 #define WIZ_Sn_MR_TCP					0x01
 #define WIZ_Sn_MR_UDP					0x02
@@ -142,7 +147,7 @@ struct _W5500_Socket_Sel {
 #define WIZ_Sn_SR_ESTABLISHED	0x17
 #define WIZ_Sn_SR_CLOSE_WAIT	0x1C
 #define WIZ_Sn_SR_UDP    			0x22
-#define WIZ_Sn_SR_MACRAW 			0x02
+#define WIZ_Sn_SR_MACRAW 			0x42
 
 #define WIZ_Sn_SR_SYNSENT			0x15
 #define WIZ_Sn_SR_SYNRECV			0x16

@@ -30,6 +30,7 @@
 #include <wiz.h>
 #include <config.h>
 #include <sntp.h>
+#include <chimutil.h>
 
 // global
 DHCPC dhcpc = {
@@ -178,11 +179,11 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 	recv->bootp.xid = htonl (recv->bootp.xid);
 	recv->bootp.secs = hton (recv->bootp.secs);
 
-	memcpy (dhcpc.ip, recv->bootp.yiaddr, 4);
-	//memcpy (dhcpc.server_ip, recv->bootp.siaddr, 4);
-	//memcpy (dhcpc.gateway_ip, recv->bootp.giaddr, 4);
+	uint32_t *_ip = (uint32_t *)recv->bootp.yiaddr;
+	if(*_ip != 0x00000000UL)
+		memcpy (dhcpc.ip, recv->bootp.yiaddr, 4);
 
-	uint8_t *buf_ptr = (uint8_t *)recv->options;
+	uint8_t *buf_ptr = buf + sizeof(DHCP_Packet_Unpacked);
 	uint8_t code;
 	while ( (code = buf_ptr[0]) != OPTION_END)
 	{
@@ -210,6 +211,10 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 				// not used
 				break;
 
+			case OPTION_DHCP_REQUEST_IP:
+				memcpy(dhcpc.ip, dat, 4);
+				break;
+
 			case OPTION_IP_ADDRESS_LEASE_TIME:
 				memcpy(&dhcpc.leastime, dat, 4);
 				dhcpc.leastime = htonl(dhcpc.leastime) / 2; // refresh after half of it
@@ -224,11 +229,21 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 					case DHCPACK:
 						dhcpc.state = LEASE;
 						break;
+					case DHCPNAK:
+						dhcpc.state = LEASE;
+						break;
+					default:
+						// should never get here
+						break;
 				}
 				break;
 
 			case OPTION_DHCP_SERVER_IDENTIFIER:
 				memcpy (dhcpc.server_ip, dat, 4);
+				break;
+
+			default:
+				//ignore
 				break;
 		}
 		buf_ptr += 2 + len;

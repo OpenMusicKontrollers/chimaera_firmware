@@ -75,18 +75,18 @@ struct _BOOTP_Packet {
 	uint8_t siaddr [4]; // server IP
 	uint8_t giaddr [4]; // relay agent IP
 	uint8_t chaddr [16];// client MAC
-};
+} __attribute((packed));
 
 struct _BOOTP_Packet_Optionals {
 	char sname [64];		// server name [optional]
 	char file [128];		// file name [optional]
-};
+} __attribute((packed));
 
 struct _BOOTP_Option {
 	uint8_t code;
 	uint8_t len;
 	uint8_t *dat;
-};
+} __attribute((packed));
 
 #define BOOTP_OPTION(CODE,LEN,DAT) {.code=CODE,.len=LEN,.dat=DAT}
 #define BOOTP_OPTION_END {.code=OPTION_END}
@@ -95,13 +95,12 @@ struct _DHCP_Packet_Packed {
 	BOOTP_Packet bootp;
 	uint8_t magic_cookie [4];
 	BOOTP_Option *options;
-};
+} __attribute((packed));
 
 struct _DHCP_Packet_Unpacked {
 	BOOTP_Packet bootp;
 	BOOTP_Packet_Optionals optionals;
 	uint8_t magic_cookie [4];
-	BOOTP_Option *options;
-};
+} __attribute((packed));
 
 #endif // DHCPC_PRIVATE_H

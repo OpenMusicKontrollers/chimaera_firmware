@@ -29,7 +29,3 @@ const uint_fast8_t buf_i_ptr = 0;
 // the buffers should be aligned to 32bit, as most we write to it is a multiple of 32bit (OSC, SNTP, DHCP, ARP, etc.)
 uint8_t buf_o [2][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose output buffer
 uint8_t buf_i [1][CHIMAERA_BUFSIZE] __attribute__((aligned(4))); // general purpose input buffer;
-
-timer_dev *adc_timer;
-timer_dev *sntp_timer;
-timer_dev *dhcpc_timer;

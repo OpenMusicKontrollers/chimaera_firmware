@@ -207,9 +207,9 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define BUF_O_OFFSET(ptr) (buf_o[ptr] + WIZ_SEND_OFFSET)
 #define BUF_I_OFFSET(ptr) (buf_i[ptr] + WIZ_SEND_OFFSET)
 
-extern timer_dev *adc_timer;
-extern timer_dev *sntp_timer;
-extern timer_dev *dhcpc_timer;
+#define adc_timer TIMER1
+#define sntp_timer TIMER2
+#define dhcpc_timer TIMER4
 
 void cpp_setup ();
 
