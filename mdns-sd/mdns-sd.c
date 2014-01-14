@@ -35,7 +35,7 @@
 
 #include <libmaple/systick.h>
 
-static const char *localdomain = "local"; //TODO define globally
+static const char *localdomain = "local";
 static const char *in_addr = "in-addr";
 static const char *arpa = "arpa";
 

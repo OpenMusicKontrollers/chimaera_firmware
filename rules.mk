@@ -84,9 +84,6 @@ ASFLAGS_$(d) :=
 # You can add any additional rules you want here. We don't have
 # any extra rules to add.
 
-$(USER_MODULES)/lookup.c: lookup.py
-	python $< > $@
-
 ### Source files
 
 # cSRCS_$(d) are the C source files we want compiled.
@@ -120,7 +117,6 @@ cSRCS_$(d) += arp/arp.c
 cSRCS_$(d) += calibration/calibration.c
 cSRCS_$(d) += linalg/linalg.c
 cSRCS_$(d) += sensors/sensors.c
-#cSRCS_$(d) += lookup.c
 cSRCS_$(d) += firmware.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own

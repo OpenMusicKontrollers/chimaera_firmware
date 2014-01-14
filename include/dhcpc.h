@@ -46,7 +46,6 @@ struct _DHCPC {
 
 uint_fast8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 uint_fast8_t dhcpc_refresh ();
-uint_fast8_t dhcpc_release (); //TODO implement
 
 extern DHCPC dhcpc;
 

@@ -29,8 +29,6 @@
 
 static const uint8_t link_local_gateway [] = {169, 254, 0, 0};
 static const uint8_t link_local_subnet [] = {255, 255, 0, 0};
-//static const uint8_t link_local_broadcast [] = {169, 254, 255, 255}; TODO use this
-static const uint8_t link_local_broadcast [] = {255, 255, 255, 255};
 
 static void 
 _IPv4LL_random (uint8_t *ip)
@@ -57,8 +55,10 @@ IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 	memcpy (subnet, link_local_subnet, 4);
 
 	//FIXME actually, the user should do this before enabling IPv4LL, not?
-	memcpy (config.output.socket.ip, link_local_broadcast, 4);
-	memcpy (config.config.socket.ip, link_local_broadcast, 4);
-	memcpy (config.sntp.socket.ip, link_local_broadcast, 4);
-	memcpy (config.debug.socket.ip, link_local_broadcast, 4);
+	uint8_t brd [4];
+	broadcast_address(brd, ip, subnet);
+	memcpy (config.output.socket.ip, brd, 4);
+	memcpy (config.config.socket.ip, brd, 4);
+	memcpy (config.sntp.socket.ip, brd, 4);
+	memcpy (config.debug.socket.ip, brd, 4);
 }

@@ -483,7 +483,7 @@ loop ()
 #ifdef BENCHMARK
 			stop_watch_start (&sw_output_send);
 #endif
-			if (cmc_job) // start nonblocking sending of last cycles tuio output
+			if (cmc_job) // start nonblocking sending of last cycles output
 				cmc_stat = udp_send_nonblocking (config.output.socket.sock, buf_o[!buf_o_ptr], cmc_len);
 
 		// fill adc_rela
@@ -554,7 +554,7 @@ loop ()
 #ifdef BENCHMARK
 				stop_watch_start (&sw_output_block);
 #endif
-			if (cmc_job && cmc_stat) // block for end of sending of last cycles tuio output
+			if (cmc_job && cmc_stat) // block for end of sending of last cycles output
 				udp_send_block (config.output.socket.sock);
 
 			if (job) // switch output buffer
@@ -739,7 +739,7 @@ setup ()
 	pin_write_bit (mux_sequence[1], 0); // CP
 #endif
 
-	// setup nalog input pins
+	// setup analog input pins
 	for (i=0; i<ADC_DUAL_LENGTH; i++)
 	{
 		pin_set_modef (adc1_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
@@ -750,7 +750,7 @@ setup ()
 	for (i=0; i<ADC_UNUSED_LENGTH; i++)
 		pin_set_modef (adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD); // pull-down unused analog ins
 
-	// SPI for W5500
+	// SPI for W5200/W5500
 	spi_init(WIZ_SPI_DEV);
 	spi_data_size(WIZ_SPI_DEV, SPI_DATA_SIZE_8_BIT);
 	spi_master_enable(WIZ_SPI_DEV, SPI_CR1_BR_PCLK_DIV_2, SPI_MODE_0,
@@ -810,7 +810,7 @@ setup ()
 	dma_init (DMA1);
 	dma_init (DMA2);
 
-	// initialize wiz820io
+	// initialize WIZnet W5200/W5500
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem);
@@ -821,8 +821,8 @@ setup ()
 		;
 
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
-
-	//FIXME set all outputs to broadcast by default?
+	
+	// choose DHCP, IPv4LL or static IP
 	uint_fast8_t claimed = 0;
 	if (config.dhcpc.socket.enabled)
 	{
@@ -838,7 +838,7 @@ setup ()
 	wiz_socket_irq_set(config.mdns.socket.sock, wiz_mdns_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
 	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
 
-	// initialize timers
+	// initialize timers TODO move up
 	timer_init (adc_timer);
 	timer_init (sntp_timer);
 	timer_init (dhcpc_timer);
@@ -944,7 +944,7 @@ setup ()
 	nvic_irq_set_priority (NVIC_DMA_CH5, ADC_DMA_PRIORITY);
 #endif
 
-	// set up continuous music controller struct
+	// set up continuous music controller output engines
 	cmc_init ();
 	dump_init (sizeof(adc_swap), adc_swap);
 	tuio2_init ();
@@ -957,7 +957,7 @@ setup ()
 	// load saved groups
 	groups_load ();
 
-pin_write_bit (CHIM_LED_PIN, 1);
+	pin_write_bit (CHIM_LED_PIN, 1);
 
 	DEBUG("si", "reset_mode", reset_mode);
 	//DEBUG("si", "config size", sizeof(Config));
