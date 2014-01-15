@@ -40,9 +40,19 @@ typedef struct _Config Config;
 struct _Socket_Config {
 	uint8_t sock;
 	uint8_t enabled;
-	Socket_Enable_Cb cb;
 	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
+};
+
+enum {
+	SOCK_ARP		= 0,
+	SOCK_OUTPUT	= 1,
+	SOCK_CONFIG = 2,
+	SOCK_SNTP		= 3,
+	SOCK_DEBUG	= 4,
+	SOCK_MDNS		= 5,
+	SOCK_DHCPC	= 6,
+	SOCK_RTP		= 7
 };
 
 struct _Config {
@@ -149,6 +159,7 @@ struct _Config {
 	uint16_t rate; // the maximal update rate the chimaera should run at
 };
 
+extern Socket_Enable_Cb socket_callbacks [];
 extern Config config;
 extern const nOSC_Method config_serv [];
 

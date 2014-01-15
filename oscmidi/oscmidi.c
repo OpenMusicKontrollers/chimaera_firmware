@@ -50,7 +50,7 @@ oscmidi_init ()
 	nosc_item_message_set (oscmidi_bndl, 0, msg, midi_str, midi_fmt);
 	midi_fmt[0] = nOSC_END;
 
-	config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
+	config.oscmidi.mul = (float)0x2000 / config.oscmidi.range;
 }
 
 static void
@@ -101,7 +101,7 @@ oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 	uint8_t ch = gid % 0xf;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = midi_get_key (oscmidi_hash, sid);
-	uint16_t bend = (X - key)*config.oscmidi.mul + 0x2000;
+	uint16_t bend = (X - key)*config.oscmidi.mul + 0x1fff;
 
 	uint16_t eff = y * 0x3fff;
 

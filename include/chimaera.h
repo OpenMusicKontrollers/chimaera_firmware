@@ -101,7 +101,6 @@ extern const stm32_pin_info PIN_MAP [];
 #define OSC_ARGS_MAX 12
 
 #define CHIMAERA_BUFSIZE 0x400
-#define SHARED_BUFSIZE 0x300
 
 #define ADC_DMA_PRIORITY 0x2
 #define SPI_RX_DMA_PRIORITY 0x3

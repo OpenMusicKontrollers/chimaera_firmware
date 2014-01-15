@@ -65,6 +65,8 @@ rtpmidi_init ()
 	timestamp = rand ();
 	last_tt = 0ULLK;
 	rtp_header.SSRC = htonl (rand ());
+
+	config.oscmidi.mul = (float)0x2000 / config.oscmidi.range;
 }
 
 uint16_t
@@ -128,7 +130,7 @@ rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = floor (X);
 	midi_add_key (rtpmidi_hash, sid, key);
 	
@@ -160,9 +162,9 @@ rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	float X = config.oscmidi.offset - 0.5 + x * 48.0;
+	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = midi_get_key (rtpmidi_hash, sid);
-	uint16_t bend = (X - key) * 170.65 + 0x2000; // := (X - key) / 48.0 * 0x1fff + 0x2000;
+	uint16_t bend = (X - key)*config.oscmidi.mul + 0x1fff;
 
 	uint16_t eff = y * 0x3fff;
 

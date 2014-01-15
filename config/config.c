@@ -50,6 +50,17 @@ static const char *local_str = ".local";
 
 static void _host_address_dns_cb (uint8_t *ip, void *data); // forwared declaration
 
+Socket_Enable_Cb socket_callbacks [WIZ_MAX_SOCK_NUM] = {
+	[SOCK_ARP]		= NULL,
+	[SOCK_OUTPUT]	= output_enable,
+	[SOCK_CONFIG]	= config_enable,
+	[SOCK_SNTP]		= sntp_enable,
+	[SOCK_DEBUG]	= debug_enable,
+	[SOCK_MDNS]		= mdns_enable,
+	[SOCK_DHCPC]	= dhcpc_enable,
+	[SOCK_RTP]		= NULL // not yet used
+};
+
 Config config = {
 	.version = {
 		//.all = VERSION;
@@ -95,9 +106,9 @@ Config config = {
 
 	.oscmidi = {
 		.enabled = 0,
-		.offset = 23.5,
-		.range = 48.0,
-		.mul = 170.65, // 0x1fff / 48
+		.offset = MIDI_BOT,
+		.range = MIDI_RANGE,
+		.mul = 0x2000 / MIDI_RANGE,
 		.effect = VOLUME
 	},
 
@@ -107,9 +118,8 @@ Config config = {
 	
 	.output = {
 		.socket = {
-			.sock = 1,
+			.sock = SOCK_OUTPUT,
 			.enabled = 1,
-			.cb = output_enable,
 			.port = {3333, 3333},
 			.ip = IP_BROADCAST
 		},
@@ -119,9 +129,8 @@ Config config = {
 	.config = {
 		.rate = 10, // rate in Hz
 		.socket = {
-			.sock = 2,
+			.sock = SOCK_CONFIG,
 			.enabled = 1,
-			.cb = config_enable,
 			.port = {4444, 4444},
 			.ip = IP_BROADCAST
 		}
@@ -130,9 +139,8 @@ Config config = {
 	.sntp = {
 		.tau = 4, // delay between SNTP requests in seconds
 		.socket = {
-			.sock = 3,
+			.sock = SOCK_SNTP,
 			.enabled = 0,
-			.cb = sntp_enable,
 			.port = {123, 123},
 			.ip = IP_BROADCAST
 		}
@@ -140,9 +148,8 @@ Config config = {
 
 	.debug = {
 		.socket = {
-			.sock = 4,
+			.sock = SOCK_DEBUG,
 			.enabled = 1,
-			.cb = debug_enable,
 			.port = {6666, 6666},
 			.ip = IP_BROADCAST
 		}
@@ -154,9 +161,8 @@ Config config = {
 
 	.mdns = {
 		.socket = {
-			.sock = 5,
+			.sock = SOCK_MDNS,
 			.enabled = 1,
-			.cb = mdns_enable,
 			.port = {5353, 5353}, // mDNS multicast port
 			.ip = {224, 0, 0, 251} // mDNS multicast group
 		}
@@ -164,9 +170,8 @@ Config config = {
 
 	.dhcpc = {
 		.socket = {
-			.sock = 6,
+			.sock = SOCK_DHCPC,
 			.enabled = 0,
-			.cb = dhcpc_enable,
 			.port = {68, 67}, // BOOTPclient, BOOTPserver
 			.ip = IP_BROADCAST
 		}
@@ -212,14 +217,6 @@ config_load ()
 		eeprom_bulk_read (eeprom_24LC64, EEPROM_CONFIG_OFFSET, (uint8_t *)&config, sizeof (config));
 	else // EEPROM and FLASH config version do not match, overwrite old with new default one
 		config_save ();
-
-	// update callbacks
-	config.output.socket.cb = output_enable;
-	config.config.socket.cb = config_enable;
-	config.sntp.socket.cb = sntp_enable;
-	config.debug.socket.cb = debug_enable;
-	config.mdns.socket.cb = mdns_enable;
-	config.dhcpc.socket.cb = dhcpc_enable;
 
 	return 1;
 }
@@ -582,7 +579,8 @@ _socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_
 		size = CONFIG_SUCCESS ("ii", id, socket->enabled ? 1 : 0);
 	else
 	{
-		if(socket->cb (args[1].i))
+		Socket_Enable_Cb cb = socket_callbacks[socket->sock];
+		if(cb (args[1].i))
 			size = CONFIG_SUCCESS ("i", id);
 		else
 			size = CONFIG_FAIL("is", "socket could not be enabled");
@@ -658,7 +656,8 @@ _address_dns_cb (uint8_t *ip, void *data)
 	Socket_Config *socket = data;
 
 	memcpy (socket->ip, ip, 4);
-	socket->cb (socket->enabled);
+	Socket_Enable_Cb cb = socket_callbacks[socket->sock];
+	cb (socket->enabled);
 
 	ip2str (ip, string_buf);
 	DEBUG("ss", "_address_dns_cb", string_buf);
