@@ -149,7 +149,7 @@ wiz_sntp_irq(uint8_t isr)
 	sntp_should_listen = 1;
 }
 
-static __always_inline void
+static inline __always_inline void
 _counter_inc()
 {
 #if REVISION == 3
@@ -240,7 +240,7 @@ adc3_dma_irq ()
 	adc3_dma_done = 1;
 }
 
-static __always_inline void
+static inline __always_inline void
 adc_dma_run()
 {
 	adc12_dma_done = 0;
@@ -253,7 +253,7 @@ adc_dma_run()
 #endif
 }
 
-static __always_inline void
+static inline __always_inline void
 adc_dma_block()
 { 
 #if (ADC_DUAL_LENGTH  > 0)

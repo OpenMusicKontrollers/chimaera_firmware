@@ -51,7 +51,7 @@ static const W5500_Socket_Sel W5500_socket_sel [8] = {
 	W5500_SOCKET_SEL_ENTRY(7),
 };
 
-__always_inline void
+inline __always_inline void
 wiz_job_set_frame()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
@@ -62,14 +62,14 @@ wiz_job_set_frame()
 	frm_tx[2] = job->opmode | (job->rw & WIZ_RX ? W5500_CNTRL_PHASE_READ : W5500_CNTRL_PHASE_WRITE);
 }
 
-__always_inline void
+inline __always_inline void
 _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
 	_dma_write (addr, W5500_socket_sel[sock].reg, dat, len);
 }
 
-__always_inline void
+inline __always_inline void
 _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address

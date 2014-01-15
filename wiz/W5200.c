@@ -50,7 +50,7 @@ static const uint16_t SOCK_OFFSET [WIZ_MAX_SOCK_NUM] = {
 	CH_BASE + 7*CH_SIZE,
 };
 
-__always_inline void
+inline __always_inline void
 wiz_job_set_frame()
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
@@ -62,14 +62,14 @@ wiz_job_set_frame()
 	frm_tx[3] = job->len & 0x00FF;
 }
 
-__always_inline void
+inline __always_inline void
 _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
 	_dma_write (SOCK_OFFSET[sock] + addr, 0, dat, len);
 }
 
-__always_inline void
+inline __always_inline void
 _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address

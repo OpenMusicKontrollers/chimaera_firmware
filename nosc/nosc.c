@@ -40,7 +40,7 @@ static const char *bundle_str = "#bundle";
  * Method
  */
 
-static __always_inline uint_fast8_t
+static inline __always_inline uint_fast8_t
 _pattern_match (char *pattern , char *string)
 {
 	char *qm;
@@ -52,7 +52,7 @@ _pattern_match (char *pattern , char *string)
 		return !strcmp (pattern, string);
 }
 
-static __always_inline void
+static inline __always_inline void
 _nosc_method_message_dispatch (nOSC_Method *meth, char *path, char *fmt)
 {
 	nOSC_Message msg = dispatch_msg;

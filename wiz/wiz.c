@@ -60,7 +60,7 @@ uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 uint8_t buf_o2 [WIZ_SEND_OFFSET + 6] __attribute__((aligned(4)));
 uint8_t buf_i2 [WIZ_SEND_OFFSET + 6] __attribute__((aligned(4)));
 
-__always_inline void
+inline __always_inline void
 _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
 	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
@@ -73,7 +73,7 @@ _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 	wiz_job_run_block();
 }
 
-__always_inline void
+inline __always_inline void
 _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 {
 	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
@@ -88,14 +88,14 @@ _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len)
 	memcpy (dat, tmp_buf_i, len);
 }
 
-__always_inline void
+inline __always_inline void
 _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat)
 {
 	uint16_t _dat = hton (dat);
 	_dma_write_sock (sock, addr, (uint8_t *)&_dat, 2);
 }
 
-__always_inline void
+inline __always_inline void
 _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat)
 {
 	_dma_read_sock (sock, addr, (uint8_t*)dat, 2);
@@ -314,7 +314,7 @@ wiz_job_run_single()
 	}
 }
 
-__always_inline void
+inline __always_inline void
 wiz_job_run_nonblocking()
 {
 	wiz_jobs_done = 0;
@@ -322,7 +322,7 @@ wiz_job_run_nonblocking()
 		wiz_job_run_single();
 }
 
-__always_inline void
+inline __always_inline void
 wiz_job_run_block()
 {
 	while(wiz_jobs_todo)
@@ -451,7 +451,7 @@ udp_begin (uint8_t sock, uint16_t port, uint_fast8_t multicast)
 	udp_update_read_write_pointers (sock);
 }
 
-__always_inline void
+inline __always_inline void
 udp_update_read_write_pointers (uint8_t sock)
 {
 	// get write pointer
@@ -461,7 +461,7 @@ udp_update_read_write_pointers (uint8_t sock)
 	_dma_read_sock_16 (sock, WIZ_Sn_RX_RD, &Sn_Rx_RD[sock]);
 }
 
-__always_inline void
+inline __always_inline void
 udp_reset_read_write_pointers (uint8_t sock)
 {
 	_dma_read_sock_16 (sock, WIZ_Sn_TX_RD, &Sn_Tx_WR[sock]);
@@ -543,14 +543,14 @@ udp_send_block (uint8_t sock)
 	_dma_write_sock (sock, WIZ_Sn_IR, &flag, 1);
 }
 
-__always_inline void
+inline __always_inline void
 udp_send (uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
 	if(udp_send_nonblocking(sock, o_buf, len))
 		udp_send_block(sock);
 }
 
-__always_inline uint16_t
+inline __always_inline uint16_t
 udp_available (uint8_t sock)
 {
 	uint16_t len;
@@ -558,7 +558,7 @@ udp_available (uint8_t sock)
 	return len;
 }
 
-__always_inline void
+inline __always_inline void
 udp_receive (uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
 	if(udp_receive_nonblocking(sock, i_buf, len))
