@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#include <chimaera.h>
+
 enum _MIDI_COMMAND {
 	NOTE_OFF 					= 0x80,
 	NOTE_ON						= 0x90,
@@ -59,5 +61,8 @@ uint8_t midi_get_key (MIDI_Hash *hash, uint32_t sid);
 uint8_t midi_rem_key (MIDI_Hash *hash, uint32_t sid);
 
 //TODO create a MIDI meta engine, both OSC-MIDI and RTP-MIDI can refer to
+
+#define MIDI_BOT (3.f*12.f - 0.5f - (SENSOR_N/3 % 12 / 2.f))
+#define MIDI_RANGE (SENSOR_N/3.f + 1.f)
 
 #endif /* MIDI_H */

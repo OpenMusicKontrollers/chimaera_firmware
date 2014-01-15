@@ -811,8 +811,26 @@ setup ()
 	dma_init (DMA2);
 
 	// initialize WIZnet W5200/W5500
-	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
-	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {1, 8, 2, 1, 1, 1, 1, 1};
+	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {
+		[SOCK_ARP]		= 1, // 1 kB buffer
+		[SOCK_OUTPUT]	= 8,
+		[SOCK_CONFIG]	= 2,
+		[SOCK_SNTP]		= 2,
+		[SOCK_DEBUG]	= 1,
+		[SOCK_MDNS]		= 1,
+		[SOCK_DHCPC]	= 1,
+		[SOCK_RTP]		= 0
+	};
+	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {
+		[SOCK_ARP]		= 1, // 1 kB buffer
+		[SOCK_OUTPUT]	= 8,
+		[SOCK_CONFIG]	= 2,
+		[SOCK_SNTP]		= 2,
+		[SOCK_DEBUG]	= 1,
+		[SOCK_MDNS]		= 1,
+		[SOCK_DHCPC]	= 1,
+		[SOCK_RTP]		= 0
+	};
 	wiz_init (PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem);
 	wiz_mac_set (config.comm.mac);
 
