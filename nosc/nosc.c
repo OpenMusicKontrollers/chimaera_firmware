@@ -392,7 +392,7 @@ nosc_message_serialize (nOSC_Message msg, const char *path, const char *types, u
 	return buf_ptr - buf;
 }
 
-uint16_t __CCM_TEXT__
+uint16_t
 nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...)
 {
 	nOSC_Message msg = vararg_msg;

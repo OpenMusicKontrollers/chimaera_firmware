@@ -50,7 +50,7 @@ static const char *local_str = ".local";
 
 static void _host_address_dns_cb (uint8_t *ip, void *data); // forwared declaration
 
-Socket_Enable_Cb socket_callbacks [WIZ_MAX_SOCK_NUM] = {
+static const Socket_Enable_Cb socket_callbacks [WIZ_MAX_SOCK_NUM] = {
 	[SOCK_ARP]		= NULL,
 	[SOCK_OUTPUT]	= output_enable,
 	[SOCK_CONFIG]	= config_enable,

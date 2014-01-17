@@ -50,12 +50,36 @@
 #define ntohl		swap32
 #define ntohll	swap64
 
+typedef union _Con {
+	uint64_t all;
+	struct {
+		uint32_t upper;
+		uint32_t lower;
+	} part;
+} Con;
+
 #define ref_hton(dst,x)		(*((uint16_t *)(dst)) = hton(x))
 #define ref_htonl(dst,x)	(*((uint32_t *)(dst)) = htonl(x))
-#define ref_htonll(dst,x)	(*((uint64_t *)(dst)) = htonll(x))
+//#define ref_htonll(dst,x)	(*((uint64_t *)(dst)) = htonll(x)) // has issues with GCC 4.8
+#define ref_htonll(dst,x)	\
+({ \
+	Con a, *b; \
+	a.all = (uint64_t)(x); \
+	b = (Con *)(dst); \
+	b->part.upper = htonl(a.part.lower); \
+	b->part.lower = htonl(a.part.upper); \
+})
 
 #define ref_ntoh(ptr)		(ntoh(*((uint16_t *)(ptr))))
 #define ref_ntohl(ptr)	(ntohl(*((uint32_t *)(ptr))))
-#define ref_ntohll(ptr)	(ntohll(*((uint64_t *)(ptr))))
+//#define ref_ntohll(ptr)	(ntohll(*((uint64_t *)(ptr)))) // has issues with GCC 4.8
+#define ref_ntohll(ptr)	\
+({ \
+	Con a, *b; \
+	b = (Con *)(ptr); \
+	a.part.upper = ntohl(b->part.lower); \
+	a.part.lower = ntohl(b->part.upper); \
+	(uint64_t)a.all; \
+})
 
 #endif

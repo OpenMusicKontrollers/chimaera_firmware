@@ -159,7 +159,6 @@ struct _Config {
 	uint16_t rate; // the maximal update rate the chimaera should run at
 };
 
-extern Socket_Enable_Cb socket_callbacks [];
 extern Config config;
 extern const nOSC_Method config_serv [];
 
