@@ -34,8 +34,16 @@
 #define NAME_LENGTH 16
 
 typedef uint_fast8_t (*Socket_Enable_Cb) (uint8_t flag);
+typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
+
+struct _Firmware_Version {
+	uint8_t revision;	// board layout revision
+	uint8_t major;		// major version
+	uint8_t minor;		// minor version
+	uint8_t patch;		// patch level
+};
 
 struct _Socket_Config {
 	uint8_t sock;
@@ -59,15 +67,7 @@ struct _Config {
 	/*
 	 * read-only
 	 */
-	union {
-		uint32_t all;
-		struct {
-			uint8_t revision;	// board layout revision
-			uint8_t major;		// major version
-			uint8_t minor;		// minor version
-			uint8_t patch;		// patch level
-		} part;
-	} version;
+ 	Firmware_Version version;
 
 	/*
 	 * read-write

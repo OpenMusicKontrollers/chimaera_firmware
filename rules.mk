@@ -68,6 +68,9 @@ endif
 CFLAGS_$(d) += -DSENSOR_N=$(SENSORS)
 CFLAGS_$(d) += -DWIZ_CHIP=$(WIZ_CHIP)
 CFLAGS_$(d) += -DREVISION=$(REVISION)
+CFLAGS_$(d) += -DVERSION_MAJOR=$(VERSION_MAJOR)
+CFLAGS_$(d) += -DVERSION_MINOR=$(VERSION_MINOR)
+CFLAGS_$(d) += -DVERSION_PATCH=$(VERSION_PATCH)
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need
 # our include directory, and we'll also add an extra definition as a

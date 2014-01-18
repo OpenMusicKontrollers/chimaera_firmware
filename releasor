@@ -1,0 +1,35 @@
+#!/bin/bash
+
+release=0x0001
+major=0
+minor=2
+patch=0
+version="${major}.${minor}.${patch}"
+
+mkdir -p image
+
+export VERSION_MAJOR=${major}
+export VERSION_MINOR=${minor}
+export VERSION_PATCH=${patch}
+
+for revision in 4;
+do
+	export REVISION=${revision}
+
+	for sensors in 96 144 160;
+	do
+		export SENSORS=${sensors}
+
+		# build
+		make clean
+		make -j5
+
+		# pack
+		dfuse_pack \
+			-o image/chimaera_S${sensors}-${version}-${revision}.dfu \
+			-f ${release} \
+				-m 0x08000000 -i build/F303CB.bin \
+				-n 'Chimaera S'${sensors}' '${version}'-'${revision}'. Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under zlib/libpng License. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
+				-a 0
+	done
+done

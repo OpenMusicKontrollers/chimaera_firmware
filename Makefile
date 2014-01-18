@@ -1,10 +1,15 @@
 # Note: LIB_MAPLE_HOME needs to be defined in your environment 
 
 # set number of sensors: 16, 32, 48, 64, 80, 96, 112, 128, 144, 160
-export SENSORS := 96
+export SENSORS ?= 96
+
+# set firmware version
+export VERSION_MAJOR ?= 0
+export VERSION_MINOR ?= 2
+export VERSION_PATCH ?= 0
 
 # set revision of board design: 3, 4
-export REVISION := 4
+export REVISION ?= 4
 
 # set STM32F303Cx chip version: F303CB, F303CC
 export BOARD := F303CB
@@ -26,3 +31,6 @@ download:	build/$(BOARD).bin
 	oscsend osc.udp://255.255.255.255:4444 /chimaera/reset/flash i 13
 	sleep 1
 	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<
+
+release:
+	./releasor
