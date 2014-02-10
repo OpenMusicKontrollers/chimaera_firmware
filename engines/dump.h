@@ -30,6 +30,7 @@
 #include <nosc.h>
 
 extern nOSC_Bundle_Item dump_osc;
+extern const nOSC_Query_Item dump_tree [1];
 
 void dump_init (int32_t size, int16_t *swap);
 

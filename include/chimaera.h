@@ -32,6 +32,7 @@ extern const stm32_pin_info PIN_MAP [];
 #include <board/board.h>
 
 #include <nosc.h>
+#include <wiz.h>
 
 #define pin_set_mode(PIN, MODE) (gpio_set_mode (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE)))
 #define pin_set_modef(PIN, MODE, FLAGS) (gpio_set_modef (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE), (FLAGS)))

@@ -135,3 +135,27 @@ CMC_Engine dummy_engine = {
 	dummy_engine_off_cb,
 	dummy_engine_set_cb
 };
+
+/*
+ * Config
+ */
+static uint_fast8_t
+_dummy_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.dummy.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument dummy_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item dummy_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _dummy_enabled, dummy_enabled_args),
+};

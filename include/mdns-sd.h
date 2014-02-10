@@ -26,6 +26,10 @@
 
 #include <stdint.h>
 
+#include <nosc.h>
+
+extern const nOSC_Query_Item mdns_tree [1];
+
 typedef void (*mDNS_Resolve_Cb) (uint8_t *ip, void *data);
 
 void mdns_dispatch (uint8_t *buf, uint16_t len);

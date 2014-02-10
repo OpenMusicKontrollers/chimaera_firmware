@@ -172,3 +172,39 @@ CMC_Engine tuio1_engine = {
 	NULL,
 	tuio1_engine_token_cb
 };
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_tuio1_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.tuio1.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+static uint_fast8_t
+_tuio1_custom_profile (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_bool(path, fmt, argc, args, &config.tuio1.custom_profile);
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument tuio1_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+static const nOSC_Query_Argument tuio1_custom_profile_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item tuio1_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _tuio1_enabled, tuio1_enabled_args),
+	nOSC_QUERY_ITEM_METHOD_RW("custom_profile", "toggle custom profile", _tuio1_custom_profile, tuio1_custom_profile_args),
+};

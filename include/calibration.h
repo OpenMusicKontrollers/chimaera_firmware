@@ -39,6 +39,7 @@ extern Calibration range;
 extern uint_fast8_t zeroing;
 extern uint_fast8_t calibrating;
 extern float curve [0x800]; // lookup table for distance-magnetic-flux relationship
+extern const nOSC_Query_Item calibration_tree [12];
 
 uint_fast8_t range_load (uint_fast8_t pos);
 uint_fast8_t range_reset ();

@@ -196,3 +196,28 @@ CMC_Engine rtpmidi_engine = {
 	rtpmidi_engine_off_cb,
 	rtpmidi_engine_set_cb
 };
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_rtpmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument rtpmidi_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item rtpmidi_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _rtpmidi_enabled, rtpmidi_enabled_args),
+};

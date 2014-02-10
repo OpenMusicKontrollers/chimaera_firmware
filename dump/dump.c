@@ -22,6 +22,7 @@
  */
 
 #include <chimaera.h>
+#include <config.h>
 
 #include "dump_private.h"
 
@@ -55,3 +56,27 @@ dump_update (nOSC_Timestamp now, nOSC_Timestamp offset)
 	dump_osc.tt = offset;
 	nosc_message_set_int32 (dump_msg, DUMP_FRAME, ++frame);
 }
+
+/*
+ * Config
+ */
+static uint_fast8_t
+_dump_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.dump.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument dump_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item dump_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _dump_enabled, dump_enabled_args),
+};

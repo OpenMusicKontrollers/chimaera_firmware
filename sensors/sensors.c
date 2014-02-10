@@ -21,8 +21,9 @@
  *     distribution.
  */
 
-#include <chimaera.h>
 #include <sensors.h>
+#include <config.h>
+#include <cmc.h>
 
 #if SENSOR_N == 16
 uint8_t adc1_sequence [ADC_DUAL_LENGTH] = {}; // analog input pins read out by the ADC1
@@ -85,3 +86,226 @@ uint8_t adc3_sequence [ADC_SING_LENGTH] = {PB1, PB0}; // analog input pins read 
 uint8_t adc_unused [ADC_UNUSED_LENGTH] = {};
 uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
 #endif
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_sensors_number (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	size = CONFIG_SUCCESS("isi", uuid, path, SENSOR_N);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_sensors_rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if (argc == 1) // query
+		size = CONFIG_SUCCESS ("isi", uuid, path, config.rate);
+	else
+	{
+		config.rate = args[1].i;
+
+		if (config.rate)
+		{
+			timer_pause (adc_timer);
+			adc_timer_reconfigure ();
+			timer_resume (adc_timer);
+		}
+		else
+			timer_pause (adc_timer);
+
+		size = CONFIG_SUCCESS ("is", uuid, path);
+	}
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_sensors_movingaverage (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if (argc == 1) // query
+		size = CONFIG_SUCCESS ("isi", uuid, path, 1U << config.movingaverage.bitshift);
+	else
+		switch (args[1].i)
+		{
+			case 1:
+				config.movingaverage.enabled = 0;
+				size = CONFIG_SUCCESS ("is", uuid, path);
+				break;
+			case 2:
+				config.movingaverage.enabled = 1;
+				config.movingaverage.bitshift = 1;
+				size = CONFIG_SUCCESS ("is", uuid, path);
+				break;
+			case 4:
+				config.movingaverage.enabled = 1;
+				config.movingaverage.bitshift = 2;
+				size = CONFIG_SUCCESS ("is", uuid, path);
+				break;
+			case 8:
+				config.movingaverage.enabled = 1;
+				config.movingaverage.bitshift = 3;
+				size = CONFIG_SUCCESS ("is", uuid, path);
+				break;
+			default:
+				size = CONFIG_FAIL ("iss", uuid, path, "valid sample windows are 1, 2, 4 and 8");
+		}
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_sensors_interpolation (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_uint8 (path, fmt, argc, args, &config.interpolation.order);
+}
+
+static uint_fast8_t
+_group_clear (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	cmc_group_clear();
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint16_t gid = args[1].i;
+
+	uint16_t pid;
+	float x0;
+	float x1;
+	uint_fast8_t scale;
+		
+	CMC_Group *grp = &cmc_groups[gid];
+
+	if(argc == 2) // request group info
+	{
+
+		pid = grp->pid;
+		x0 = grp->x0;
+		x1 = grp->x1;
+		scale = grp->m == CMC_NOSCALE ? 0 : 1;
+
+		size = CONFIG_SUCCESS ("isiiffi", uuid, path, gid, pid, x0, x1, scale);
+	}
+	else // set group info
+	{
+		pid = args[2].i;
+		x0 = args[3].f;
+		x1 = args[4].f;
+		scale = args[5].i;
+		
+		grp->pid = pid;
+		grp->x0 = x0;
+		grp->x1 = x1;
+		grp->m = scale ? 1.f/(x1-x0) : CMC_NOSCALE;
+
+		size = CONFIG_SUCCESS ("is", uuid, path);
+	}
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_group_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if (groups_load ())
+		size = CONFIG_SUCCESS ("is", uuid, path);
+	else
+		size = CONFIG_FAIL ("iss", uuid, path, "groups could not be loaded from EEPROM");
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_group_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if (groups_save ())
+		size = CONFIG_SUCCESS ("is", uuid, path);
+	else
+		size = CONFIG_FAIL ("iss", uuid, path, "groups could not be saved to EEPROM");
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+/*
+ * Query
+ */
+
+const nOSC_Query_Item group_tree [] = {
+	nOSC_QUERY_ITEM_METHOD_X("load", "load from EEPROM", _group_load, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("save", "save to EEPROM", _group_save, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("clear", "cleare all groups", _group_clear, NULL),
+};
+
+static const nOSC_Query_Argument group_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("number", 0, 0, GROUP_MAX),
+	nOSC_QUERY_ARGUMENT_INT32("polarity", 1, 0, 0x180),
+	nOSC_QUERY_ARGUMENT_FLOAT("min", 1, 0.f, 1.f),
+	nOSC_QUERY_ARGUMENT_FLOAT("max", 1, 0.f, 1.f),
+	nOSC_QUERY_ARGUMENT_INT32("scale", 1, 0, 1),
+};
+
+static const nOSC_Query_Argument sensors_number_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("number", 1, SENSOR_N, SENSOR_N)
+};
+
+static const nOSC_Query_Argument sensors_rate_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("Hz", 1, 0, 10000)
+};
+
+static const nOSC_Query_Argument sensors_movingaverage_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("samples", 1, 0, 8)
+};
+
+static const nOSC_Query_Argument sensors_interpolation_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("order", 1, 0, 4)
+};
+
+const nOSC_Query_Item sensors_tree [] = {
+	nOSC_QUERY_ITEM_NODE("group/", "Group", group_tree),
+	nOSC_QUERY_ITEM_METHOD_RW("group", "group spec", _group, group_args), //FIXME node should not also be a method
+
+	nOSC_QUERY_ITEM_METHOD_RW("movingaverage", "movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
+	nOSC_QUERY_ITEM_METHOD_RW("interpolation", "inerpolation", _sensors_interpolation, sensors_interpolation_args),
+	nOSC_QUERY_ITEM_METHOD_RW("rate", "update rate", _sensors_rate, sensors_rate_args),
+
+	nOSC_QUERY_ITEM_METHOD_R("number", "sensor number", _sensors_number, sensors_number_args),
+};

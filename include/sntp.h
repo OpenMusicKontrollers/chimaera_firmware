@@ -36,6 +36,7 @@
 
 extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;
+extern const nOSC_Query_Item sntp_tree [5];
 
 uint32_t sntp_uptime ();
 

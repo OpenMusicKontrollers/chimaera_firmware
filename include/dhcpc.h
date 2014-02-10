@@ -48,5 +48,6 @@ uint_fast8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 uint_fast8_t dhcpc_refresh ();
 
 extern DHCPC dhcpc;
+extern const nOSC_Query_Item dhcpc_tree [1];
 
 #endif // DHCPC_H

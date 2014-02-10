@@ -22,10 +22,12 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 
 #include "nosc_private.h"
 
 #include <chimaera.h>
+#include <debug.h>
 
 /*
  * static variabled
@@ -463,4 +465,171 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 	uint16_t size = nosc_message_serialize (msg, path, fmt, buf);
 
 	return size;
+}
+
+/*
+ * Query system
+ */
+const char *type_hash [] = {
+	[nOSC_QUERY_METHOD_RW] = "rw",
+	[nOSC_QUERY_METHOD_R] = "r",
+	[nOSC_QUERY_METHOD_X] = "x"
+};
+
+const nOSC_Query_Item *
+nosc_query_find(const nOSC_Query_Item *item, const char *path)
+{
+	if(!strcmp(path, item->path))
+		return item;
+
+	const char *end = strchr(path, '/');
+	if(!end)
+		return NULL;
+
+	if(strncmp(path, item->path, end-path))
+		return NULL;
+
+	if(item->type == nOSC_QUERY_NODE)
+	{
+		uint_fast8_t i;
+		for(i=0; i<item->item.node.argc; i++)
+		{
+			const nOSC_Query_Item *sub = &item->item.node.tree[i];
+			const nOSC_Query_Item *subsub = nosc_query_find(sub, end+1);
+			if(subsub)
+				return subsub;
+		}
+	}
+	return NULL;
+}
+
+uint_fast8_t
+nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
+{
+	uint_fast8_t len = strlen(fmt);
+	uint_fast8_t argc_w = item->item.method.argc;
+	const nOSC_Query_Argument *args = item->item.method.args;
+	uint_fast8_t i;
+
+	// how many read access arguments?
+	for(i=0; i<argc_w; i++)
+		if(args[i].mode)
+			break;
+	uint_fast8_t argc_r = i;
+
+	if( (item->type == nOSC_QUERY_METHOD_R) && (len != argc_r) )
+		return 0;
+
+	if( (item->type == nOSC_QUERY_METHOD_X) && (len != argc_w) )
+		return 0;
+
+	if( (item->type == nOSC_QUERY_METHOD_RW) && (len != argc_r) && (len != argc_w) )
+		return 0;
+
+	for(i=0; i<len; i++)
+	{
+		// check for matching argument types TODO maybe allow some argument type translation here?
+		if(fmt[i] != args[i].type)
+			return 0;
+
+		// check for matching argument ranges (for number arguments only)
+		switch(fmt[i])
+		{
+			case nOSC_INT32:
+				if( (argv[i].i < args[i].range.min.i) || (argv[i].i > args[i].range.max.i) )
+					return 0;
+				break;
+			case nOSC_FLOAT:
+				if( (argv[i].f < args[i].range.min.f) || (argv[i].f > args[i].range.max.f) )
+					return 0;
+				break;
+			case nOSC_INT64:
+				if( (argv[i].h < args[i].range.min.h) || (argv[i].h > args[i].range.max.h) )
+					return 0;
+				break;
+			case nOSC_DOUBLE:
+				if( (argv[i].d < args[i].range.min.d) || (argv[i].d > args[i].range.max.d) )
+					return 0;
+				break;
+			case nOSC_TIMESTAMP:
+				if( (argv[i].t < args[i].range.min.t) || (argv[i].t > args[i].range.max.t) )
+					return 0;
+				break;
+			default:
+				break;
+		}
+	}
+
+	return 1;
+}
+
+void
+nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
+{
+	*buf++ = '{';
+
+	if(item->type == nOSC_QUERY_NODE)
+	{
+		sprintf(buf, "\"path\":\"%s\",\"type\":\"node\",\"description\":\"%s\",\"items\":[",
+			path, item->description);
+		buf += strlen(buf);
+
+		uint_fast8_t i;
+		for(i=0; i<item->item.node.argc; i++)
+		{
+			const nOSC_Query_Item *sub = &item->item.node.tree[i];
+			sprintf(buf, "\"%s\"", sub->path);
+			buf += strlen(buf);
+			if(i < item->item.node.argc-1)
+				*buf++ = ',';
+		}
+
+		*buf++ = ']';
+	}
+	else // !nOSC_QUERY_NODE
+	{
+		sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"access\":\"%s\",\"description\":\"%s\",\"arguments\":[",
+			path, type_hash[item->type], item->description);
+		buf += strlen(buf);
+
+		uint_fast8_t i;
+		for(i=0; i<item->item.method.argc; i++)
+		{
+			const nOSC_Query_Argument *arg = &item->item.method.args[i];
+			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"mode\":%i",
+				arg->type, arg->description,
+				arg->mode);
+			buf += strlen(buf);
+			switch(arg->type)
+			{
+				case nOSC_INT32:
+					sprintf(buf, ",\"range\":[%i,%i]", arg->range.min.i, arg->range.max.i);
+					buf += strlen(buf);
+					break;
+				case nOSC_FLOAT:
+					sprintf(buf, ",\"range\":[%f,%f]", arg->range.min.f, arg->range.max.f);
+					buf += strlen(buf);
+					break;
+				case nOSC_INT64:
+					sprintf(buf, ",\"range\":[%li,%li]", arg->range.min.h, arg->range.max.h);
+					buf += strlen(buf);
+					break;
+				case nOSC_DOUBLE:
+					sprintf(buf, ",\"range\":[%lf,%lf]", arg->range.min.d, arg->range.max.d);
+					buf += strlen(buf);
+					break;
+				//FIXME add other types
+				default:
+					break;
+			}
+			*buf++ = '}';
+			if(i < item->item.method.argc-1)
+				*buf++ = ',';
+		}
+
+		*buf++ = ']';
+	}
+
+	*buf++ = '}';
+	*buf++ = '\0';
 }

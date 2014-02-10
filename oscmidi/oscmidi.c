@@ -124,3 +124,65 @@ CMC_Engine oscmidi_engine = {
 	oscmidi_engine_off_cb,
 	oscmidi_engine_set_cb
 };
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_oscmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
+	cmc_engines_update ();
+	return res;
+}
+
+static uint_fast8_t
+_oscmidi_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_float (path, fmt, argc, args, &config.oscmidi.offset);
+}
+
+static uint_fast8_t
+_oscmidi_range (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint_fast8_t res;
+	res = config_check_float (path, fmt, argc, args, &config.oscmidi.range);
+	if(res)
+		config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
+	return res;
+}
+
+static uint_fast8_t
+_oscmidi_effect (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_uint8 (path, fmt, argc, args, &config.oscmidi.effect);
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument oscmidi_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+static const nOSC_Query_Argument oscmidi_offset_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", 1, 0.f, 0x7f),
+};
+
+static const nOSC_Query_Argument oscmidi_range_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", 1, 0.f, 0x7f),
+};
+
+static const nOSC_Query_Argument oscmidi_effect_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("controller", 1, 0, 0x7f),
+};
+
+const nOSC_Query_Item oscmidi_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _oscmidi_enabled, oscmidi_enabled_args),
+	nOSC_QUERY_ITEM_METHOD_RW("offset", "midi key offset", _oscmidi_offset, oscmidi_offset_args),
+	nOSC_QUERY_ITEM_METHOD_RW("range", "pitch bend range", _oscmidi_range, oscmidi_range_args),
+	nOSC_QUERY_ITEM_METHOD_RW("effect", "vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
+};

@@ -105,3 +105,88 @@ sntp_timestamp_refresh (uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offs
 			*offset = nOSC_IMMEDIATE;
 	}
 }
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_sntp_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_socket_enabled (&config.sntp.socket, path, fmt, argc, args);
+}
+
+static uint_fast8_t
+_sntp_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_address (&config.sntp.socket, path, fmt, argc, args);
+}
+
+static uint_fast8_t
+_sntp_tau (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_uint8 (path, fmt, argc, args, &config.sntp.tau);
+}
+
+static uint_fast8_t
+_sntp_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	float offset = clock_offset;
+	size = CONFIG_SUCCESS ("isf", uuid, path, offset);
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_sntp_roundtrip (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	float trip = roundtrip_delay;
+	size = CONFIG_SUCCESS ("isf", uuid, path, trip);
+
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument sntp_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+static const nOSC_Query_Argument sntp_address_args [] = {
+	nOSC_QUERY_ARGUMENT_STRING("host:port", 1)
+};
+
+static const nOSC_Query_Argument sntp_tau_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("seconds", 1, 1, 60)
+};
+
+static const nOSC_Query_Argument sntp_offset_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("seconds", 1, -INFINITY, INFINITY)
+};
+
+static const nOSC_Query_Argument sntp_roundtrip_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("seconds", 1, 0.f, INFINITY)
+};
+
+const nOSC_Query_Item sntp_tree [] = {
+	// read-write
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _sntp_enabled, sntp_enabled_args),
+	nOSC_QUERY_ITEM_METHOD_RW("address", "remote address", _sntp_address, sntp_address_args),
+	nOSC_QUERY_ITEM_METHOD_RW("tau", "update period", _sntp_tau, sntp_tau_args),
+
+	// read-only
+	nOSC_QUERY_ITEM_METHOD_R("offset", "sync offset", _sntp_offset, sntp_offset_args),
+	nOSC_QUERY_ITEM_METHOD_R("roundtrip", "sync roundtrip delay", _sntp_roundtrip, sntp_roundtrip_args)
+};

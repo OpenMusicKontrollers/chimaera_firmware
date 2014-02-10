@@ -30,6 +30,7 @@
 
 #include <netdef.h>
 #include <armfix.h>
+#include <math.h>
 
 /*
  * Definitions
@@ -201,5 +202,147 @@ uint16_t nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char
 
 uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
 uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);
+
+/*
+ * Query system
+ */
+	
+typedef struct _nOSC_Query_Item nOSC_Query_Item;
+typedef struct _nOSC_Query_Node nOSC_Query_Node;
+typedef struct _nOSC_Query_Method nOSC_Query_Method;
+typedef struct _nOSC_Query_Argument nOSC_Query_Argument;
+
+typedef enum _nOSC_Query_Type {
+	nOSC_QUERY_NODE,
+	nOSC_QUERY_METHOD_RW,
+	nOSC_QUERY_METHOD_R,
+	nOSC_QUERY_METHOD_X
+} nOSC_Query_Type;
+
+extern const char *type_hash [];
+
+struct _nOSC_Query_Argument {
+	nOSC_Type type;
+	const char *description;
+	uint8_t mode;
+	struct {
+		union {
+			int32_t i;
+			float f;
+			int64_t h;
+			nOSC_Timestamp t;
+			double d;
+		} min;
+		union {
+			int32_t i;
+			float f;
+			int64_t h;
+			nOSC_Timestamp t;
+			double d;
+		} max;
+	} range;
+};
+
+struct _nOSC_Query_Method {
+	nOSC_Method_Cb cb;
+	uint_fast8_t argc;
+	const nOSC_Query_Argument *args;
+};
+
+struct _nOSC_Query_Node {
+	uint_fast8_t argc;
+	const nOSC_Query_Item *tree;
+};
+
+struct _nOSC_Query_Item {
+	const char *path;
+	const char *description;
+	nOSC_Query_Type type;
+	union {
+		nOSC_Query_Node node;
+		nOSC_Query_Method method;
+	} item;
+};
+
+const nOSC_Query_Item *nosc_query_find(const nOSC_Query_Item *item, const char *path);
+void nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path);
+uint_fast8_t nosc_query_format(const nOSC_Query_Item *item, const char *fmt);
+uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOSC_Arg *args);
+
+#define nOSC_QUERY_ITEM_NODE(PATH, DESCRIPTION, TREE) \
+{ \
+	.path = (PATH), \
+	.description = (DESCRIPTION), \
+	.type = nOSC_QUERY_NODE, \
+	.item.node.tree = (TREE), \
+	.item.node.argc = sizeof((TREE)) / sizeof(nOSC_Query_Item) \
+}
+
+#define nOSC_QUERY_ITEM_METHOD(TYPE, PATH, DESCRIPTION, CB, ARGS) \
+{ \
+	.path = (PATH), \
+	.description = (DESCRIPTION), \
+	.type = (TYPE), \
+	.item.method.cb = (CB), \
+	.item.method.args = (ARGS), \
+	.item.method.argc = sizeof((ARGS)) / sizeof(nOSC_Query_Argument) \
+}
+
+#define nOSC_QUERY_ITEM_METHOD_RW(PATH, DESCRIPTION, CB, ARGS) \
+	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_RW, (PATH), (DESCRIPTION), (CB), (ARGS))
+
+#define nOSC_QUERY_ITEM_METHOD_R(PATH, DESCRIPTION, CB, ARGS) \
+	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_R, (PATH), (DESCRIPTION), (CB), (ARGS))
+
+#define nOSC_QUERY_ITEM_METHOD_W(PATH, DESCRIPTION, CB, ARGS) \
+	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_W, (PATH), (DESCRIPTION), (CB), (ARGS))
+
+#define nOSC_QUERY_ITEM_METHOD_X(PATH, DESCRIPTION, CB, ARGS) \
+	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_X, (PATH), (DESCRIPTION), (CB), (ARGS))
+
+#define nOSC_QUERY_ARGUMENT(TYPE, DESCRIPTION, MODE) \
+	.type = (TYPE), \
+	.description = (DESCRIPTION), \
+	.mode = (MODE)
+
+#define nOSC_QUERY_ARGUMENT_BOOL(DESCRIPTION, MODE) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_INT32, (DESCRIPTION), (MODE)), \
+	.range.min.i = 0, \
+	.range.max.i = 1 \
+}
+
+#define nOSC_QUERY_ARGUMENT_INT32(DESCRIPTION, MODE, MIN, MAX) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_INT32, (DESCRIPTION), (MODE)), \
+	.range.min.i = (MIN), \
+	.range.max.i = (MAX) \
+}
+
+#define nOSC_QUERY_ARGUMENT_FLOAT(DESCRIPTION, MODE, MIN, MAX) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_FLOAT, (DESCRIPTION), (MODE)), \
+	.range.min.f = (MIN), \
+	.range.max.f = (MAX) \
+}
+
+#define nOSC_QUERY_ARGUMENT_INT64(DESCRIPTION, MODE, MIN, MAX) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_INT64, (DESCRIPTION), (MODE)), \
+	.range.min.h = (MIN), \
+	.range.max.h = (MAX) \
+}
+
+#define nOSC_QUERY_ARGUMENT_DOUBLE(DESCRIPTION, MODE, MIN, MAX) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_DOUBLE, (DESCRIPTION), (MODE)), \
+	.range.min.d = (MIN), \
+	.range.max.d = (MAX) \
+}
+
+#define nOSC_QUERY_ARGUMENT_STRING(DESCRIPTION, MODE) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_STRING, (DESCRIPTION), (MODE)), \
+}
 
 #endif

@@ -46,6 +46,7 @@
  */
 #include <chimaera.h>
 #include <chimutil.h>
+#include <debug.h>
 #include <eeprom.h>
 #include <sntp.h>
 #include <config.h>

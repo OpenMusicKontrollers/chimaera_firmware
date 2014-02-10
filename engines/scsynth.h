@@ -53,6 +53,7 @@ struct _SCSynth_Group {
 
 extern nOSC_Bundle_Item scsynth_osc;
 extern CMC_Engine scsynth_engine;
+extern const nOSC_Query_Item scsynth_tree [2];
 
 void scsynth_init ();
 uint_fast8_t scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,

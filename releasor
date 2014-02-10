@@ -16,7 +16,7 @@ for revision in 4;
 do
 	export REVISION=${revision}
 
-	for sensors in 96 144 160;
+	for sensors in 16 32 48 64 80 96 112 128 144 160;
 	do
 		export SENSORS=${sensors}
 

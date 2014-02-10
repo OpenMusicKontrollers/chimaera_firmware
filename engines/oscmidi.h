@@ -29,6 +29,7 @@
 
 extern nOSC_Bundle_Item oscmidi_osc;
 extern CMC_Engine oscmidi_engine;
+extern const nOSC_Query_Item oscmidi_tree [4];
 
 void oscmidi_init ();
 

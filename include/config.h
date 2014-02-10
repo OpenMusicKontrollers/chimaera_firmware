@@ -170,4 +170,15 @@ uint_fast8_t config_save ();
 uint_fast8_t groups_load ();
 uint_fast8_t groups_save ();
 
+extern const char *success_str;
+extern const char *fail_str;
+#define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
+
+uint_fast8_t config_socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_bool (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
+uint_fast8_t config_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+
 #endif

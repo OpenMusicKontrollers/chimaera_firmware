@@ -440,3 +440,26 @@ dhcpc_refresh ()
 
 	return dhcpc.state == CLAIMED;
 }
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	// needs a config save and reboot to take action
+	return config_check_bool (path, fmt, argc, args, &config.dhcpc.socket.enabled);
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument dhcpc_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item dhcpc_tree [] = {
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _dhcpc_enabled, dhcpc_enabled_args),
+};

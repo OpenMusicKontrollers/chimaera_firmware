@@ -17,9 +17,15 @@ export MEMORY_TARGET := jtag
 export USER_MODULES := $(shell pwd)
 
 # set DfuSe USB vendor and product IDs
-export DFU_VENDOR := 0x0483
-export DFU_PRODUCT := 0xdf11
+export USB_VENDOR := 0x0483
+export USB_PRODUCT := 0xdf11
 
+RELEASE := 0x0001
+VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(REVISION)
+BIN := build/$(BOARD).bin
+DFU := build/chimaera_S$(SENSORS)-$(VERSION).dfu
+
+.PHONY: dfu reset update download release
 .DEFAULT_GOAL := sketch
 
 all: sketch
@@ -27,10 +33,29 @@ all: sketch
 %:
 	$(MAKE) -f $(LIB_MAPLE_HOME)/Makefile $@
 
-download:	build/$(BOARD).bin
-	oscsend osc.udp://255.255.255.255:4444 /chimaera/reset/flash i 13
+$(BIN): sketch
+
+dfu: $(DFU)
+
+$(DFU): $(BIN)
+	dfuse_pack \
+		-o $@ \
+		-f 0x0001 \
+		-v $(USB_VENDOR) \
+		-p $(USB_PRODUCT) \
+			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'. Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under zlib/libpng License. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
+			-m 0x08000000 -i $< \
+			-a 0
+
+reset:
+	oscsend osc.udp://255.255.255.255:4444 /reset/flash i $(shell echo $$[RANDOM])
 	sleep 1
-	dfu-util -a 0 -d $(DFU_VENDOR):$(DFU_PRODUCT) -s 0x08000000:leave -D $<
+
+update:	$(IMAGE) reset
+	dfu-util -a 0 -s :leave -D $<
+
+download:	$(BIN) reset
+	dfu-util -a 0 -d $(USB_VENDOR):$(USB_PRODUCT) -s 0x08000000:leave -D $<
 
 release:
 	./releasor

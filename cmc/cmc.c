@@ -41,8 +41,6 @@
 #include <dummy.h>
 #include <rtpmidi.h>
 
-#define CMC_NOSCALE 0.0f
-
 // globals
 CMC_Engine *engines [ENGINE_MAX+1];
 uint_fast8_t cmc_engines_active = 0;
@@ -691,38 +689,6 @@ cmc_group_clear ()
 		grp->x1 = 1.0;
 		grp->m = CMC_NOSCALE;
 	}
-}
-
-uint_fast8_t
-cmc_group_get (uint16_t gid, uint16_t *pid, float *x0, float *x1, uint_fast8_t *scale)
-{
-	if(gid >= GROUP_MAX)
-		return 0;
-
-	CMC_Group *grp = &cmc_groups[gid];
-
-	*pid = grp->pid;
-	*x0 = grp->x0;
-	*x1 = grp->x1;
-	*scale = grp->m == CMC_NOSCALE ? 0 : 1;
-
-	return 1;
-}
-
-uint_fast8_t
-cmc_group_set (uint16_t gid, uint16_t pid, float x0, float x1, uint_fast8_t scale)
-{
-	if( (gid >= GROUP_MAX) || (x0 < 0.f) || (x0 > 1.f) || (x1 < 0.f) || (x1 > 1.f) )
-		return 0; // wrong parameter ranges
-
-	CMC_Group *grp = &cmc_groups[gid];
-
-	grp->pid = pid;
-	grp->x0 = x0;
-	grp->x1 = x1;
-	grp->m = scale ? 1.f/(x1-x0) : CMC_NOSCALE;
-
-	return 1;
 }
 
 void

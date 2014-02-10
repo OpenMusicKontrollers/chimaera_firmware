@@ -24,7 +24,7 @@
 #include <math.h>
 
 #include <chimaera.h>
-#include <chimutil.h>
+#include <debug.h>
 #include <eeprom.h>
 #include <linalg.h>
 #include "../cmc/cmc_private.h"
@@ -391,3 +391,282 @@ range_update_b3 (float y)
 	// update curve lookup table
 	range_curve_update ();
 }
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_calibration_start (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	range_init ();
+
+	// enable calibration
+	zeroing = 1;
+	calibrating = 1;
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_zero (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	// update new range
+	zeroing = 0;
+	range_update_quiescent ();
+
+	// debug output
+	/*
+	uint_fast8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	}
+	*/
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_min (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	// update new range
+	uint_fast8_t si = range_update_b0 ();
+
+	// debug output
+	/*
+	uint_fast8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/thresh", "ii", i, range.thresh[i]);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	}
+	*/
+
+	size = CONFIG_SUCCESS ("isi", uuid, path, si);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_mid (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	float y = args[1].f;
+
+	// FIXME check for increasing y, or do sorting along x afterwards?
+
+	// update mid range
+	range_update_b1 (y);
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_max (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	// update max range
+	range_update_b2 ();
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_end (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	float y = args[1].f;
+
+	// update max range
+	range_update_b3 (y);
+
+	// end calibration procedure
+	calibrating = 0;
+
+	// debug output
+	/*
+	uint_fast8_t i;
+	for (i=0; i<SENSOR_N; i++)
+	{
+		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/U", "if", i, range.U[i]);
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	}
+
+	// output minimal offset
+	size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/W", "f", range.W);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	// output curve parameters
+	size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	*/
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+// get calibration data per sensor
+static uint_fast8_t
+_calibration_sensor (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	int32_t n = args[1].i;
+	size = CONFIG_SUCCESS ("isiiif", uuid, path, n, range.qui[n], range.thresh[n], range.U[n]);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	size = CONFIG_SUCCESS ("isf", uuid, path, range.W);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_curve (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	size = CONFIG_SUCCESS ("isfff", uuid, path, range.C[0], range.C[1], range.C[2]);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint_fast8_t pos = args[1].i; // use given calibration
+
+	range_save (pos);
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint_fast8_t pos = args[1].i;
+
+	range_load (pos);
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_reset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	// reset calibration range
+	range_reset ();
+
+	size = CONFIG_SUCCESS ("is", uuid, path);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument calibration_load_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("slot", 0, 0, EEPROM_RANGE_MAX)
+};
+
+static const nOSC_Query_Argument calibration_save_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("slot", 0, 0, EEPROM_RANGE_MAX)
+};
+
+static const nOSC_Query_Argument calibration_mid_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("vicinity", 0, 0.f, 1.f)
+};
+
+static const nOSC_Query_Argument calibration_end_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("vicinity", 0, 0.f, 1.f)
+};
+
+static const nOSC_Query_Argument calibration_sensor_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("number", 0, 0, SENSOR_N),
+	nOSC_QUERY_ARGUMENT_FLOAT("quiescent value", 1, 0, 0x7ff),
+	nOSC_QUERY_ARGUMENT_FLOAT("threshold value", 1, 0, 0x7ff),
+	nOSC_QUERY_ARGUMENT_FLOAT("U", 1, -INFINITY, INFINITY)
+};
+
+static const nOSC_Query_Argument calibration_offset_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("W", 1, -INFINITY, INFINITY)
+};
+
+static const nOSC_Query_Argument calibration_curve_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("c0", 1, -INFINITY, INFINITY),
+	nOSC_QUERY_ARGUMENT_FLOAT("c1", 1, -INFINITY, INFINITY),
+	nOSC_QUERY_ARGUMENT_FLOAT("c2", 1, -INFINITY, INFINITY)
+};
+
+const nOSC_Query_Item calibration_tree [] = {
+	nOSC_QUERY_ITEM_METHOD_X("load", "load from EEPROM", _calibration_load, calibration_load_args),
+	nOSC_QUERY_ITEM_METHOD_X("save", "save to EEPROM", _calibration_save, calibration_save_args),
+	nOSC_QUERY_ITEM_METHOD_X("reset", "reset to factory settings", _calibration_reset, NULL),
+
+	nOSC_QUERY_ITEM_METHOD_X("start", "start calibration", _calibration_start, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("zero", "calibrate quiescent values", _calibration_zero, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("min", "calibrate threshold values", _calibration_min, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("mid", "curve fit", _calibration_mid, calibration_mid_args),
+	nOSC_QUERY_ITEM_METHOD_X("max", "curve fit", _calibration_max, NULL),
+	nOSC_QUERY_ITEM_METHOD_X("end", "end calibration", _calibration_end, calibration_end_args),
+
+	nOSC_QUERY_ITEM_METHOD_R("sensor", "sensor data", _calibration_sensor, calibration_sensor_args),
+	nOSC_QUERY_ITEM_METHOD_R("offset", "offset data", _calibration_offset, calibration_offset_args),
+	nOSC_QUERY_ITEM_METHOD_R("curve", "curve data", _calibration_curve, calibration_curve_args),
+};

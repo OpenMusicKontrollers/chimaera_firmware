@@ -62,3 +62,26 @@ IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 	memcpy (config.sntp.socket.ip, brd, 4);
 	memcpy (config.debug.socket.ip, brd, 4);
 }
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	// needs a config save and reboot to take action
+	return config_check_bool (path, fmt, argc, args, &config.ipv4ll.enabled);
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument ipv4ll_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item ipv4ll_tree [] = {
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _ipv4ll_enabled, ipv4ll_enabled_args),
+};

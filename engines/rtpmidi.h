@@ -28,6 +28,7 @@
 #include <midi.h>
 
 extern CMC_Engine rtpmidi_engine;
+extern const nOSC_Query_Item rtpmidi_tree [1];
 
 void rtpmidi_init ();
 

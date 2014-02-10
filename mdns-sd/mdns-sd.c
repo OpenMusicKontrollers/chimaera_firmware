@@ -589,3 +589,26 @@ mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
 
 	return 1;
 }
+
+/*
+ * Config
+ */
+
+static uint_fast8_t
+_mdns_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	// needs a config save and reboot to take action
+	return config_socket_enabled (&config.mdns.socket, path, fmt, argc, args);
+}
+
+/*
+ * Query
+ */
+
+static const nOSC_Query_Argument mdns_enabled_args [] = {
+	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+};
+
+const nOSC_Query_Item mdns_tree [] = {
+	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _mdns_enabled, mdns_enabled_args),
+};
