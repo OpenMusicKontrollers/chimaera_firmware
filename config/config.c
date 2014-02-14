@@ -694,22 +694,12 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 
 	if(argc == 1) // query
 	{
-		size = CONFIG_SUCCESS("isf", uuid, path, config.output.offset); // output timestamp, double, float?
+		float f = config.output.offset;
+		size = CONFIG_SUCCESS("isf", uuid, path, f); // output timestamp, double, float?
 	}
 	else
 	{
-		switch(fmt[1])
-		{
-			case nOSC_TIMESTAMP:
-				config.output.offset = args[1].t;
-				break;
-			case nOSC_FLOAT:
-				config.output.offset = args[1].f;
-				break;
-			case nOSC_DOUBLE:
-				config.output.offset = args[1].d;
-				break;
-		}
+		config.output.offset = args[1].f;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
