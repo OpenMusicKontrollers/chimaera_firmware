@@ -93,6 +93,7 @@ static volatile uint_fast8_t sntp_should_listen = 0;
 static volatile uint_fast8_t mdns_should_listen = 0;
 static volatile uint_fast8_t config_should_listen = 0;
 static volatile uint_fast8_t dhcpc_needs_refresh = 0;
+static volatile uint_fast8_t mdns_timeout = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
 static volatile uint32_t wiz_irq_tick;
 
@@ -115,6 +116,13 @@ static void __CCM_TEXT__
 dhcpc_timer_irq ()
 {
 	dhcpc_needs_refresh = 1;
+}
+
+static void __CCM_TEXT__
+mdns_timer_irq ()
+{
+	mdns_timeout = 1;
+	timer_pause(mdns_timer);
 }
 
 static void
@@ -609,10 +617,19 @@ loop ()
 		}
 
 		// run ZEROCONF server
-		if (config.mdns.socket.enabled && mdns_should_listen)
+		if (config.mdns.socket.enabled)
 		{
-			udp_dispatch (config.mdns.socket.sock, BUF_I_BASE(buf_i_ptr), mdns_cb);
-			mdns_should_listen = 0;
+			if (mdns_should_listen)
+			{
+				udp_dispatch (config.mdns.socket.sock, BUF_I_BASE(buf_i_ptr), mdns_cb);
+				mdns_should_listen = 0;
+			}
+
+			if (mdns_timeout)
+			{
+				mdns_resolve_timeout();
+				mdns_timeout = 0;
+			}
 		}
 
 		// DHCPC REFRESH
@@ -683,6 +700,23 @@ dhcpc_timer_reconfigure ()
 	timer_generate_update (dhcpc_timer);
 
 	nvic_irq_set_priority (NVIC_TIMER4, DHCPC_TIMER_PRIORITY);
+}
+
+void 
+mdns_timer_reconfigure ()
+{
+	uint16_t prescaler = 0xffff; 
+	uint16_t reload = 72e6 / 0xffff * 2; // timeout after 2 seconds
+	uint16_t compare = reload;
+
+	timer_set_prescaler (mdns_timer, prescaler);
+	timer_set_reload (mdns_timer, reload);
+	timer_set_mode (mdns_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare (mdns_timer, TIMER_CH1, compare);
+	timer_attach_interrupt (mdns_timer, TIMER_CH1, mdns_timer_irq);
+	timer_generate_update (mdns_timer);
+
+	nvic_irq_set_priority (NVIC_TIMER3, MDNS_TIMER_PRIORITY);
 }
 
 void
@@ -859,13 +893,17 @@ setup ()
 
 	// initialize timers TODO move up
 	timer_init (adc_timer);
-	timer_init (sntp_timer);
-	timer_init (dhcpc_timer);
-
-	timer_pause (dhcpc_timer);
-
 	timer_pause (adc_timer);
 	adc_timer_reconfigure ();
+
+	timer_init (sntp_timer);
+
+	timer_init (dhcpc_timer);
+	timer_pause (dhcpc_timer);
+
+	timer_init (mdns_timer);
+	timer_pause (mdns_timer);
+
 
 	// initialize sockets
 	output_enable (config.output.socket.enabled);

@@ -79,9 +79,9 @@ _ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
  */
 
 static const nOSC_Query_Argument ipv4ll_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item ipv4ll_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _ipv4ll_enabled, ipv4ll_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _ipv4ll_enabled, ipv4ll_enabled_args),
 };

@@ -164,25 +164,25 @@ _oscmidi_effect (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
  */
 
 static const nOSC_Query_Argument oscmidi_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument oscmidi_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", 1, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
 };
 
 static const nOSC_Query_Argument oscmidi_range_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", 1, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
 };
 
 static const nOSC_Query_Argument oscmidi_effect_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("controller", 1, 0, 0x7f),
+	nOSC_QUERY_ARGUMENT_INT32("controller", nOSC_QUERY_MODE_RW, 0, 0x7f),
 };
 
 const nOSC_Query_Item oscmidi_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _oscmidi_enabled, oscmidi_enabled_args),
-	nOSC_QUERY_ITEM_METHOD_RW("offset", "midi key offset", _oscmidi_offset, oscmidi_offset_args),
-	nOSC_QUERY_ITEM_METHOD_RW("range", "pitch bend range", _oscmidi_range, oscmidi_range_args),
-	nOSC_QUERY_ITEM_METHOD_RW("effect", "vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _oscmidi_enabled, oscmidi_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("offset", "midi key offset", _oscmidi_offset, oscmidi_offset_args),
+	nOSC_QUERY_ITEM_METHOD("range", "pitch bend range", _oscmidi_range, oscmidi_range_args),
+	nOSC_QUERY_ITEM_METHOD("effect", "vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
 };

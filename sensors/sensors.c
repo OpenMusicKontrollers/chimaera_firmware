@@ -265,47 +265,64 @@ _group_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	return 1;
 }
 
+static uint_fast8_t
+_group_number (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	size = CONFIG_SUCCESS("isi", uuid, path, GROUP_MAX);
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
 /*
  * Query
  */
 
+static const nOSC_Query_Argument group_number_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("number", nOSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX)
+};
+
 const nOSC_Query_Item group_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_X("load", "load from EEPROM", _group_load, NULL),
-	nOSC_QUERY_ITEM_METHOD_X("save", "save to EEPROM", _group_save, NULL),
-	nOSC_QUERY_ITEM_METHOD_X("clear", "cleare all groups", _group_clear, NULL),
+	nOSC_QUERY_ITEM_METHOD("load", "load from EEPROM", _group_load, NULL),
+	nOSC_QUERY_ITEM_METHOD("save", "save to EEPROM", _group_save, NULL),
+	nOSC_QUERY_ITEM_METHOD("clear", "cleare all groups", _group_clear, NULL),
+	nOSC_QUERY_ITEM_METHOD("number", "group number", _group_number, group_number_args),
 };
 
 static const nOSC_Query_Argument group_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("number", 0, 0, GROUP_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("polarity", 1, 0, 0x180),
-	nOSC_QUERY_ARGUMENT_FLOAT("min", 1, 0.f, 1.f),
-	nOSC_QUERY_ARGUMENT_FLOAT("max", 1, 0.f, 1.f),
-	nOSC_QUERY_ARGUMENT_INT32("scale", 1, 0, 1),
+	nOSC_QUERY_ARGUMENT_INT32("number", nOSC_QUERY_MODE_RWX, 0, GROUP_MAX - 1),
+	nOSC_QUERY_ARGUMENT_INT32("polarity", nOSC_QUERY_MODE_RW, 0, 0x180),
+	nOSC_QUERY_ARGUMENT_FLOAT("min", nOSC_QUERY_MODE_RW, 0.f, 1.f),
+	nOSC_QUERY_ARGUMENT_FLOAT("max", nOSC_QUERY_MODE_RW, 0.f, 1.f),
+	nOSC_QUERY_ARGUMENT_INT32("scale", nOSC_QUERY_MODE_RW, 0, 1),
 };
 
 static const nOSC_Query_Argument sensors_number_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("number", 1, SENSOR_N, SENSOR_N)
+	nOSC_QUERY_ARGUMENT_INT32("number", nOSC_QUERY_MODE_R, SENSOR_N, SENSOR_N)
 };
 
 static const nOSC_Query_Argument sensors_rate_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Hz", 1, 0, 10000)
+	nOSC_QUERY_ARGUMENT_INT32("Hz", nOSC_QUERY_MODE_RW, 0, 10000)
 };
 
 static const nOSC_Query_Argument sensors_movingaverage_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("samples", 1, 0, 8)
+	nOSC_QUERY_ARGUMENT_INT32("samples", nOSC_QUERY_MODE_RW, 0, 8)
 };
 
 static const nOSC_Query_Argument sensors_interpolation_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("order", 1, 0, 4)
+	nOSC_QUERY_ARGUMENT_INT32("order", nOSC_QUERY_MODE_RW, 0, 4)
 };
 
 const nOSC_Query_Item sensors_tree [] = {
 	nOSC_QUERY_ITEM_NODE("group/", "Group", group_tree),
-	nOSC_QUERY_ITEM_METHOD_RW("group", "group spec", _group, group_args), //FIXME node should not also be a method
+	nOSC_QUERY_ITEM_METHOD("group", "group spec", _group, group_args), //FIXME node should not also be a method
 
-	nOSC_QUERY_ITEM_METHOD_RW("movingaverage", "movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
-	nOSC_QUERY_ITEM_METHOD_RW("interpolation", "inerpolation", _sensors_interpolation, sensors_interpolation_args),
-	nOSC_QUERY_ITEM_METHOD_RW("rate", "update rate", _sensors_rate, sensors_rate_args),
+	nOSC_QUERY_ITEM_METHOD("movingaverage", "movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
+	nOSC_QUERY_ITEM_METHOD("interpolation", "inerpolation", _sensors_interpolation, sensors_interpolation_args),
+	nOSC_QUERY_ITEM_METHOD("rate", "update rate", _sensors_rate, sensors_rate_args),
 
-	nOSC_QUERY_ITEM_METHOD_R("number", "sensor number", _sensors_number, sensors_number_args),
+	nOSC_QUERY_ITEM_METHOD("number", "sensor number", _sensors_number, sensors_number_args),
 };

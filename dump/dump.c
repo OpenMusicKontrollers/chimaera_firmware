@@ -73,10 +73,10 @@ _dump_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  */
 
 static const nOSC_Query_Argument dump_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item dump_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _dump_enabled, dump_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _dump_enabled, dump_enabled_args),
 };

@@ -202,15 +202,15 @@ _tuio2_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
  */
 
 static const nOSC_Query_Argument tuio2_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument tuio2_long_header_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item tuio2_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _tuio2_enabled, tuio2_enabled_args),
-	nOSC_QUERY_ITEM_METHOD_RW("long_header", "frame format with long header", _tuio2_long_header, tuio2_long_header_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _tuio2_enabled, tuio2_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("long_header", "frame format with long header", _tuio2_long_header, tuio2_long_header_args),
 };

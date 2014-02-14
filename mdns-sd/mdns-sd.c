@@ -454,10 +454,12 @@ _dns_answer (DNS_Query *query, uint8_t *buf)
 			uint8_t *ip = buf_ptr; 
 			if(ip_part_of_subnet(ip)) // check IP for same subnet TODO make this configurable
 			{
+				timer_pause(mdns_timer); // stop timeout timer
+
 				resolve.cb(ip, resolve.data);
 
 				// reset request
-				resolve.name[0] = 0x0;
+				resolve.name[0] = '\0';
 				resolve.cb = NULL;
 				resolve.data = NULL;
 			}
@@ -547,6 +549,17 @@ void mdns_announce()
 	}
 }
 
+void
+mdns_resolve_timeout()
+{
+	if(resolve.cb)
+		resolve.cb(NULL, resolve.data);
+
+	resolve.name[0] = '\0';
+	resolve.cb = NULL;
+	resolve.data = NULL;
+}
+
 //TODO implement timeout
 uint_fast8_t
 mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
@@ -587,6 +600,11 @@ mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
 	
 	udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 
+	// start timer for timeout
+	timer_pause(mdns_timer);
+	mdns_timer_reconfigure();
+	timer_resume(mdns_timer);
+
 	return 1;
 }
 
@@ -606,9 +624,9 @@ _mdns_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  */
 
 static const nOSC_Query_Argument mdns_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item mdns_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _mdns_enabled, mdns_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _mdns_enabled, mdns_enabled_args),
 };

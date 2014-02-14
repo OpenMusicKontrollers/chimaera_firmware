@@ -214,17 +214,23 @@ typedef struct _nOSC_Query_Argument nOSC_Query_Argument;
 
 typedef enum _nOSC_Query_Type {
 	nOSC_QUERY_NODE,
-	nOSC_QUERY_METHOD_RW,
-	nOSC_QUERY_METHOD_R,
-	nOSC_QUERY_METHOD_X
+	nOSC_QUERY_METHOD,
 } nOSC_Query_Type;
 
-extern const char *type_hash [];
+typedef enum _nOSC_Query_Mode {
+	nOSC_QUERY_MODE_R		= 0b001,
+	nOSC_QUERY_MODE_W		= 0b010,
+	nOSC_QUERY_MODE_X		= 0b100,
+
+	nOSC_QUERY_MODE_RW	= 0b011,
+	nOSC_QUERY_MODE_WX	= 0b110,
+	nOSC_QUERY_MODE_RWX	= 0b111
+} nOSC_Query_Mode;
 
 struct _nOSC_Query_Argument {
 	nOSC_Type type;
+	nOSC_Query_Mode mode;
 	const char *description;
-	uint8_t mode;
 	struct {
 		union {
 			int32_t i;
@@ -278,27 +284,15 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 	.item.node.argc = sizeof((TREE)) / sizeof(nOSC_Query_Item) \
 }
 
-#define nOSC_QUERY_ITEM_METHOD(TYPE, PATH, DESCRIPTION, CB, ARGS) \
+#define nOSC_QUERY_ITEM_METHOD(PATH, DESCRIPTION, CB, ARGS) \
 { \
 	.path = (PATH), \
 	.description = (DESCRIPTION), \
-	.type = (TYPE), \
+	.type = nOSC_QUERY_METHOD, \
 	.item.method.cb = (CB), \
 	.item.method.args = (ARGS), \
 	.item.method.argc = sizeof((ARGS)) / sizeof(nOSC_Query_Argument) \
 }
-
-#define nOSC_QUERY_ITEM_METHOD_RW(PATH, DESCRIPTION, CB, ARGS) \
-	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_RW, (PATH), (DESCRIPTION), (CB), (ARGS))
-
-#define nOSC_QUERY_ITEM_METHOD_R(PATH, DESCRIPTION, CB, ARGS) \
-	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_R, (PATH), (DESCRIPTION), (CB), (ARGS))
-
-#define nOSC_QUERY_ITEM_METHOD_W(PATH, DESCRIPTION, CB, ARGS) \
-	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_W, (PATH), (DESCRIPTION), (CB), (ARGS))
-
-#define nOSC_QUERY_ITEM_METHOD_X(PATH, DESCRIPTION, CB, ARGS) \
-	nOSC_QUERY_ITEM_METHOD(nOSC_QUERY_METHOD_X, (PATH), (DESCRIPTION), (CB), (ARGS))
 
 #define nOSC_QUERY_ARGUMENT(TYPE, DESCRIPTION, MODE) \
 	.type = (TYPE), \

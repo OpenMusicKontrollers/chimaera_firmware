@@ -470,11 +470,6 @@ nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, 
 /*
  * Query system
  */
-const char *type_hash [] = {
-	[nOSC_QUERY_METHOD_RW] = "rw",
-	[nOSC_QUERY_METHOD_R] = "r",
-	[nOSC_QUERY_METHOD_X] = "x"
-};
 
 const nOSC_Query_Item *
 nosc_query_find(const nOSC_Query_Item *item, const char *path)
@@ -507,24 +502,49 @@ uint_fast8_t
 nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 {
 	uint_fast8_t len = strlen(fmt);
-	uint_fast8_t argc_w = item->item.method.argc;
+	uint_fast8_t argc = item->item.method.argc;
 	const nOSC_Query_Argument *args = item->item.method.args;
 	uint_fast8_t i;
 
-	// how many read access arguments?
-	for(i=0; i<argc_w; i++)
-		if(args[i].mode)
-			break;
-	uint_fast8_t argc_r = i;
+	uint_fast8_t argc_x = 0;
+	for(i=0; i<argc; i++)
+		if(args[i].mode & nOSC_QUERY_MODE_X)
+			argc_x++;
 
-	if( (item->type == nOSC_QUERY_METHOD_R) && (len != argc_r) )
+	uint_fast8_t argc_w = 0;
+	for(i=0; i<argc; i++)
+		if(args[i].mode & nOSC_QUERY_MODE_W)
+			argc_w++;
+
+	// mandatory arguments and enough of them?
+	if( (len != argc_x) && (len != argc_w) )
 		return 0;
 
-	if( (item->type == nOSC_QUERY_METHOD_X) && (len != argc_w) )
-		return 0;
+	/*
+	/calibration/save
+	WX
 
-	if( (item->type == nOSC_QUERY_METHOD_RW) && (len != argc_r) && (len != argc_w) )
-		return 0;
+	/calibration/sensor
+	RWX
+	R
+	R
+	R
+
+	/calibration/curve
+	R
+	R
+	R
+
+	/sensors/group
+	RWX
+	RW
+	RW
+	RW
+	RW
+
+	/engines/enabled
+	RW
+	*/
 
 	for(i=0; i<len; i++)
 	{
@@ -588,8 +608,8 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 	}
 	else // !nOSC_QUERY_NODE
 	{
-		sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"access\":\"%s\",\"description\":\"%s\",\"arguments\":[",
-			path, type_hash[item->type], item->description);
+		sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"%s\",\"arguments\":[",
+			path, item->description);
 		buf += strlen(buf);
 
 		uint_fast8_t i;
@@ -597,8 +617,7 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 		{
 			const nOSC_Query_Argument *arg = &item->item.method.args[i];
 			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"mode\":%i",
-				arg->type, arg->description,
-				arg->mode);
+				arg->type, arg->description, arg->mode);
 			buf += strlen(buf);
 			switch(arg->type)
 			{
@@ -606,18 +625,72 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 					sprintf(buf, ",\"range\":[%i,%i]", arg->range.min.i, arg->range.max.i);
 					buf += strlen(buf);
 					break;
-				case nOSC_FLOAT:
-					sprintf(buf, ",\"range\":[%f,%f]", arg->range.min.f, arg->range.max.f);
-					buf += strlen(buf);
-					break;
 				case nOSC_INT64:
 					sprintf(buf, ",\"range\":[%li,%li]", arg->range.min.h, arg->range.max.h);
 					buf += strlen(buf);
 					break;
-				case nOSC_DOUBLE:
-					sprintf(buf, ",\"range\":[%lf,%lf]", arg->range.min.d, arg->range.max.d);
+				case nOSC_FLOAT:
+				{
+					char min[32];
+					char max[32];
+
+					if(isinf(arg->range.min.f)) {
+						if(arg->range.min.f < 0)
+							sprintf(min, "-1e9999");
+						else
+							sprintf(min, "1e9999");
+					}
+					else if(isnan(arg->range.min.f))
+						sprintf(min, "null");
+					else
+						sprintf(min, "%f", arg->range.min.f);
+
+					if(isinf(arg->range.max.f)) {
+						if(arg->range.max.f < 0)
+							sprintf(max, "-1e9999");
+						else
+							sprintf(max, "1e9999");
+					}
+					else if(isnan(arg->range.max.f))
+						sprintf(max, "null");
+					else
+						sprintf(max, "%f", arg->range.max.f);
+
+					sprintf(buf, ",\"range\":[%s,%s]", min, max);
 					buf += strlen(buf);
 					break;
+				}
+				case nOSC_DOUBLE:
+				{
+					char min[32];
+					char max[32];
+
+					if(isinf(arg->range.min.d)) {
+						if(arg->range.min.d < 0)
+							sprintf(min, "-1e9999");
+						else
+							sprintf(min, "1e9999");
+					}
+					else if(isnan(arg->range.min.d))
+						sprintf(min, "null");
+					else
+						sprintf(min, "l%f", arg->range.min.d);
+
+					if(isinf(arg->range.max.d)) {
+						if(arg->range.max.d < 0)
+							sprintf(max, "-1e9999");
+						else
+							sprintf(max, "1e9999");
+					}
+					else if(isnan(arg->range.max.d))
+						sprintf(min, "null");
+					else
+						sprintf(max, "l%f", arg->range.max.d);
+
+					sprintf(buf, ",\"range\":[%s,%s]", min, max);
+					buf += strlen(buf);
+					break;
+				}
 				//FIXME add other types
 				default:
 					break;

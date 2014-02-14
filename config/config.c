@@ -528,25 +528,46 @@ _config_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	return config_socket_enabled (&config.config.socket, path, fmt, argc, args);
 }
 
+typedef struct _Address_Cb Address_Cb;
+
+struct _Address_Cb {
+	int32_t uuid;
+	char path [32];
+	Socket_Config *socket;
+	uint16_t port;
+};
+
 static void
 _address_dns_cb (uint8_t *ip, void *data)
 {
 	uint16_t size;
 
-	Socket_Config *socket = data;
+	Address_Cb *address_cb = data;
+	Socket_Config *socket = address_cb->socket;
 
-	memcpy (socket->ip, ip, 4);
-	Socket_Enable_Cb cb = socket_callbacks[socket->sock];
-	cb (socket->enabled);
+	if(ip)
+	{
+		socket->port[DST_PORT] = address_cb->port;
+		memcpy (socket->ip, ip, 4);
+		Socket_Enable_Cb cb = socket_callbacks[socket->sock];
+		cb (socket->enabled);
 
-	ip2str (ip, string_buf);
-	DEBUG("ss", "_address_dns_cb", string_buf);
+		ip2str (ip, string_buf);
+		DEBUG("ss", "_address_dns_cb", string_buf);
+		
+		size = CONFIG_SUCCESS ("is", address_cb->uuid, address_cb->path);
+	}
+	else // timeout occured
+		size = CONFIG_FAIL ("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
+	
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
 uint_fast8_t
 config_address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
+	static Address_Cb address_cb;
+	uint16_t size = 0;
 	int32_t uuid = args[0].i;
 	char *hostname = args[1].s;
 
@@ -559,11 +580,15 @@ config_address (Socket_Config *socket, const char *path, const char *fmt, uint_f
 	{
 		uint16_t port;
 		uint8_t ip[4];
+
+		address_cb.uuid = uuid;
+		strcpy(address_cb.path, path); //TODO check length
+		address_cb.socket = socket;
+
 		if (str2addr(hostname, ip, &port))
 		{
-			socket->port[DST_PORT] = port;
-			_address_dns_cb(ip, socket);
-			size = CONFIG_SUCCESS ("is", uuid, path);
+			address_cb.port = port;
+			_address_dns_cb(ip, &address_cb);
 		}
 		else
 		{
@@ -572,21 +597,18 @@ config_address (Socket_Config *socket, const char *path, const char *fmt, uint_f
 				char *port_str = strchr (hostname, ':');
 				*port_str = 0x0; // end name here
 				port = atoi (port_str+1);
-				socket->port[DST_PORT] = port; //TODO only do this when resolve successful
+				address_cb.port = port;
 
-				if(mdns_resolve (hostname, _address_dns_cb, socket))
-					size = CONFIG_SUCCESS ("is", uuid, path);
-				else
+				if(!mdns_resolve (hostname, _address_dns_cb, &address_cb))
 					size = CONFIG_FAIL ("iss", uuid, path, "there is a mDNS request already ongoing");
 			}
 			else
-			{
 				size = CONFIG_FAIL ("iss", uuid, path, "can only resolve raw IP and mDNS addresses");
-			}
 		}
 	}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	if(size > 0)
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -608,49 +630,58 @@ _host_address_dns_cb (uint8_t *ip, void *data)
 {
 	uint16_t size;
 
-	memcpy (config.output.socket.ip, ip, 4);
-	memcpy (config.config.socket.ip, ip, 4);
-	memcpy (config.sntp.socket.ip, ip, 4);
-	memcpy (config.debug.socket.ip, ip, 4);
+	Address_Cb *address_cb = data;
 
-	output_enable (config.output.socket.enabled);
-	config_enable (config.config.socket.enabled);
-	sntp_enable (config.sntp.socket.enabled);
-	debug_enable (config.debug.socket.enabled);
+	if(ip)
+	{
+		memcpy (config.output.socket.ip, ip, 4);
+		memcpy (config.config.socket.ip, ip, 4);
+		memcpy (config.sntp.socket.ip, ip, 4);
+		memcpy (config.debug.socket.ip, ip, 4);
 
-	ip2str (ip, string_buf);
-	DEBUG("ss", "_host_address_dns_cb", string_buf);
+		output_enable (config.output.socket.enabled);
+		config_enable (config.config.socket.enabled);
+		sntp_enable (config.sntp.socket.enabled);
+		debug_enable (config.debug.socket.enabled);
+
+		ip2str (ip, string_buf);
+		DEBUG("ss", "_host_address_dns_cb", string_buf);
+		
+		size = CONFIG_SUCCESS ("is", address_cb->uuid, address_cb->path);
+	}
+	else // timeout occured
+		size = CONFIG_FAIL ("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
+	
+	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 }
 
 static uint_fast8_t
 _comm_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint16_t size;
+	static Address_Cb address_cb;
+	uint16_t size = 0;
 	int32_t uuid = args[0].i;
 	char *hostname = args[1].s;
 
+	address_cb.uuid = uuid;
+	strcpy(address_cb.path, path); //TODO check length
+
 	uint8_t ip[4];
 	if (str2ip (hostname, ip)) // an IPv4 was given in string format
-	{
-		_host_address_dns_cb (ip, NULL);
-		size = CONFIG_SUCCESS ("is", uuid, path);
-	}
+		_host_address_dns_cb (ip, &address_cb);
 	else
 	{
 		if (strstr (hostname, local_str)) // resolve via mDNS
 		{
-			if(mdns_resolve (hostname, _host_address_dns_cb, NULL))
-				size = CONFIG_SUCCESS ("is", uuid, path);
-			else
+			if(!mdns_resolve (hostname, _host_address_dns_cb, &address_cb))
 				size = CONFIG_FAIL ("iss", uuid, path, "there is a mDNS request already ongoing");
 		}
 		else // resolve via unicast DNS
-		{
 			size = CONFIG_FAIL ("iss", uuid, path, "can only resolve raw IP and mDNS addresses");
-		}
 	}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	if(size > 0)
+		udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
@@ -779,80 +810,80 @@ const nOSC_Method config_serv [] = {
 
 
 static const nOSC_Query_Argument comm_mac_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument comm_ip_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument comm_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_WX)
 };
 
 const nOSC_Query_Item comm_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_RW("mac", "hardware address", _comm_mac, comm_mac_args),
-	nOSC_QUERY_ITEM_METHOD_RW("ip", "IPv4 address", _comm_ip, comm_ip_args),
-	nOSC_QUERY_ITEM_METHOD_RW("address", "remote IPv4 address", _comm_address, comm_address_args),
+	nOSC_QUERY_ITEM_METHOD("mac", "hardware address", _comm_mac, comm_mac_args),
+	nOSC_QUERY_ITEM_METHOD("ip", "IPv4 address", _comm_ip, comm_ip_args),
+	nOSC_QUERY_ITEM_METHOD("address", "remote IPv4 address", _comm_address, comm_address_args),
 };
 
 static const nOSC_Query_Argument config_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument config_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item config_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_X("save", "save to EEPROM", _config_save, NULL),
-	nOSC_QUERY_ITEM_METHOD_X("load", "load from EEPROM", _config_load, NULL),
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable socket", _config_enabled, config_enabled_args),
-	nOSC_QUERY_ITEM_METHOD_RW("address", "remote address", _config_address, config_address_args),
+	nOSC_QUERY_ITEM_METHOD("save", "save to EEPROM", _config_save, NULL),
+	nOSC_QUERY_ITEM_METHOD("load", "load from EEPROM", _config_load, NULL),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable socket", _config_enabled, config_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("address", "remote address", _config_address, config_address_args),
 };
 
 const nOSC_Query_Item reset_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_X("soft", "soft reset", _reset_soft, NULL),
-	nOSC_QUERY_ITEM_METHOD_X("hard", "hard reset", _reset_hard, NULL),
-	nOSC_QUERY_ITEM_METHOD_X("flash", "reset into flash mode", _reset_flash, NULL),
+	nOSC_QUERY_ITEM_METHOD("soft", "soft reset", _reset_soft, NULL),
+	nOSC_QUERY_ITEM_METHOD("hard", "hard reset", _reset_hard, NULL),
+	nOSC_QUERY_ITEM_METHOD("flash", "reset into flash mode", _reset_flash, NULL),
 };
 
 static const nOSC_Query_Argument info_version_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_R)
 };
 
 static const nOSC_Query_Argument info_uid_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_R)
 };
 
 static const nOSC_Query_Argument info_name_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Item info_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_R("version", "firmware version", _info_version, info_version_args),
-	nOSC_QUERY_ITEM_METHOD_R("uid", "universal identifier", _info_uid, info_uid_args),
+	nOSC_QUERY_ITEM_METHOD("version", "firmware version", _info_version, info_version_args),
+	nOSC_QUERY_ITEM_METHOD("uid", "universal identifier", _info_uid, info_uid_args),
 
-	nOSC_QUERY_ITEM_METHOD_RW("name", "device name", _info_name, info_name_args),
+	nOSC_QUERY_ITEM_METHOD("name", "device name", _info_name, info_name_args),
 };
 
 static const nOSC_Query_Argument output_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", 1)
+	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument output_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("host:port", 1)
+	nOSC_QUERY_ARGUMENT_STRING("host:port", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Argument output_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("seconds", 1, 0.f, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY)
 };
 
 static const nOSC_Query_Item engines_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _output_enabled, output_enabled_args),
-	nOSC_QUERY_ITEM_METHOD_RW("address", "remote host", _output_address, output_address_args),
-	nOSC_QUERY_ITEM_METHOD_RW("offset", "bundle offset", _output_offset, output_offset_args),
-	nOSC_QUERY_ITEM_METHOD_X("reset", "disable engines", _output_reset, NULL),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _output_enabled, output_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("address", "remote host", _output_address, output_address_args),
+	nOSC_QUERY_ITEM_METHOD("offset", "bundle offset", _output_offset, output_offset_args),
+	nOSC_QUERY_ITEM_METHOD("reset", "disable engines", _output_reset, NULL),
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),

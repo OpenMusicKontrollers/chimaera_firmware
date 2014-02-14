@@ -45,14 +45,14 @@ _debug_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
  */
 
 static const nOSC_Query_Argument debug_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("bool", 1, 0, 1)
+	nOSC_QUERY_ARGUMENT_INT32("bool", nOSC_QUERY_MODE_RW, 0, 1)
 };
 
 static const nOSC_Query_Argument debug_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", 1)
+	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item debug_tree [] = {
-	nOSC_QUERY_ITEM_METHOD_RW("enabled", "enable/disable", _debug_enabled, debug_enabled_args),
-	nOSC_QUERY_ITEM_METHOD_RW("address", "remote address", _debug_address, debug_address_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _debug_enabled, debug_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("address", "remote address", _debug_address, debug_address_args),
 };

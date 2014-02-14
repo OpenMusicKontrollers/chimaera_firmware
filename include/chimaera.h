@@ -105,6 +105,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define SNTP_TIMER_PRIORITY 0x6
 #define CONFIG_TIMER_PRIORITY 0x7
 #define DHCPC_TIMER_PRIORITY 0x8
+#define MDNS_TIMER_PRIORITY 0x9
 
 #define ENGINE_MAX 6 // tuio1, tuio2, scsynth, oscmidi, dummy, rtpmidi
 
@@ -205,6 +206,7 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define adc_timer TIMER1
 #define sntp_timer TIMER2
 #define dhcpc_timer TIMER4
+#define mdns_timer TIMER3
 
 void cpp_setup ();
 

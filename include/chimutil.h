@@ -39,6 +39,7 @@ void broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet);
 void adc_timer_reconfigure ();
 void sntp_timer_reconfigure ();
 void dhcpc_timer_reconfigure ();
+void mdns_timer_reconfigure ();
 
 uint_fast8_t output_enable (uint8_t b);
 uint_fast8_t config_enable (uint8_t b);
