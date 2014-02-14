@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -78,7 +78,7 @@ struct _W5500_Socket_Sel {
 #define WIZ_IR_CONFLICT				(1U << 7)	// IP conflict
 #define WIZ_IR_UNREACH				(1U << 6)	// destination unreachable
 #define WIZ_IR_PPPOE					(1U << 5)	// PPPoE connection close
-#define WIZ_IR_MP							(1U << 4)	// magic packet (wake on LAN)
+#define WIZ_IR_MP							(1U << 4)	// magic packet(wake on LAN)
 
 #define WIZ_PHYCFGR_RST				(1U << 7)	// PHY reset
 #define WIZ_PHYCFGR_OPMD_HW		(0U << 6)	// configure PHY operation mode with hardware pins

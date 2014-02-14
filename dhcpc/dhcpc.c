@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -44,10 +44,10 @@ static const uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
 static const uint8_t parameter_request_list [2] = {OPTION_SUBNET_MASK, OPTION_ROUTER};
 
 static BOOTP_Option dhcp_discover_options [] = {
-	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_discover),
-	BOOTP_OPTION (OPTION_CLIENT_IDENTIFIER, 7, client_identifier),
-	BOOTP_OPTION (OPTION_HOST_NAME, 8, (uint8_t *)host_name),
-	BOOTP_OPTION (OPTION_PARAMETER_REQUEST_LIST, 2, (uint8_t *)parameter_request_list),
+	BOOTP_OPTION(OPTION_DHCP_MESSAGE_TYPE, 1,(uint8_t *)dhcp_message_type_discover),
+	BOOTP_OPTION(OPTION_CLIENT_IDENTIFIER, 7, client_identifier),
+	BOOTP_OPTION(OPTION_HOST_NAME, 8,(uint8_t *)host_name),
+	BOOTP_OPTION(OPTION_PARAMETER_REQUEST_LIST, 2,(uint8_t *)parameter_request_list),
 	BOOTP_OPTION_END
 };
 
@@ -56,18 +56,18 @@ static uint8_t dhcp_request_ip [4] = {0, 0, 0, 0};
 static uint8_t dhcp_server_identifier [4] = {0, 0, 0, 0};
 
 static BOOTP_Option dhcp_request_options [] = {
-	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_request),
-	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, 4, dhcp_request_ip),
-	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
+	BOOTP_OPTION(OPTION_DHCP_MESSAGE_TYPE, 1,(uint8_t *)dhcp_message_type_request),
+	BOOTP_OPTION(OPTION_DHCP_REQUEST_IP, 4, dhcp_request_ip),
+	BOOTP_OPTION(OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
 static const uint8_t dhcp_message_type_decline [1] = {DHCPDECLINE};
 
 static BOOTP_Option dhcp_decline_options [] = {
-	BOOTP_OPTION (OPTION_DHCP_MESSAGE_TYPE, 1, (uint8_t *)dhcp_message_type_decline),
-	BOOTP_OPTION (OPTION_DHCP_REQUEST_IP, 4, (uint8_t *)dhcp_request_ip),
-	BOOTP_OPTION (OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
+	BOOTP_OPTION(OPTION_DHCP_MESSAGE_TYPE, 1,(uint8_t *)dhcp_message_type_decline),
+	BOOTP_OPTION(OPTION_DHCP_REQUEST_IP, 4,(uint8_t *)dhcp_request_ip),
+	BOOTP_OPTION(OPTION_DHCP_SERVER_IDENTIFIER, 4, dhcp_server_identifier),
 	BOOTP_OPTION_END
 };
 
@@ -86,25 +86,25 @@ static DHCP_Packet_Packed dhcp_packet = {
 };
 
 static uint16_t
-_dhcp_packet_serialize (DHCP_Packet_Packed *packet, uint8_t *buf)
+_dhcp_packet_serialize(DHCP_Packet_Packed *packet, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
-	memcpy (buf_ptr, &packet->bootp, sizeof (BOOTP_Packet));
-	buf_ptr += sizeof (BOOTP_Packet);
+	memcpy(buf_ptr, &packet->bootp, sizeof(BOOTP_Packet));
+	buf_ptr += sizeof(BOOTP_Packet);
 
-	memset (buf_ptr, 0, sizeof (BOOTP_Packet_Optionals));
-	buf_ptr += sizeof (BOOTP_Packet_Optionals);
+	memset(buf_ptr, 0, sizeof(BOOTP_Packet_Optionals));
+	buf_ptr += sizeof(BOOTP_Packet_Optionals);
 
-	memcpy (buf_ptr, &packet->magic_cookie, 4);
+	memcpy(buf_ptr, &packet->magic_cookie, 4);
 	buf_ptr += 4;
 
 	BOOTP_Option *opt;
-	for (opt=packet->options; opt->code!=255; opt++)
+	for(opt=packet->options; opt->code!=255; opt++)
 	{
 		*buf_ptr++ = opt->code;
 		*buf_ptr++ = opt->len;
-		memcpy (buf_ptr, opt->dat, opt->len);
+		memcpy(buf_ptr, opt->dat, opt->len);
 		buf_ptr += opt->len;
 	}
 	*buf_ptr++ = 255; // option end
@@ -113,90 +113,90 @@ _dhcp_packet_serialize (DHCP_Packet_Packed *packet, uint8_t *buf)
 }
 
 static uint16_t
-dhcpc_discover (uint8_t *buf, uint16_t secs)
+dhcpc_discover(uint8_t *buf, uint16_t secs)
 {
-	dhcp_packet.bootp.xid = htonl (++xid);
-	dhcp_packet.bootp.secs = hton (secs);
+	dhcp_packet.bootp.xid = htonl(++xid);
+	dhcp_packet.bootp.secs = hton(secs);
 
-	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+	memcpy(dhcp_packet.bootp.chaddr, config.comm.mac, 6);
 
 	dhcp_packet.options = dhcp_discover_options;
 
-	memcpy (&client_identifier[1], config.comm.mac, 6);
+	memcpy(&client_identifier[1], config.comm.mac, 6);
 
 	dhcpc.state = OFFER;
 
-	return _dhcp_packet_serialize (&dhcp_packet, buf);
+	return _dhcp_packet_serialize(&dhcp_packet, buf);
 }
 
 static uint16_t
-dhcpc_request (uint8_t *buf, uint16_t secs)
+dhcpc_request(uint8_t *buf, uint16_t secs)
 {
-	dhcp_packet.bootp.xid = htonl (xid);
-	dhcp_packet.bootp.secs = hton (secs);
+	dhcp_packet.bootp.xid = htonl(xid);
+	dhcp_packet.bootp.secs = hton(secs);
 
-	memcpy (dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
-	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+	memcpy(dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
+	memcpy(dhcp_packet.bootp.chaddr, config.comm.mac, 6);
 
 	dhcp_packet.options = dhcp_request_options;
 
-	memcpy (dhcp_request_ip, dhcpc.ip, 4);
-	memcpy (dhcp_server_identifier, dhcpc.server_ip, 4);
+	memcpy(dhcp_request_ip, dhcpc.ip, 4);
+	memcpy(dhcp_server_identifier, dhcpc.server_ip, 4);
 
 	dhcpc.state = ACK;
 
-	return _dhcp_packet_serialize (&dhcp_packet, buf);
+	return _dhcp_packet_serialize(&dhcp_packet, buf);
 }
 
 static uint16_t
-dhcpc_decline (uint8_t *buf, uint16_t secs)
+dhcpc_decline(uint8_t *buf, uint16_t secs)
 {
-	dhcp_packet.bootp.xid = htonl (xid);
-	dhcp_packet.bootp.secs = hton (secs);
+	dhcp_packet.bootp.xid = htonl(xid);
+	dhcp_packet.bootp.secs = hton(secs);
 
-	memcpy (dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
-	memcpy (dhcp_packet.bootp.chaddr, config.comm.mac, 6);
+	memcpy(dhcp_packet.bootp.siaddr, dhcpc.server_ip, 4);
+	memcpy(dhcp_packet.bootp.chaddr, config.comm.mac, 6);
 
 	dhcp_packet.options = dhcp_decline_options;
 
-	memcpy (dhcp_request_ip, dhcpc.ip, 4);
-	memcpy (dhcp_server_identifier, dhcpc.server_ip, 4);
+	memcpy(dhcp_request_ip, dhcpc.ip, 4);
+	memcpy(dhcp_server_identifier, dhcpc.server_ip, 4);
 
 	dhcpc.state = DISCOVER;
 
-	return _dhcp_packet_serialize (&dhcp_packet, buf);
+	return _dhcp_packet_serialize(&dhcp_packet, buf);
 }
 
 static void
-dhcpc_dispatch (uint8_t *buf, uint16_t size)
+dhcpc_dispatch(uint8_t *buf, uint16_t size)
 {
-	DHCP_Packet_Unpacked *recv = (DHCP_Packet_Unpacked *)buf;
+	DHCP_Packet_Unpacked *recv =(DHCP_Packet_Unpacked *)buf;
 
 	// check for magic_cookie
-	if (strncmp (recv->magic_cookie, dhcp_packet.magic_cookie, 4))
+	if(strncmp(recv->magic_cookie, dhcp_packet.magic_cookie, 4))
 		return;
 
-	recv->bootp.xid = htonl (recv->bootp.xid);
-	recv->bootp.secs = hton (recv->bootp.secs);
+	recv->bootp.xid = htonl(recv->bootp.xid);
+	recv->bootp.secs = hton(recv->bootp.secs);
 
-	uint32_t *_ip = (uint32_t *)recv->bootp.yiaddr;
+	uint32_t *_ip =(uint32_t *)recv->bootp.yiaddr;
 	if(*_ip != 0x00000000UL)
-		memcpy (dhcpc.ip, recv->bootp.yiaddr, 4);
+		memcpy(dhcpc.ip, recv->bootp.yiaddr, 4);
 
 	uint8_t *buf_ptr = buf + sizeof(DHCP_Packet_Unpacked);
 	uint8_t code;
-	while ( (code = buf_ptr[0]) != OPTION_END)
+	while( (code = buf_ptr[0]) != OPTION_END)
 	{
 		uint8_t len = buf_ptr[1];
 		uint8_t *dat = &buf_ptr[2];
-		switch (code)
+		switch(code)
 		{
 			case OPTION_SUBNET_MASK:
-				memcpy (dhcpc.subnet_mask, dat, 4);
+				memcpy(dhcpc.subnet_mask, dat, 4);
 				break;
 
 			case OPTION_ROUTER:
-				memcpy (dhcpc.router_ip, dat, 4);
+				memcpy(dhcpc.router_ip, dat, 4);
 				break;
 
 			case OPTION_DOMAIN_NAME_SERVER:
@@ -221,7 +221,7 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 				break;
 
 			case OPTION_DHCP_MESSAGE_TYPE:
-				switch (dat[0])
+				switch(dat[0])
 				{
 					case DHCPOFFER:
 						dhcpc.state = REQUEST;
@@ -239,7 +239,7 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 				break;
 
 			case OPTION_DHCP_SERVER_IDENTIFIER:
-				memcpy (dhcpc.server_ip, dat, 4);
+				memcpy(dhcpc.server_ip, dat, 4);
 				break;
 
 			default:
@@ -251,20 +251,20 @@ dhcpc_dispatch (uint8_t *buf, uint16_t size)
 }
 
 static void
-dhcpc_cb (uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+dhcpc_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	dhcpc_dispatch (buf, len);
+	dhcpc_dispatch(buf, len);
 }
 
 uint_fast8_t
-dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to ASIO
+dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to ASIO
 {
 	uint8_t nil_ip [4] = {0, 0, 0, 0};
 	uint8_t broadcast_ip [4] = {255, 255, 255, 255};
 
 	// a DHCP claim is done in broadcast with IP: 0.0.0.0
-	wiz_ip_set (nil_ip);
-	udp_set_remote (config.dhcpc.socket.sock, broadcast_ip, config.dhcpc.socket.port[DST_PORT]);
+	wiz_ip_set(nil_ip);
+	udp_set_remote(config.dhcpc.socket.sock, broadcast_ip, config.dhcpc.socket.port[DST_PORT]);
 
 	dhcpc.state = DISCOVER;
 	dhcpc.delay = 4;
@@ -272,30 +272,30 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 
 	uint16_t secs;
 	uint16_t len;
-	while ( (dhcpc.state != CLAIMED) && (dhcpc.state != TIMEOUT))
-		switch (dhcpc.state)
+	while( (dhcpc.state != CLAIMED) && (dhcpc.state != TIMEOUT))
+		switch(dhcpc.state)
 		{
 			case DISCOVER:
 				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
-				len = dhcpc_discover (BUF_O_OFFSET(buf_o_ptr), secs);
-				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
+				len = dhcpc_discover(BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send(config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case OFFER:
-				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
+				if(systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
 				{
 					dhcpc.state = DISCOVER;
 					dhcpc.delay *= 2;
 					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
-					if (dhcpc.delay > 64) // maximal number of retries reached
+					if(dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
 
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
+				udp_dispatch(config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 
-				if (dhcpc.state == REQUEST) // reset timeout for REQUEST
+				if(dhcpc.state == REQUEST) // reset timeout for REQUEST
 				{
 					dhcpc.delay = 4;
 					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
@@ -303,78 +303,78 @@ dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to A
 				break;
 			case REQUEST:
 				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
-				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
-				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
+				len = dhcpc_request(BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send(config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case ACK:
-				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
+				if(systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
 				{
 					dhcpc.state = REQUEST;
 					dhcpc.delay *= 2;
 					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
-					if (dhcpc.delay > 64) // maximal number of retries reached
+					if(dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
 
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
+				udp_dispatch(config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 				break;
 			case DECLINE:
 				//TODO needs to be tested
 				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
-				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
-				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
+				len = dhcpc_decline(BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send(config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
 				dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 				break;
 			case LEASE:
-				if (arp_probe (0, dhcpc.ip)) // collision
+				if(arp_probe(0, dhcpc.ip)) // collision
 				{
 					// decline IP because of ARP collision
 					dhcpc.state = DECLINE;
 				}
 				else
 				{
-					arp_announce (0, dhcpc.ip);
+					arp_announce(0, dhcpc.ip);
 					dhcpc.state = CLAIMED;
-					memcpy (ip, dhcpc.ip, 4);
-					memcpy (gateway, dhcpc.router_ip, 4);
-					memcpy (subnet, dhcpc.subnet_mask, 4);
+					memcpy(ip, dhcpc.ip, 4);
+					memcpy(gateway, dhcpc.router_ip, 4);
+					memcpy(subnet, dhcpc.subnet_mask, 4);
 
 					// reconfigure lease timer and start it
-					timer_pause (dhcpc_timer);
-					dhcpc_timer_reconfigure ();
-					timer_resume (dhcpc_timer);
+					timer_pause(dhcpc_timer);
+					dhcpc_timer_reconfigure();
+					timer_resume(dhcpc_timer);
 
 					//FIXME actually, the user should do this before enabling dhcpc, not?
 					uint8_t brd [4];
 					broadcast_address(brd, ip, subnet);
-					memcpy (config.output.socket.ip, brd, 4);
-					memcpy (config.config.socket.ip, brd, 4);
-					memcpy (config.sntp.socket.ip, brd, 4);
-					memcpy (config.debug.socket.ip, brd, 4);
+					memcpy(config.output.socket.ip, brd, 4);
+					memcpy(config.config.socket.ip, brd, 4);
+					memcpy(config.sntp.socket.ip, brd, 4);
+					memcpy(config.debug.socket.ip, brd, 4);
 				}
 				break;
 		}
 
 	if(dhcpc.state == TIMEOUT)
-		wiz_ip_set (config.comm.ip); // reset to current IP
+		wiz_ip_set(config.comm.ip); // reset to current IP
 
 	return dhcpc.state == CLAIMED;
 }
 
 uint_fast8_t //TODO get rid of duplicated code from dhcpc_claim
-dhcpc_refresh ()
+dhcpc_refresh()
 {
 	uint8_t *ip = dhcpc.ip;
 	uint8_t *gateway = dhcpc.router_ip;
 	uint8_t *subnet = dhcpc.subnet_mask;
 
 	// a DHCP REFRESH is a DHCP REQUEST done in unicast
-	udp_set_remote (config.dhcpc.socket.sock, dhcpc.server_ip, config.dhcpc.socket.port[DST_PORT]);
+	udp_set_remote(config.dhcpc.socket.sock, dhcpc.server_ip, config.dhcpc.socket.port[DST_PORT]);
 
 	dhcpc.state = REQUEST;
 	dhcpc.delay = 4;
@@ -382,34 +382,34 @@ dhcpc_refresh ()
 
 	uint16_t secs;
 	uint16_t len;
-	while ( (dhcpc.state != CLAIMED) && (dhcpc.state != TIMEOUT))
-		switch (dhcpc.state)
+	while( (dhcpc.state != CLAIMED) && (dhcpc.state != TIMEOUT))
+		switch(dhcpc.state)
 		{
 			case REQUEST:
 				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
-				len = dhcpc_request (BUF_O_OFFSET(buf_o_ptr), secs);
-				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
+				len = dhcpc_request(BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send(config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				break;
 			case ACK:
-				if (systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
+				if(systick_uptime() > dhcpc.timeout) // timeout has occured, prepare to resend
 				{
 					dhcpc.state = REQUEST;
 					dhcpc.delay *= 2;
 					dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 
-					if (dhcpc.delay > 64) // maximal number of retries reached
+					if(dhcpc.delay > 64) // maximal number of retries reached
 						dhcpc.state = TIMEOUT;
 
 					break;
 				}
 
-				udp_dispatch (config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
+				udp_dispatch(config.dhcpc.socket.sock, BUF_I_BASE(buf_i_ptr), dhcpc_cb);
 				break;
 			case DECLINE:
 				//TODO needs to be tested
 				secs = systick_uptime() / SNTP_SYSTICK_RATE + 1;
-				len = dhcpc_decline (BUF_O_OFFSET(buf_o_ptr), secs);
-				udp_send (config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
+				len = dhcpc_decline(BUF_O_OFFSET(buf_o_ptr), secs);
+				udp_send(config.dhcpc.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 
 				dhcpc.delay = 4;
 				dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
@@ -417,23 +417,23 @@ dhcpc_refresh ()
 				//TODO if refresh is declined or timed-out, claim a new IP after 7/8 of lease time
 				break;
 			case LEASE:
-				if (arp_probe (0, dhcpc.ip)) // collision
+				if(arp_probe(0, dhcpc.ip)) // collision
 				{
 					// decline IP because of ARP collision
 					dhcpc.state = DECLINE;
 				}
 				else
 				{
-					arp_announce (0, dhcpc.ip);
+					arp_announce(0, dhcpc.ip);
 					dhcpc.state = CLAIMED;
-					memcpy (ip, dhcpc.ip, 4);
-					memcpy (gateway, dhcpc.router_ip, 4);
-					memcpy (subnet, dhcpc.subnet_mask, 4);
+					memcpy(ip, dhcpc.ip, 4);
+					memcpy(gateway, dhcpc.router_ip, 4);
+					memcpy(subnet, dhcpc.subnet_mask, 4);
 
 					// reconfigure lease timer and start it
-					timer_pause (dhcpc_timer);
-					dhcpc_timer_reconfigure ();
-					timer_resume (dhcpc_timer);
+					timer_pause(dhcpc_timer);
+					dhcpc_timer_reconfigure();
+					timer_resume(dhcpc_timer);
 				}
 				break;
 		}
@@ -446,10 +446,10 @@ dhcpc_refresh ()
  */
 
 static uint_fast8_t
-_dhcpc_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	// needs a config save and reboot to take action
-	return config_check_bool (path, fmt, argc, args, &config.dhcpc.socket.enabled);
+	return config_check_bool(path, fmt, argc, args, &config.dhcpc.socket.enabled);
 }
 
 /*

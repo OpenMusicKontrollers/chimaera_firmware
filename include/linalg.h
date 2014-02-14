@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -24,10 +24,10 @@
 #ifndef _LINALG_H_
 #define _LINALG_H_
 
-void linalg_solve_quadratic (float y1, float B1, float *c0, float *c1);
-void linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1, float *c2);
+void linalg_solve_quadratic(float y1, float B1, float *c0, float *c1);
+void linalg_solve_cubic(float y1, float B1, float y2, float B2, float *c0, float *c1, float *c2);
 
-void linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1);
-void linalg_least_squares_cubic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2);
+void linalg_least_squares_quadratic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1);
+void linalg_least_squares_cubic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2);
 
 #endif

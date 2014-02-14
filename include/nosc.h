@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -46,9 +46,9 @@ typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Method nOSC_Method;
 
-typedef uint_fast8_t (*nOSC_Method_Cb) (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-typedef void (*nOSC_Bundle_Start_Cb) (nOSC_Timestamp timestamp);
-typedef void (*nOSC_Bundle_End_Cb) ();
+typedef uint_fast8_t(*nOSC_Method_Cb)(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+typedef void(*nOSC_Bundle_Start_Cb)(nOSC_Timestamp timestamp);
+typedef void(*nOSC_Bundle_End_Cb)();
 
 typedef enum _nOSC_Type {
 	nOSC_INT32 = 'i',
@@ -126,20 +126,20 @@ union _nOSC_Item {
 
 #define nosc_item_message_set(ITM,POS,MSG,PATH,FMT) \
 ({ \
-	nOSC_Item *itm = (nOSC_Item *)(ITM); \
-	uint_fast8_t pos = (uint_fast8_t)(POS); \
-	itm[pos].message.msg = (nOSC_Message)(MSG); \
-	itm[pos].message.path = (char *)PATH; \
-	itm[pos].message.fmt = (char *)FMT; \
+	nOSC_Item *itm =(nOSC_Item *)(ITM); \
+	uint_fast8_t pos =(uint_fast8_t)(POS); \
+	itm[pos].message.msg =(nOSC_Message)(MSG); \
+	itm[pos].message.path =(char *)PATH; \
+	itm[pos].message.fmt =(char *)FMT; \
 })
 
 #define nosc_item_bundle_set(ITM,POS,BNDL,TIMESTAMP,FMT) \
 ({ \
-	nOSC_Item *itm = (nOSC_Item *)(ITM); \
-	uint_fast8_t pos = (uint_fast8_t)(POS); \
-	itm[pos].bundle.bndl = (nOSC_Item *)BNDL; \
-	itm[pos].bundle.tt = (nOSC_Timestamp)TIMESTAMP; \
-	itm[pos].bundle.fmt = (char *)FMT; \
+	nOSC_Item *itm =(nOSC_Item *)(ITM); \
+	uint_fast8_t pos =(uint_fast8_t)(POS); \
+	itm[pos].bundle.bndl =(nOSC_Item *)BNDL; \
+	itm[pos].bundle.tt =(nOSC_Timestamp)TIMESTAMP; \
+	itm[pos].bundle.fmt =(char *)FMT; \
 })
 
 struct _nOSC_Method {
@@ -160,48 +160,48 @@ struct _nOSC_Method {
  * Method functions
  */
 
-void nosc_method_dispatch (nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end);
+void nosc_method_dispatch(nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end);
 
 /*
  * Bundle functions
  */
 
-uint16_t nosc_bundle_serialize (nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf);
+uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf);
 
 /*
  * Message functions
  */
 
-#define nosc_message_set_int32(MSG,POS,I) (((nOSC_Message)(MSG))[POS].i = (int32_t)(I))
-#define nosc_message_set_float(MSG,POS,F) (((nOSC_Message)(MSG))[POS].f = (float)(F))
-#define nosc_message_set_string(MSG,POS,S) (((nOSC_Message)(MSG))[POS].s = (char *)(S))
+#define nosc_message_set_int32(MSG,POS,I)(((nOSC_Message)(MSG))[POS].i =(int32_t)(I))
+#define nosc_message_set_float(MSG,POS,F)(((nOSC_Message)(MSG))[POS].f =(float)(F))
+#define nosc_message_set_string(MSG,POS,S)(((nOSC_Message)(MSG))[POS].s =(char *)(S))
 #define nosc_message_set_blob(MSG,POS,S,P) \
 ({ \
-	((nOSC_Message)(MSG))[POS].b.size = (int32_t)(S); \
-	((nOSC_Message)(MSG))[POS].b.data = (uint8_t *)(P); \
+	((nOSC_Message)(MSG))[POS].b.size =(int32_t)(S); \
+	((nOSC_Message)(MSG))[POS].b.data =(uint8_t *)(P); \
 })
 
-#define nosc_message_set_true(MSG,POS) (((nOSC_Message)(MSG))[POS].i = 0)
-#define nosc_message_set_false(MSG,POS) (((nOSC_Message)(MSG))[POS].i = 1)
-#define nosc_message_set_nil(MSG,POS) (((nOSC_Message)(MSG))[POS].i = nOSC_Nil)
-#define nosc_message_set_infty(MSG,POS) (((nOSC_Message)(MSG))[POS].i = nOSC_Infty)
+#define nosc_message_set_true(MSG,POS)(((nOSC_Message)(MSG))[POS].i = 0)
+#define nosc_message_set_false(MSG,POS)(((nOSC_Message)(MSG))[POS].i = 1)
+#define nosc_message_set_nil(MSG,POS)(((nOSC_Message)(MSG))[POS].i = nOSC_Nil)
+#define nosc_message_set_infty(MSG,POS)(((nOSC_Message)(MSG))[POS].i = nOSC_Infty)
 
-#define nosc_message_set_double(MSG,POS,D) (((nOSC_Message)(MSG))[POS].d = (double)(D))
-#define nosc_message_set_int64(MSG,POS,H) (((nOSC_Message)(MSG))[POS].h = (int64_t)(H))
-#define nosc_message_set_timestamp(MSG,POS,T) (((nOSC_Message)(MSG))[POS].t = (nOSC_Timestamp)(T))
+#define nosc_message_set_double(MSG,POS,D)(((nOSC_Message)(MSG))[POS].d =(double)(D))
+#define nosc_message_set_int64(MSG,POS,H)(((nOSC_Message)(MSG))[POS].h =(int64_t)(H))
+#define nosc_message_set_timestamp(MSG,POS,T)(((nOSC_Message)(MSG))[POS].t =(nOSC_Timestamp)(T))
 
 #define nosc_message_set_midi(MSG,POS,M0,M1,M2,M3) \
 ({ \
-	((nOSC_Message)(MSG))[POS].m[0] = (M0); \
-	((nOSC_Message)(MSG))[POS].m[1] = (M1); \
-	((nOSC_Message)(MSG))[POS].m[2] = (M2); \
-	((nOSC_Message)(MSG))[POS].m[3] = (M3); \
+	((nOSC_Message)(MSG))[POS].m[0] =(M0); \
+	((nOSC_Message)(MSG))[POS].m[1] =(M1); \
+	((nOSC_Message)(MSG))[POS].m[2] =(M2); \
+	((nOSC_Message)(MSG))[POS].m[3] =(M3); \
 })
-#define nosc_message_set_symbol(MSG,POS,_S) (((nOSC_Message)(MSG))[POS].S = (char *)(_S))
-#define nosc_message_set_char(MSG,POS,C) (((nOSC_Message)(MSG))[POS].c = (char)(C))
+#define nosc_message_set_symbol(MSG,POS,_S)(((nOSC_Message)(MSG))[POS].S =(char *)(_S))
+#define nosc_message_set_char(MSG,POS,C)(((nOSC_Message)(MSG))[POS].c =(char)(C))
 
-uint16_t nosc_message_serialize (nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
-uint16_t nosc_message_vararg_serialize (uint8_t *buf, const char *path, const char *fmt, ...);
+uint16_t nosc_message_serialize(nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
+uint16_t nosc_message_vararg_serialize(uint8_t *buf, const char *path, const char *fmt, ...);
 
 /*
  * Query system
@@ -277,66 +277,66 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 
 #define nOSC_QUERY_ITEM_NODE(PATH, DESCRIPTION, TREE) \
 { \
-	.path = (PATH), \
-	.description = (DESCRIPTION), \
+	.path =(PATH), \
+	.description =(DESCRIPTION), \
 	.type = nOSC_QUERY_NODE, \
-	.item.node.tree = (TREE), \
+	.item.node.tree =(TREE), \
 	.item.node.argc = sizeof((TREE)) / sizeof(nOSC_Query_Item) \
 }
 
 #define nOSC_QUERY_ITEM_METHOD(PATH, DESCRIPTION, CB, ARGS) \
 { \
-	.path = (PATH), \
-	.description = (DESCRIPTION), \
+	.path =(PATH), \
+	.description =(DESCRIPTION), \
 	.type = nOSC_QUERY_METHOD, \
-	.item.method.cb = (CB), \
-	.item.method.args = (ARGS), \
+	.item.method.cb =(CB), \
+	.item.method.args =(ARGS), \
 	.item.method.argc = sizeof((ARGS)) / sizeof(nOSC_Query_Argument) \
 }
 
 #define nOSC_QUERY_ARGUMENT(TYPE, DESCRIPTION, MODE) \
-	.type = (TYPE), \
-	.description = (DESCRIPTION), \
-	.mode = (MODE)
+	.type =(TYPE), \
+	.description =(DESCRIPTION), \
+	.mode =(MODE)
 
 #define nOSC_QUERY_ARGUMENT_BOOL(DESCRIPTION, MODE) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_INT32, (DESCRIPTION), (MODE)), \
+	nOSC_QUERY_ARGUMENT(nOSC_INT32,(DESCRIPTION),(MODE)), \
 	.range.min.i = 0, \
 	.range.max.i = 1 \
 }
 
 #define nOSC_QUERY_ARGUMENT_INT32(DESCRIPTION, MODE, MIN, MAX) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_INT32, (DESCRIPTION), (MODE)), \
-	.range.min.i = (MIN), \
-	.range.max.i = (MAX) \
+	nOSC_QUERY_ARGUMENT(nOSC_INT32,(DESCRIPTION),(MODE)), \
+	.range.min.i =(MIN), \
+	.range.max.i =(MAX) \
 }
 
 #define nOSC_QUERY_ARGUMENT_FLOAT(DESCRIPTION, MODE, MIN, MAX) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_FLOAT, (DESCRIPTION), (MODE)), \
-	.range.min.f = (MIN), \
-	.range.max.f = (MAX) \
+	nOSC_QUERY_ARGUMENT(nOSC_FLOAT,(DESCRIPTION),(MODE)), \
+	.range.min.f =(MIN), \
+	.range.max.f =(MAX) \
 }
 
 #define nOSC_QUERY_ARGUMENT_INT64(DESCRIPTION, MODE, MIN, MAX) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_INT64, (DESCRIPTION), (MODE)), \
-	.range.min.h = (MIN), \
-	.range.max.h = (MAX) \
+	nOSC_QUERY_ARGUMENT(nOSC_INT64,(DESCRIPTION),(MODE)), \
+	.range.min.h =(MIN), \
+	.range.max.h =(MAX) \
 }
 
 #define nOSC_QUERY_ARGUMENT_DOUBLE(DESCRIPTION, MODE, MIN, MAX) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_DOUBLE, (DESCRIPTION), (MODE)), \
-	.range.min.d = (MIN), \
-	.range.max.d = (MAX) \
+	nOSC_QUERY_ARGUMENT(nOSC_DOUBLE,(DESCRIPTION),(MODE)), \
+	.range.min.d =(MIN), \
+	.range.max.d =(MAX) \
 }
 
 #define nOSC_QUERY_ARGUMENT_STRING(DESCRIPTION, MODE) \
 { \
-	nOSC_QUERY_ARGUMENT(nOSC_STRING, (DESCRIPTION), (MODE)), \
+	nOSC_QUERY_ARGUMENT(nOSC_STRING,(DESCRIPTION),(MODE)), \
 }
 
 #endif

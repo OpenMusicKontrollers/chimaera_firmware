@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -41,18 +41,18 @@ extern uint_fast8_t calibrating;
 extern float curve [0x800]; // lookup table for distance-magnetic-flux relationship
 extern const nOSC_Query_Item calibration_tree [12];
 
-uint_fast8_t range_load (uint_fast8_t pos);
-uint_fast8_t range_reset ();
-uint_fast8_t range_save (uint_fast8_t pos);
+uint_fast8_t range_load(uint_fast8_t pos);
+uint_fast8_t range_reset();
+uint_fast8_t range_save(uint_fast8_t pos);
 
-void range_curve_update ();
+void range_curve_update();
 
-void range_calibrate (int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
-void range_init ();
-void range_update_quiescent ();
-uint_fast8_t range_update_b0 ();
-void range_update_b1 (float y);
-void range_update_b2 ();
-void range_update_b3 (float y);
+void range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
+void range_init();
+void range_update_quiescent();
+uint_fast8_t range_update_b0();
+void range_update_b1(float y);
+void range_update_b2();
+void range_update_b3(float y);
 
 #endif

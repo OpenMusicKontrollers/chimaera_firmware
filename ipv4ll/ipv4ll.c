@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -31,36 +31,36 @@ static const uint8_t link_local_gateway [] = {169, 254, 0, 0};
 static const uint8_t link_local_subnet [] = {255, 255, 0, 0};
 
 static void 
-_IPv4LL_random (uint8_t *ip)
+_IPv4LL_random(uint8_t *ip)
 {
 	ip[0] = 169;
 	ip[1] = 254;
-	ip[2] = 1 + rand () / (RAND_MAX / 253);
-	ip[3] = rand () / (RAND_MAX / 255);
+	ip[2] = 1 + rand() /(RAND_MAX / 253);
+	ip[3] = rand() /(RAND_MAX / 255);
 }
 
 void
-IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
+IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 {
 	uint8_t link_local_ip [4];
 
 	do {
-		_IPv4LL_random (link_local_ip);
-	} while (arp_probe (0, link_local_ip)); // collision?
+		_IPv4LL_random(link_local_ip);
+	} while(arp_probe(0, link_local_ip)); // collision?
 
-	arp_announce (0, link_local_ip);
+	arp_announce(0, link_local_ip);
 
-	memcpy (ip, link_local_ip, 4);
-	memcpy (gateway, link_local_gateway, 4);
-	memcpy (subnet, link_local_subnet, 4);
+	memcpy(ip, link_local_ip, 4);
+	memcpy(gateway, link_local_gateway, 4);
+	memcpy(subnet, link_local_subnet, 4);
 
 	//FIXME actually, the user should do this before enabling IPv4LL, not?
 	uint8_t brd [4];
 	broadcast_address(brd, ip, subnet);
-	memcpy (config.output.socket.ip, brd, 4);
-	memcpy (config.config.socket.ip, brd, 4);
-	memcpy (config.sntp.socket.ip, brd, 4);
-	memcpy (config.debug.socket.ip, brd, 4);
+	memcpy(config.output.socket.ip, brd, 4);
+	memcpy(config.config.socket.ip, brd, 4);
+	memcpy(config.sntp.socket.ip, brd, 4);
+	memcpy(config.debug.socket.ip, brd, 4);
 }
 
 /*
@@ -68,10 +68,10 @@ IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
  */
 
 static uint_fast8_t
-_ipv4ll_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ipv4ll_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	// needs a config save and reboot to take action
-	return config_check_bool (path, fmt, argc, args, &config.ipv4ll.enabled);
+	return config_check_bool(path, fmt, argc, args, &config.ipv4ll.enabled);
 }
 
 /*

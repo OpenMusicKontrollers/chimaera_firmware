@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -72,7 +72,7 @@
 #define WIZ_Sn_TX_WR  							0x0024 // 2 TX Write Pointer
 #define WIZ_Sn_RX_RSR 							0x0026 // 2 RX Received Size
 #define WIZ_Sn_RX_RD  							0x0028 // 2 RX Read Pointer
-#define WIZ_Sn_RX_WR  							0x002A // 2 RX Write Pointer (supported?)
+#define WIZ_Sn_RX_WR  							0x002A // 2 RX Write Pointer(supported?)
 #define WIZ_Sn_IMR    							0x002C // 1 Interrupt mask
 #define WIZ_Sn_FRAG   							0x003D // 2 Fragemnt offset
 

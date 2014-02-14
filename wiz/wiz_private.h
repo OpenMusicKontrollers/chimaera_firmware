@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -50,7 +50,7 @@ void wiz_job_run_single();
 void wiz_job_run_nonblocking();
 void wiz_job_run_block();
 
-void wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
+void wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
 
 #define WIZ_MAX_JOB_NUM 8
 
@@ -60,8 +60,8 @@ extern volatile uint_fast8_t wiz_jobs_done;
 
 extern gpio_dev *ss_dev;
 extern uint8_t ss_bit;
-#define setSS()		gpio_write_bit (ss_dev, ss_bit, 0)
-#define resetSS()	gpio_write_bit (ss_dev, ss_bit, 1)
+#define setSS()		gpio_write_bit(ss_dev, ss_bit, 0)
+#define resetSS()	gpio_write_bit(ss_dev, ss_bit, 1)
 
 extern Wiz_IRQ_Cb irq_cb;
 extern Wiz_IRQ_Cb irq_socket_cb [WIZ_MAX_SOCK_NUM];
@@ -75,12 +75,12 @@ extern uint16_t Sn_Rx_RD[WIZ_MAX_SOCK_NUM];
 extern uint8_t buf_o2 [];
 extern uint8_t buf_i2 [];
 
-void _dma_write (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
-void _dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
-void _dma_write_sock_16 (uint8_t sock, uint16_t addr, uint16_t dat);
+void _dma_write(uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
+void _dma_write_sock(uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
+void _dma_write_sock_16(uint8_t sock, uint16_t addr, uint16_t dat);
 
-void _dma_read (uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
-void _dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
-void _dma_read_sock_16 (int8_t sock, uint16_t addr, uint16_t *dat);
+void _dma_read(uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
+void _dma_read_sock(uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
+void _dma_read_sock_16(int8_t sock, uint16_t addr, uint16_t *dat);
 
 #endif

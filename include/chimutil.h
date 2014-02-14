@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -31,22 +31,22 @@
 #include <nosc.h>
 #include <wiz.h>
 
-uint_fast8_t ip_part_of_subnet (uint8_t *ip);
+uint_fast8_t ip_part_of_subnet(uint8_t *ip);
 void cidr_to_subnet(uint8_t *subnet, uint8_t mask);
 uint8_t subnet_to_cidr(uint8_t *subnet);
 void broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet);
 
-void adc_timer_reconfigure ();
-void sntp_timer_reconfigure ();
-void dhcpc_timer_reconfigure ();
-void mdns_timer_reconfigure ();
+void adc_timer_reconfigure();
+void sntp_timer_reconfigure();
+void dhcpc_timer_reconfigure();
+void mdns_timer_reconfigure();
 
-uint_fast8_t output_enable (uint8_t b);
-uint_fast8_t config_enable (uint8_t b);
-uint_fast8_t sntp_enable (uint8_t b);
-uint_fast8_t debug_enable (uint8_t b);
-uint_fast8_t mdns_enable (uint8_t b);
-uint_fast8_t dhcpc_enable (uint8_t b);
+uint_fast8_t output_enable(uint8_t b);
+uint_fast8_t config_enable(uint8_t b);
+uint_fast8_t sntp_enable(uint8_t b);
+uint_fast8_t debug_enable(uint8_t b);
+uint_fast8_t mdns_enable(uint8_t b);
+uint_fast8_t dhcpc_enable(uint8_t b);
 
 typedef struct _Stop_Watch Stop_Watch;
 
@@ -58,22 +58,22 @@ struct _Stop_Watch {
 	uint16_t counter;
 };
 
-void stop_watch_start (Stop_Watch *sw);
-void stop_watch_stop (Stop_Watch *sw);
+void stop_watch_start(Stop_Watch *sw);
+void stop_watch_stop(Stop_Watch *sw);
 
-uint32_t uid_seed ();
-void uid_str (char *str);
+uint32_t uid_seed();
+void uid_str(char *str);
 
 /*
  * str to/from ip, maC, cidr conversions
 */
-uint_fast8_t str2mac (char *str, uint8_t *mac);
-void mac2str (uint8_t *mac, char *str);
-uint_fast8_t str2ip (char *str, uint8_t *ip);
-uint_fast8_t str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask);
-void ip2str (uint8_t *ip, char *str);
-void ip2strCIDR (uint8_t *ip, uint8_t mask, char *str);
-uint_fast8_t str2addr (char *str, uint8_t *ip, uint16_t *port);
-void addr2str (uint8_t *ip, uint16_t port, char *str);
+uint_fast8_t str2mac(char *str, uint8_t *mac);
+void mac2str(uint8_t *mac, char *str);
+uint_fast8_t str2ip(char *str, uint8_t *ip);
+uint_fast8_t str2ipCIDR(char *str, uint8_t *ip, uint8_t *mask);
+void ip2str(uint8_t *ip, char *str);
+void ip2strCIDR(uint8_t *ip, uint8_t mask, char *str);
+uint_fast8_t str2addr(char *str, uint8_t *ip, uint16_t *port);
+void addr2str(uint8_t *ip, uint16_t port, char *str);
 
 #endif

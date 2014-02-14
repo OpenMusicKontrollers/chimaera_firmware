@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -45,26 +45,26 @@ static MIDI_Hash oscmidi_hash [BLOB_MAX];
 static uint_fast8_t oscmidi_tok;
 
 void
-oscmidi_init ()
+oscmidi_init()
 {
-	nosc_item_message_set (oscmidi_bndl, 0, msg, midi_str, midi_fmt);
+	nosc_item_message_set(oscmidi_bndl, 0, msg, midi_str, midi_fmt);
 	midi_fmt[0] = nOSC_END;
 
-	config.oscmidi.mul = (float)0x2000 / config.oscmidi.range;
+	config.oscmidi.mul =(float)0x2000 / config.oscmidi.range;
 }
 
 static void
-oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint8_t ch;
 	oscmidi_osc.tt = offset;
 
 	oscmidi_tok = 0;
 
-	if (nblob_old + nblob_new == 0) // idling
-		for (ch=0; ch<0x10; ch++) //TODO check if 0x10 < OSCMIDI_MAX
+	if(nblob_old + nblob_new == 0) // idling
+		for(ch=0; ch<0x10; ch++) //TODO check if 0x10 < OSCMIDI_MAX
 		{
-			nosc_message_set_midi(msg, oscmidi_tok, ch, CONTROL_CHANGE, ALL_NOTES_OFF, 0x0); // send all notes off on all channels
+			nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_ALL_NOTES_OFF, 0x0); // send all notes off on all channels
 			midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 		}
 
@@ -72,48 +72,48 @@ oscmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 }
 
 static void
-oscmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+oscmidi_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = floor (X);
-	midi_add_key (oscmidi_hash, sid, key);
+	uint8_t key = floor(X);
+	midi_add_key(oscmidi_hash, sid, key);
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, NOTE_ON, key, 0x7f);
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_NOTE_ON, key, 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
 static void 
-oscmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
+oscmidi_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint8_t ch = gid % 0xf;
-	uint8_t key = midi_rem_key (oscmidi_hash, sid);
+	uint8_t key = midi_rem_key(oscmidi_hash, sid);
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, NOTE_OFF, key, 0x7f);
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_NOTE_OFF, key, 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
 static void
-oscmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+oscmidi_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint8_t ch = gid % 0xf;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = midi_get_key (oscmidi_hash, sid);
-	uint16_t bend = (X - key)*config.oscmidi.mul + 0x1fff;
+	uint8_t key = midi_get_key(oscmidi_hash, sid);
+	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
 
 	uint16_t eff = y * 0x3fff;
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, PITCH_BEND, bend & 0x7f, bend >> 7);
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, CONTROL_CHANGE, config.oscmidi.effect | LSV, eff & 0x7f);
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 
-	nosc_message_set_midi (msg, oscmidi_tok, ch, CONTROL_CHANGE, config.oscmidi.effect | MSV, eff >> 7);
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_MSV, eff >> 7);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
@@ -130,33 +130,33 @@ CMC_Engine oscmidi_engine = {
  */
 
 static uint_fast8_t
-_oscmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.oscmidi.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.oscmidi.enabled);
+	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_oscmidi_offset (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_check_float (path, fmt, argc, args, &config.oscmidi.offset);
+	return config_check_float(path, fmt, argc, args, &config.oscmidi.offset);
 }
 
 static uint_fast8_t
-_oscmidi_range (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint_fast8_t res;
-	res = config_check_float (path, fmt, argc, args, &config.oscmidi.range);
+	res = config_check_float(path, fmt, argc, args, &config.oscmidi.range);
 	if(res)
-		config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
+		config.oscmidi.mul =(float)0x1fff / config.oscmidi.range;
 	return res;
 }
 
 static uint_fast8_t
-_oscmidi_effect (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_check_uint8 (path, fmt, argc, args, &config.oscmidi.effect);
+	return config_check_uint8(path, fmt, argc, args, &config.oscmidi.effect);
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -44,8 +44,8 @@ struct _DHCPC {
 	uint8_t subnet_mask [4];
 };
 
-uint_fast8_t dhcpc_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
-uint_fast8_t dhcpc_refresh ();
+uint_fast8_t dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
+uint_fast8_t dhcpc_refresh();
 
 extern DHCPC dhcpc;
 extern const nOSC_Query_Item dhcpc_tree [1];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -33,9 +33,9 @@
 #define swap16(x) \
 ({ \
 	uint16_t y; \
-	asm volatile ("\trev16	%[Y], %[X]\n" \
-		: [Y]"=r" (y) \
-		: [X]"r" (x) \
+	asm volatile("\trev16	%[Y], %[X]\n" \
+		: [Y]"=r"(y) \
+		: [X]"r"(x) \
 	); \
 	(uint16_t)y; \
 })
@@ -64,8 +64,8 @@ typedef union _Con {
 #define ref_htonll(dst,x)	\
 ({ \
 	Con a, *b; \
-	a.all = (uint64_t)(x); \
-	b = (Con *)(dst); \
+	a.all =(uint64_t)(x); \
+	b =(Con *)(dst); \
 	b->part.upper = htonl(a.part.lower); \
 	b->part.lower = htonl(a.part.upper); \
 })
@@ -76,7 +76,7 @@ typedef union _Con {
 #define ref_ntohll(ptr)	\
 ({ \
 	Con a, *b; \
-	b = (Con *)(ptr); \
+	b =(Con *)(ptr); \
 	a.part.upper = ntohl(b->part.lower); \
 	a.part.lower = ntohl(b->part.upper); \
 	(uint64_t)a.all; \

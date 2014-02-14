@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -36,25 +36,25 @@
 #define ARP_OPER_REQUEST 0x0001
 #define ARP_OPER_REPLY 0x0002
 
-#define ARP_PROBE_WAIT           1 // second   (initial random delay)
-#define ARP_PROBE_NUM            3 //          (number of probe packets)
-#define ARP_PROBE_MIN            1 // second   (minimum delay until repeated probe)
-#define ARP_PROBE_MAX            2 // seconds  (maximum delay until repeated probe)
-#define ARP_ANNOUNCE_WAIT        2 // seconds  (delay before announcing)
-#define ARP_ANNOUNCE_NUM         2 //          (number of announcement packets)
-#define ARP_ANNOUNCE_INTERVAL    2 // seconds  (time between announcement packets)
-#define ARP_MAX_CONFLICTS       10 //          (max conflicts before rate limiting)
-#define ARP_RATE_LIMIT_INTERVAL 60 // seconds  (delay between successive attempts)
-#define ARP_DEFEND_INTERVAL     10 // seconds  (minimum interval between defensive
+#define ARP_PROBE_WAIT           1 // second  (initial random delay)
+#define ARP_PROBE_NUM            3 //         (number of probe packets)
+#define ARP_PROBE_MIN            1 // second  (minimum delay until repeated probe)
+#define ARP_PROBE_MAX            2 // seconds (maximum delay until repeated probe)
+#define ARP_ANNOUNCE_WAIT        2 // seconds (delay before announcing)
+#define ARP_ANNOUNCE_NUM         2 //         (number of announcement packets)
+#define ARP_ANNOUNCE_INTERVAL    2 // seconds (time between announcement packets)
+#define ARP_MAX_CONFLICTS       10 //         (max conflicts before rate limiting)
+#define ARP_RATE_LIMIT_INTERVAL 60 // seconds (delay between successive attempts)
+#define ARP_DEFEND_INTERVAL     10 // seconds (minimum interval between defensive
 
 typedef struct _ARP_Payload ARP_Payload;
 
 struct _ARP_Payload {
-	uint16_t htype;		// hardware type (ethernet MAC)
-	uint16_t ptype;		// protocol type (IPv4|IPv6)
-	uint8_t hlen;			// hardware length (6bytes)
-	uint8_t plen;			// protocol length (4bytes for IPv4)
-	uint16_t oper;		// operation mode (request|reply)
+	uint16_t htype;		// hardware type(ethernet MAC)
+	uint16_t ptype;		// protocol type(IPv4|IPv6)
+	uint8_t hlen;			// hardware length(6bytes)
+	uint8_t plen;			// protocol length(4bytes for IPv4)
+	uint16_t oper;		// operation mode(request|reply)
 	uint8_t sha [6];	// source hardware address
 	uint8_t spa [4];	// source IP address
 	uint8_t tha [6];	// target hardware address

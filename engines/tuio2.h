@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -33,6 +33,6 @@ extern nOSC_Bundle_Item tuio2_osc;
 extern CMC_Engine tuio2_engine;
 extern const nOSC_Query_Item tuio2_tree [2];
 
-void tuio2_init ();
+void tuio2_init();
 
 #endif

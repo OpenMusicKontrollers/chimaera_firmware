@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -30,14 +30,14 @@
 
 extern const nOSC_Query_Item mdns_tree [1];
 
-typedef void (*mDNS_Resolve_Cb) (uint8_t *ip, void *data);
+typedef void(*mDNS_Resolve_Cb)(uint8_t *ip, void *data);
 
-void mdns_dispatch (uint8_t *buf, uint16_t len);
+void mdns_dispatch(uint8_t *buf, uint16_t len);
 
 void mdns_announce();
 
 //TODO allow multiple concurrent resolvings
 void mdns_resolve_timeout();
-uint_fast8_t mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data);
+uint_fast8_t mdns_resolve(char *name, mDNS_Resolve_Cb cb, void *data);
 
 #endif

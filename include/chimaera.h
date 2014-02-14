@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -34,18 +34,18 @@ extern const stm32_pin_info PIN_MAP [];
 #include <nosc.h>
 #include <wiz.h>
 
-#define pin_set_mode(PIN, MODE) (gpio_set_mode (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE)))
-#define pin_set_modef(PIN, MODE, FLAGS) (gpio_set_modef (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (MODE), (FLAGS)))
-#define pin_set_af(PIN, AF) (gpio_set_af (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (AF)))
-#define pin_write_bit(PIN, VAL) (gpio_write_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit, (VAL)))
-#define pin_read_bit(PIN) (gpio_read_bit (PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit))
+#define pin_set_mode(PIN, MODE)(gpio_set_mode(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE)))
+#define pin_set_modef(PIN, MODE, FLAGS)(gpio_set_modef(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE),(FLAGS)))
+#define pin_set_af(PIN, AF)(gpio_set_af(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(AF)))
+#define pin_write_bit(PIN, VAL)(gpio_write_bit(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(VAL)))
+#define pin_read_bit(PIN)(gpio_read_bit(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit))
 
 #define MUX_MAX 16
 
 #if SENSOR_N == 16
 #	define ADC_LENGTH 1 // the number of connected sensor units
-#	define ADC_DUAL_LENGTH 0 // the number of channels to be converted per ADC (1&2)
-#	define ADC_SING_LENGTH 1 // the number of channels to be converted per ADC (3)
+#	define ADC_DUAL_LENGTH 0 // the number of channels to be converted per ADC(1&2)
+#	define ADC_SING_LENGTH 1 // the number of channels to be converted per ADC(3)
 #elif SENSOR_N == 32
 #	define ADC_LENGTH 2
 #	define ADC_DUAL_LENGTH 1
@@ -83,7 +83,7 @@ extern const stm32_pin_info PIN_MAP [];
 #	define ADC_DUAL_LENGTH 4
 #	define ADC_SING_LENGTH 2
 #else
-#	error "invalid number of sensors given to Make (-DSENSOR_N)" SENSOR_N
+#	error "invalid number of sensors given to Make(-DSENSOR_N)" SENSOR_N
 #endif
 
 #define ADC_UNUSED_LENGTH (10 - ADC_LENGTH)
@@ -185,11 +185,11 @@ typedef enum _Reset_Mode {
 
 #endif
 
-// STM32F3 flash memory size (16bit)
-#define FSIZE_BASE  ((const uint16_t *)0x1FFFF7CC)
+// STM32F3 flash memory size(16bit)
+#define FSIZE_BASE ((const uint16_t *)0x1FFFF7CC)
 
-// STM32F3 universal ID (96bit)
-#define UID_BASE  ((const uint8_t *)0x1FFFF7AC)
+// STM32F3 universal ID(96bit)
+#define UID_BASE ((const uint8_t *)0x1FFFF7AC)
 
 extern uint_fast8_t buf_o_ptr;
 extern const uint_fast8_t buf_i_ptr;
@@ -197,17 +197,17 @@ extern const uint_fast8_t buf_i_ptr;
 extern uint8_t buf_o[2] [CHIMAERA_BUFSIZE]; // general purpose output buffer
 extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
-#define BUF_O_BASE(ptr) (buf_o[ptr])
-#define BUF_I_BASE(ptr) (buf_i[ptr])
+#define BUF_O_BASE(ptr)(buf_o[ptr])
+#define BUF_I_BASE(ptr)(buf_i[ptr])
 
-#define BUF_O_OFFSET(ptr) (buf_o[ptr] + WIZ_SEND_OFFSET)
-#define BUF_I_OFFSET(ptr) (buf_i[ptr] + WIZ_SEND_OFFSET)
+#define BUF_O_OFFSET(ptr)(buf_o[ptr] + WIZ_SEND_OFFSET)
+#define BUF_I_OFFSET(ptr)(buf_i[ptr] + WIZ_SEND_OFFSET)
 
 #define adc_timer TIMER1
 #define sntp_timer TIMER2
 #define dhcpc_timer TIMER4
 #define mdns_timer TIMER3
 
-void cpp_setup ();
+void cpp_setup();
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -35,9 +35,9 @@
 
 #define W5500_SOCKET_SEL_ENTRY(s) \
 	[s] = { \
-		.reg = (s*4)+1 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.tx_buf = (s*4)+2 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.rx_buf = (s*4)+3 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.reg =(s*4)+1 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.tx_buf =(s*4)+2 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.rx_buf =(s*4)+3 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
 	}
 
 static const W5500_Socket_Sel W5500_socket_sel [8] = {
@@ -63,42 +63,42 @@ wiz_job_set_frame()
 }
 
 inline __always_inline void
-_dma_write_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
+_dma_write_sock(uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
-	_dma_write (addr, W5500_socket_sel[sock].reg, dat, len);
+	_dma_write(addr, W5500_socket_sel[sock].reg, dat, len);
 }
 
 inline __always_inline void
-_dma_read_sock (uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
+_dma_read_sock(uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len)
 {
 	// transform relative socket registry address to absolute registry address
-	_dma_read (addr, W5500_socket_sel[sock].reg, dat, len);
+	_dma_read(addr, W5500_socket_sel[sock].reg, dat, len);
 }
 
 void
-wiz_sockets_set (uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
+wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
 {
 	uint8_t flag;
 	uint_fast8_t sock;
 
 	// initialize all socket memory TX and RX sizes to their corresponding sizes
-  for (sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
+  for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
 	{
 		// initialize tx registers
-		SSIZE[sock] = (uint16_t)tx_mem[sock] * 0x0400;
+		SSIZE[sock] =(uint16_t)tx_mem[sock] * 0x0400;
 		flag = tx_mem[sock];
-		_dma_write_sock (sock, WIZ_Sn_TXBUF_SIZE, &flag, 1); // TX_MEMSIZE
+		_dma_write_sock(sock, WIZ_Sn_TXBUF_SIZE, &flag, 1); // TX_MEMSIZE
 
 		// initialize rx registers
-		RSIZE[sock] = (uint16_t)rx_mem[sock] * 0x0400;
+		RSIZE[sock] =(uint16_t)rx_mem[sock] * 0x0400;
 		flag = rx_mem[sock];
-		_dma_write_sock (sock, WIZ_Sn_RXBUF_SIZE, &flag, 1); // RX_MEMSIZE
+		_dma_write_sock(sock, WIZ_Sn_RXBUF_SIZE, &flag, 1); // RX_MEMSIZE
   }
 }
 
 uint_fast8_t __CCM_TEXT__
-udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
+udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;
@@ -129,7 +129,7 @@ udp_receive_nonblocking (uint8_t sock, uint8_t *i_buf, uint16_t len)
 }
 
 uint_fast8_t  __CCM_TEXT__
-udp_send_nonblocking (uint8_t sock, uint8_t *o_buf, uint16_t len)
+udp_send_nonblocking(uint8_t sock, uint8_t *o_buf, uint16_t len)
 {
 	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
 		return 0;

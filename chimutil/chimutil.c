@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -38,31 +38,31 @@
 #include <sntp.h>
 
 uint_fast8_t
-ip_part_of_subnet (uint8_t *ip)
+ip_part_of_subnet(uint8_t *ip)
 {
-	uint32_t *ip32 = (uint32_t *)ip;
-	uint32_t *subnet32 = (uint32_t *)config.comm.subnet;
-	uint32_t *comm32 = (uint32_t *)config.comm.ip;
+	uint32_t *ip32 =(uint32_t *)ip;
+	uint32_t *subnet32 =(uint32_t *)config.comm.subnet;
+	uint32_t *comm32 =(uint32_t *)config.comm.ip;
 
-	return (*ip32 & *subnet32) == (*comm32 & *subnet32);
+	return(*ip32 & *subnet32) ==(*comm32 & *subnet32);
 }
 
 void
 cidr_to_subnet(uint8_t *subnet, uint8_t mask)
 {
-	uint32_t *subnet_ptr = (uint32_t *)subnet;
+	uint32_t *subnet_ptr =(uint32_t *)subnet;
 	uint32_t subn = 0xffffffff;
 	if(mask == 0)
 		subn = 0x0;
 	else
-		subn &= ~((1UL << (32-mask)) - 1);
+		subn &= ~((1UL <<(32-mask)) - 1);
 	*subnet_ptr = htonl(subn);
 }
 
 uint8_t
 subnet_to_cidr(uint8_t *subnet)
 {
-	uint32_t *subnet_ptr = (uint32_t *)subnet;
+	uint32_t *subnet_ptr =(uint32_t *)subnet;
 	uint32_t subn = htonl(*subnet_ptr);
 	uint8_t mask;
 	if(subn == 0)
@@ -75,129 +75,129 @@ subnet_to_cidr(uint8_t *subnet)
 void
 broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet)
 {
-	uint32_t *brd_ptr = (uint32_t *)brd;
-	uint32_t *ip_ptr = (uint32_t *)ip;
-	uint32_t *subnet_ptr = (uint32_t *)subnet;
-	*brd_ptr = (*ip_ptr & *subnet_ptr) | (~(*subnet_ptr));
+	uint32_t *brd_ptr =(uint32_t *)brd;
+	uint32_t *ip_ptr =(uint32_t *)ip;
+	uint32_t *subnet_ptr =(uint32_t *)subnet;
+	*brd_ptr =(*ip_ptr & *subnet_ptr) | (~(*subnet_ptr));
 }
 
 uint_fast8_t 
-output_enable (uint8_t b)
+output_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.output.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
 	return 1; //TODO
 }
 
 uint_fast8_t 
-config_enable (uint8_t b)
+config_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.config.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
 	return 1; //TODO
 }
 
 uint_fast8_t 
-sntp_enable (uint8_t b)
+sntp_enable(uint8_t b)
 {
-	timer_pause (sntp_timer);
-	sntp_timer_reconfigure ();
+	timer_pause(sntp_timer);
+	sntp_timer_reconfigure();
 
 	Socket_Config *socket = &config.sntp.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 
-		timer_resume (sntp_timer);
+		timer_resume(sntp_timer);
 	}
 	return 1; //TODO
 }
 
 uint_fast8_t 
-debug_enable (uint8_t b)
+debug_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.debug.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
 	return 1; //TODO
 }
 
 uint_fast8_t 
-mdns_enable (uint8_t b)
+mdns_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.mdns.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
 	return 1; //TODO
 }
 
 uint_fast8_t 
-dhcpc_enable (uint8_t b)
+dhcpc_enable(uint8_t b)
 {
-	//timer_pause (dhcpc_timer); //todo we don't need this
-	//dhcpc_timer_reconfigure (); //TODO we don't need this
+	//timer_pause(dhcpc_timer); //todo we don't need this
+	//dhcpc_timer_reconfigure(); //TODO we don't need this
 
 	Socket_Config *socket = &config.dhcpc.socket;
 	socket->enabled = b;
-	udp_end (socket->sock);
-	if (socket->enabled)
+	udp_end(socket->sock);
+	if(socket->enabled)
 	{
-		udp_set_remote (socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin (socket->sock, socket->port[SRC_PORT],
+		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 
-		//timer_resume (dhcpc_timer); //TODO we don't need this
+		//timer_resume(dhcpc_timer); //TODO we don't need this
 	}
 	return 1; //TODO
 }
 
 void
-stop_watch_start (Stop_Watch *sw)
+stop_watch_start(Stop_Watch *sw)
 {
-	sw->t0 = systick_uptime ();
+	sw->t0 = systick_uptime();
 }
 
 void
-stop_watch_stop (Stop_Watch *sw)
+stop_watch_stop(Stop_Watch *sw)
 {
-	sw->ticks += systick_uptime () - sw->t0;
+	sw->ticks += systick_uptime() - sw->t0;
 	sw->counter++;
 
-	if (sw->counter > sw->thresh)
+	if(sw->counter > sw->thresh)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
-		udp_send (config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
+		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 		sw->ticks = 0;
 		sw->counter = 0;
@@ -223,7 +223,7 @@ uid_seed()
 void
 uid_str(char *str)
 {
-	sprintf (str, "%02x%02x%02x%02x-%02x%02x%02x%02x-%02x%02x%02x%02x",
+	sprintf(str, "%02x%02x%02x%02x-%02x%02x%02x%02x-%02x%02x%02x%02x",
 		UID_BASE[11],
 		UID_BASE[10],
 		UID_BASE[9],
@@ -240,11 +240,11 @@ uid_str(char *str)
 }
 
 uint_fast8_t
-str2mac (char *str, uint8_t *mac)
+str2mac(char *str, uint8_t *mac)
 {
 	uint16_t smac [6];
 	uint_fast8_t res;
-	res = sscanf (str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
+	res = sscanf(str, "%02hx:%02hx:%02hx:%02hx:%02hx:%02hx",
 		smac, smac+1, smac+2, smac+3, smac+4, smac+5) == 6;
 	if(res
 		&& (smac[0] < 0x100) && (smac[1] < 0x100) && (smac[2] < 0x100)
@@ -261,18 +261,18 @@ str2mac (char *str, uint8_t *mac)
 }
 
 void
-mac2str (uint8_t *mac, char *str)
+mac2str(uint8_t *mac, char *str)
 {
-	sprintf (str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+	sprintf(str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
 uint_fast8_t
-str2ip (char *str, uint8_t *ip)
+str2ip(char *str, uint8_t *ip)
 {
 	uint16_t sip [4];
 	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu", // hhu only available in c99
+	res = sscanf(str, "%hu.%hu.%hu.%hu", // hhu only available in c99
 		sip, sip+1, sip+2, sip+3) == 4;
 	if(res
 		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) )
@@ -286,12 +286,12 @@ str2ip (char *str, uint8_t *ip)
 }
 
 uint_fast8_t
-str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
+str2ipCIDR(char *str, uint8_t *ip, uint8_t *mask)
 {
 	uint16_t sip [4];
 	uint16_t smask;
 	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu/%hu",
+	res = sscanf(str, "%hu.%hu.%hu.%hu/%hu",
 		sip, sip+1, sip+2, sip+3, &smask) == 5;
 	if(res
 		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) && (smask <= 0x20) )
@@ -306,26 +306,26 @@ str2ipCIDR (char *str, uint8_t *ip, uint8_t *mask)
 }
 
 void
-ip2str (uint8_t *ip, char *str)
+ip2str(uint8_t *ip, char *str)
 {
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu",
+	sprintf(str, "%hhu.%hhu.%hhu.%hhu",
 		ip[0], ip[1], ip[2], ip[3]);
 }
 
 void
-ip2strCIDR (uint8_t *ip, uint8_t mask, char *str)
+ip2strCIDR(uint8_t *ip, uint8_t mask, char *str)
 {
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu/%hhu",
+	sprintf(str, "%hhu.%hhu.%hhu.%hhu/%hhu",
 		ip[0], ip[1], ip[2], ip[3], mask);
 }
 
 uint_fast8_t
-str2addr (char *str, uint8_t *ip, uint16_t *port)
+str2addr(char *str, uint8_t *ip, uint16_t *port)
 {
 	uint16_t sip [4];
 	uint16_t sport;
 	uint_fast8_t res;
-	res = sscanf (str, "%hu.%hu.%hu.%hu:%hu",
+	res = sscanf(str, "%hu.%hu.%hu.%hu:%hu",
 		sip, sip+1, sip+2, sip+3, &sport) == 5;
 	if(res
 		&& (sip[0] < 0x100) && (sip[1] < 0x100) && (sip[2] < 0x100) && (sip[3] < 0x100) )
@@ -340,8 +340,8 @@ str2addr (char *str, uint8_t *ip, uint16_t *port)
 }
 
 void
-addr2str (uint8_t *ip, uint16_t port, char *str)
+addr2str(uint8_t *ip, uint16_t port, char *str)
 {
-	sprintf (str, "%hhu.%hhu.%hhu.%hhu:%hu",
+	sprintf(str, "%hhu.%hhu.%hhu.%hhu:%hu",
 		ip[0], ip[1], ip[2], ip[3], port);
 }

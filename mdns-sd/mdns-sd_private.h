@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@ typedef struct _DNS_Question DNS_Question;
 typedef struct _DNS_Answer DNS_Answer;
 typedef struct _DNS_Resolve DNS_Resolve;
 typedef struct _DNS_PTR_Method DNS_PTR_Method;
-typedef void (*DNS_PTR_Method_Cb)(DNS_Query *query);
+typedef void(*DNS_PTR_Method_Cb)(DNS_Query *query);
 
 #define MDNS_FLAGS_QR_BIT				15
 #define MDNS_FLAGS_OPCODE_SHIFT	11

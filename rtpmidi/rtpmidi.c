@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -26,7 +26,7 @@
 
 #include "rtpmidi_private.h"
 
-//TODO implement RTCP (Real Time Control Protocol)
+//TODO implement RTCP(Real Time Control Protocol)
 
 static uint16_t sequence_number = 0;
 
@@ -58,29 +58,29 @@ static nOSC_Timestamp last_tt;
 static MIDI_Hash rtpmidi_hash [BLOB_MAX];
 
 void
-rtpmidi_init ()
+rtpmidi_init()
 {
-	seq_offset = rand ();
+	seq_offset = rand();
 	seq_num = seq_offset;
-	timestamp = rand ();
+	timestamp = rand();
 	last_tt = 0ULLK;
-	rtp_header.SSRC = htonl (rand ());
+	rtp_header.SSRC = htonl(rand());
 
-	config.oscmidi.mul = (float)0x2000 / config.oscmidi.range;
+	config.oscmidi.mul =(float)0x2000 / config.oscmidi.range;
 }
 
 uint16_t
-rtpmidi_serialize (uint8_t *buf)
+rtpmidi_serialize(uint8_t *buf)
 {
-	if (!nlist)
+	if(!nlist)
 		return 0;
 
-	rtp_header.sequence_number = hton (seq_num);
-	rtp_header.timestamp = htonl (timestamp);
+	rtp_header.sequence_number = hton(seq_num);
+	rtp_header.timestamp = htonl(timestamp);
 
 	uint_fast8_t len12bit;
 	uint16_t len = nlist * sizeof(RTP_MIDI_List);
-	if (len > 0b00001111)
+	if(len > 0b00001111)
 	{
 		len12bit = 1;
 		rtp_midi_header.B_J_Z_P_LEN1 = 0b10000000 | (len & 0b00001111);
@@ -94,27 +94,27 @@ rtpmidi_serialize (uint8_t *buf)
 	}
 
 	uint8_t *buf_ptr = buf;
-	memcpy (buf_ptr, &rtp_header, sizeof(RTP_Header));
+	memcpy(buf_ptr, &rtp_header, sizeof(RTP_Header));
 	buf_ptr += sizeof(RTP_Header);
 
-	memcpy (buf_ptr, &rtp_midi_header, len12bit ? 2 : 1);
+	memcpy(buf_ptr, &rtp_midi_header, len12bit ? 2 : 1);
 	buf_ptr += len12bit ? 2 : 1;
 
-	memcpy (buf_ptr, rtp_midi_list, len);
+	memcpy(buf_ptr, rtp_midi_list, len);
 	buf_ptr += len;
 
 	return buf_ptr - buf;
 }
 
 static void
-rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+rtpmidi_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	seq_num = seq_offset + fid;
 
 	nOSC_Timestamp dt;
 	uint32_t df;
 
-	if (last_tt > 0ULLK)
+	if(last_tt > 0ULLK)
 	{
 		dt = now - last_tt;
 		df = dt * rtp_midi_session.rate;
@@ -126,66 +126,66 @@ rtpmidi_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 }
 
 static void
-rtpmidi_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+rtpmidi_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = floor (X);
-	midi_add_key (rtpmidi_hash, sid, key);
+	uint8_t key = floor(X);
+	midi_add_key(rtpmidi_hash, sid, key);
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_ON | ch;
+	itm->midi[0] = MIDI_STATUS_NOTE_ON | ch;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x7f;
 	nlist++;
 }
 
 static void
-rtpmidi_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
+rtpmidi_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
-	uint8_t key = midi_rem_key (rtpmidi_hash, sid);
+	uint8_t key = midi_rem_key(rtpmidi_hash, sid);
 	
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = NOTE_OFF | ch;
+	itm->midi[0] = MIDI_STATUS_NOTE_OFF | ch;
 	itm->midi[1] = key;
 	itm->midi[2] = 0x00;
 	nlist++;
 }
 
 static void
-rtpmidi_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+rtpmidi_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	RTP_MIDI_List *itm;
 	uint8_t ch = gid % 0xf;
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = midi_get_key (rtpmidi_hash, sid);
-	uint16_t bend = (X - key)*config.oscmidi.mul + 0x1fff;
+	uint8_t key = midi_get_key(rtpmidi_hash, sid);
+	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
 
 	uint16_t eff = y * 0x3fff;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = PITCH_BEND | ch;
+	itm->midi[0] = MIDI_STATUS_PITCH_BEND | ch;
 	itm->midi[1] = bend & 0x7f;
 	itm->midi[2] = bend >> 7;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE | ch;
-	itm->midi[1] = config.oscmidi.effect | LSV;
+	itm->midi[0] = MIDI_STATUS_CONTROL_CHANGE | ch;
+	itm->midi[1] = config.oscmidi.effect | MIDI_LSV;
 	itm->midi[2] = eff & 0x7f;
 	nlist++;
 
 	itm = &rtp_midi_list[nlist];
 	itm->delta_time = 0b00000000;
-	itm->midi[0] = CONTROL_CHANGE | ch;
-	itm->midi[1] = config.oscmidi.effect | MSV;
+	itm->midi[0] = MIDI_STATUS_CONTROL_CHANGE | ch;
+	itm->midi[1] = config.oscmidi.effect | MIDI_MSV;
 	itm->midi[2] = eff >> 7;
 	nlist++;
 }
@@ -202,10 +202,10 @@ CMC_Engine rtpmidi_engine = {
  */
 
 static uint_fast8_t
-_rtpmidi_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_rtpmidi_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.rtpmidi.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.rtpmidi.enabled);
+	cmc_engines_update();
 	return res;
 }
 

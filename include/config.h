@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@
 #define DST_PORT 1
 #define NAME_LENGTH 16
 
-typedef uint_fast8_t (*Socket_Enable_Cb) (uint8_t flag);
+typedef uint_fast8_t(*Socket_Enable_Cb)(uint8_t flag);
 typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
 typedef struct _Config Config;
@@ -162,23 +162,23 @@ struct _Config {
 extern Config config;
 extern const nOSC_Method config_serv [];
 
-uint_fast8_t version_match ();
+uint_fast8_t version_match();
 
-uint_fast8_t config_load ();
-uint_fast8_t config_save ();
+uint_fast8_t config_load();
+uint_fast8_t config_save();
 
-uint_fast8_t groups_load ();
-uint_fast8_t groups_save ();
+uint_fast8_t groups_load();
+uint_fast8_t groups_save();
 
 extern const char *success_str;
 extern const char *fail_str;
-#define CONFIG_SUCCESS(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...) (nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
+#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
 
-uint_fast8_t config_socket_enabled (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_address (Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_check_range8 (uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_check_bool (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
-uint_fast8_t config_check_rangefloat (float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_range8(uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
+uint_fast8_t config_check_rangefloat(float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
 
 #endif

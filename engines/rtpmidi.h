@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -30,8 +30,8 @@
 extern CMC_Engine rtpmidi_engine;
 extern const nOSC_Query_Item rtpmidi_tree [1];
 
-void rtpmidi_init ();
+void rtpmidi_init();
 
-uint16_t rtpmidi_serialize (uint8_t *buf);
+uint16_t rtpmidi_serialize(uint8_t *buf);
 
 #endif // RTPMIDI_H

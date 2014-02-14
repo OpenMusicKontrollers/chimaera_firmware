@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -80,10 +80,10 @@ _unroll_qname(DNS_Query *query, uint8_t *buf, char **qname)
 	*qname = ref;
 
 	for(buf_ptr=buf; *buf_ptr; )
-		if ( (buf_ptr[0] & 0xc0) == 0xc0) // it's a pointer at the beginning/end of the label
+		if( (buf_ptr[0] & 0xc0) == 0xc0) // it's a pointer at the beginning/end of the label
 		{
-			uint16_t offset = ((buf_ptr[0] & 0x3f) << 8) | (buf_ptr[1] & 0xff); // get offset of label
-			uint8_t *ptr = (uint8_t *)query + offset; // label
+			uint16_t offset =((buf_ptr[0] & 0x3f) << 8) | (buf_ptr[1] & 0xff); // get offset of label
+			uint8_t *ptr =(uint8_t *)query + offset; // label
 			memcpy(ref, ptr, strlen(ptr) + 1); // trailing zero
 			buf_ptr += 2; // skip pointer
 
@@ -380,14 +380,14 @@ _update_hook_arpa(uint8_t *ip)
 }
 
 static uint8_t *
-_dns_question (DNS_Query *query, uint8_t *buf)
+_dns_question(DNS_Query *query, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
 	char *qname;
 	buf_ptr = _unroll_qname(query, buf_ptr, &qname);
 
-	DNS_Question *question = (DNS_Question *)buf_ptr;
+	DNS_Question *question =(DNS_Question *)buf_ptr;
 	question->QTYPE = hton(question->QTYPE);
 	question->QCLASS = hton(question->QCLASS);
 	buf_ptr += sizeof(DNS_Question);
@@ -406,14 +406,14 @@ _dns_question (DNS_Query *query, uint8_t *buf)
 					tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
 					tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
 
-					memcpy (tail, config.comm.ip, 4);
+					memcpy(tail, config.comm.ip, 4);
 					tail += 4;
 
-					udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
+					udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 				}
 				break;
 			}
-			case MDNS_TYPE_PTR: // for mDNS reverse-lookup and for mDNS-SD (service discovery)
+			case MDNS_TYPE_PTR: // for mDNS reverse-lookup and for mDNS-SD(service discovery)
 			{
 				DNS_PTR_Method *hook;
 				for(hook=hooks; hook->name; hook++)
@@ -430,14 +430,14 @@ _dns_question (DNS_Query *query, uint8_t *buf)
 }
 
 static uint8_t *
-_dns_answer (DNS_Query *query, uint8_t *buf)
+_dns_answer(DNS_Query *query, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
 	char *qname;
 	buf_ptr = _unroll_qname(query, buf_ptr, &qname);
 
-	DNS_Answer *answer = (DNS_Answer *)buf_ptr;
+	DNS_Answer *answer =(DNS_Answer *)buf_ptr;
 	answer->RTYPE = hton(answer->RTYPE);
 	answer->RCLASS = hton(answer->RCLASS);
 	answer->TTL = htonl(answer->TTL);
@@ -475,14 +475,14 @@ _dns_answer (DNS_Query *query, uint8_t *buf)
 }
 
 void 
-mdns_dispatch (uint8_t *buf, uint16_t len)
+mdns_dispatch(uint8_t *buf, uint16_t len)
 {
 	// update qname labels corresponding to self
 	len_self = _update_hook_self(config.name);
 	len_arpa = _update_hook_arpa(config.comm.ip);
 
 	uint8_t *buf_ptr = buf;
-	DNS_Query *query = (DNS_Query *)buf_ptr;
+	DNS_Query *query =(DNS_Query *)buf_ptr;
 
 	// convert from network byteorder
 	query->ID = hton(query->ID);
@@ -492,14 +492,14 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 	query->NSCOUNT = hton(query->NSCOUNT);
 	query->ARCOUNT = hton(query->ARCOUNT);
 
-	uint8_t qr = (query->FLAGS & MDNS_FLAGS_QR) >> MDNS_FLAGS_QR_BIT;
-	//uint8_t opcode = (query->FLAGS & MDNS_FLAGS_OPCODE) >> MDNS_FLAGS_OPCODE_SHIFT;
-	//uint8_t aa = (query->FLAGS & MDNS_FLAGS_AA) >> MDNS_FLAGS_AA_BIT;
-	//uint8_t tc = (query->FLAGS & MDNS_FLAGS_TC) >> MDNS_FLAGS_TC_BIT;
-	//uint8_t rd = (query->FLAGS & MDNS_FLAGS_RD) >> MDNS_FLAGS_RD_BIT;
-	//uint8_t ra = (query->FLAGS & MDNS_FLAGS_RA) >> MDNS_FLAGS_RA_BIT;
-	//uint8_t z = (query->FLAGS & MDNS_FLAGS_Z) >> MDNS_FLAGS_Z_SHIFT;
-	//uint8_t rcode = (query->FLAGS & MDNS_FLAGS_RCODE) >> MDNS_FLAGS_RCODE_SHIFT;
+	uint8_t qr =(query->FLAGS & MDNS_FLAGS_QR) >> MDNS_FLAGS_QR_BIT;
+	//uint8_t opcode =(query->FLAGS & MDNS_FLAGS_OPCODE) >> MDNS_FLAGS_OPCODE_SHIFT;
+	//uint8_t aa =(query->FLAGS & MDNS_FLAGS_AA) >> MDNS_FLAGS_AA_BIT;
+	//uint8_t tc =(query->FLAGS & MDNS_FLAGS_TC) >> MDNS_FLAGS_TC_BIT;
+	//uint8_t rd =(query->FLAGS & MDNS_FLAGS_RD) >> MDNS_FLAGS_RD_BIT;
+	//uint8_t ra =(query->FLAGS & MDNS_FLAGS_RA) >> MDNS_FLAGS_RA_BIT;
+	//uint8_t z =(query->FLAGS & MDNS_FLAGS_Z) >> MDNS_FLAGS_Z_SHIFT;
+	//uint8_t rcode =(query->FLAGS & MDNS_FLAGS_RCODE) >> MDNS_FLAGS_RCODE_SHIFT;
 
 	buf_ptr += sizeof(DNS_Query);
 
@@ -507,17 +507,17 @@ mdns_dispatch (uint8_t *buf, uint16_t len)
 	switch(qr)
 	{
 		case 0x0: // mDNS Query Question
-			for (i=0; i<query->QDCOUNT; i++) // walk all questions
-				buf_ptr = _dns_question (query, buf_ptr);
+			for(i=0; i<query->QDCOUNT; i++) // walk all questions
+				buf_ptr = _dns_question(query, buf_ptr);
 
 			// ignore answers
 			break;
 		case 0x1: // mDNS Query Answer
-			for (i=0; i<query->QDCOUNT; i++) // skip all questions
+			for(i=0; i<query->QDCOUNT; i++) // skip all questions
 				buf_ptr += strlen(buf_ptr) + 1 + sizeof(DNS_Question);
 
-			for (i=0; i<query->ANCOUNT; i++) // walk all answers
-				buf_ptr = _dns_answer (query, buf_ptr);
+			for(i=0; i<query->ANCOUNT; i++) // walk all answers
+				buf_ptr = _dns_answer(query, buf_ptr);
 			break;
 	}
 }
@@ -537,14 +537,14 @@ void mdns_announce()
 		tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
 		//TODO append dns-sd services here, too?
 		
-		memcpy (tail, config.comm.ip, 4);
+		memcpy(tail, config.comm.ip, 4);
 		tail += 4;
 		
-		udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
+		udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 
 		// wait a second
-		uint32_t tick = systick_uptime ();
-		while (systick_uptime() - tick < SNTP_SYSTICK_RATE)
+		uint32_t tick = systick_uptime();
+		while(systick_uptime() - tick < SNTP_SYSTICK_RATE)
 			;
 	}
 }
@@ -562,7 +562,7 @@ mdns_resolve_timeout()
 
 //TODO implement timeout
 uint_fast8_t
-mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
+mdns_resolve(char *name, mDNS_Resolve_Cb cb, void *data)
 {
 	if(resolve.cb) // is there a mDNS resolve request already ongoing?
 		return 0;
@@ -598,7 +598,7 @@ mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
 	tail = _serialize_query(tail, id, 0, 1, 0, 0, 0);
 	tail = _serialize_question(tail, resolve.name, MDNS_TYPE_A, MDNS_CLASS_INET);
 	
-	udp_send (config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
+	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 
 	// start timer for timeout
 	timer_pause(mdns_timer);
@@ -613,10 +613,10 @@ mdns_resolve (char *name, mDNS_Resolve_Cb cb, void *data)
  */
 
 static uint_fast8_t
-_mdns_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_mdns_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	// needs a config save and reboot to take action
-	return config_socket_enabled (&config.mdns.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.mdns.socket, path, fmt, argc, args);
 }
 
 /*

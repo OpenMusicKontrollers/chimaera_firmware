@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -56,24 +56,24 @@ static const char *dummy_set_fmt = "iiiff";
 static uint_fast8_t dummy_tok;
 
 void
-dummy_init ()
+dummy_init()
 {
 	// do nothing
 }
 
 static void
-dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	dummy_osc.tt = offset;
 
 	dummy_tok = 0;
 
-	if (!(nblob_old + nblob_new))
+	if(!(nblob_old + nblob_new))
 	{
 		nOSC_Message msg;
 
 		msg = msgs[dummy_tok];
-		nosc_item_message_set (dummy_bndl, dummy_tok, msg, dummy_idle_str, dummy_idle_fmt);
+		nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_idle_str, dummy_idle_fmt);
 		dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
 	}
 
@@ -81,49 +81,49 @@ dummy_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 }
 
 static void
-dummy_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+dummy_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
 
 	msg = msgs[dummy_tok];
-	nosc_message_set_int32 (msg, 0, sid);
-	nosc_message_set_int32 (msg, 1, gid);
-	nosc_message_set_int32 (msg, 2, pid);
-	nosc_message_set_float (msg, 3, x);
-	nosc_message_set_float (msg, 4, y);
-	nosc_item_message_set (dummy_bndl, dummy_tok, msg, dummy_on_str, dummy_on_fmt);
+	nosc_message_set_int32(msg, 0, sid);
+	nosc_message_set_int32(msg, 1, gid);
+	nosc_message_set_int32(msg, 2, pid);
+	nosc_message_set_float(msg, 3, x);
+	nosc_message_set_float(msg, 4, y);
+	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_on_str, dummy_on_fmt);
 	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
 
 	dummy_fmt[dummy_tok] = nOSC_TERM;
 }
 
 static void
-dummy_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
+dummy_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	nOSC_Message msg;
 
 	msg = msgs[dummy_tok];
-	nosc_message_set_int32 (msg, 0, sid);
-	nosc_message_set_int32 (msg, 1, gid);
-	nosc_message_set_int32 (msg, 2, pid);
-	nosc_item_message_set (dummy_bndl, dummy_tok, msg, dummy_off_str, dummy_off_fmt);
+	nosc_message_set_int32(msg, 0, sid);
+	nosc_message_set_int32(msg, 1, gid);
+	nosc_message_set_int32(msg, 2, pid);
+	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_off_str, dummy_off_fmt);
 	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
 
 	dummy_fmt[dummy_tok] = nOSC_TERM;
 }
 
 static void
-dummy_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+dummy_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
 
 	msg = msgs[dummy_tok];
-	nosc_message_set_int32 (msg, 0, sid);
-	nosc_message_set_int32 (msg, 1, gid);
-	nosc_message_set_int32 (msg, 2, pid);
-	nosc_message_set_float (msg, 3, x);
-	nosc_message_set_float (msg, 4, y);
-	nosc_item_message_set (dummy_bndl, dummy_tok, msg, dummy_set_str, dummy_set_fmt);
+	nosc_message_set_int32(msg, 0, sid);
+	nosc_message_set_int32(msg, 1, gid);
+	nosc_message_set_int32(msg, 2, pid);
+	nosc_message_set_float(msg, 3, x);
+	nosc_message_set_float(msg, 4, y);
+	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_set_str, dummy_set_fmt);
 	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
 
 	dummy_fmt[dummy_tok] = nOSC_TERM;
@@ -140,10 +140,10 @@ CMC_Engine dummy_engine = {
  * Config
  */
 static uint_fast8_t
-_dummy_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dummy_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.dummy.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.dummy.enabled);
+	cmc_engines_update();
 	return res;
 }
 

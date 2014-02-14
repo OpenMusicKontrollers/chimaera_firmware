@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -68,15 +68,15 @@ nOSC_Bundle_Item scsynth_osc = {
 };
 
 void
-scsynth_init ()
+scsynth_init()
 {
-	memset (scsynth_early_fmt, nOSC_MESSAGE, BLOB_MAX);
+	memset(scsynth_early_fmt, nOSC_MESSAGE, BLOB_MAX);
 	scsynth_early_fmt[BLOB_MAX] = nOSC_TERM;
 
-	memset (scsynth_late_fmt, nOSC_MESSAGE, BLOB_MAX);
+	memset(scsynth_late_fmt, nOSC_MESSAGE, BLOB_MAX);
 	scsynth_late_fmt[BLOB_MAX] = nOSC_TERM;
 
-	memset (scsynth_fmt, nOSC_BUNDLE, 2);
+	memset(scsynth_fmt, nOSC_BUNDLE, 2);
 	scsynth_fmt[2] = nOSC_TERM;
 
 	uint_fast8_t i;
@@ -96,7 +96,7 @@ scsynth_init ()
 }
 
 static void
-scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	scsynth_early_fmt[0] = nOSC_TERM;
 	scsynth_late_fmt[0] = nOSC_TERM;
@@ -105,13 +105,13 @@ scsynth_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset
 	early_i = 0;
 	late_i = 0;
 
-	nosc_item_bundle_set (scsynth_bndl, 0, scsynth_late_bndl, tt, scsynth_late_fmt);
+	nosc_item_bundle_set(scsynth_bndl, 0, scsynth_late_bndl, tt, scsynth_late_fmt);
 	scsynth_fmt[0] = nOSC_BUNDLE;
 	scsynth_fmt[1] = nOSC_TERM;
 }
 
 static void
-scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id;
 	nOSC_Message msg;
@@ -119,53 +119,53 @@ scsynth_engine_on_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	
 	id = group->is_group ? group->group : group->sid + sid;
 
-	// message to create synth (sent early, e.g immediately)
+	// message to create synth(sent early, e.g immediately)
 	if(group->alloc)
 	{
 		msg = msgs[early_i + late_i];
-		nosc_message_set_string (msg, 0, group->name); // synthdef name 
-		nosc_message_set_int32 (msg, 1, id);
-		nosc_message_set_int32 (msg, 2, group->add_action);
-		nosc_message_set_int32 (msg, 3, group->group); // group id
-		nosc_message_set_string (msg, 4, (char *)gate_str);
-		nosc_message_set_int32 (msg, 5, 0); // do not start synth yet
-		nosc_message_set_string (msg, 6, (char *)out_str);
-		nosc_message_set_int32 (msg, 7, group->out);
+		nosc_message_set_string(msg, 0, group->name); // synthdef name 
+		nosc_message_set_int32(msg, 1, id);
+		nosc_message_set_int32(msg, 2, group->add_action);
+		nosc_message_set_int32(msg, 3, group->group); // group id
+		nosc_message_set_string(msg, 4,(char *)gate_str);
+		nosc_message_set_int32(msg, 5, 0); // do not start synth yet
+		nosc_message_set_string(msg, 6,(char *)out_str);
+		nosc_message_set_int32(msg, 7, group->out);
 
-		nosc_item_message_set (scsynth_early_bndl, early_i, msg, (char *)on_str, (char *)on_fmt);
+		nosc_item_message_set(scsynth_early_bndl, early_i, msg,(char *)on_str,(char *)on_fmt);
 		scsynth_early_fmt[early_i++] = nOSC_MESSAGE;
 		scsynth_early_fmt[early_i] = nOSC_TERM;
 
 		// we have an early bundle, so instantiate it
-		nosc_item_bundle_set (scsynth_bndl, 0, scsynth_early_bndl, nOSC_IMMEDIATE, scsynth_early_fmt);
-		nosc_item_bundle_set (scsynth_bndl, 1, scsynth_late_bndl, tt, scsynth_late_fmt);
+		nosc_item_bundle_set(scsynth_bndl, 0, scsynth_early_bndl, nOSC_IMMEDIATE, scsynth_early_fmt);
+		nosc_item_bundle_set(scsynth_bndl, 1, scsynth_late_bndl, tt, scsynth_late_fmt);
 		scsynth_fmt[0] = nOSC_BUNDLE;
 		scsynth_fmt[1] = nOSC_BUNDLE;
 		scsynth_fmt[2] = nOSC_TERM;
 	}
 
-	// message to start synth (sent late, e.g. with lag)
+	// message to start synth(sent late, e.g. with lag)
 	if(group->gate)
 	{
 		msg = msgs[early_i + late_i];
-		nosc_message_set_int32 (msg, 0, id);
-		nosc_message_set_int32 (msg, 1, group->arg + 0);
-		nosc_message_set_float (msg, 2, x);
-		nosc_message_set_int32 (msg, 3, group->arg + 1);
-		nosc_message_set_float (msg, 4, y);
-		nosc_message_set_int32 (msg, 5, group->arg + 2);
-		nosc_message_set_int32 (msg, 6, pid);
-		nosc_message_set_string (msg, 7, (char *)gate_str);
-		nosc_message_set_int32 (msg, 8, 1);
+		nosc_message_set_int32(msg, 0, id);
+		nosc_message_set_int32(msg, 1, group->arg + 0);
+		nosc_message_set_float(msg, 2, x);
+		nosc_message_set_int32(msg, 3, group->arg + 1);
+		nosc_message_set_float(msg, 4, y);
+		nosc_message_set_int32(msg, 5, group->arg + 2);
+		nosc_message_set_int32(msg, 6, pid);
+		nosc_message_set_string(msg, 7,(char *)gate_str);
+		nosc_message_set_int32(msg, 8, 1);
 
-		nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)on_set_fmt);
+		nosc_item_message_set(scsynth_late_bndl, late_i, msg,(char *)set_str,(char *)on_set_fmt);
 		scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
 		scsynth_late_fmt[late_i] = nOSC_TERM;
 	}
 }
 
 static void
-scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
+scsynth_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	uint32_t id;
 	nOSC_Message msg;
@@ -176,18 +176,18 @@ scsynth_engine_off_cb (uint32_t sid, uint16_t gid, uint16_t pid)
 	if(group->gate)
 	{
 		msg = msgs[early_i + late_i];
-		nosc_message_set_int32 (msg, 0, id);
-		nosc_message_set_string (msg, 1, (char *)gate_str);
-		nosc_message_set_int32 (msg, 2, 0);
+		nosc_message_set_int32(msg, 0, id);
+		nosc_message_set_string(msg, 1,(char *)gate_str);
+		nosc_message_set_int32(msg, 2, 0);
 
-		nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)off_fmt);
+		nosc_item_message_set(scsynth_late_bndl, late_i, msg,(char *)set_str,(char *)off_fmt);
 		scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
 		scsynth_late_fmt[late_i] = nOSC_TERM;
 	}
 }
 
 static void
-scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	uint32_t id;
 	nOSC_Message msg;
@@ -196,15 +196,15 @@ scsynth_engine_set_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float 
 	id = group->is_group ? group->group : group->sid + sid;
 	
 	msg = msgs[early_i + late_i];
-	nosc_message_set_int32 (msg, 0, id);
-	nosc_message_set_int32 (msg, 1, group->arg + 0);
-	nosc_message_set_float (msg, 2, x);
-	nosc_message_set_int32 (msg, 3, group->arg + 1);
-	nosc_message_set_float (msg, 4, y);
-	nosc_message_set_int32 (msg, 5, group->arg + 2);
-	nosc_message_set_int32 (msg, 6, pid);
+	nosc_message_set_int32(msg, 0, id);
+	nosc_message_set_int32(msg, 1, group->arg + 0);
+	nosc_message_set_float(msg, 2, x);
+	nosc_message_set_int32(msg, 3, group->arg + 1);
+	nosc_message_set_float(msg, 4, y);
+	nosc_message_set_int32(msg, 5, group->arg + 2);
+	nosc_message_set_int32(msg, 6, pid);
 
-	nosc_item_message_set (scsynth_late_bndl, late_i, msg, (char *)set_str, (char *)set_fmt);
+	nosc_item_message_set(scsynth_late_bndl, late_i, msg,(char *)set_str,(char *)set_fmt);
 	scsynth_late_fmt[late_i++] = nOSC_MESSAGE;
 	scsynth_late_fmt[late_i] = nOSC_TERM;
 }
@@ -217,7 +217,7 @@ CMC_Engine scsynth_engine = {
 };
 
 uint_fast8_t
-scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
+scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
 										uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group)
 {
 	if(gid >= GROUP_MAX)
@@ -239,7 +239,7 @@ scsynth_group_get (uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group
 }
 
 uint_fast8_t
-scsynth_group_set (uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
+scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
 										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
 {
 	if( (gid >= GROUP_MAX) || (strlen(name)+1>offsetof(SCSynth_Group, sid)) ) //TODO checks for remaining arguments
@@ -265,15 +265,15 @@ scsynth_group_set (uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, u
  */
 
 static uint_fast8_t
-_scsynth_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.scsynth.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.scsynth.enabled);
+	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
@@ -292,10 +292,10 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	if(argc == 2)
 	{
 		if(scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group))
-			size = CONFIG_SUCCESS ("isisiiiiiiii", uuid, path, gid, name, sid, group, out, arg,
+			size = CONFIG_SUCCESS("isisiiiiiiii", uuid, path, gid, name, sid, group, out, arg,
 				alloc?1:0, gate?1:0, add_action, is_group?1:0);
 		else
-			size = CONFIG_FAIL ("iss", uuid, path, "argument out of bounds"); // TODO remove
+			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
 	}
 	else // argc == 11
 	{
@@ -310,12 +310,12 @@ _scsynth_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 		is_group = args[10].i;
 
 		if(scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group))
-			size = CONFIG_SUCCESS ("is", uuid, path);
+			size = CONFIG_SUCCESS("is", uuid, path);
 		else
-			size = CONFIG_FAIL ("iss", uuid, path, "argument out of bounds"); // TODO remove
+			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
 	}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }

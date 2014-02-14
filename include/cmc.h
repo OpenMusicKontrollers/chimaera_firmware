@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -32,10 +32,10 @@
 
 #define CMC_NOSCALE 0.0f
 
-typedef void (*CMC_Engine_Frame_Cb) (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
-typedef void (*CMC_Engine_Blob_On_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
-typedef void (*CMC_Engine_Blob_Off_Cb) (uint32_t sid, uint16_t gid, uint16_t pid);
-typedef void (*CMC_Engine_Blob_Set_Cb) (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
+typedef void(*CMC_Engine_Frame_Cb)(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
+typedef void(*CMC_Engine_Blob_On_Cb)(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
+typedef void(*CMC_Engine_Blob_Off_Cb)(uint32_t sid, uint16_t gid, uint16_t pid);
+typedef void(*CMC_Engine_Blob_Set_Cb)(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 
 typedef struct _CMC_Engine CMC_Engine;
 typedef struct _CMC_Group CMC_Group;
@@ -59,10 +59,10 @@ extern CMC_Group cmc_groups[];
 extern CMC_Engine *engines [];
 extern uint_fast8_t cmc_engines_active;
 
-void cmc_init ();
-uint_fast8_t cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines);
+void cmc_init();
+uint_fast8_t cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines);
 
-void cmc_group_clear ();
-void cmc_engines_update ();
+void cmc_group_clear();
+void cmc_engines_update();
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -92,107 +92,107 @@ uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
  */
 
 static uint_fast8_t
-_sensors_number (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isi", uuid, path, SENSOR_N);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_sensors_rate (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	if (argc == 1) // query
-		size = CONFIG_SUCCESS ("isi", uuid, path, config.rate);
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, config.rate);
 	else
 	{
 		config.rate = args[1].i;
 
-		if (config.rate)
+		if(config.rate)
 		{
-			timer_pause (adc_timer);
-			adc_timer_reconfigure ();
-			timer_resume (adc_timer);
+			timer_pause(adc_timer);
+			adc_timer_reconfigure();
+			timer_resume(adc_timer);
 		}
 		else
-			timer_pause (adc_timer);
+			timer_pause(adc_timer);
 
-		size = CONFIG_SUCCESS ("is", uuid, path);
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_sensors_movingaverage (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	if (argc == 1) // query
-		size = CONFIG_SUCCESS ("isi", uuid, path, 1U << config.movingaverage.bitshift);
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, 1U << config.movingaverage.bitshift);
 	else
-		switch (args[1].i)
+		switch(args[1].i)
 		{
 			case 1:
 				config.movingaverage.enabled = 0;
-				size = CONFIG_SUCCESS ("is", uuid, path);
+				size = CONFIG_SUCCESS("is", uuid, path);
 				break;
 			case 2:
 				config.movingaverage.enabled = 1;
 				config.movingaverage.bitshift = 1;
-				size = CONFIG_SUCCESS ("is", uuid, path);
+				size = CONFIG_SUCCESS("is", uuid, path);
 				break;
 			case 4:
 				config.movingaverage.enabled = 1;
 				config.movingaverage.bitshift = 2;
-				size = CONFIG_SUCCESS ("is", uuid, path);
+				size = CONFIG_SUCCESS("is", uuid, path);
 				break;
 			case 8:
 				config.movingaverage.enabled = 1;
 				config.movingaverage.bitshift = 3;
-				size = CONFIG_SUCCESS ("is", uuid, path);
+				size = CONFIG_SUCCESS("is", uuid, path);
 				break;
 			default:
-				size = CONFIG_FAIL ("iss", uuid, path, "valid sample windows are 1, 2, 4 and 8");
+				size = CONFIG_FAIL("iss", uuid, path, "valid sample windows are 1, 2, 4 and 8");
 		}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_sensors_interpolation (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_check_uint8 (path, fmt, argc, args, &config.interpolation.order);
+	return config_check_uint8(path, fmt, argc, args, &config.interpolation.order);
 }
 
 static uint_fast8_t
-_group_clear (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_clear(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
 	cmc_group_clear();
 
-	size = CONFIG_SUCCESS ("is", uuid, path);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	size = CONFIG_SUCCESS("is", uuid, path);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
@@ -213,7 +213,7 @@ _group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		x1 = grp->x1;
 		scale = grp->m == CMC_NOSCALE ? 0 : 1;
 
-		size = CONFIG_SUCCESS ("isiiffi", uuid, path, gid, pid, x0, x1, scale);
+		size = CONFIG_SUCCESS("isiiffi", uuid, path, gid, pid, x0, x1, scale);
 	}
 	else // set group info
 	{
@@ -227,52 +227,52 @@ _group (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		grp->x1 = x1;
 		grp->m = scale ? 1.f/(x1-x0) : CMC_NOSCALE;
 
-		size = CONFIG_SUCCESS ("is", uuid, path);
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_group_load (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	if (groups_load ())
-		size = CONFIG_SUCCESS ("is", uuid, path);
+	if(groups_load())
+		size = CONFIG_SUCCESS("is", uuid, path);
 	else
-		size = CONFIG_FAIL ("iss", uuid, path, "groups could not be loaded from EEPROM");
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		size = CONFIG_FAIL("iss", uuid, path, "groups could not be loaded from EEPROM");
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_group_save (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	if (groups_save ())
-		size = CONFIG_SUCCESS ("is", uuid, path);
+	if(groups_save())
+		size = CONFIG_SUCCESS("is", uuid, path);
 	else
-		size = CONFIG_FAIL ("iss", uuid, path, "groups could not be saved to EEPROM");
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		size = CONFIG_FAIL("iss", uuid, path, "groups could not be saved to EEPROM");
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }
 
 static uint_fast8_t
-_group_number (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isi", uuid, path, GROUP_MAX);
-	udp_send (config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -38,12 +38,12 @@ extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;
 extern const nOSC_Query_Item sntp_tree [5];
 
-uint32_t sntp_uptime ();
+uint32_t sntp_uptime();
 
-void sntp_timestamp_refresh (uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
+void sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
 
-uint16_t sntp_request (uint8_t *buf, nOSC_Timestamp t3);
+uint16_t sntp_request(uint8_t *buf, nOSC_Timestamp t3);
 
-void sntp_dispatch (uint8_t *buf, nOSC_Timestamp t4);
+void sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4);
 
 #endif

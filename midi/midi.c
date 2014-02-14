@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -25,11 +25,11 @@
 #include <midi.h>
 
 inline void
-midi_add_key (MIDI_Hash *hash, uint32_t sid, uint8_t key)
+midi_add_key(MIDI_Hash *hash, uint32_t sid, uint8_t key)
 {
 	uint_fast8_t k;
-	for (k=0; k<BLOB_MAX; k++)
-		if (hash[k].sid == 0)
+	for(k=0; k<BLOB_MAX; k++)
+		if(hash[k].sid == 0)
 		{
 			hash[k].sid = sid;
 			hash[k].key = key;
@@ -38,21 +38,21 @@ midi_add_key (MIDI_Hash *hash, uint32_t sid, uint8_t key)
 }
 
 inline uint8_t
-midi_get_key (MIDI_Hash *hash, uint32_t sid)
+midi_get_key(MIDI_Hash *hash, uint32_t sid)
 {
 	uint_fast8_t k;
-	for (k=0; k<BLOB_MAX; k++)
-		if (hash[k].sid == sid)
+	for(k=0; k<BLOB_MAX; k++)
+		if(hash[k].sid == sid)
 			return hash[k].key;
 	return 0; // not found
 }
 
 inline uint8_t
-midi_rem_key (MIDI_Hash *hash, uint32_t sid)
+midi_rem_key(MIDI_Hash *hash, uint32_t sid)
 {
 	uint_fast8_t k;
-	for (k=0; k<BLOB_MAX; k++)
-		if (hash[k].sid == sid)
+	for(k=0; k<BLOB_MAX; k++)
+		if(hash[k].sid == sid)
 		{
 			hash[k].sid = 0;
 			return hash[k].key;

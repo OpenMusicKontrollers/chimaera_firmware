@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -32,8 +32,8 @@
 extern nOSC_Bundle_Item dump_osc;
 extern const nOSC_Query_Item dump_tree [1];
 
-void dump_init (int32_t size, int16_t *swap);
+void dump_init(int32_t size, int16_t *swap);
 
-void dump_update (nOSC_Timestamp now, nOSC_Timestamp offset);
+void dump_update(nOSC_Timestamp now, nOSC_Timestamp offset);
 
 #endif

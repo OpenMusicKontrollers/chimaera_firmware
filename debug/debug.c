@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -29,15 +29,15 @@
  */
 
 static uint_fast8_t
-_debug_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_socket_enabled (&config.debug.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.debug.socket, path, fmt, argc, args);
 }
 
 static uint_fast8_t
-_debug_address (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_address (&config.debug.socket, path, fmt, argc, args);
+	return config_address(&config.debug.socket, path, fmt, argc, args);
 }
 
 /*

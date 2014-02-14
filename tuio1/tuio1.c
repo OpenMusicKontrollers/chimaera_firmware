@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -58,58 +58,58 @@ static uint_fast8_t old_end = BLOB_MAX;
 static uint_fast8_t counter = 0;
 
 void
-tuio1_init ()
+tuio1_init()
 {
 	uint_fast8_t i;
 
 	// initialize bundle format
-	memset (tuio1_fmt, nOSC_MESSAGE, TUIO1_MAX);
+	memset(tuio1_fmt, nOSC_MESSAGE, TUIO1_MAX);
 	tuio1_fmt[TUIO1_MAX] = nOSC_TERM;
 
 	// initialize bundle
-	char *profile = (char *)profile_str[config.tuio1.custom_profile];
-	char *tokfmt = (char *)tok_fmt[config.tuio1.custom_profile];
+	char *profile =(char *)profile_str[config.tuio1.custom_profile];
+	char *tokfmt =(char *)tok_fmt[config.tuio1.custom_profile];
 
-	nosc_item_message_set (tuio1_bndl, 0, alv, profile, alv_fmt);
+	nosc_item_message_set(tuio1_bndl, 0, alv, profile, alv_fmt);
 
-	for (i=0; i<BLOB_MAX; i++)
-		nosc_item_message_set (tuio1_bndl, i+1, tok[i], profile, tokfmt);
+	for(i=0; i<BLOB_MAX; i++)
+		nosc_item_message_set(tuio1_bndl, i+1, tok[i], profile, tokfmt);
 
-	nosc_item_message_set (tuio1_bndl, BLOB_MAX + 1, frm, profile, (char *)frm_fmt);
+	nosc_item_message_set(tuio1_bndl, BLOB_MAX + 1, frm, profile,(char *)frm_fmt);
 
 	// initialize frame
-	nosc_message_set_string (frm, 0, (char *)fseq_str);
-	nosc_message_set_int32 (frm, 1, 0);
+	nosc_message_set_string(frm, 0,(char *)fseq_str);
+	nosc_message_set_int32(frm, 1, 0);
 
 	// initialize tok
-	for (i=0; i<BLOB_MAX; i++)
+	for(i=0; i<BLOB_MAX; i++)
 	{
 		nOSC_Message msg = tok[i];
 
-		nosc_message_set_string (msg, 0, (char *)set_str);
-		nosc_message_set_int32 (msg, 1, 0);			// sid
-		nosc_message_set_int32 (msg, 2, 0);			// gid
-		nosc_message_set_float (msg, 3, 0.f);		// x
-		nosc_message_set_float (msg, 4, 0.f);		// y
-		nosc_message_set_float (msg, 5, 0.f);		// angle, aka pid
+		nosc_message_set_string(msg, 0,(char *)set_str);
+		nosc_message_set_int32(msg, 1, 0);			// sid
+		nosc_message_set_int32(msg, 2, 0);			// gid
+		nosc_message_set_float(msg, 3, 0.f);		// x
+		nosc_message_set_float(msg, 4, 0.f);		// y
+		nosc_message_set_float(msg, 5, 0.f);		// angle, aka pid
 	}
 
 	// initialize alv
-	nosc_message_set_string (alv, 0, (char *)alive_str);
+	nosc_message_set_string(alv, 0,(char *)alive_str);
 	alv_fmt[0] = nOSC_STRING;
-	for (i=0; i<BLOB_MAX; i++)
+	for(i=0; i<BLOB_MAX; i++)
 	{
-		nosc_message_set_int32 (alv, 1+i, 0);
+		nosc_message_set_int32(alv, 1+i, 0);
 		alv_fmt[1+i] = nOSC_INT32;
 	}
 	alv_fmt[1+BLOB_MAX] = nOSC_END;
 }
 
 static void
-tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
+tuio1_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
 {
-	char *profile = (char *)profile_str[config.tuio1.custom_profile];
-	char *tokfmt = (char *)tok_fmt[config.tuio1.custom_profile];
+	char *profile =(char *)profile_str[config.tuio1.custom_profile];
+	char *tokfmt =(char *)tok_fmt[config.tuio1.custom_profile];
 
 	tuio1_bndl[0].message.path = profile;
 
@@ -118,27 +118,27 @@ tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 	tuio1_osc.tt = offset;
 
 	// first undo previous unlinking at position old_end
-	if (old_end < BLOB_MAX)
+	if(old_end < BLOB_MAX)
 	{
 		// relink alv message
 		alv_fmt[1+old_end] = nOSC_INT32;
 
-		nosc_item_message_set (tuio1_bndl, old_end + 1, tok[old_end], profile, tokfmt);
+		nosc_item_message_set(tuio1_bndl, old_end + 1, tok[old_end], profile, tokfmt);
 
-		if (old_end < BLOB_MAX-1)
-			nosc_item_message_set (tuio1_bndl, old_end + 2, tok[old_end+1], profile, tokfmt);
+		if(old_end < BLOB_MAX-1)
+			nosc_item_message_set(tuio1_bndl, old_end + 2, tok[old_end+1], profile, tokfmt);
 
 		tuio1_fmt[old_end+2] = nOSC_MESSAGE;
 	}
 
 	// then unlink at position end
-	if (end < BLOB_MAX)
+	if(end < BLOB_MAX)
 	{
 		// unlink alv message
 		alv_fmt[1+end] = nOSC_END;
 
 		// prepend frm message
-		nosc_item_message_set (tuio1_bndl, end + 1, frm, profile, (char *)frm_fmt);
+		nosc_item_message_set(tuio1_bndl, end + 1, frm, profile,(char *)frm_fmt);
 
 		// unlink bundle
 		tuio1_fmt[end+2] = nOSC_TERM;
@@ -150,18 +150,18 @@ tuio1_engine_frame_cb (uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 }
 
 static void
-tuio1_engine_token_cb (uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio1_engine_token_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg = tok[counter];
 
-	//msg[0].s = (char *)set_str;
+	//msg[0].s =(char *)set_str;
 	msg[1].i = sid;
 	msg[2].i = gid;
 	msg[3].f = x;
 	msg[4].f = y;
 	msg[5].f = pid == 0x80 ? 0.f : M_PI;
 
-	nosc_message_set_int32 (alv, 1+counter, sid);
+	nosc_message_set_int32(alv, 1+counter, sid);
 
 	counter++; // increase token pointer
 }
@@ -178,15 +178,15 @@ CMC_Engine tuio1_engine = {
  */
 
 static uint_fast8_t
-_tuio1_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio1_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.tuio1.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.tuio1.enabled);
+	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_tuio1_custom_profile (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio1_custom_profile(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return config_check_bool(path, fmt, argc, args, &config.tuio1.custom_profile);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -45,26 +45,26 @@ nOSC_Bundle_Item dump_osc = {
 };
 
 void
-dump_init (int32_t size, int16_t *swap)
+dump_init(int32_t size, int16_t *swap)
 {
-	nosc_message_set_blob (dump_msg, DUMP_BLOB, size, (uint8_t *)swap);
+	nosc_message_set_blob(dump_msg, DUMP_BLOB, size,(uint8_t *)swap);
 }
 
 inline __always_inline void
-dump_update (nOSC_Timestamp now, nOSC_Timestamp offset)
+dump_update(nOSC_Timestamp now, nOSC_Timestamp offset)
 {
 	dump_osc.tt = offset;
-	nosc_message_set_int32 (dump_msg, DUMP_FRAME, ++frame);
+	nosc_message_set_int32(dump_msg, DUMP_FRAME, ++frame);
 }
 
 /*
  * Config
  */
 static uint_fast8_t
-_dump_enabled (const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dump_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	uint_fast8_t res = config_check_bool (path, fmt, argc, args, &config.dump.enabled);
-	cmc_engines_update ();
+	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.dump.enabled);
+	cmc_engines_update();
 	return res;
 }
 

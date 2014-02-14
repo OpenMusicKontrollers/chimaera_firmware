@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -43,15 +43,15 @@ extern EEPROM_24xx *eeprom_24LC64;
 extern EEPROM_24xx *eeprom_24AA025E48;
 
 // TODO return success or failure flags
-void eeprom_init (i2c_dev *dev);
-void eeprom_slave_init (EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slav_addr);
+void eeprom_init(i2c_dev *dev);
+void eeprom_slave_init(EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slav_addr);
 
-void eeprom_byte_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte);
-void eeprom_byte_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte);
+void eeprom_byte_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte);
+void eeprom_byte_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte);
 
-void eeprom_page_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_t len);
+void eeprom_page_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_t len);
 
-void eeprom_bulk_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
-void eeprom_bulk_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
+void eeprom_bulk_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
+void eeprom_bulk_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
 
 #endif

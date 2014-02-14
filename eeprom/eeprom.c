@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -54,12 +54,12 @@ static uint8_t write_msg_data [0x22]; // = address_size + page_size
 static i2c_msg read_msg;
 
 static inline void
-_set_address (EEPROM_24xx *eeprom, uint16_t addr)
+_set_address(EEPROM_24xx *eeprom, uint16_t addr)
 {
 	write_msg.addr = eeprom->slave_addr;
 	read_msg.addr = eeprom->slave_addr;
 
-	switch (eeprom->address_size)
+	switch(eeprom->address_size)
 	{
 		case 1:
 			write_msg_data[0] = addr;
@@ -72,26 +72,26 @@ _set_address (EEPROM_24xx *eeprom, uint16_t addr)
 }
 
 static inline void
-_eeprom_check_res (i2c_dev *dev, int32_t res)
+_eeprom_check_res(i2c_dev *dev, int32_t res)
 {
-	if (res != 0)
+	if(res != 0)
 	{
-		i2c_disable (dev);
-		i2c_master_enable (dev, I2C_BUS_RESET); // or 0
+		i2c_disable(dev);
+		i2c_master_enable(dev, I2C_BUS_RESET); // or 0
 	}
 }
 	
 static inline void
-_eeprom_ack_poll (EEPROM_24xx *eeprom)
+_eeprom_ack_poll(EEPROM_24xx *eeprom)
 {
-	//delay_us (eeprom->page_write_time*1e3);
-	delay_us (10e3);
+	//delay_us(eeprom->page_write_time*1e3);
+	delay_us(10e3);
 }
 
 void
-eeprom_init (i2c_dev *dev)
+eeprom_init(i2c_dev *dev)
 {
-	i2c_master_enable (dev, 0);
+	i2c_master_enable(dev, 0);
 
 	write_msg.flags = 0; // write
 	write_msg.length = 0;
@@ -105,60 +105,60 @@ eeprom_init (i2c_dev *dev)
 }
 
 void
-eeprom_slave_init (EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slave_addr)
+eeprom_slave_init(EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slave_addr)
 {
 	eeprom->dev = dev;
 	eeprom->slave_addr = EEPROM_24xx_BASE_ADDR | slave_addr;
 }
 
 void
-eeprom_byte_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte)
+eeprom_byte_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte)
 {
-	if (addr + 1 > eeprom->storage_size)
+	if(addr + 1 > eeprom->storage_size)
 		return;
 
-	_set_address (eeprom, addr);
+	_set_address(eeprom, addr);
 	write_msg_data[eeprom->address_size] = byte;
 	write_msg.length = eeprom->address_size + 1;
 
 	int32_t res;
-	res = i2c_master_xfer (eeprom->dev, &write_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &write_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
 
-	_eeprom_ack_poll (eeprom); // wait until written
+	_eeprom_ack_poll(eeprom); // wait until written
 }
 
 void
-eeprom_page_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_t len)
+eeprom_page_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_t len)
 {
-	if ( (addr % eeprom->page_size) || (len > eeprom->page_size) || (addr + len > eeprom->storage_size))
+	if( (addr % eeprom->page_size) || (len > eeprom->page_size) || (addr + len > eeprom->storage_size))
 		return;
 
-	_set_address (eeprom, addr);
-	memcpy (&write_msg_data[eeprom->address_size], page, len);
+	_set_address(eeprom, addr);
+	memcpy(&write_msg_data[eeprom->address_size], page, len);
 	write_msg.length = eeprom->address_size + len;
 
 	int32_t res;
-	res = i2c_master_xfer (eeprom->dev, &write_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &write_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
 
-	_eeprom_ack_poll (eeprom); // wait until written
+	_eeprom_ack_poll(eeprom); // wait until written
 }
 
 void
-eeprom_bulk_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len)
+eeprom_bulk_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len)
 {
-	if ( (addr % eeprom->page_size) || (addr + len > eeprom->storage_size))
+	if( (addr % eeprom->page_size) || (addr + len > eeprom->storage_size))
 		return;
 
 	uint16_t addr_ptr = addr;
 	uint8_t *bulk_ptr = bulk;
 	uint16_t remaining = len;
 	
-	while (remaining > 0)
+	while(remaining > 0)
 	{
 		uint16_t size = remaining < eeprom->page_size ? remaining : eeprom->page_size;
-		eeprom_page_write (eeprom, addr_ptr, bulk_ptr, size);
+		eeprom_page_write(eeprom, addr_ptr, bulk_ptr, size);
 
 		addr_ptr += size;
 		bulk_ptr += size;
@@ -167,39 +167,39 @@ eeprom_bulk_write (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t l
 }
 
 void
-eeprom_byte_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte)
+eeprom_byte_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte)
 {
-	if (addr + 1 > eeprom->storage_size)
+	if(addr + 1 > eeprom->storage_size)
 		return;
 
-	_set_address (eeprom, addr);
+	_set_address(eeprom, addr);
 	write_msg.length = eeprom->address_size;
 
 	read_msg.length = 1;
 	read_msg.data = byte;
 
 	int32_t res;
-	res = i2c_master_xfer (eeprom->dev, &write_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
-	res = i2c_master_xfer (eeprom->dev, &read_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &write_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &read_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
 }
 
 void
-eeprom_bulk_read (EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len)
+eeprom_bulk_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len)
 {
-	if ( addr + len > eeprom->storage_size)
+	if( addr + len > eeprom->storage_size)
 		return;
 
-	_set_address (eeprom, addr);
+	_set_address(eeprom, addr);
 	write_msg.length = eeprom->address_size;
 
 	read_msg.length = len;
 	read_msg.data = bulk;
 
 	int32_t res;
-	res = i2c_master_xfer (eeprom->dev, &write_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
-	res = i2c_master_xfer (eeprom->dev, &read_msg, 1, TIMEOUT);
-	_eeprom_check_res (eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &write_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
+	res = i2c_master_xfer(eeprom->dev, &read_msg, 1, TIMEOUT);
+	_eeprom_check_res(eeprom->dev, res);
 }

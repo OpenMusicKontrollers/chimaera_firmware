@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -75,7 +75,7 @@ static CMC_Blob blobs[2][BLOB_MAX];
 static uint8_t pacemaker = 0x0b; // pacemaker rate 2^11=2048
 
 void
-cmc_init ()
+cmc_init()
 {
 	uint_fast8_t i;
 
@@ -84,17 +84,17 @@ cmc_init ()
 	fid = 0; // we start counting at 1, 0 marks an 'out of order' frame
 	sid = 0; // we start counting at 0
 
-	d = 1.0 / (float)SENSOR_N;
+	d = 1.0 /(float)SENSOR_N;
 	d_2 = d / 2.0;
 
-	for (i=0; i<SENSOR_N+2; i++)
+	for(i=0; i<SENSOR_N+2; i++)
 	{
 		vx[i] = d * i - d_2; //TODO caution: sensors[0] and sensors[145] are <0 & >1
 		vy[i] = 0;
 		vn[i] = 0;
 	}
 
-	cmc_group_clear ();
+	cmc_group_clear();
 
 	old = 0;
 	neu = 1;
@@ -104,26 +104,26 @@ cmc_init ()
 }
 
 uint_fast8_t __CCM_TEXT__
-cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines)
+cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines)
 {
 	/*
 	 * find areas of interest
 	 */
 	n_aoi = 0;
 	uint_fast8_t pos;
-	for (pos=0; pos<SENSOR_N; pos++)
+	for(pos=0; pos<SENSOR_N; pos++)
 	{
 		uint_fast8_t newpos = pos+1;
 		int16_t val = rela[pos];
-		uint16_t aval = abs (val);
-		if ( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
+		uint16_t aval = abs(val);
+		if( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
 		{
 			aoi[n_aoi++] = newpos;
 
 			vn[newpos] = val < 0 ? POLE_NORTH : POLE_SOUTH;
 			va[newpos] = aval > range.thresh[pos];
 
-			float y = ((float)aval * range.U[pos]) - range.W;
+			float y =((float)aval * range.U[pos]) - range.W;
 			vy[newpos] = y; //FIXME get rid of cmc structure.
 		}
 		else
@@ -139,14 +139,14 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	uint_fast8_t up = 1;
 	uint_fast8_t a;
 	uint_fast8_t p1 = aoi[0];
-	for (a=1; a<n_aoi; a++)
+	for(a=1; a<n_aoi; a++)
 	{
 		uint_fast8_t p0 = p1;
 		p1 = aoi[a];
 
-		if (up)
+		if(up)
 		{
-			if (vy[p1] < vy[p0])
+			if(vy[p1] < vy[p0])
 			{
 				peaks[n_peaks++] = p0;
 				up = 0;
@@ -155,7 +155,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		}
 		else // !up
 		{
-			if (vy[p1] > vy[p0]) //TODO what if two peaks are equally high?
+			if(vy[p1] > vy[p0]) //TODO what if two peaks are equally high?
 				up = 1;
 			// else up := 0
 		}
@@ -166,18 +166,18 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	 */
 	J = 0;
 	uint_fast8_t p;
-	for (p=0; p<n_peaks; p++)
+	for(p=0; p<n_peaks; p++)
 	{
 		float x, y;
 		uint_fast8_t P = peaks[p];
 
-		switch (config.interpolation.order)
+		switch(config.interpolation.order)
 		{
 			case 0: // no interpolation
 			{
         float y1 = vy[P];
 
-				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
+				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
 
 				// lookup distance
 				y1 = curve[(uint16_t)(y1*0x7FF)]; // FIXME incorporate *0x7ff into range.u and range.W
@@ -207,19 +207,19 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					y0 = tp1;
 				}
 
-				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
-				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
+				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
 
 				// lookup distance
 				y0 = curve[(uint16_t)(y0*0x7FF)];
 				y1 = curve[(uint16_t)(y1*0x7FF)];
 
-        a = (y1-y0) / (x1-x0);
+        a =(y1-y0) /(x1-x0);
         b = y0 - a*x0;
 				if(tm1 >= tp1)
-					x = x1 - d * y0 / (y1+y0);
+					x = x1 - d * y0 /(y1+y0);
 				else
-					x = x1 + d * y0 / (y1+y0);
+					x = x1 + d * y0 /(y1+y0);
         y = a*x + b;
 
 				break;
@@ -230,18 +230,18 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				float y1 = vy[P];
 				float y2 = vy[P+1];
 
-				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
-				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
-				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
+				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f :(y2 > 1.f ? 1.f : y2);
 
 //TODO use this linear lookup interpolation
 // e.g. y0 = LOOKUP(y0);
 #define LOOKUP(y) \
 ({ \
-	float _y = (float)(y)*0x7ff; \
+	float _y =(float)(y)*0x7ff; \
 	float _b; \
 	float _r = modff(_y, &_b); \
-	uint32_t _bb = (uint32_t)_b; \
+	uint32_t _bb =(uint32_t)_b; \
 	(float)(curve[_bb] + _r*(curve[_bb+1] - curve[_bb])); \
 })
 
@@ -255,9 +255,9 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 				// parabolic interpolation
 				float divisor = y0 - 2.f*y1 + y2;
-				//float divisor = y0 - (y1<<1) + y2;
+				//float divisor = y0 -(y1<<1) + y2;
 
-				if (divisor == 0.f)
+				if(divisor == 0.f)
 				{
 					x = vx[P];
 					y = y1;
@@ -279,7 +279,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				float thi = vy[P];
 				float tp1 = vy[P+1];
 
-				if (tm1 >= tp1)
+				if(tm1 >= tp1)
 				{
 					x1 = vx[P-1];
 					y0 = vy[P-2]; //FIXME caution
@@ -296,10 +296,10 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					y3 = vy[P+2]; //FIXME caution
 				}
 
-				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
-				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
-				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
-				y3 = y3 < 0.f ? 0.f : (y3 > 1.f ? 1.f : y3);
+				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f :(y2 > 1.f ? 1.f : y2);
+				y3 = y3 < 0.f ? 0.f :(y3 > 1.f ? 1.f : y3);
 
 				// lookup distance
 				y0 = curve[(uint16_t)(y0*0x7FF)];
@@ -325,23 +325,23 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 				float mu;
 
-        if (A == 0.f)
+        if(A == 0.f)
         {
           mu = 0.f; // TODO what to do here? fall back to quadratic?
         }
         else // A != 0.0
         {
-          if (C == 0.f)
+          if(C == 0.f)
             mu = -B / A;
           else
           {
             float A2 = 2.f*A;
             float D = B*B - 2.f*A2*C;
-            if (D < 0.f) // bad, this'd give an imaginary solution
+            if(D < 0.f) // bad, this'd give an imaginary solution
               D = 0.f;
             else
               D = sqrtf(D); // FIXME use a lookup table?
-            mu = (-B - D) / A2;
+            mu =(-B - D) / A2;
           }
         }
 
@@ -365,10 +365,10 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				y2 = vy[P+1];
 				y3 = vy[P+2]; // FIXME caution
 
-				y0 = y0 < 0.f ? 0.f : (y0 > 1.f ? 1.f : y0);
-				y1 = y1 < 0.f ? 0.f : (y1 > 1.f ? 1.f : y1);
-				y2 = y2 < 0.f ? 0.f : (y2 > 1.f ? 1.f : y2);
-				y3 = y3 < 0.f ? 0.f : (y3 > 1.f ? 1.f : y3);
+				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
+				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
+				y2 = y2 < 0.f ? 0.f :(y2 > 1.f ? 1.f : y2);
+				y3 = y3 < 0.f ? 0.f :(y3 > 1.f ? 1.f : y3);
 
 				// lookup distance
 				y0 = curve[(uint16_t)(y0*0x7FF)];
@@ -389,25 +389,25 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 				if(s2 == 0)
 					x = x1; //FIXME what to do here?
 				else
-					x = (3.f*d*s1 + 3.f*x1*s2 + sqrtf(3.f)*d*sqrtf(
+					x =(3.f*d*s1 + 3.f*x1*s2 + sqrtf(3.f)*d*sqrtf(
 						y0*(y0 - 9.f*y1 + 6.f*y2 + y3) + y1*(21.f*y1 - 39.f*y2 + 6.f*y3) + y2*(21.f*y2 - 9.f*y3) + y3*y3
-					)) / (3.f*s2);
+					)) /(3.f*s2);
 
 				float X1 = x - x1;
 				float X2 = X1 * X1;
 				float X3 = X2 * X1;
 
-				y = -(-6.f*d3*y1 + d2*X1*(2.f*y0 + 3.f*y1 - 6.f*y2 + y3) - 3.f*d*X2*s1 + X3*s2) / (6.f*d3);
+				y = -(-6.f*d3*y1 + d2*X1*(2.f*y0 + 3.f*y1 - 6.f*y2 + y3) - 3.f*d*X2*s1 + X3*s2) /(6.f*d3);
 			}
 		}
 
 		//TODO check for NaN
-		x = x < 0.f ? 0.f : (x > 1.f ? 1.f : x); // 0 <= x <= 1
-		y = y < 0.f ? 0.f : (y > 1.f ? 1.f : y); // 0 <= y <= 1
+		x = x < 0.f ? 0.f :(x > 1.f ? 1.f : x); // 0 <= x <= 1
+		y = y < 0.f ? 0.f :(y > 1.f ? 1.f : y); // 0 <= y <= 1
 
 		CMC_Blob *blob = &cmc_neu[J];
 		blob->sid = -1; // not assigned yet
-		blob->pid = vn[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity (+B) magnetic fields increase the output voltage, north-polaritiy (-B) decrease it
+		blob->pid = vn[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity(+B) magnetic fields increase the output voltage, north-polaritiy(-B) decrease it
 		blob->group = NULL;
 		blob->x = x;
 		blob->p = y;
@@ -421,28 +421,28 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	 * relate new to old blobs
 	 */
 	uint_fast8_t i, j;
-	if (I || J)
+	if(I || J)
 	{
 		idle_word = 0;
 		idle_bit = 0;
 
-		switch ( (J > I) - (J < I) ) // == signum (J-I)
+		switch((J > I) -(J < I) ) // == signum(J-I)
 		{
 			case -1: // old blobs have disappeared
 			{
 				uint_fast8_t n_less = I - J; // how many blobs have disappeared
 				i = 0;
-				for (j=0; j<J; )
+				for(j=0; j<J; )
 				{
 					float diff0, diff1;
 
-					if (n_less)
+					if(n_less)
 					{
-						diff0 = fabs (cmc_neu[j].x - cmc_old[i].x); //TODO use assembly for fabs?
-						diff1 = fabs (cmc_neu[j].x - cmc_old[i+1].x);
+						diff0 = fabs(cmc_neu[j].x - cmc_old[i].x); //TODO use assembly for fabs?
+						diff1 = fabs(cmc_neu[j].x - cmc_old[i+1].x);
 					}
 
-					if ( n_less && (diff1 < diff0) )
+					if( n_less && (diff1 < diff0) )
 					{
 						cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 
@@ -461,8 +461,8 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					}
 				}
 
-				// if (n_less)
-				for (i=I - n_less; i<I; i++)
+				// if(n_less)
+				for(i=I - n_less; i<I; i++)
 					cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 
 				break;
@@ -470,7 +470,7 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 			case 0: // there has been no change in blob number, so we can relate the old and new lists 1:1 as they are both ordered according to x
 			{
-				for (j=0; j<J; j++)
+				for(j=0; j<J; j++)
 				{
 					cmc_neu[j].sid = cmc_old[j].sid;
 					cmc_neu[j].group = cmc_old[j].group;
@@ -484,19 +484,19 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 			{
 				uint_fast8_t n_more = J - I; // how many blobs have appeared
 				j = 0;
-				for (i=0; i<I; )
+				for(i=0; i<I; )
 				{
 					float diff0, diff1;
 					
-					if (n_more) // only calculate differences when there are still new blobs to be found
+					if(n_more) // only calculate differences when there are still new blobs to be found
 					{
-						diff0 = fabs (cmc_neu[j].x - cmc_old[i].x);
-						diff1 = fabs (cmc_neu[j+1].x - cmc_old[i].x);
+						diff0 = fabs(cmc_neu[j].x - cmc_old[i].x);
+						diff1 = fabs(cmc_neu[j+1].x - cmc_old[i].x);
 					}
 
-					if ( n_more && (diff1 < diff0) ) // cmc_neu[j] is the new blob
+					if( n_more && (diff1 < diff0) ) // cmc_neu[j] is the new blob
 					{
-						if (cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
+						if(cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
 						{
 							cmc_neu[j].sid = ++(sid); // this is a new blob
 							cmc_neu[j].group = NULL;
@@ -519,10 +519,10 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 					}
 				}
 
-				//if (n_more)
-				for (j=J - n_more; j<J; j++)
+				//if(n_more)
+				for(j=J - n_more; j<J; j++)
 				{
-					if (cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
+					if(cmc_neu[j].above_thresh) // check whether it is above threshold for a new blob
 					{
 						cmc_neu[j].sid = ++(sid); // this is a new blob
 						cmc_neu[j].group = NULL;
@@ -540,15 +540,15 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		 * overwrite blobs that are to be ignored
 		 */
 		uint_fast8_t newJ = 0;
-		for (j=0; j<J; j++)
+		for(j=0; j<J; j++)
 		{
 			uint_fast8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
 
 			//FIXME remove duplicate instructions
-			if (newJ != j)
-				memmove (&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
+			if(newJ != j)
+				memmove(&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
 
-			if (!ignore)
+			if(!ignore)
 				newJ++;
 		}
 		J = newJ;
@@ -556,22 +556,22 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 		/*
 		 * relate blobs to groups
 		 */
-		for (j=0; j<J; j++)
+		for(j=0; j<J; j++)
 		{
 			CMC_Blob *tar = &cmc_neu[j];
 
 			uint16_t gid;
-			for (gid=0; gid<GROUP_MAX; gid++)
+			for(gid=0; gid<GROUP_MAX; gid++)
 			{
 				CMC_Group *ptr = &cmc_groups[gid];
 
-				if ( ( (tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+				if( ((tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
 				{
-					if (tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
+					if(tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
 					{
 						// mark old blob as DISAPPEARED
-						for (i=0; i<I; i++)
-							if (cmc_old[i].sid == tar->sid)
+						for(i=0; i<I; i++)
+							if(cmc_old[i].sid == tar->sid)
 							{
 								cmc_old[i].state = CMC_BLOB_DISAPPEARED;
 								break;
@@ -584,8 +584,8 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 
 					tar->group = ptr;
 
-					if ( (ptr->m != CMC_NOSCALE) && ( (ptr->x0 != 0.0) || (ptr->m != 1.0) ) ) // we need scaling
-						tar->x = (tar->x - ptr->x0) * ptr->m;
+					if( (ptr->m != CMC_NOSCALE) && ((ptr->x0 != 0.0) || (ptr->m != 1.0) ) ) // we need scaling
+						tar->x =(tar->x - ptr->x0) * ptr->m;
 
 					break; // match found, do not search further
 				}
@@ -599,19 +599,19 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	}
 
 	/*
-	 * (not)advance idle counters
+	 *(not)advance idle counters
 	 */
 	uint8_t idle = 0;
-	if (idle_bit < pacemaker)
+	if(idle_bit < pacemaker)
 	{
-		idle = idle_word == (1 << idle_bit);
-		if (idle)
+		idle = idle_word ==(1 << idle_bit);
+		if(idle)
 			idle_bit++;
 	}
 	else // handle pacemaker
 	{
-		idle = idle_word == (1 << idle_bit);
-		if (idle)
+		idle = idle_word ==(1 << idle_bit);
+		if(idle)
 			idle_word = 0;
 	}
 
@@ -620,44 +620,44 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 	 * FIXME check loop structure for efficiency
 	 */
 	uint_fast8_t res = changed || idle;
-	if (res)
+	if(res)
 	{
 		++(fid);
 
 		uint_fast8_t e;
-		for (e=0; e<ENGINE_MAX; e++)
+		for(e=0; e<ENGINE_MAX; e++)
 		{
 			CMC_Engine *engine;
 			
-			if ( !(engine = engines[e]) ) // terminator reached
+			if( !(engine = engines[e]) ) // terminator reached
 				break;
 
-			if (engine->frame_cb)
-				engine->frame_cb (fid, now, offset, I, J);
+			if(engine->frame_cb)
+				engine->frame_cb(fid, now, offset, I, J);
 
-			if (engine->on_cb || engine->set_cb)
-				for (j=0; j<J; j++)
+			if(engine->on_cb || engine->set_cb)
+				for(j=0; j<J; j++)
 				{
 					CMC_Blob *tar = &cmc_neu[j];
-					if (tar->state == CMC_BLOB_APPEARED)
+					if(tar->state == CMC_BLOB_APPEARED)
 					{
-						if (engine->on_cb)
-							engine->on_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+						if(engine->on_cb)
+							engine->on_cb(tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 					}
 					else // tar->state == CMC_BLOB_EXISTED
 					{
-						if (engine->set_cb)
-							engine->set_cb (tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+						if(engine->set_cb)
+							engine->set_cb(tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 					}
 				}
 
-			//if (engine->off_cb && (I > J) ) //FIXME I and J can be equal with different SIDs
-			if (engine->off_cb)
-				for (i=0; i<I; i++)
+			//if(engine->off_cb && (I > J) ) //FIXME I and J can be equal with different SIDs
+			if(engine->off_cb)
+				for(i=0; i<I; i++)
 				{
 					CMC_Blob *tar = &cmc_old[i];
-					if (tar->state == CMC_BLOB_DISAPPEARED)
-						engine->off_cb (tar->sid, tar->group->gid, tar->pid);
+					if(tar->state == CMC_BLOB_DISAPPEARED)
+						engine->off_cb(tar->sid, tar->group->gid, tar->pid);
 				}
 		}
 	}
@@ -676,10 +676,10 @@ cmc_process (nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engin
 }
 
 void 
-cmc_group_clear ()
+cmc_group_clear()
 {
 	uint16_t gid;
-	for (gid=0; gid<GROUP_MAX; gid++)
+	for(gid=0; gid<GROUP_MAX; gid++)
 	{
 		CMC_Group *grp = &cmc_groups[gid];
 
@@ -692,26 +692,26 @@ cmc_group_clear ()
 }
 
 void
-cmc_engines_update ()
+cmc_engines_update()
 {
 	cmc_engines_active = 0;
 
-	if (config.tuio2.enabled)
+	if(config.tuio2.enabled)
 		engines[cmc_engines_active++] = &tuio2_engine;
 
-	if (config.tuio1.enabled)
+	if(config.tuio1.enabled)
 		engines[cmc_engines_active++] = &tuio1_engine;
 
-	if (config.scsynth.enabled)
+	if(config.scsynth.enabled)
 		engines[cmc_engines_active++] = &scsynth_engine;
 
-	if (config.oscmidi.enabled)
+	if(config.oscmidi.enabled)
 		engines[cmc_engines_active++] = &oscmidi_engine;
 
-	if (config.dummy.enabled)
+	if(config.dummy.enabled)
 		engines[cmc_engines_active++] = &dummy_engine;
 
-	if (config.rtpmidi.enabled)
+	if(config.rtpmidi.enabled)
 		engines[cmc_engines_active++] = &rtpmidi_engine;
 
 	engines[cmc_engines_active] = NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -31,11 +31,11 @@
  * e.g. whether there is an IP collision.
  * returns 1 on collision, 0 otherwise
  */
-uint_fast8_t arp_probe (uint8_t sock, uint8_t *ip);
+uint_fast8_t arp_probe(uint8_t sock, uint8_t *ip);
 
 /*
  * announce ip via ARP
  */
-void arp_announce (uint8_t sock, uint8_t *ip);
+void arp_announce(uint8_t sock, uint8_t *ip);
 
 #endif

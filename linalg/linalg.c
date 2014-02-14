@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -43,11 +43,11 @@
  * returns C0, C1
  */
 void
-linalg_solve_quadratic (float y1, float B1, float *c0, float *c1)
+linalg_solve_quadratic(float y1, float B1, float *c0, float *c1)
 {
 	float C0, C1;
 
-	C0 = (y1 - B1) / (sqrtf(B1) - B1);
+	C0 =(y1 - B1) /(sqrtf(B1) - B1);
 	C1 = 1.0 - C0;
 
 	*c0 = C0;
@@ -69,7 +69,7 @@ linalg_solve_quadratic (float y1, float B1, float *c0, float *c1)
  * returns C0, C1, C2
  */
 void
-linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1, float *c2)
+linalg_solve_cubic(float y1, float B1, float y2, float B2, float *c0, float *c1, float *c2)
 {
 	float C0, C1, C2;
 	float B1_2, B1_3, B2_2, B2_3, B1_2d, B1_3d, B2_2d, B2_3d;
@@ -84,8 +84,8 @@ linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1
 	B2_2d = B2_2 - B2;
 	B2_3d = B2_3 - B2;
 
-	C1 = (y2 - B2 - (y1-B1)*B2_3d/B1_3d)/(B2_2d - B1_2d*B2_3d/B1_3d);
-	C0 = (y1 - B1 - C1*B1_2d) / B1_3d;
+	C1 =(y2 - B2 -(y1-B1)*B2_3d/B1_3d)/(B2_2d - B1_2d*B2_3d/B1_3d);
+	C0 =(y1 - B1 - C1*B1_2d) / B1_3d;
 	C2 = 1.0 - C0 - C1;
 
 	*c0 = C0;
@@ -117,7 +117,7 @@ linalg_solve_cubic (float y1, float B1, float y2, float B2, float *c0, float *c1
  * ]
  */
 void
-linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1)
+linalg_least_squares_quadratic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1)
 {
 	double a = sqrt(x1);
 	double b = sqrt(x2);
@@ -135,10 +135,10 @@ linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, doub
 	double c3 = x3*c;		// = c*c*c;
 	double c2 = x3;			// = c*c;
 
-	double divisor = a4*(b2+c2+1) - 2*a3*(b3+c3+1) + a2*(b4+c4+1) + b4*(c2+1) - 2*b3*(c3+1) + b2*(c4+1)+ (c-1)*(c-1)*c2;
+	double divisor = a4*(b2+c2+1) - 2*a3*(b3+c3+1) + a2*(b4+c4+1) + b4*(c2+1) - 2*b3*(c3+1) + b2*(c4+1)+(c-1)*(c-1)*c2;
 
-	*C0 = (a4*(b*y2+c*y3+1) - a3*(b2*y2+c2*y3+1) - a2*y1*(b3+c3+1) + a*y1*(b4+c4+1) + (b-1)*b3 + c*y3*(b4-(b3+1)*c+1) + b*y2*(-(b*(c3+1))+c4+1) + (c-1)*c3) / divisor;
-	*C1 = -(a3*(b*y2+c*y3+1) - a2*(y1*(b2+c2+1)+b2*y2+c2*y3+1) + a*y1*(b3+c3+1) + b3*(c*y3+1) - b2*(c2*y2+c2*y3+y2+1) + b*(c3+1)*y2 + (c-1)*c*(c-y3)) / divisor;
+	*C0 =(a4*(b*y2+c*y3+1) - a3*(b2*y2+c2*y3+1) - a2*y1*(b3+c3+1) + a*y1*(b4+c4+1) +(b-1)*b3 + c*y3*(b4-(b3+1)*c+1) + b*y2*(-(b*(c3+1))+c4+1) +(c-1)*c3) / divisor;
+	*C1 = -(a3*(b*y2+c*y3+1) - a2*(y1*(b2+c2+1)+b2*y2+c2*y3+1) + a*y1*(b3+c3+1) + b3*(c*y3+1) - b2*(c2*y2+c2*y3+y2+1) + b*(c3+1)*y2 +(c-1)*c*(c-y3)) / divisor;
 }
 
 /*
@@ -165,7 +165,7 @@ linalg_least_squares_quadratic (double x1, double y1, double x2, double y2, doub
  *  ]
  */
 void
-linalg_least_squares_cubic (double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2)
+linalg_least_squares_cubic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2)
 {
 	double a12= pow(x1, 12.0/6.0);
 	double a9 = pow(x1, 9.0/6.0);
@@ -202,9 +202,9 @@ linalg_least_squares_cubic (double x1, double y1, double x2, double y2, double x
 
 	double divisor = b4*c4*pow(b+b4*(-1+c)-c+c4-b*c4,2.0)+a12*(pow(-1+c,2.0)*c4+b6*(1+c4)-2*b5*(1+c5)+b4*(1+c6))-2*a9*(pow(-1+c,2)*c4*(1+c)*(1+c2)+b9*(1+c4)-b8*(1+c5)-b5*(1+c8)+b4*(1+c9))+2*a8*(pow(-1+c,2.0)*c5*(1+c+c2)+b9*(1+c5)-b8*(1+c6)-b6*(1+c8)+b5*(1+c9))+a6*(c4*pow(-1+c4,2.0)+b12*(1+c4)-2*b8*(1+c8)+b4*(1+c12))-2*a5*(c5+c8*(-1-c+c4)+b12*(1+c5)-b9*(1+c8)-b8*(1+c9)+b5*(1+c12))+a4*(c6*pow(-1+c3,2.0)+b12*(1+c6)-2*b9*(1+c9)+b6*(1+c12));
 
-	*C0 = (a3*((-b12)*(1+c5)+c5*(-1+c3+c4-c7)+b9*(1+c8)+b8*(1+c9)-b5*(1+c12))*y1+a2*(c6*pow(-1+c3,2.0)+b12*(1+c6)-2*b9*(1+c9)+b6*(1+c12))*y1+a12*((-1+b)*b5+(-1+c)*c5+b2*(1+c6-b*(1+c5))*y2+c2*(1+b6-(1+b5)*c)*y3)+a5*(b9-b12+c9-c12+b6*(1+c9)*y2-b3*(1+c12)*y2+c3*(-1-b12+(1+b9)*c3)*y3)+a9*(c5+c8-2*c9+b2*(b3+b6-2*b7+b4*(1+c5)*y2+b*(1+c8)*y2-2*(1+c9)*y2)+c2*(-2-2*b9+c+b8*c+(1+b5)*c4)*y3)+(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c3*(-1+c3)*y2+b6*(c3-y3)+b3*(-c6+y3))+a6*(c12+c5*y1+c9*y1+b9*(1+c5)*y1+b5*(1+c9)*y1-c8*(1+y1)+b2*(1+c12)*y2-b6*(1+c8)*(y1+y2)+c2*y3-c6*(y1+y3)+b12*(1+c2*y3)-b8*(1+y1+c6*y1+c6*y3))+a8*(b3*(1+c9)*y2+c3*(-1+c3)*(c3-y3)+b9*(1+c3*y3)-b6*(1+y2+c6*y2+c6*y3))) / divisor;
+	*C0 =(a3*((-b12)*(1+c5)+c5*(-1+c3+c4-c7)+b9*(1+c8)+b8*(1+c9)-b5*(1+c12))*y1+a2*(c6*pow(-1+c3,2.0)+b12*(1+c6)-2*b9*(1+c9)+b6*(1+c12))*y1+a12*((-1+b)*b5+(-1+c)*c5+b2*(1+c6-b*(1+c5))*y2+c2*(1+b6-(1+b5)*c)*y3)+a5*(b9-b12+c9-c12+b6*(1+c9)*y2-b3*(1+c12)*y2+c3*(-1-b12+(1+b9)*c3)*y3)+a9*(c5+c8-2*c9+b2*(b3+b6-2*b7+b4*(1+c5)*y2+b*(1+c8)*y2-2*(1+c9)*y2)+c2*(-2-2*b9+c+b8*c+(1+b5)*c4)*y3)+(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c3*(-1+c3)*y2+b6*(c3-y3)+b3*(-c6+y3))+a6*(c12+c5*y1+c9*y1+b9*(1+c5)*y1+b5*(1+c9)*y1-c8*(1+y1)+b2*(1+c12)*y2-b6*(1+c8)*(y1+y2)+c2*y3-c6*(y1+y3)+b12*(1+c2*y3)-b8*(1+y1+c6*y1+c6*y3))+a8*(b3*(1+c9)*y2+c3*(-1+c3)*(c3-y3)+b9*(1+c3*y3)-b6*(1+y2+c6*y2+c6*y3))) / divisor;
 
-	*C1 = (a6*((-b9)*(1+c4)+c4*(-1+c+c4-c5)+b8*(1+c5)+b5*(1+c8)-b4*(1+c9))*y1+a3*(c4*pow(-1+c4,2.0)+b12*(1+c4)-2*b8*(1+c8)+b4*(1+c12))*y1+a2*((-b12)*(1+c5)+c5*(-1+c3+c4-c7)+b9*(1+c8)+b8*(1+c9)-b5*(1+c12))*y1+a4*(c9*(-1+c3)+b3*(-b6+b9+y2+c12*y2-b3*(1+c9)*y2)+c3*(1+b12-(1+b9)*c3)*y3)+a9*(-c4+c8+b2*(-b2+b6+y2+c8*y2-b4*(1+c4)*y2)+c2*(1+b8-(1+b4)*c4)*y3)+a8*(b5-2*b8+b9+c5-2*c8+c9+b2*(1+c9+b4*(1+c5)-2*b*(1+c8))*y2+c2*(1+b9-2*(1+b8)*c+(1+b5)*c4)*y3)+a5*(b8-b12+c8-c12+b6*(1+c8)*y2-b2*(1+c12)*y2+c2*(-1-b12+(1+b8)*c4)*y3)+a12*((-(-1+b))*b4-(-1+c)*c4+b2*(-1+b+b*c4-c5)*y2+c2*(-1+c+b4*(-b+c))*y3)-(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c2*(-1+c4)*y2+b6*(c2-y3)+b2*(-c6+y3))) / divisor;
+	*C1 =(a6*((-b9)*(1+c4)+c4*(-1+c+c4-c5)+b8*(1+c5)+b5*(1+c8)-b4*(1+c9))*y1+a3*(c4*pow(-1+c4,2.0)+b12*(1+c4)-2*b8*(1+c8)+b4*(1+c12))*y1+a2*((-b12)*(1+c5)+c5*(-1+c3+c4-c7)+b9*(1+c8)+b8*(1+c9)-b5*(1+c12))*y1+a4*(c9*(-1+c3)+b3*(-b6+b9+y2+c12*y2-b3*(1+c9)*y2)+c3*(1+b12-(1+b9)*c3)*y3)+a9*(-c4+c8+b2*(-b2+b6+y2+c8*y2-b4*(1+c4)*y2)+c2*(1+b8-(1+b4)*c4)*y3)+a8*(b5-2*b8+b9+c5-2*c8+c9+b2*(1+c9+b4*(1+c5)-2*b*(1+c8))*y2+c2*(1+b9-2*(1+b8)*c+(1+b5)*c4)*y3)+a5*(b8-b12+c8-c12+b6*(1+c8)*y2-b2*(1+c12)*y2+c2*(-1-b12+(1+b8)*c4)*y3)+a12*((-(-1+b))*b4-(-1+c)*c4+b2*(-1+b+b*c4-c5)*y2+c2*(-1+c+b4*(-b+c))*y3)-(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c2*(-1+c4)*y2+b6*(c2-y3)+b2*(-c6+y3))) / divisor;
 
-	*C2 = (a3*((-b9)*(1+c4)+c4*(-1+c+c4-c5)+b8*(1+c5)+b5*(1+c8)-b4*(1+c9))*y1+a2*(pow(-1+c,2.0)*c5*(1+c+c2)+b9*(1+c5)-b8*(1+c6)-b6*(1+c8)+b5*(1+c9))*y1+(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c2*(b3-b2*c+(-1+c)*y2)-(-1+b)*b2*y3)+a9*((-1+b)*b4+(-1+c)*c4+b2*(1+c5-b*(1+c4))*y2+c2*(1+b5-(1+b4)*c)*y3)+a5*(-2*c5+c8+c9+b2*(-2*b3+b6+b7+y2+c9*y2-2*b4*(1+c5)*y2+b*(1+c8)*y2)+c2*(1+b9+c+b8*c-2*(1+b5)*c4)*y3)+a8*((-(-1+b))*b5-(-1+c)*c5+b2*(-1+b+b*c5-c6)*y2+c2*(-1+c+b5*(-b+c))*y3)+a6*(-2*b5*(1+c5)*y1+c4*(1-c4+pow(-1+c,2.0)*y1)-b2*(1+c8)*y2+b6*(1+c4)*(y1+y2)+c2*(-1+c4)*y3-b8*(1+c2*y3)+b4*(1+y1+c6*y1+c6*y3))+a4*((-b3)*(1+c9)*y2-c3*(-1+c3)*(c3-y3)-b9*(1+c3*y3)+b6*(1+y2+c6*y2+c6*y3))) / divisor;
+	*C2 =(a3*((-b9)*(1+c4)+c4*(-1+c+c4-c5)+b8*(1+c5)+b5*(1+c8)-b4*(1+c9))*y1+a2*(pow(-1+c,2.0)*c5*(1+c+c2)+b9*(1+c5)-b8*(1+c6)-b6*(1+c8)+b5*(1+c9))*y1+(-1+b)*b2*(-1+c)*c2*(b+b2+b3-c*(1+c+c2))*(c2*(b3-b2*c+(-1+c)*y2)-(-1+b)*b2*y3)+a9*((-1+b)*b4+(-1+c)*c4+b2*(1+c5-b*(1+c4))*y2+c2*(1+b5-(1+b4)*c)*y3)+a5*(-2*c5+c8+c9+b2*(-2*b3+b6+b7+y2+c9*y2-2*b4*(1+c5)*y2+b*(1+c8)*y2)+c2*(1+b9+c+b8*c-2*(1+b5)*c4)*y3)+a8*((-(-1+b))*b5-(-1+c)*c5+b2*(-1+b+b*c5-c6)*y2+c2*(-1+c+b5*(-b+c))*y3)+a6*(-2*b5*(1+c5)*y1+c4*(1-c4+pow(-1+c,2.0)*y1)-b2*(1+c8)*y2+b6*(1+c4)*(y1+y2)+c2*(-1+c4)*y3-b8*(1+c2*y3)+b4*(1+y1+c6*y1+c6*y3))+a4*((-b3)*(1+c9)*y2-c3*(-1+c3)*(c3-y3)-b9*(1+c3*y3)+b6*(1+y2+c6*y2+c6*y3))) / divisor;
 }

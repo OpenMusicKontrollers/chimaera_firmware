@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -27,27 +27,27 @@
 #include <wirish/wirish.h>
 
 extern "C" void
-usb_debug_str (const char * str)
+usb_debug_str(const char * str)
 {
 	SerialUSB.println(str);
 }
 
 extern "C" void
-usb_debug_int (uint32_t i)
+usb_debug_int(uint32_t i)
 {
 	SerialUSB.println(i);
 }
 
-__attribute__ ((constructor)) void
-premain ()
+__attribute__((constructor)) void
+premain()
 {
-  init (); // board init
+  init(); // board init
 }
 
 extern "C" void
-cpp_setup ()
+cpp_setup()
 {
 	// we don't need USB communication, so we disable it
-	//SerialUSB.begin ();
-	SerialUSB.end ();
+	//SerialUSB.begin();
+	SerialUSB.end();
 }

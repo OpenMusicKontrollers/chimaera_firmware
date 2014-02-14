@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -32,10 +32,10 @@
 
 #define DEBUG(...) \
 ({ \
-	if (config.debug.socket.enabled) { \
+	if(config.debug.socket.enabled) { \
 		uint16_t size; \
-		size = nosc_message_vararg_serialize (BUF_O_OFFSET(buf_o_ptr), "/debug", __VA_ARGS__); \
-		udp_send (config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size); \
+		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/debug", __VA_ARGS__); \
+		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size); \
 	} \
 })
 

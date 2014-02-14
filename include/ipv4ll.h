@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Hanspeter Portner (dev@open-music-kontrollers.ch)
+ * Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch)
  * 
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -30,6 +30,6 @@
 
 extern const nOSC_Query_Item ipv4ll_tree [1];
 
-void IPv4LL_claim (uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
+void IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
 #endif
