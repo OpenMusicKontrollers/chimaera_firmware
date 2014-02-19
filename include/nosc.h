@@ -202,6 +202,7 @@ uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char 
 
 uint16_t nosc_message_serialize(nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
 uint16_t nosc_message_vararg_serialize(uint8_t *buf, const char *path, const char *fmt, ...);
+uint16_t nosc_message_varlist_serialize(uint8_t *buf, const char *path, const char *fmt, va_list argv);
 
 /*
  * Query system
@@ -334,9 +335,10 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 	.range.max.d =(MAX) \
 }
 
-#define nOSC_QUERY_ARGUMENT_STRING(DESCRIPTION, MODE) \
+#define nOSC_QUERY_ARGUMENT_STRING(DESCRIPTION, MODE, MAX) \
 { \
 	nOSC_QUERY_ARGUMENT(nOSC_STRING,(DESCRIPTION),(MODE)), \
+	.range.max.i = (MAX) \
 }
 
 #endif

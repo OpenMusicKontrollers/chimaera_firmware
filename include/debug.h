@@ -30,18 +30,14 @@
 #include <wiz.h>
 #include <config.h>
 
-#define DEBUG(...) \
-({ \
-	if(config.debug.socket.enabled) { \
-		uint16_t size; \
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/debug", __VA_ARGS__); \
-		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size); \
-	} \
-})
+void DEBUG(const char *fmt, ...);
 
-#define debug_str(s) DEBUG("s", s)
 #define debug_int32(i) DEBUG("i", i)
 #define debug_float(f) DEBUG("f", f)
+#define debug_str(s) DEBUG("s", s)
+#define debug_blob(f) DEBUG("b", l, b)
+
+#define debug_int64(i) DEBUG("h", h)
 #define debug_double(d) DEBUG("d", d)
 #define debug_timestamp(t) DEBUG("t", t)
 

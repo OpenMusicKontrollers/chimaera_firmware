@@ -82,6 +82,24 @@ oscmidi_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_NOTE_ON, key, 0x7f);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
+
+	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
+	uint16_t eff = y * 0x3fff;
+
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);
+	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
+	midi_fmt[oscmidi_tok] = nOSC_END;
+
+	if(config.oscmidi.effect <= 0xd)
+	{
+		nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
+		midi_fmt[oscmidi_tok++] = nOSC_MIDI;
+		midi_fmt[oscmidi_tok] = nOSC_END;
+	}
+
+	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_MSV, eff >> 7);
+	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
+	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 
 static void 
@@ -102,16 +120,18 @@ oscmidi_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	float X = config.oscmidi.offset + x*config.oscmidi.range;
 	uint8_t key = midi_get_key(oscmidi_hash, sid);
 	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
-
 	uint16_t eff = y * 0x3fff;
 
 	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
 	midi_fmt[oscmidi_tok] = nOSC_END;
 
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
+	if(config.oscmidi.effect <= 0xd)
+	{
+		nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
+		midi_fmt[oscmidi_tok++] = nOSC_MIDI;
+		midi_fmt[oscmidi_tok] = nOSC_END;
+	}
 
 	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_MSV, eff >> 7);
 	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
@@ -163,26 +183,22 @@ _oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
  * Query
  */
 
-static const nOSC_Query_Argument oscmidi_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
 static const nOSC_Query_Argument oscmidi_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
 };
 
 static const nOSC_Query_Argument oscmidi_range_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("midi notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
 };
 
 static const nOSC_Query_Argument oscmidi_effect_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("controller", nOSC_QUERY_MODE_RW, 0, 0x7f),
+	nOSC_QUERY_ARGUMENT_INT32("Controller number", nOSC_QUERY_MODE_RW, 0, 0x7f),
 };
 
 const nOSC_Query_Item oscmidi_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _oscmidi_enabled, oscmidi_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("offset", "midi key offset", _oscmidi_offset, oscmidi_offset_args),
-	nOSC_QUERY_ITEM_METHOD("range", "pitch bend range", _oscmidi_range, oscmidi_range_args),
-	nOSC_QUERY_ITEM_METHOD("effect", "vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _oscmidi_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("offset", "MIDI key offset", _oscmidi_offset, oscmidi_offset_args),
+	nOSC_QUERY_ITEM_METHOD("range", "MIDI pitch bend range", _oscmidi_range, oscmidi_range_args),
+	nOSC_QUERY_ITEM_METHOD("effect", "MIDI vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
 };

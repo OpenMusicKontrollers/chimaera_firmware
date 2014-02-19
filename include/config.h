@@ -147,16 +147,11 @@ struct _Config {
 		Socket_Config socket;
 	} dhcpc;
 
-	struct _movingaverage {
-		uint8_t enabled;
-		uint8_t bitshift;
-	} movingaverage;
-
-	struct _interpolation {
-		uint8_t order;
-	} interpolation;
-
-	uint16_t rate; // the maximal update rate the chimaera should run at
+	struct _sensors {
+		uint8_t movingaverage_bitshift;
+		uint8_t interpolation_order;
+		uint16_t rate; // the maximal update rate the chimaera should run at
+	} sensors;
 };
 
 extern Config config;
@@ -180,5 +175,8 @@ uint_fast8_t config_address(Socket_Config *socket, const char *path, const char 
 uint_fast8_t config_check_range8(uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
 uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
 uint_fast8_t config_check_rangefloat(float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+
+const nOSC_Query_Argument config_boolean_args [1];
+const nOSC_Query_Argument config_address_args [1];
 
 #endif

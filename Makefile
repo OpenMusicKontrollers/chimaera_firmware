@@ -5,7 +5,7 @@ export SENSORS ?= 96
 
 # set firmware version
 export VERSION_MAJOR ?= 0
-export VERSION_MINOR ?= 2
+export VERSION_MINOR ?= 3
 export VERSION_PATCH ?= 0
 
 # set revision of board design: 3, 4
@@ -51,7 +51,7 @@ reset:
 	oscsend osc.udp://255.255.255.255:4444 /reset/flash i $(shell echo $$[RANDOM])
 	sleep 1
 
-update:	$(IMAGE) reset
+update:	$(DFU) reset
 	dfu-util -a 0 -s :leave -D $<
 
 download:	$(BIN) reset

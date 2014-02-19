@@ -420,21 +420,27 @@ _calibration_zero(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	// update new range
-	zeroing = 0;
-	range_update_quiescent();
-
-	// debug output
-	/*
-	uint_fast8_t i;
-	for(i=0; i<SENSOR_N; i++)
+	if(calibrating)
 	{
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-	}
-	*/
+		// update new range
+		zeroing = 0;
+		range_update_quiescent();
 
-	size = CONFIG_SUCCESS("is", uuid, path);
+		// debug output
+		/*
+		uint_fast8_t i;
+		for(i=0; i<SENSOR_N; i++)
+		{
+			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
+			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		}
+		*/
+		
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+	else
+		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
+
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -446,20 +452,26 @@ _calibration_min(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	// update new range
-	uint_fast8_t si = range_update_b0();
-
-	// debug output
-	/*
-	uint_fast8_t i;
-	for(i=0; i<SENSOR_N; i++)
+	if(calibrating)
 	{
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/thresh", "ii", i, range.thresh[i]);
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-	}
-	*/
+		// update new range
+		uint_fast8_t si = range_update_b0();
 
-	size = CONFIG_SUCCESS("isi", uuid, path, si);
+		// debug output
+		/*
+		uint_fast8_t i;
+		for(i=0; i<SENSOR_N; i++)
+		{
+			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/thresh", "ii", i, range.thresh[i]);
+			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		}
+		*/
+
+		size = CONFIG_SUCCESS("isi", uuid, path, si);
+	}
+	else
+		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
+
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -471,13 +483,19 @@ _calibration_mid(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float y = args[1].f;
+	if(calibrating)
+	{
+		float y = args[1].f;
 
-	// FIXME check for increasing y, or do sorting along x afterwards?
+		// FIXME check for increasing y, or do sorting along x afterwards?
 
-	// update mid range
-	range_update_b1(y);
-	size = CONFIG_SUCCESS("is", uuid, path);
+		// update mid range
+		range_update_b1(y);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+	else
+		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
+		
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -489,10 +507,16 @@ _calibration_max(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	// update max range
-	range_update_b2();
+	if(calibrating)
+	{
+		// update max range
+		range_update_b2();
 
-	size = CONFIG_SUCCESS("is", uuid, path);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+	else
+		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
+
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -504,33 +528,39 @@ _calibration_end(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float y = args[1].f;
-
-	// update max range
-	range_update_b3(y);
-
-	// end calibration procedure
-	calibrating = 0;
-
-	// debug output
-	/*
-	uint_fast8_t i;
-	for(i=0; i<SENSOR_N; i++)
+	if(calibrating)
 	{
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/U", "if", i, range.U[i]);
+		float y = args[1].f;
+
+		// update max range
+		range_update_b3(y);
+
+		// end calibration procedure
+		calibrating = 0;
+
+		// debug output
+		/*
+		uint_fast8_t i;
+		for(i=0; i<SENSOR_N; i++)
+		{
+			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/U", "if", i, range.U[i]);
+			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		}
+
+		// output minimal offset
+		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/W", "f", range.W);
 		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+		// output curve parameters
+		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
+		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		*/
+
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
-
-	// output minimal offset
-	size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/W", "f", range.W);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-	// output curve parameters
-	size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-	*/
-
-	size = CONFIG_SUCCESS("is", uuid, path);
+	else
+		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
+		
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 
 	return 1;
@@ -622,29 +652,29 @@ _calibration_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
  */
 
 static const nOSC_Query_Argument calibration_load_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
+	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
 };
 
 static const nOSC_Query_Argument calibration_save_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
+	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
 };
 
 static const nOSC_Query_Argument calibration_min_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("curve fit sensor", nOSC_QUERY_MODE_R, 0, SENSOR_N - 1)
+	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_R, 0, SENSOR_N - 1)
 };
 
 static const nOSC_Query_Argument calibration_mid_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
+	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
 };
 
 static const nOSC_Query_Argument calibration_end_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
+	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
 };
 
 static const nOSC_Query_Argument calibration_sensor_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("number", nOSC_QUERY_MODE_RWX, 0, SENSOR_N - 1),
-	nOSC_QUERY_ARGUMENT_FLOAT("quiescent value", nOSC_QUERY_MODE_R, 0, 0x7ff),
-	nOSC_QUERY_ARGUMENT_FLOAT("threshold value", nOSC_QUERY_MODE_R, 0, 0x7ff),
+	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_RWX, 0, SENSOR_N - 1),
+	nOSC_QUERY_ARGUMENT_INT32("Quiescent value", nOSC_QUERY_MODE_R, 0, 0x7ff),
+	nOSC_QUERY_ARGUMENT_INT32("Threshold value", nOSC_QUERY_MODE_R, 0, 0x7ff),
 	nOSC_QUERY_ARGUMENT_FLOAT("U", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
 };
 
@@ -659,18 +689,18 @@ static const nOSC_Query_Argument calibration_curve_args [] = {
 };
 
 const nOSC_Query_Item calibration_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("load", "load from EEPROM", _calibration_load, calibration_load_args),
-	nOSC_QUERY_ITEM_METHOD("save", "save to EEPROM", _calibration_save, calibration_save_args),
-	nOSC_QUERY_ITEM_METHOD("reset", "reset to factory settings", _calibration_reset, NULL),
+	nOSC_QUERY_ITEM_METHOD("load", "Load calibration from EEPROM", _calibration_load, calibration_load_args),
+	nOSC_QUERY_ITEM_METHOD("save", "Save calibration to EEPROM", _calibration_save, calibration_save_args),
+	nOSC_QUERY_ITEM_METHOD("reset", "Reset calibration to factory settings", _calibration_reset, NULL),
 
-	nOSC_QUERY_ITEM_METHOD("start", "start calibration", _calibration_start, NULL),
-	nOSC_QUERY_ITEM_METHOD("zero", "calibrate quiescent values", _calibration_zero, NULL),
-	nOSC_QUERY_ITEM_METHOD("min", "calibrate threshold values", _calibration_min, calibration_min_args),
-	nOSC_QUERY_ITEM_METHOD("mid", "curve fit", _calibration_mid, calibration_mid_args),
-	nOSC_QUERY_ITEM_METHOD("max", "curve fit", _calibration_max, NULL),
-	nOSC_QUERY_ITEM_METHOD("end", "end calibration", _calibration_end, calibration_end_args),
+	nOSC_QUERY_ITEM_METHOD("start", "Start calibration procedure", _calibration_start, NULL),
+	nOSC_QUERY_ITEM_METHOD("zero", "Calibrate quiescent values", _calibration_zero, NULL),
+	nOSC_QUERY_ITEM_METHOD("min", "Calibrate threshold values / curve fit point 1", _calibration_min, calibration_min_args),
+	nOSC_QUERY_ITEM_METHOD("mid", "Curve fit points 2-4", _calibration_mid, calibration_mid_args),
+	nOSC_QUERY_ITEM_METHOD("max", "Curve fit point 5", _calibration_max, NULL),
+	nOSC_QUERY_ITEM_METHOD("end", "End calibration procedure", _calibration_end, calibration_end_args),
 
-	nOSC_QUERY_ITEM_METHOD("sensor", "sensor data", _calibration_sensor, calibration_sensor_args),
-	nOSC_QUERY_ITEM_METHOD("offset", "offset data", _calibration_offset, calibration_offset_args),
-	nOSC_QUERY_ITEM_METHOD("curve", "curve data", _calibration_curve, calibration_curve_args),
+	nOSC_QUERY_ITEM_METHOD("sensor", "Query sensors calibration data", _calibration_sensor, calibration_sensor_args),
+	nOSC_QUERY_ITEM_METHOD("offset", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
+	nOSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args),
 };

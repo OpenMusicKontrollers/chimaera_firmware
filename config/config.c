@@ -176,19 +176,11 @@ Config config = {
 		}
 	},
 
-	.movingaverage = {
-		.enabled = 1,
-		.bitshift = 3 // moving average over 8(2³) samples
-	},
-
-	.interpolation = {
-		//.order = 0, // use no interpolation at all
-		//.order = 1, // use linear interpolation
-		.order = 2, // use quadratic, aka parabolic interpolation
-		//.order = 3, // use cubic interpolation
-	},
-
-	.rate = 2000, // update rate in Hz
+	.sensors = {
+		.movingaverage_bitshift = 3,
+		.interpolation_order = 2,
+		.rate = 2000
+	}
 };
 
 uint_fast8_t
@@ -437,7 +429,7 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 				wiz_gateway_set(config.comm.gateway);
 			else // return
 			{
-				CONFIG_FAIL("iss", uuid, path, "gateway invalid, format: x.x.x.x");
+				size = CONFIG_FAIL("iss", uuid, path, "gateway invalid, format: x.x.x.x");
 				udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
 				return 1;
 			}
@@ -467,6 +459,33 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		}
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "ip invalid, format: x.x.x.x/x");
+	}
+
+	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if(argc == 1) // query
+	{
+		ip2str(config.comm.gateway, string_buf);
+		size = CONFIG_SUCCESS("iss", uuid, path, string_buf);
+	}
+	else
+	{
+		if(str2ip(args[2].s, config.comm.gateway))
+		{
+			wiz_gateway_set(config.comm.gateway);
+			size = CONFIG_SUCCESS("is", uuid, path);
+		}
+		else //FIXME mDNS resolve
+			size = CONFIG_FAIL("iss", uuid, path, "gateway invalid, format: x.x.x.x");
 	}
 
 	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
@@ -798,82 +817,80 @@ const nOSC_Method config_serv [] = {
 	{NULL, NULL, NULL} // terminator
 };
 
+// global arguments
+const nOSC_Query_Argument config_boolean_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("Boolean", nOSC_QUERY_MODE_RW, 0, 1)
+};
 
+const nOSC_Query_Argument config_address_args [] = {
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain with colon and port", nOSC_QUERY_MODE_RW, INT32_MAX)
+};
+
+// locals arguments
 static const nOSC_Query_Argument comm_mac_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
+	nOSC_QUERY_ARGUMENT_STRING("EUI-48 hexadecimal colon", nOSC_QUERY_MODE_RW, 17)
 };
 
 static const nOSC_Query_Argument comm_ip_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted CIDR", nOSC_QUERY_MODE_RW, 18)
+};
+
+static const nOSC_Query_Argument comm_gateway_args [] = {
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_RW, INT32_MAX)
 };
 
 static const nOSC_Query_Argument comm_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_WX)
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_WX, INT32_MAX)
 };
 
 const nOSC_Query_Item comm_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("mac", "hardware address", _comm_mac, comm_mac_args),
-	nOSC_QUERY_ITEM_METHOD("ip", "IPv4 address", _comm_ip, comm_ip_args),
-	nOSC_QUERY_ITEM_METHOD("address", "remote IPv4 address", _comm_address, comm_address_args),
-};
-
-static const nOSC_Query_Argument config_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
-static const nOSC_Query_Argument config_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
+	nOSC_QUERY_ITEM_METHOD("mac", "Hardware MAC address", _comm_mac, comm_mac_args),
+	nOSC_QUERY_ITEM_METHOD("ip", "IPv4 client address", _comm_ip, comm_ip_args),
+	nOSC_QUERY_ITEM_METHOD("gateway", "IPv4 gateway address", _comm_gateway, comm_gateway_args),
+	nOSC_QUERY_ITEM_METHOD("address", "Shared remote IPv4 address", _comm_address, comm_address_args),
 };
 
 const nOSC_Query_Item config_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("save", "save to EEPROM", _config_save, NULL),
-	nOSC_QUERY_ITEM_METHOD("load", "load from EEPROM", _config_load, NULL),
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable socket", _config_enabled, config_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("address", "remote address", _config_address, config_address_args),
+	nOSC_QUERY_ITEM_METHOD("save", "Save to EEPROM", _config_save, NULL),
+	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
 };
 
 const nOSC_Query_Item reset_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("soft", "soft reset", _reset_soft, NULL),
-	nOSC_QUERY_ITEM_METHOD("hard", "hard reset", _reset_hard, NULL),
-	nOSC_QUERY_ITEM_METHOD("flash", "reset into flash mode", _reset_flash, NULL),
+	nOSC_QUERY_ITEM_METHOD("soft", "Soft reset", _reset_soft, NULL),
+	nOSC_QUERY_ITEM_METHOD("hard", "Hard reset", _reset_hard, NULL),
+	nOSC_QUERY_ITEM_METHOD("flash", "Reset into flash mode", _reset_flash, NULL),
 };
 
 static const nOSC_Query_Argument info_version_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_R)
+	nOSC_QUERY_ARGUMENT_STRING("{Major}.{Minor}.{Patch level} Rev{Board revision}", nOSC_QUERY_MODE_R, INT32_MAX)
 };
 
 static const nOSC_Query_Argument info_uid_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_R)
+	nOSC_QUERY_ARGUMENT_STRING("Hexadecimal hyphen", nOSC_QUERY_MODE_R, INT32_MAX)
 };
 
 static const nOSC_Query_Argument info_name_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
+	nOSC_QUERY_ARGUMENT_STRING("ASCII", nOSC_QUERY_MODE_RW, NAME_LENGTH)
 };
 
 static const nOSC_Query_Item info_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("version", "firmware version", _info_version, info_version_args),
-	nOSC_QUERY_ITEM_METHOD("uid", "universal identifier", _info_uid, info_uid_args),
+	nOSC_QUERY_ITEM_METHOD("version", "Firmware version", _info_version, info_version_args),
+	nOSC_QUERY_ITEM_METHOD("uid", "96-bit universal device identifier", _info_uid, info_uid_args),
 
-	nOSC_QUERY_ITEM_METHOD("name", "device name", _info_name, info_name_args),
+	nOSC_QUERY_ITEM_METHOD("name", "Device name", _info_name, info_name_args),
 };
 
-static const nOSC_Query_Argument output_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
-static const nOSC_Query_Argument output_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("host:port", nOSC_QUERY_MODE_RW)
-};
-
-static const nOSC_Query_Argument output_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY)
+static const nOSC_Query_Argument engines_offset_args [] = {
+	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY)
 };
 
 static const nOSC_Query_Item engines_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _output_enabled, output_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("address", "remote host", _output_address, output_address_args),
-	nOSC_QUERY_ITEM_METHOD("offset", "bundle offset", _output_offset, output_offset_args),
-	nOSC_QUERY_ITEM_METHOD("reset", "disable engines", _output_reset, NULL),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _output_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
+	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
+	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
@@ -882,22 +899,22 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_NODE("tuio1/", "TUIO 1.0 output engine", tuio1_tree),
 	nOSC_QUERY_ITEM_NODE("scsynth/", "SuperCollider output engine", scsynth_tree),
 	nOSC_QUERY_ITEM_NODE("oscmidi/", "OSC MIDI output engine", oscmidi_tree),
-	nOSC_QUERY_ITEM_NODE("rtpmidi/", "RTP MIDI output engine", rtpmidi_tree),
+	//nOSC_QUERY_ITEM_NODE("rtpmidi/", "RTP MIDI output engine", rtpmidi_tree),
 };
 
 static const nOSC_Query_Item root_tree [] = {
 	nOSC_QUERY_ITEM_NODE("info/", "Information", info_tree),
 	nOSC_QUERY_ITEM_NODE("comm/", "Communitation", comm_tree),
-	nOSC_QUERY_ITEM_NODE("reset/", "Device reset", reset_tree),
+	nOSC_QUERY_ITEM_NODE("reset/", "Reset", reset_tree),
 	nOSC_QUERY_ITEM_NODE("calibration/", "Calibration", calibration_tree),
 
 	// sockets
 	nOSC_QUERY_ITEM_NODE("config/", "Configuration", config_tree),
-	nOSC_QUERY_ITEM_NODE("sntp/", "Simplified Network Time Protocol Socket", sntp_tree),
-	nOSC_QUERY_ITEM_NODE("ipv4ll/", "IPv4 Link Local Addressing Socket", ipv4ll_tree),
-	nOSC_QUERY_ITEM_NODE("dhcpc/", "DHCP Client Socket", dhcpc_tree),
-	nOSC_QUERY_ITEM_NODE("debug/", "Debug Socket", debug_tree),
-	nOSC_QUERY_ITEM_NODE("mdns/", "Multicast DNS Socket", mdns_tree),
+	nOSC_QUERY_ITEM_NODE("sntp/", "Simplified Network Time Protocol", sntp_tree),
+	nOSC_QUERY_ITEM_NODE("ipv4ll/", "IPv4 Link Local Addressing", ipv4ll_tree),
+	nOSC_QUERY_ITEM_NODE("dhcpc/", "DHCP Client", dhcpc_tree),
+	nOSC_QUERY_ITEM_NODE("debug/", "Debug", debug_tree),
+	nOSC_QUERY_ITEM_NODE("mdns/", "Multicast DNS", mdns_tree),
 
 	// output engines
 	nOSC_QUERY_ITEM_NODE("engines/", "Output engines", engines_tree),
@@ -905,11 +922,6 @@ static const nOSC_Query_Item root_tree [] = {
 };
 
 static const nOSC_Query_Item root = nOSC_QUERY_ITEM_NODE("/", "Root node", root_tree);
-
-/*
-"/!" "s" "reply address"
-"/reply" "ss" "/!" "{}"
-*/
 
 static uint_fast8_t
 _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)

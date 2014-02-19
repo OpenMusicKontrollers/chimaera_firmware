@@ -397,10 +397,19 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 uint16_t
 nosc_message_vararg_serialize(uint8_t *buf, const char *path, const char *fmt, ...)
 {
-	nOSC_Message msg = vararg_msg;
-
   va_list args;
+
   va_start(args, fmt);
+	uint16_t size = nosc_message_varlist_serialize(buf, path, fmt, args);
+  va_end(args);
+
+	return size;
+}
+
+uint16_t
+nosc_message_varlist_serialize(uint8_t *buf, const char *path, const char *fmt, va_list args)
+{
+	nOSC_Message msg = vararg_msg;
 
   const char *p;
 	uint_fast8_t pos;
@@ -460,11 +469,8 @@ nosc_message_vararg_serialize(uint8_t *buf, const char *path, const char *fmt, .
 				break;
 		}
 	}
-  va_end(args);
 
-	uint16_t size = nosc_message_serialize(msg, path, fmt, buf);
-
-	return size;
+	return nosc_message_serialize(msg, path, fmt, buf);
 }
 
 /*
@@ -575,6 +581,14 @@ nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 				if( (argv[i].t < args[i].range.min.t) || (argv[i].t > args[i].range.max.t) )
 					return 0;
 				break;
+			case nOSC_STRING:
+				if(strlen(argv[i].s) > args[i].range.max.i)
+					return 0;
+				break;
+			case nOSC_SYMBOL:
+				if(strlen(argv[i].S) > args[i].range.max.i)
+					return 0;
+				break;
 			default:
 				break;
 		}
@@ -616,17 +630,16 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 		for(i=0; i<item->item.method.argc; i++)
 		{
 			const nOSC_Query_Argument *arg = &item->item.method.args[i];
-			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"mode\":%i",
-				arg->type, arg->description, arg->mode);
+			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"read\":%s,\"write\":%s,\"optional\":%s",
+				arg->type, arg->description,
+				arg->mode & nOSC_QUERY_MODE_R ? "true" : "false",
+				arg->mode & nOSC_QUERY_MODE_W ? "true" : "false",
+				arg->mode & nOSC_QUERY_MODE_X ? "false" : "true");
 			buf += strlen(buf);
 			switch(arg->type)
 			{
 				case nOSC_INT32:
 					sprintf(buf, ",\"range\":[%i,%i]", arg->range.min.i, arg->range.max.i);
-					buf += strlen(buf);
-					break;
-				case nOSC_INT64:
-					sprintf(buf, ",\"range\":[%li,%li]", arg->range.min.h, arg->range.max.h);
 					buf += strlen(buf);
 					break;
 				case nOSC_FLOAT:
@@ -660,6 +673,10 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 					buf += strlen(buf);
 					break;
 				}
+				case nOSC_INT64:
+					sprintf(buf, ",\"range\":[%li,%li]", arg->range.min.h, arg->range.max.h);
+					buf += strlen(buf);
+					break;
 				case nOSC_DOUBLE:
 				{
 					char min[32];
@@ -691,6 +708,11 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 					buf += strlen(buf);
 					break;
 				}
+				case nOSC_STRING:
+				case nOSC_SYMBOL:
+					sprintf(buf, ",\"maxlen\":%u", arg->range.max.i);
+					buf += strlen(buf);
+					break;
 				//FIXME add other types
 				default:
 					break;

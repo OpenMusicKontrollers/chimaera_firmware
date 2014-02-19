@@ -24,6 +24,21 @@
 #include <debug.h>
 #include <config.h>
 
+void
+DEBUG(const char *fmt, ...)
+{
+	if(config.debug.socket.enabled)
+	{
+		va_list args;
+		
+		va_start(args, fmt);
+		uint16_t size = nosc_message_varlist_serialize(BUF_O_OFFSET(buf_o_ptr), "/debug", fmt, args);
+		va_end(args);
+
+		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	}
+}
+
 /*
  * Config
  */
@@ -44,15 +59,7 @@ _debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  * Query
  */
 
-static const nOSC_Query_Argument debug_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("bool", nOSC_QUERY_MODE_RW, 0, 1)
-};
-
-static const nOSC_Query_Argument debug_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("ascii", nOSC_QUERY_MODE_RW)
-};
-
 const nOSC_Query_Item debug_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _debug_enabled, debug_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("address", "remote address", _debug_address, debug_address_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
 };

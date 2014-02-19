@@ -324,25 +324,21 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  * Query
  */
 
-static const nOSC_Query_Argument scsynth_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
 static const nOSC_Query_Argument scsynth_group_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("group", nOSC_QUERY_MODE_RWX, 0, GROUP_MAX),
-	nOSC_QUERY_ARGUMENT_STRING("name", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_INT32("sid", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("gid", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("out", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("arg", nOSC_QUERY_MODE_RW, 0, UINT8_MAX),
-	nOSC_QUERY_ARGUMENT_BOOL("alloc", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("gate", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_INT32("add_action", nOSC_QUERY_MODE_RW, 0, 4),
-	nOSC_QUERY_ARGUMENT_BOOL("is_group", nOSC_QUERY_MODE_RW)
+	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_RWX, 0, GROUP_MAX-1),
+	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_RW, 8),
+	nOSC_QUERY_ARGUMENT_INT32("Synth ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
+	nOSC_QUERY_ARGUMENT_INT32("Group ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
+	nOSC_QUERY_ARGUMENT_INT32("Out channel", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
+	nOSC_QUERY_ARGUMENT_INT32("Argument offset", nOSC_QUERY_MODE_RW, 0, UINT8_MAX),
+	nOSC_QUERY_ARGUMENT_BOOL("Allocate?", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_BOOL("Gate?", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_INT32("Add action", nOSC_QUERY_MODE_RW, 0, 4),
+	nOSC_QUERY_ARGUMENT_BOOL("Group?", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Item scsynth_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _scsynth_enabled, scsynth_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("group", "group specs", _scsynth_group, scsynth_group_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("attributes", "Attributes", _scsynth_group, scsynth_group_args),
 };

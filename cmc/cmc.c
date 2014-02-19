@@ -171,7 +171,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 		float x, y;
 		uint_fast8_t P = peaks[p];
 
-		switch(config.interpolation.order)
+		switch(config.sensors.interpolation_order)
 		{
 			case 0: // no interpolation
 			{

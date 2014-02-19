@@ -313,8 +313,8 @@ adc_fill(uint_fast8_t raw_ptr)
 
 	uint32_t zero = 0UL;
 	uint_fast8_t dump_enabled = config.dump.enabled; // local copy
-	uint_fast8_t movingaverage_enabled = config.movingaverage.enabled; // local copy
-	uint_fast8_t bitshift = config.movingaverage.bitshift; // local copy
+	uint_fast8_t movingaverage_enabled = config.sensors.movingaverage_bitshift > 0; // local copy
+	uint_fast8_t bitshift = config.sensors.movingaverage_bitshift; // local copy
 
 #if(ADC_DUAL_LENGTH > 0)
 	for(i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
@@ -455,6 +455,17 @@ loop()
 	uint_fast8_t first = 1;
 	nOSC_Timestamp offset;
 
+//#define SPEEDTEST
+#ifdef SPEEDTEST
+	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+	while(1)
+	{
+		udp_send_nonblocking(config.output.socket.sock, buf_o[!buf_o_ptr], cmc_len);
+		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+		udp_send_block(config.output.socket.sock);
+	}
+#endif
+
 //#define BENCHMARK
 #ifdef BENCHMARK
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
@@ -464,10 +475,9 @@ loop()
 	Stop_Watch sw_output_block = {.id = "output_block", .thresh=2000};
 #endif // BENCHMARK
 
-
 	while(1) // endless loop
 	{
-		if(config.rate)
+		if(config.sensors.rate)
 		{
 			adc_time_up = 0;
 			timer_resume(adc_timer);
@@ -644,7 +654,7 @@ loop()
 
 		adc_dma_block();
 
-		if(config.rate)
+		if(config.sensors.rate)
 			while(!adc_time_up)
 				;
 	} // endless loop
@@ -653,9 +663,9 @@ loop()
 void
 adc_timer_reconfigure()
 {
-	// this scheme is goof for rates in the range of 20-2000+
-	uint16_t prescaler = 100-1;
-	uint16_t reload = 72e6 /(config.rate * 100);
+	// this scheme is good for rates in the range of 20-2000+
+	uint16_t prescaler = 50-1;
+	uint16_t reload = 72e6 / (config.sensors.rate * 50);
 	uint16_t compare = reload;
 
 	timer_set_prescaler(adc_timer, prescaler);
@@ -1017,7 +1027,6 @@ setup()
 	pin_write_bit(CHIM_LED_PIN, 1);
 
 	DEBUG("si", "reset_mode", reset_mode);
-	//DEBUG("si", "config size", sizeof(Config));
 }
 
 void

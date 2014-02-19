@@ -195,16 +195,8 @@ _tuio1_custom_profile(const char *path, const char *fmt, uint_fast8_t argc, nOSC
  * Query
  */
 
-static const nOSC_Query_Argument tuio1_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
-static const nOSC_Query_Argument tuio1_custom_profile_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
 const nOSC_Query_Item tuio1_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _tuio1_enabled, tuio1_enabled_args),
-	nOSC_QUERY_ITEM_METHOD("custom_profile", "toggle custom profile", _tuio1_custom_profile, tuio1_custom_profile_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio1_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("custom_profile", "Toggle custom profile", _tuio1_custom_profile, config_boolean_args),
 };

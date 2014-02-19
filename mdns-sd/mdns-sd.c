@@ -623,10 +623,6 @@ _mdns_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
  * Query
  */
 
-static const nOSC_Query_Argument mdns_enabled_args [] = {
-	nOSC_QUERY_ARGUMENT_BOOL("bool", nOSC_QUERY_MODE_RW)
-};
-
 const nOSC_Query_Item mdns_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "enable/disable", _mdns_enabled, mdns_enabled_args),
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _mdns_enabled, config_boolean_args),
 };
