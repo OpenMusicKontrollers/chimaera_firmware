@@ -110,6 +110,9 @@ _wiz_rx_irq()
 	uint8_t isr_tx = dma_get_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
 	uint8_t spi_sr = WIZ_SPI_BAS->SR;
 	uint_fast8_t rx_err = 0;
+	
+	if(isr_rx == 0) //FIXME why is this needed?
+		isr_rx = DMA_ISR_TCIF;
 
 	// check for errors in DMA and SPI status registers
 	rx_err |= isr_rx & DMA_ISR_TEIF; // RX DMA transfer error
@@ -149,6 +152,9 @@ _wiz_tx_irq()
 	uint8_t isr_tx = dma_get_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
 	uint8_t spi_sr = WIZ_SPI_BAS->SR;
 	uint_fast8_t tx_err = 0;
+	
+	if(isr_tx == 0) //FIXME why is this needed?
+		isr_tx = DMA_ISR_TCIF;
 
 	// check for errors in DMA and SPI status registers
 	tx_err |= isr_tx & DMA_ISR_TEIF; // Tx DMA transfer error
@@ -211,8 +217,6 @@ wiz_job_run_single()
 	switch(job->rw)
 	{
 		case WIZ_TX:
-			wiz_job_set_frame();
-
 			dma_channel_regs(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
 			dma_attach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB, _wiz_tx_irq);
 
@@ -222,6 +226,7 @@ wiz_job_run_single()
 			
 			spi_rx_dma_disable(WIZ_SPI_DEV); // disable RX DMA on WIZ_SPI_DEV
 
+			wiz_job_set_frame();
 			setSS();
 
 			len2 = job->len + WIZ_SEND_OFFSET;
@@ -283,15 +288,14 @@ wiz_job_run_single()
 			break;
 
 		case WIZ_TXRX:
-			wiz_job_set_frame();
-
 			dma_channel_regs(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB)->CCR |= DMA_CCR_TCIE | DMA_CCR_TEIE;
 			dma_attach_interrupt(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB, _wiz_rx_irq);
 
 			dma_channel_regs(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB)->CCR |= DMA_CCR_MINC;
 			
 			dma_detach_interrupt(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
-
+			
+			wiz_job_set_frame();
 			setSS();
 
 			len2 = job->len + WIZ_SEND_OFFSET;
