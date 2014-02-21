@@ -81,6 +81,10 @@ static uint8_t mux_order [MUX_MAX] = {0xf, 0x4, 0xb, 0x3, 0xd, 0x6, 0x9, 0x1, 0x
 static uint8_t order12 [MUX_MAX*ADC_DUAL_LENGTH*2];
 static uint8_t order3 [MUX_MAX*ADC_SING_LENGTH];
 
+#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
+static volatile uint_fast8_t adc12_eos = 0;
+static volatile uint_fast8_t adc3_eos = 0;
+#endif
 static volatile uint_fast8_t adc12_dma_done = 0;
 static volatile uint_fast8_t adc12_dma_err = 0;
 static volatile uint_fast8_t adc3_dma_done = 0;
@@ -184,6 +188,44 @@ _counter_inc()
 #endif
 }
 
+static inline __always_inline void
+_irq_adc_block()
+{
+#if(ADC_DUAL_LENGTH > 0)
+# if(ADC_SING_LENGTH > 0)
+	if(adc12_eos && adc3_eos)
+	{
+		_counter_inc();
+		if(mux_counter < MUX_MAX)
+		{
+			mux_counter++;
+
+			adc12_eos = 0;
+			adc3_eos = 0;
+			ADC1->regs->CR |= ADC_CR_ADSTART; // start master(ADC1) and slave(ADC2) conversion
+			ADC3->regs->CR |= ADC_CR_ADSTART;
+		}
+	}
+# else
+	_counter_inc();
+	if(mux_counter < MUX_MAX)
+	{
+		mux_counter++;
+
+		ADC1->regs->CR |= ADC_CR_ADSTART; // start master(ADC1) and slave(ADC2) conversion
+	}
+# endif
+#else
+	_counter_inc();
+	if(mux_counter < MUX_MAX)
+	{
+		mux_counter++;
+
+		ADC3->regs->CR |= ADC_CR_ADSTART;
+	}
+#endif
+}
+
 void __CCM_TEXT__
 __irq_adc1_2()
 //adc1_2_irq(adc_callback_data *data)
@@ -191,19 +233,10 @@ __irq_adc1_2()
 	ADC1->regs->ISR |= ADC_ISR_EOS;
 	//ADC1->regs->ISR |= data->irq_flags; // clear flags
 
-#if(ADC_DUAL_LENGTH > 0)
-	_counter_inc();
-
-	if(mux_counter < MUX_MAX)
-	{
-		mux_counter++;
-
-		ADC1->regs->CR |= ADC_CR_ADSTART; // start master(ADC1) and slave(ADC2) conversion
-#	if(ADC_SING_LENGTH > 0)
-		ADC3->regs->CR |= ADC_CR_ADSTART;
-#	endif
-	}
+#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
+	adc12_eos = 1;
 #endif
+	_irq_adc_block();
 }
 
 void __CCM_TEXT__
@@ -213,16 +246,10 @@ __irq_adc3()
 	ADC3->regs->ISR |= ADC_ISR_EOS;
 	//ADC3->regs->ISR |= data->irq_flags; // clear flags
 
-#if(ADC_DUAL_LENGTH == 0)
-	_counter_inc();
-
-	if(mux_counter < MUX_MAX)
-	{
-		mux_counter++;
-
-		ADC3->regs->CR |= ADC_CR_ADSTART;
-	}
+#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
+	adc3_eos = 1;
 #endif
+	_irq_adc_block();
 }
 
 static void __CCM_TEXT__
@@ -255,11 +282,11 @@ adc_dma_run()
 	adc12_dma_done = 0;
 	adc3_dma_done = 0;
 	mux_counter = 0;
-#if(ADC_DUAL_LENGTH > 0)
-	__irq_adc1_2();
-#else
-	__irq_adc3();
+#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
+	adc12_eos = 1;
+	adc3_eos = 1;
 #endif
+	_irq_adc_block();
 }
 
 static inline __always_inline void
@@ -931,13 +958,15 @@ setup()
 	adc_disable(ADC3);
 	adc_disable(ADC4);
 
+	adc_set_prescaler(ADC_PRE_PCLK_DIV_1);
+
 	adc_set_exttrig(ADC1, ADC_EXTTRIG_MODE_SOFTWARE);
 	adc_set_exttrig(ADC2, ADC_EXTTRIG_MODE_SOFTWARE);
 	adc_set_exttrig(ADC3, ADC_EXTTRIG_MODE_SOFTWARE);
 
-	adc_set_sample_rate(ADC1, ADC_SMPR_61_5); //TODO make this configurable
-	adc_set_sample_rate(ADC2, ADC_SMPR_61_5);
-	adc_set_sample_rate(ADC3, ADC_SMPR_61_5);
+	adc_set_sample_rate(ADC1, ADC_SMPR_181_5);
+	adc_set_sample_rate(ADC2, ADC_SMPR_181_5);
+	adc_set_sample_rate(ADC3, ADC_SMPR_181_5);
 
 	// fill raw sequence array with corresponding ADC channels
 	for(i=0; i<ADC_DUAL_LENGTH; i++)
