@@ -485,11 +485,14 @@ loop()
 //#define SPEEDTEST
 #ifdef SPEEDTEST
 	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+	cmc_len = slip_encode(BUF_O_OFFSET(!buf_o_ptr), cmc_len);
 	while(1)
 	{
-		udp_send_nonblocking(config.output.socket.sock, buf_o[!buf_o_ptr], cmc_len);
+		udp_send_nonblocking(config.output.socket.sock, BUF_O_BASE(!buf_o_ptr), cmc_len);
 		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+		cmc_len = slip_encode(BUF_O_OFFSET(buf_o_ptr), cmc_len);
 		udp_send_block(config.output.socket.sock);
+		buf_o_ptr ^= 1;
 	}
 #endif
 

@@ -66,7 +66,7 @@ void uid_str(char *str);
 
 /*
  * str to/from ip, maC, cidr conversions
-*/
+ */
 uint_fast8_t str2mac(char *str, uint8_t *mac);
 void mac2str(uint8_t *mac, char *str);
 uint_fast8_t str2ip(char *str, uint8_t *ip);
@@ -75,5 +75,11 @@ void ip2str(uint8_t *ip, char *str);
 void ip2strCIDR(uint8_t *ip, uint8_t mask, char *str);
 uint_fast8_t str2addr(char *str, uint8_t *ip, uint16_t *port);
 void addr2str(uint8_t *ip, uint16_t port, char *str);
+
+/*
+ * SLIP encode/decode
+ */
+size_t slip_encode(uint8_t *buf, size_t len);
+size_t slip_decode(uint8_t *buf, size_t len);
 
 #endif

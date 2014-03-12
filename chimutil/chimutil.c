@@ -345,3 +345,80 @@ addr2str(uint8_t *ip, uint16_t port, char *str)
 	sprintf(str, "%hhu.%hhu.%hhu.%hhu:%hu",
 		ip[0], ip[1], ip[2], ip[3], port);
 }
+
+#define SLIP_END					0300	// indicates end of packet
+#define SLIP_ESC					0333	// indicates byte stuffing
+#define SLIP_END_REPLACE	0334	// ESC ESC_END means END data byte
+#define SLIP_ESC_REPLACE	0335	// ESC ESC_ESC means ESC data byte
+
+// inline SLIP encoding
+size_t __CCM_TEXT__
+slip_encode(uint8_t *buf, size_t len)
+{
+	uint8_t *src;
+	uint8_t *end = buf + len;
+	uint8_t *dst;
+
+	size_t count = 0;
+	for(src=buf; src<end; src++)
+		if( (*src == SLIP_END) || (*src == SLIP_ESC) )
+			count++;
+
+	src = end - 1;
+	dst = end + count;
+	*dst-- = SLIP_END;
+
+	while( (src >= 0) && (src != dst) )
+	{
+		if(*src == SLIP_END)
+		{
+			*dst-- = SLIP_END_REPLACE;
+			*dst-- = SLIP_ESC;
+			*src--;
+		}
+		else if(*src == SLIP_ESC)
+		{
+			*dst-- = SLIP_ESC_REPLACE;
+			*dst-- = SLIP_ESC;
+			*src--;
+		}
+		else
+			*dst-- = *src--;
+	}
+
+	return len + count + 1;
+}
+
+// inline SLIP decoding
+size_t __CCM_TEXT__
+slip_decode(uint8_t *buf, size_t len)
+{
+	uint8_t *src = buf;
+	uint8_t *end = buf + len;
+	uint8_t *dst = buf;
+
+	while(src < end)
+	{
+		if(*src == SLIP_ESC)
+		{
+			src++;
+			if(*src == SLIP_END_REPLACE)
+				*dst++ = SLIP_END;
+			else if(*src == SLIP_ESC_REPLACE)
+				*dst++ = SLIP_ESC;
+			src++;
+		}
+		else if(*src == SLIP_END)
+			src++; //TODO break?
+		else
+		{
+			if(src != dst)
+				dst = src;
+			src++;
+			dst++;
+			//TODO *dst++ = *src++;
+		}
+	}
+
+	return dst - buf;
+}
