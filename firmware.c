@@ -95,7 +95,10 @@ static volatile uint_fast8_t mux_counter = MUX_MAX;
 static volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
 static volatile uint_fast8_t sntp_should_listen = 0;
 static volatile uint_fast8_t mdns_should_listen = 0;
+static volatile uint_fast8_t output_should_listen = 0;
 static volatile uint_fast8_t config_should_listen = 0;
+static volatile uint_fast8_t debug_should_listen = 0;
+static volatile uint_fast8_t dhcpc_should_listen = 0;
 static volatile uint_fast8_t dhcpc_needs_refresh = 0;
 static volatile uint_fast8_t mdns_timeout = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
@@ -145,21 +148,39 @@ wiz_irq()
 }
 
 static void __CCM_TEXT__
+wiz_output_irq(uint8_t isr)
+{
+	output_should_listen = isr;
+}
+
+static void __CCM_TEXT__
 wiz_config_irq(uint8_t isr)
 {
-	config_should_listen = 1;
+	config_should_listen = isr;
+}
+
+static void __CCM_TEXT__
+wiz_debug_irq(uint8_t isr)
+{
+	debug_should_listen = isr;
 }
 
 static void __CCM_TEXT__
 wiz_mdns_irq(uint8_t isr)
 {
-	mdns_should_listen = 1;
+	mdns_should_listen = isr;
 }
 
 static void __CCM_TEXT__
 wiz_sntp_irq(uint8_t isr)
 {
-	sntp_should_listen = 1;
+	sntp_should_listen = isr;
+}
+
+static void __CCM_TEXT__
+wiz_dhcpc_irq(uint8_t isr)
+{
+	dhcpc_should_listen = isr;
 }
 
 static inline __always_inline void
@@ -484,14 +505,16 @@ loop()
 
 //#define SPEEDTEST
 #ifdef SPEEDTEST
-	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
-	cmc_len = slip_encode(BUF_O_OFFSET(!buf_o_ptr), cmc_len);
+	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr),
+		config.output.socket.tcp, config.output.socket.slip,
+		"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
 	while(1)
 	{
-		udp_send_nonblocking(config.output.socket.sock, BUF_O_BASE(!buf_o_ptr), cmc_len);
-		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
-		cmc_len = slip_encode(BUF_O_OFFSET(buf_o_ptr), cmc_len);
-		udp_send_block(config.output.socket.sock);
+		osc_send_nonblocking(&config.output.socket, BUF_O_BASE(!buf_o_ptr), cmc_len);
+		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
+			config.output.socket.tcp, config.output.socket.slip,
+			"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+		osc_send_block(&config.output.socket);
 		buf_o_ptr ^= 1;
 	}
 #endif
@@ -525,7 +548,7 @@ loop()
 		if(calibrating)
 			range_calibrate(adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
 
-		if(config.output.socket.enabled)
+		if(config.output.osc.socket.enabled)
 		{
 			uint_fast8_t job = 0;
 
@@ -533,7 +556,9 @@ loop()
 			stop_watch_start(&sw_output_send);
 #endif
 			if(cmc_job) // start nonblocking sending of last cycles output
-				cmc_stat = udp_send_nonblocking(config.output.socket.sock, buf_o[!buf_o_ptr], cmc_len);
+			{
+				cmc_stat = osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
+			}
 
 		// fill adc_rela
 #ifdef BENCHMARK
@@ -588,12 +613,14 @@ loop()
 					memset(nest_fmt, nOSC_BUNDLE, job);
 					nest_fmt[job] = nOSC_TERM;
 
-					cmc_len = nosc_bundle_serialize(nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr));
+					cmc_len = nosc_bundle_serialize(nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr),
+						config.output.osc.tcp, config.output.osc.slip);
 				}
 				else // job == 1, there's no need to send a nested bundle in this case
 				{
 					nOSC_Item *first = &nest_bndl[0];
-					cmc_len = nosc_bundle_serialize(first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr));
+					cmc_len = nosc_bundle_serialize(first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr),
+						config.output.osc.tcp, config.output.osc.slip);
 				}
 			}
 
@@ -604,7 +631,7 @@ loop()
 				stop_watch_start(&sw_output_block);
 #endif
 			if(cmc_job && cmc_stat) // block for end of sending of last cycles output
-				udp_send_block(config.output.socket.sock);
+				osc_send_block(&config.output.osc);
 
 			if(job) // switch output buffer
 				buf_o_ptr ^= 1;
@@ -630,17 +657,67 @@ loop()
 		}
 
 		// run osc config server
-		if(config.config.socket.enabled && config_should_listen)
+		if(config.config.osc.socket.enabled && config_should_listen)
 		{
-			udp_dispatch(config.config.socket.sock, BUF_I_BASE(buf_i_ptr), config_cb);
+			if(config_should_listen & WIZ_Sn_IR_CON) // TCP only
+			{
+				wiz_socket_state[SOCK_CONFIG] = WIZ_SOCKET_STATE_OPEN;
+				udp_update_read_write_pointers(SOCK_CONFIG);
+				debug_str("config connect");
+			}
+			if( (config_should_listen & WIZ_Sn_IR_TIMEOUT) || (config_should_listen & WIZ_Sn_IR_DISCON) )
+			{
+				config_enable(0);
+				debug_str("config ARPto or TCP disconect");
+			}
+			else if( (config_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_CONFIG] == WIZ_SOCKET_STATE_OPEN) )
+				udp_dispatch(config.config.osc.socket.sock, BUF_I_BASE(buf_i_ptr), config_cb); //FIXME implement osc_dispatch
 			config_should_listen = 0;
+		}
+
+		if(config.output.osc.socket.enabled && output_should_listen)
+		{
+			if(output_should_listen & WIZ_Sn_IR_CON) // TCP only
+			{
+				wiz_socket_state[SOCK_OUTPUT] = WIZ_SOCKET_STATE_OPEN;
+				udp_update_read_write_pointers(SOCK_OUTPUT);
+				debug_str("output connect");
+			}
+			if( (output_should_listen & WIZ_Sn_IR_TIMEOUT) || (output_should_listen & WIZ_Sn_IR_DISCON) )
+			{
+				output_enable(0);
+				debug_str("output ARPto or TCP disconect");
+			}
+			else if( (output_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_OUTPUT] == WIZ_SOCKET_STATE_OPEN) )
+				osc_ignore(config.output.osc.socket.sock);
+			output_should_listen = 0;
+		}
+
+		if(config.debug.osc.socket.enabled && debug_should_listen)
+		{
+			if(debug_should_listen & WIZ_Sn_IR_CON) // TCP only
+			{
+				wiz_socket_state[SOCK_DEBUG] = WIZ_SOCKET_STATE_OPEN;
+				udp_update_read_write_pointers(SOCK_DEBUG);
+			}
+			if( (debug_should_listen & WIZ_Sn_IR_TIMEOUT) || (debug_should_listen & WIZ_Sn_IR_DISCON) ) {
+				debug_enable(0);
+			}
+			else if( (debug_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_DEBUG] == WIZ_SOCKET_STATE_OPEN) )
+				osc_ignore(config.debug.osc.socket.sock);
+			debug_should_listen = 0;
 		}
 		
 		// run sntp client
 		if(config.sntp.socket.enabled)
 		{
+			if(sntp_should_listen & WIZ_Sn_IR_TIMEOUT)
+			{
+				sntp_enable(0);
+				debug_str("sntp ARPto");
+			}
 			// listen for sntp request answer
-			if(sntp_should_listen)
+			else if(sntp_should_listen & WIZ_Sn_IR_RECV)
 			{
 				udp_dispatch(config.sntp.socket.sock, BUF_I_BASE(buf_i_ptr), sntp_cb);
 				sntp_should_listen = 0;
@@ -659,7 +736,8 @@ loop()
 		// run ZEROCONF server
 		if(config.mdns.socket.enabled)
 		{
-			if(mdns_should_listen)
+			// ARPto does not exist for multicast connections
+			if(mdns_should_listen & WIZ_Sn_IR_RECV)
 			{
 				udp_dispatch(config.mdns.socket.sock, BUF_I_BASE(buf_i_ptr), mdns_cb);
 				mdns_should_listen = 0;
@@ -681,6 +759,21 @@ loop()
 			dhcpc_enable(0);
 			dhcpc_needs_refresh = 0;
 		}
+
+		//FIXME asio
+		/*
+		if(config.dhcpc.socket.enabled && dhcpc_should_listen)
+		{
+			if(dhcpc_should_listen & WIZ_Sn_IR_TIMEOUT)
+			{
+				dhcpc_enable(0);
+				debug_str("dhcpc ARPto");
+			}
+			else if(dhcpc_should_listen & WIZ_Sn_IR_RECV)
+				udp_ignore(config.dhcpc.socket.sock);
+			dhcpc_should_listen = 0;
+		}
+		*/
 
 		adc_dma_block();
 
@@ -927,9 +1020,20 @@ setup()
 		IPv4LL_claim(config.comm.ip, config.comm.gateway, config.comm.subnet);
 
 	wiz_comm_set(config.comm.mac, config.comm.ip, config.comm.gateway, config.comm.subnet);
-	wiz_socket_irq_set(config.config.socket.sock, wiz_config_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
-	wiz_socket_irq_set(config.mdns.socket.sock, wiz_mdns_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
-	wiz_socket_irq_set(config.sntp.socket.sock, wiz_sntp_irq, WIZ_Sn_IR_RECV); //TODO put this into config_enable
+
+	//TODO put this into config_enable?
+	const uint8_t wiz_udp_multicast_irq_mask = WIZ_Sn_IR_RECV;
+	const uint8_t wiz_udp_irq_mask = wiz_udp_multicast_irq_mask | WIZ_Sn_IR_TIMEOUT;
+	const uint8_t wiz_tcp_irq_mask = wiz_udp_irq_mask | WIZ_Sn_IR_CON | WIZ_Sn_IR_DISCON;
+	wiz_socket_irq_unset(SOCK_ARP);
+	wiz_socket_irq_set(SOCK_OUTPUT, wiz_output_irq, wiz_tcp_irq_mask);
+	wiz_socket_irq_set(SOCK_CONFIG, wiz_config_irq, wiz_tcp_irq_mask);
+	wiz_socket_irq_set(SOCK_SNTP, wiz_sntp_irq, wiz_udp_irq_mask);
+	wiz_socket_irq_set(SOCK_DEBUG, wiz_debug_irq, wiz_tcp_irq_mask);
+	wiz_socket_irq_set(SOCK_MDNS, wiz_mdns_irq, wiz_udp_multicast_irq_mask);
+	//wiz_socket_irq_set(SOCK_DHCPC, wiz_dhcpc_irq, wiz_udp_irq_mask); FIXME asio
+	wiz_socket_irq_unset(SOCK_DHCPC);
+	wiz_socket_irq_unset(SOCK_RTP);
 
 	// initialize timers TODO move up
 	timer_init(adc_timer);
@@ -946,10 +1050,10 @@ setup()
 
 
 	// initialize sockets
-	output_enable(config.output.socket.enabled);
-	config_enable(config.config.socket.enabled);
+	output_enable(config.output.osc.socket.enabled);
+	config_enable(config.config.osc.socket.enabled);
 	sntp_enable(config.sntp.socket.enabled);
-	debug_enable(config.debug.socket.enabled);
+	debug_enable(config.debug.osc.socket.enabled);
 	mdns_enable(config.mdns.socket.enabled);
 	
 	if(config.mdns.socket.enabled)

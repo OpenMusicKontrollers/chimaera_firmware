@@ -65,4 +65,4 @@ uint_fast8_t cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rel
 void cmc_group_clear();
 void cmc_engines_update();
 
-#endif
+#endif // _CMC_H_

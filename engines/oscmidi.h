@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef OSCMIDI_H
-#define OSCMIDI_H
+#ifndef _OSCMIDI_H_
+#define _OSCMIDI_H_
 
 #include <cmc.h>
 #include <midi.h>
@@ -33,4 +33,4 @@ extern const nOSC_Query_Item oscmidi_tree [4];
 
 void oscmidi_init();
 
-#endif // OSCMIDI_H
+#endif // _OSCMIDI_H_

@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef W5200_PRIVATE_H
-#define W5200_PRIVATE_H
+#ifndef _W5200_PRIVATE_H_
+#define _W5200_PRIVATE_H_
 
 #include "wiz_private.h"
 
@@ -129,4 +129,4 @@
 #define TX_BUF_BASE 					0x8000
 #define RX_BUF_BASE 					0xC000
 
-#endif
+#endif // _W5200_PRIVATE_H_

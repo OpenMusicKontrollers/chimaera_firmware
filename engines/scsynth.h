@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef SCSYNTH_H_
-#define SCSYNTH_H_
+#ifndef _SCSYNTH_H_
+#define _SCSYNTH_H_
 
 #include <stdint.h>
 
@@ -59,4 +59,4 @@ void scsynth_init();
 uint_fast8_t scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg, uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group);
 uint_fast8_t scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg, uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group);
 
-#endif
+#endif // _SCSYNTH_H_

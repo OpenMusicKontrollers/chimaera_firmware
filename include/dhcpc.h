@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef DHCPC_H
-#define DHCPC_H
+#ifndef _DHCPC_H_
+#define _DHCPC_H_
 
 #include <chimaera.h>
 
@@ -50,4 +50,4 @@ uint_fast8_t dhcpc_refresh();
 extern DHCPC dhcpc;
 extern const nOSC_Query_Item dhcpc_tree [1];
 
-#endif // DHCPC_H
+#endif // _DHCPC_H_

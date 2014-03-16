@@ -98,7 +98,7 @@ _sensors_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isi", uuid, path, SENSOR_N);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -127,7 +127,7 @@ _sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -163,7 +163,7 @@ _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOS
 				size = CONFIG_FAIL("iss", uuid, path, "valid sample windows are 1, 2, 4 and 8");
 		}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -183,7 +183,7 @@ _group_clear(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	cmc_group_clear();
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -227,7 +227,7 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -242,7 +242,7 @@ _group_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		size = CONFIG_SUCCESS("is", uuid, path);
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "groups could not be loaded from EEPROM");
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -257,7 +257,7 @@ _group_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		size = CONFIG_SUCCESS("is", uuid, path);
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "groups could not be saved to EEPROM");
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -269,7 +269,7 @@ _group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isi", uuid, path, GROUP_MAX);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }

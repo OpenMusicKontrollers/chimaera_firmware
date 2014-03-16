@@ -31,4 +31,4 @@ extern dma_tube_config adc_tube3;
 extern dma_tube_config spi_rx_tube;
 extern dma_tube_config spi_tx_tube;
 
-#endif
+#endif // _TUBE_H_

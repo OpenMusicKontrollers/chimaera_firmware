@@ -22,20 +22,23 @@
  */
 
 #include <debug.h>
+#include <chimaera.h>
 #include <config.h>
 
 void
 DEBUG(const char *fmt, ...)
 {
-	if(config.debug.socket.enabled)
+	if(config.debug.osc.socket.enabled)
 	{
 		va_list args;
 		
 		va_start(args, fmt);
-		uint16_t size = nosc_message_varlist_serialize(BUF_O_OFFSET(buf_o_ptr), "/debug", fmt, args);
+		uint16_t size = nosc_message_varlist_serialize(BUF_O_OFFSET(buf_o_ptr),
+			config.debug.osc.tcp, config.debug.osc.slip,
+			"/debug", fmt, args);
 		va_end(args);
 
-		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
 	}
 }
 
@@ -46,13 +49,42 @@ DEBUG(const char *fmt, ...)
 static uint_fast8_t
 _debug_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_socket_enabled(&config.debug.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.debug.osc.socket, path, fmt, argc, args);
 }
 
 static uint_fast8_t
 _debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_address(&config.debug.socket, path, fmt, argc, args);
+	return config_address(&config.debug.osc.socket, path, fmt, argc, args);
+}
+
+static uint_fast8_t
+_debug_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint8_t *boolean = &config.debug.osc.tcp;
+	uint8_t enabled = config.debug.osc.socket.enabled;
+
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+	else
+	{
+		debug_enable(0);
+		*boolean = args[1].i != 0 ? 1 : 0;
+		debug_enable(enabled);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_debug_slip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_bool(path, fmt, argc, args, &config.debug.osc.slip);
 }
 
 /*
@@ -62,4 +94,6 @@ _debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 const nOSC_Query_Item debug_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _debug_tcp, config_boolean_args), //FIXME document
+	nOSC_QUERY_ITEM_METHOD("slip", "Enable/disable SLIP mode", _debug_slip, config_boolean_args), //FIXME document
 };

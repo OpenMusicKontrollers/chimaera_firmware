@@ -21,12 +21,12 @@
  *     distribution.
  */
 
-#ifndef SYSYNTH_PRIVATE_H
-#define SYSYNTH_PRIVATE_H
+#ifndef _SYSYNTH_PRIVATE_H_
+#define _SYSYNTH_PRIVATE_H_
 
 #include <scsynth.h>
 #include <nosc.h>
 
 typedef nOSC_Arg SCSynth_Msg [9];
 
-#endif /* SCSYNTH_PRIVATE_H */
+#endif // _SCSYNTH_PRIVATE_H_

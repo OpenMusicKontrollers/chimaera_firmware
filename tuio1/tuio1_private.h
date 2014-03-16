@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef TUIO1_PRIVATE_H
-#define TUIO1_PRIVATE_H
+#ifndef _TUIO1_PRIVATE_H_
+#define _TUIO1_PRIVATE_H_
 
 #include <tuio1.h>
 #include <nosc.h>
@@ -31,4 +31,4 @@
 
 typedef nOSC_Arg Tuio1_Tok [6];
 
-#endif /* TUIO1_PRIVATE_H */
+#endif // _TUIO1_PRIVATE_H_

@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef DHCPC_PRIVATE_H
-#define DHCPC_PRIVATE_H
+#ifndef _DHCPC_PRIVATE_H_
+#define _DHCPC_PRIVATE_H_
 
 #include <dhcpc.h>
 
@@ -103,4 +103,4 @@ struct _DHCP_Packet_Unpacked {
 	uint8_t magic_cookie [4];
 } __attribute((packed));
 
-#endif // DHCPC_PRIVATE_H
+#endif // _DHCPC_PRIVATE_H_

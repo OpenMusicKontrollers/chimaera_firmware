@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef CMC_PRIVATE_H
-#define CMC_PRIVATE_H
+#ifndef _CMC_PRIVATE_H_
+#define _CMC_PRIVATE_H_
 
 #include <chimaera.h>
 #include <cmc.h>
@@ -54,4 +54,4 @@ struct _CMC_Blob {
 	CMC_Blob_State state;
 };
 
-#endif /* CMC_PRIVATE_H */
+#endif // _CMC_PRIVATE_H_ 

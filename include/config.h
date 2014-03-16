@@ -27,7 +27,6 @@
 #include <stdint.h>
 
 #include <nosc.h>
-#include <chimaera.h>
 
 #define SRC_PORT 0
 #define DST_PORT 1
@@ -36,6 +35,7 @@
 typedef uint_fast8_t(*Socket_Enable_Cb)(uint8_t flag);
 typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
+typedef struct _OSC_Config OSC_Config;
 typedef struct _Config Config;
 
 struct _Firmware_Version {
@@ -50,6 +50,12 @@ struct _Socket_Config {
 	uint8_t enabled;
 	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
+};
+
+struct _OSC_Config {
+	Socket_Config socket;
+	uint8_t tcp;
+	uint8_t slip;
 };
 
 enum {
@@ -117,13 +123,13 @@ struct _Config {
 	} rtpmidi;
 
 	struct _output {
-		Socket_Config socket;
+		OSC_Config osc;
 		nOSC_Timestamp offset;
 	} output;
 
 	struct _config {
 		uint16_t rate;
-		Socket_Config socket;
+		OSC_Config osc;
 	} config;
 
 	struct _sntp {
@@ -132,7 +138,7 @@ struct _Config {
 	} sntp;
 
 	struct _debug {
-		Socket_Config socket;
+		OSC_Config osc;
 	} debug;
 
 	struct _ipv4ll {
@@ -167,8 +173,9 @@ uint_fast8_t groups_save();
 
 extern const char *success_str;
 extern const char *fail_str;
-#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), fail_str, __VA_ARGS__))
+#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, config.config.osc.slip, success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, config.config.osc.slip, fail_str, __VA_ARGS__))
+#define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
 uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
@@ -179,4 +186,4 @@ uint_fast8_t config_check_rangefloat(float *val, float min, float max, const cha
 const nOSC_Query_Argument config_boolean_args [1];
 const nOSC_Query_Argument config_address_args [1];
 
-#endif
+#endif // _CONFIG_H_

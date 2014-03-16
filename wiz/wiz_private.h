@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef WIZ_PRIVATE_H_
-#define WIZ_PRIVATE_H_
+#ifndef _WIZ_PRIVATE_H_
+#define _WIZ_PRIVATE_H_
 
 #include <wiz.h>
 
@@ -83,4 +83,4 @@ void _dma_read(uint16_t addr, uint8_t cntrl, uint8_t *dat, uint16_t len);
 void _dma_read_sock(uint8_t sock, uint16_t addr, uint8_t *dat, uint16_t len);
 void _dma_read_sock_16(int8_t sock, uint16_t addr, uint16_t *dat);
 
-#endif
+#endif // _WIZ_PRIVATE_H_

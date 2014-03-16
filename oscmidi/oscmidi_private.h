@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef OSCMIDI_PRIVATE_H
-#define OSCMIDI_PRIVATE_H
+#ifndef _OSCMIDI_PRIVATE_H_
+#define _OSCMIDI_PRIVATE_H_
 
 #include <oscmidi.h>
 #include <nosc.h>
@@ -31,4 +31,4 @@
 
 typedef nOSC_Arg OSCMidi_Msg [OSCMIDI_MAX];
 
-#endif /* OSCMIDI_PRIVATE_H */
+#endif // _OSCMIDI_PRIVATE_H_

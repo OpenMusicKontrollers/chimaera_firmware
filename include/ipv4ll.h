@@ -32,4 +32,4 @@ extern const nOSC_Query_Item ipv4ll_tree [1];
 
 void IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 
-#endif
+#endif // _IPV4LL_H_

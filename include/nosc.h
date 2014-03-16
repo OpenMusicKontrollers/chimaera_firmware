@@ -166,7 +166,7 @@ void nosc_method_dispatch(nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_B
  * Bundle functions
  */
 
-uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf);
+uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip);
 
 /*
  * Message functions
@@ -200,9 +200,9 @@ uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char 
 #define nosc_message_set_symbol(MSG,POS,_S)(((nOSC_Message)(MSG))[POS].S =(char *)(_S))
 #define nosc_message_set_char(MSG,POS,C)(((nOSC_Message)(MSG))[POS].c =(char)(C))
 
-uint16_t nosc_message_serialize(nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf);
-uint16_t nosc_message_vararg_serialize(uint8_t *buf, const char *path, const char *fmt, ...);
-uint16_t nosc_message_varlist_serialize(uint8_t *buf, const char *path, const char *fmt, va_list argv);
+uint16_t nosc_message_serialize(nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip);
+uint16_t nosc_message_vararg_serialize(uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip, const char *path, const char *fmt, ...);
+uint16_t nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip, const char *path, const char *fmt, va_list argv);
 
 /*
  * Query system
@@ -341,4 +341,4 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 	.range.max.i = (MAX) \
 }
 
-#endif
+#endif // _NOSC_H_

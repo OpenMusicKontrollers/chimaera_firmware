@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef MIDI_H
-#define MIDI_H
+#ifndef _MIDI_H_
+#define _MIDI_H_
 
 #include <stdint.h>
 
@@ -65,4 +65,4 @@ uint8_t midi_rem_key(MIDI_Hash *hash, uint32_t sid);
 #define MIDI_BOT (3.f*12.f - 0.5f -(SENSOR_N/3 % 12 / 2.f))
 #define MIDI_RANGE (SENSOR_N/3.f + 1.f)
 
-#endif /* MIDI_H */
+#endif // _MIDI_H_ 

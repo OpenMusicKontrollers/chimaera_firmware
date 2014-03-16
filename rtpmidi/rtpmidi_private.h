@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef RTPMIDI_PRIVATE_H
-#define RTPMIDI_PRIVATE_H
+#ifndef _RTPMIDI_PRIVATE_H_
+#define _RTPMIDI_PRIVATE_H_
 
 #include <rtpmidi.h>
 
@@ -59,4 +59,4 @@ struct _RTP_MIDI_List {
 	uint8_t midi [3]; // 0x80 0x7f 0x7f
 } __attribute__((packed,aligned(4)));
 
-#endif // RTPMIDI_PRIVATE_H
+#endif // _RTPMIDI_PRIVATE_H_

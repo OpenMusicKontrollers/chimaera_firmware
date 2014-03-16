@@ -41,6 +41,6 @@ void DEBUG(const char *fmt, ...);
 #define debug_double(d) DEBUG("d", d)
 #define debug_timestamp(t) DEBUG("t", t)
 
-extern const nOSC_Query_Item debug_tree [2];
+extern const nOSC_Query_Item debug_tree [4];
 
-#endif
+#endif // _DEBUG_H_

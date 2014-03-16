@@ -48,4 +48,4 @@ typedef sat accum											fix_s15_16_t;	// size: 4
 typedef sat long accum								fix_s31_32_t;	// size: 8
 //typedef sat long long accum						fix_s31_32_t; // size: 8
 
-#endif
+#endif // _ARMFIX_H_

@@ -34,4 +34,4 @@ extern uint8_t adc_unused [ADC_UNUSED_LENGTH];
 extern uint8_t adc_order [ADC_LENGTH];
 extern const nOSC_Query_Item sensors_tree [5];
 
-#endif // _SENSORS_H
+#endif // _SENSORS_H_

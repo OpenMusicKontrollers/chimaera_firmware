@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef RTPMIDI_H
-#define RTPMIDI_H
+#ifndef _RTPMIDI_H_
+#define _RTPMIDI_H_
 
 #include <cmc.h>
 #include <midi.h>
@@ -34,4 +34,4 @@ void rtpmidi_init();
 
 uint16_t rtpmidi_serialize(uint8_t *buf);
 
-#endif // RTPMIDI_H
+#endif // _RTPMIDI_H_

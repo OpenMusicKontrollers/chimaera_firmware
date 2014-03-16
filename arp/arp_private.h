@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef _ARP_PRIVATE_H
-#define _ARP_PRIVATE_H
+#ifndef _ARP_PRIVATE_H_
+#define _ARP_PRIVATE_H_
 
 #include <arp.h>
 
@@ -63,4 +63,4 @@ struct _ARP_Payload {
 
 #define ARP_PAYLOAD_SIZE sizeof(ARP_Payload)
 
-#endif
+#endif // _ARP_PRIVATE_H

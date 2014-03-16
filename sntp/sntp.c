@@ -27,6 +27,7 @@
 
 #include "sntp_private.h"
 
+#include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
 
@@ -137,7 +138,7 @@ _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	float offset = clock_offset;
 	size = CONFIG_SUCCESS("isf", uuid, path, offset);
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -151,7 +152,7 @@ _sntp_roundtrip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 	float trip = roundtrip_delay;
 	size = CONFIG_SUCCESS("isf", uuid, path, trip);
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }

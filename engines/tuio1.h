@@ -35,4 +35,4 @@ extern const nOSC_Query_Item tuio1_tree [2];
 
 void tuio1_init();
 
-#endif
+#endif // _TUIO1_H_

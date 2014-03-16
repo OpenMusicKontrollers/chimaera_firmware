@@ -84,14 +84,26 @@ broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet)
 uint_fast8_t 
 output_enable(uint8_t b)
 {
-	Socket_Config *socket = &config.output.socket;
+	Socket_Config *socket = &config.output.osc.socket;
 	socket->enabled = b;
-	udp_end(socket->sock);
-	if(socket->enabled)
+	if(!config.output.osc.tcp)
 	{
-		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin(socket->sock, socket->port[SRC_PORT],
-			wiz_is_multicast(socket->ip));
+		udp_end(socket->sock);
+		if(socket->enabled)
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			udp_begin(socket->sock, socket->port[SRC_PORT],
+				wiz_is_multicast(socket->ip));
+		}
+	}
+	else // tcp
+	{
+		tcp_end(socket->sock);
+		if(socket->enabled)
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
+		}
 	}
 	return 1; //TODO
 }
@@ -99,14 +111,23 @@ output_enable(uint8_t b)
 uint_fast8_t 
 config_enable(uint8_t b)
 {
-	Socket_Config *socket = &config.config.socket;
+	Socket_Config *socket = &config.config.osc.socket;
 	socket->enabled = b;
-	udp_end(socket->sock);
-	if(socket->enabled)
+	if(!config.config.osc.tcp)
 	{
-		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin(socket->sock, socket->port[SRC_PORT],
-			wiz_is_multicast(socket->ip));
+		udp_end(socket->sock);
+		if(socket->enabled)
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			udp_begin(socket->sock, socket->port[SRC_PORT],
+				wiz_is_multicast(socket->ip));
+		}
+	}
+	else // tcp
+	{
+		tcp_end(socket->sock);
+		if(socket->enabled)
+			tcp_begin(socket->sock, socket->port[SRC_PORT], 1); // TCP server
 	}
 	return 1; //TODO
 }
@@ -134,14 +155,25 @@ sntp_enable(uint8_t b)
 uint_fast8_t 
 debug_enable(uint8_t b)
 {
-	Socket_Config *socket = &config.debug.socket;
+	Socket_Config *socket = &config.debug.osc.socket;
 	socket->enabled = b;
-	udp_end(socket->sock);
-	if(socket->enabled)
+	if(!config.debug.osc.tcp)
 	{
-		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-		udp_begin(socket->sock, socket->port[SRC_PORT],
-			wiz_is_multicast(socket->ip));
+		udp_end(socket->sock);
+		if(socket->enabled)
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			udp_begin(socket->sock, socket->port[SRC_PORT],
+				wiz_is_multicast(socket->ip));
+		}
+	} else // tcp
+	{
+		tcp_end(socket->sock);
+		if(socket->enabled)
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
+		}
 	}
 	return 1; //TODO
 }
@@ -196,8 +228,10 @@ stop_watch_stop(Stop_Watch *sw)
 	if(sw->counter > sw->thresh)
 	{
 		uint16_t size;
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
-		udp_send(config.debug.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
+			config.debug.osc.tcp, config.debug.osc.slip,
+			"/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
+		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
 
 		sw->ticks = 0;
 		sw->counter = 0;
@@ -352,7 +386,7 @@ addr2str(uint8_t *ip, uint16_t port, char *str)
 #define SLIP_ESC_REPLACE	0335	// ESC ESC_ESC means ESC data byte
 
 // inline SLIP encoding
-size_t __CCM_TEXT__
+size_t
 slip_encode(uint8_t *buf, size_t len)
 {
 	uint8_t *src;
@@ -374,13 +408,13 @@ slip_encode(uint8_t *buf, size_t len)
 		{
 			*dst-- = SLIP_END_REPLACE;
 			*dst-- = SLIP_ESC;
-			*src--;
+			src--;
 		}
 		else if(*src == SLIP_ESC)
 		{
 			*dst-- = SLIP_ESC_REPLACE;
 			*dst-- = SLIP_ESC;
-			*src--;
+			src--;
 		}
 		else
 			*dst-- = *src--;
@@ -390,8 +424,8 @@ slip_encode(uint8_t *buf, size_t len)
 }
 
 // inline SLIP decoding
-size_t __CCM_TEXT__
-slip_decode(uint8_t *buf, size_t len)
+size_t
+slip_decode(uint8_t *buf, size_t len, size_t *size)
 {
 	uint8_t *src = buf;
 	uint8_t *end = buf + len;
@@ -406,19 +440,25 @@ slip_decode(uint8_t *buf, size_t len)
 				*dst++ = SLIP_END;
 			else if(*src == SLIP_ESC_REPLACE)
 				*dst++ = SLIP_ESC;
+			else
+				; //TODO error
 			src++;
 		}
 		else if(*src == SLIP_END)
-			src++; //TODO break?
+		{
+			src++;
+			break;
+		}
 		else
 		{
 			if(src != dst)
-				dst = src;
+				*dst = *src;
 			src++;
 			dst++;
 			//TODO *dst++ = *src++;
 		}
 	}
 
-	return dst - buf;
+	*size = dst - buf;
+	return src - buf;
 }

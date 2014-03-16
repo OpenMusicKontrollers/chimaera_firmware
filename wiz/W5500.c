@@ -128,6 +128,31 @@ udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len)
 	return 1;
 }
 
+//FIXME implement for W5200, too
+void __CCM_TEXT__
+udp_ignore(uint8_t sock)
+{
+	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
+	uint16_t len = udp_available(sock);
+
+	uint16_t ptr = Sn_Rx_RD[sock];
+
+  ptr += len;
+	Sn_Rx_RD[sock] = ptr;
+
+	uint8_t *flag = tmp_buf_o;
+	flag[0] = ptr >> 8;
+	flag[1] = ptr & 0xFF;
+	wiz_job_add(WIZ_Sn_RX_RD, 2, &flag[0], NULL, W5500_socket_sel[sock].reg, WIZ_TX);
+
+	// receive data
+	flag[2] = WIZ_Sn_CR_RECV;
+	wiz_job_add(WIZ_Sn_CR, 1, &flag[2], NULL, W5500_socket_sel[sock].reg, WIZ_TX);
+
+	wiz_job_run_nonblocking();
+	wiz_job_run_block();
+}
+
 uint_fast8_t  __CCM_TEXT__
 udp_send_nonblocking(uint8_t sock, uint8_t *o_buf, uint16_t len)
 {

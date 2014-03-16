@@ -82,4 +82,4 @@ typedef union _Con {
 	(uint64_t)a.all; \
 })
 
-#endif
+#endif // _NETDEF_H_

@@ -315,7 +315,7 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }

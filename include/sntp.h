@@ -46,4 +46,4 @@ uint16_t sntp_request(uint8_t *buf, nOSC_Timestamp t3);
 
 void sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4);
 
-#endif
+#endif // _SNTP_H_

@@ -222,7 +222,7 @@ _serialize_SRV_chimaera(uint8_t *buf)
 	*buf_ptr++ = 0x0; // weight MSB
 	*buf_ptr++ = 0x0; // weight LSB
 
-	uint16_t port = config.config.socket.port[SRC_PORT];
+	uint16_t port = config.config.osc.socket.port[SRC_PORT];
 	*buf_ptr++ = port >> 8; // port MSB
 	*buf_ptr++ = port & 0xff; // port LSB
 

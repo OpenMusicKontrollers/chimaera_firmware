@@ -352,10 +352,10 @@ dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to AS
 					//FIXME actually, the user should do this before enabling dhcpc, not?
 					uint8_t brd [4];
 					broadcast_address(brd, ip, subnet);
-					memcpy(config.output.socket.ip, brd, 4);
-					memcpy(config.config.socket.ip, brd, 4);
+					memcpy(config.output.osc.socket.ip, brd, 4);
+					memcpy(config.config.osc.socket.ip, brd, 4);
 					memcpy(config.sntp.socket.ip, brd, 4);
-					memcpy(config.debug.socket.ip, brd, 4);
+					memcpy(config.debug.osc.socket.ip, brd, 4);
 				}
 				break;
 		}

@@ -116,22 +116,30 @@ Config config = {
 	},
 	
 	.output = {
-		.socket = {
-			.sock = SOCK_OUTPUT,
-			.enabled = 1,
-			.port = {3333, 3333},
-			.ip = IP_BROADCAST
+		.osc = {
+			.socket = {
+				.sock = SOCK_OUTPUT,
+				.enabled = 1,
+				.port = {3333, 3333},
+				.ip = IP_BROADCAST
+			},
+			.tcp = 0,
+			.slip = 0,
 		},
 		.offset = 0.001ULLK // := 1ms offset
 	},
 
 	.config = {
 		.rate = 10, // rate in Hz
-		.socket = {
-			.sock = SOCK_CONFIG,
-			.enabled = 1,
-			.port = {4444, 4444},
-			.ip = IP_BROADCAST
+		.osc = {
+			.socket = {
+				.sock = SOCK_CONFIG,
+				.enabled = 1,
+				.port = {4444, 4444},
+				.ip = IP_BROADCAST
+			},
+			.tcp = 0,
+			.slip = 0,
 		}
 	},
 
@@ -146,11 +154,15 @@ Config config = {
 	},
 
 	.debug = {
-		.socket = {
-			.sock = SOCK_DEBUG,
-			.enabled = 1,
-			.port = {6666, 6666},
-			.ip = IP_BROADCAST
+		.osc = {
+			.socket = {
+				.sock = SOCK_DEBUG,
+				.enabled = 1,
+				.port = {6666, 6666},
+				.ip = IP_BROADCAST
+			},
+			.tcp = 0,
+			.slip = 0,
 		}
 	},
 
@@ -248,7 +260,7 @@ config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -267,7 +279,7 @@ config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -286,7 +298,7 @@ config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -303,7 +315,7 @@ _info_version(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 		config.version.patch,
 		config.version.revision);
 	size = CONFIG_SUCCESS("iss", uuid, path, string_buf);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -316,7 +328,7 @@ _info_uid(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 
 	uid_str(string_buf);
 	size = CONFIG_SUCCESS("iss", uuid, path, string_buf);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -340,7 +352,7 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL("iss", uuid, path, "name is too long");
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -356,7 +368,7 @@ _config_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "loading of configuration from EEPROM failed");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -372,7 +384,7 @@ _config_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "saving configuration to EEPROM failed");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -400,7 +412,7 @@ _comm_mac(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL("iss", uuid, path, "wrong format");
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -430,7 +442,7 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			else // return
 			{
 				size = CONFIG_FAIL("iss", uuid, path, "gateway invalid, format: x.x.x.x");
-				udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+				CONFIG_SEND(size);
 				return 1;
 			}
 		}
@@ -461,7 +473,7 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			size = CONFIG_FAIL("iss", uuid, path, "ip invalid, format: x.x.x.x/x");
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -488,7 +500,7 @@ _comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 			size = CONFIG_FAIL("iss", uuid, path, "gateway invalid, format: x.x.x.x");
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -510,7 +522,7 @@ config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, 
 			size = CONFIG_FAIL("iss", uuid, path, "socket could not be enabled");
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -518,7 +530,7 @@ config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, 
 static uint_fast8_t
 _output_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_socket_enabled(&config.output.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.output.osc.socket, path, fmt, argc, args);
 }
 
 static uint_fast8_t
@@ -536,15 +548,44 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	config.rtpmidi.enabled = 0;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
 
 static uint_fast8_t
+_output_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint8_t *boolean = &config.output.osc.tcp;
+	uint8_t enabled = config.output.osc.socket.enabled;
+
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+	else
+	{
+		output_enable(0);
+		*boolean = args[1].i != 0 ? 1 : 0;
+		output_enable(enabled);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_output_slip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_bool(path, fmt, argc, args, &config.output.osc.slip);
+}
+
+static uint_fast8_t
 _config_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_socket_enabled(&config.config.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, args);
 }
 
 typedef struct _Address_Cb Address_Cb;
@@ -579,7 +620,7 @@ _address_dns_cb(uint8_t *ip, void *data)
 	else // timeout occured
 		size = CONFIG_FAIL("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
 	
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 }
 
 uint_fast8_t
@@ -627,21 +668,50 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 	}
 
 	if(size > 0)
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		CONFIG_SEND(size);
 
 	return 1;
 }
 
 static uint_fast8_t
+_config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint8_t *boolean = &config.config.osc.tcp;
+	uint8_t enabled = config.config.osc.socket.enabled;
+
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+	else
+	{
+		config_enable(0);
+		*boolean = args[1].i != 0 ? 1 : 0;
+		config_enable(enabled);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_config_slip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_bool(path, fmt, argc, args, &config.config.osc.slip);
+}
+
+static uint_fast8_t
 _output_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_address(&config.output.socket, path, fmt, argc, args);
+	return config_address(&config.output.osc.socket, path, fmt, argc, args);
 }
 
 static uint_fast8_t
 _config_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_address(&config.config.socket, path, fmt, argc, args);
+	return config_address(&config.config.osc.socket, path, fmt, argc, args);
 }
 
 static void
@@ -653,15 +723,15 @@ _host_address_dns_cb(uint8_t *ip, void *data)
 
 	if(ip)
 	{
-		memcpy(config.output.socket.ip, ip, 4);
-		memcpy(config.config.socket.ip, ip, 4);
+		memcpy(config.output.osc.socket.ip, ip, 4);
+		memcpy(config.config.osc.socket.ip, ip, 4);
 		memcpy(config.sntp.socket.ip, ip, 4);
-		memcpy(config.debug.socket.ip, ip, 4);
+		memcpy(config.debug.osc.socket.ip, ip, 4);
 
-		output_enable(config.output.socket.enabled);
-		config_enable(config.config.socket.enabled);
+		output_enable(config.output.osc.socket.enabled);
+		config_enable(config.config.osc.socket.enabled);
 		sntp_enable(config.sntp.socket.enabled);
-		debug_enable(config.debug.socket.enabled);
+		debug_enable(config.debug.osc.socket.enabled);
 
 		ip2str(ip, string_buf);
 		DEBUG("ss", "_host_address_dns_cb", string_buf);
@@ -671,7 +741,7 @@ _host_address_dns_cb(uint8_t *ip, void *data)
 	else // timeout occured
 		size = CONFIG_FAIL("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
 	
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 }
 
 static uint_fast8_t
@@ -700,7 +770,7 @@ _comm_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	}
 
 	if(size > 0)
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+		CONFIG_SEND(size);
 
 	return 1;
 }
@@ -722,7 +792,7 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -735,7 +805,7 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	// reset factory reset flag
 	bkp_enable_writes();
@@ -755,7 +825,7 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	// set factory reset flag
 	bkp_enable_writes();
@@ -775,7 +845,7 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	// set bootloader flag
 	bkp_enable_writes();
@@ -793,7 +863,7 @@ _ping(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t id = args[0].i;
 
-	Socket_Config *socket = &config.config.socket;
+	Socket_Config *socket = &config.config.osc.socket;
 
 	// set remote to broadcast address
 	udp_set_remote(socket->sock,(uint8_t *)wiz_broadcast_ip, socket->port[DST_PORT]);
@@ -855,6 +925,8 @@ const nOSC_Query_Item config_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_boolean_args), //FIXME document
+	nOSC_QUERY_ITEM_METHOD("slip", "Enable/disable SLIP mode", _config_slip, config_boolean_args), //FIXME document
 };
 
 const nOSC_Query_Item reset_tree [] = {
@@ -891,6 +963,8 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_boolean_args), //FIXME document
+	nOSC_QUERY_ITEM_METHOD("slip", "Enable/disable SLIP mode", _output_slip, config_boolean_args), //FIXME document
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
@@ -983,7 +1057,7 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	else
 		size = CONFIG_FAIL("iss", 0, path, "wrong format, uuid(int32) expected");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }

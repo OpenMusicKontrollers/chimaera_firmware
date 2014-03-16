@@ -80,6 +80,6 @@ void addr2str(uint8_t *ip, uint16_t port, char *str);
  * SLIP encode/decode
  */
 size_t slip_encode(uint8_t *buf, size_t len);
-size_t slip_decode(uint8_t *buf, size_t len);
+size_t slip_decode(uint8_t *buf, size_t len, size_t *size);
 
-#endif
+#endif // _CHIMUTIL_H_

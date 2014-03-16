@@ -30,4 +30,4 @@ void linalg_solve_cubic(float y1, float B1, float y2, float B2, float *c0, float
 void linalg_least_squares_quadratic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1);
 void linalg_least_squares_cubic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1, double *C2);
 
-#endif
+#endif // _LINALG_H_

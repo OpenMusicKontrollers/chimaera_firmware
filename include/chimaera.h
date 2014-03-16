@@ -210,4 +210,4 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 void cpp_setup();
 
-#endif
+#endif // _CHIMIAERA_H_

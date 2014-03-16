@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef DUMMYI_H
-#define DUMMYI_H
+#ifndef _DUMMY_H_
+#define _DUMMY_H_
 
 #include <cmc.h>
 #include <midi.h>
@@ -33,4 +33,4 @@ extern const nOSC_Query_Item dummy_tree [1];
 
 void dummy_init ();
 
-#endif // DUMMYI_H
+#endif // _DUMMY_H_

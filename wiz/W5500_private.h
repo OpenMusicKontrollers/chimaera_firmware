@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef W5500_PRIVATE_H
-#define W5500_PRIVATE_H
+#ifndef _W5500_PRIVATE_H_
+#define _W5500_PRIVATE_H_
 
 #include "wiz_private.h"
 
@@ -156,4 +156,4 @@ struct _W5500_Socket_Sel {
 #define WIZ_Sn_SR_TIME_WAIT		0x1B
 #define WIZ_Sn_SR_LAST_ACK		0x1D
 
-#endif
+#endif // _W5500_PRIVATE_H_

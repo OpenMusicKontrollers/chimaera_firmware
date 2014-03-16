@@ -21,12 +21,12 @@
  *     distribution.
  */
 
-#ifndef DUMMY_PRIVATE_H
-#define DUMMY_PRIVATE_H
+#ifndef _DUMMY_PRIVATE_H_
+#define _DUMMY_PRIVATE_H_
 
 #include <dummy.h>
 #include <nosc.h>
 
 typedef nOSC_Arg Dummy_Msg [5];
 
-#endif /* DUMMY_PRIVATE_H */
+#endif // _DUMMY_PRIVATE_H_

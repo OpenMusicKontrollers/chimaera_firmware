@@ -21,9 +21,9 @@
  *     distribution.
  */
 
-#ifndef NOSC_PRIVATE_H
-#define NOSC_PRIVATE_H
+#ifndef _NOSC_PRIVATE_H_
+#define _NOSC_PRIVATE_H_
 
 #include <nosc.h>
 
-#endif // NOSC_PRIVATE_H
+#endif // _NOSC_PRIVATE_H_

@@ -54,4 +54,4 @@ void eeprom_page_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *page, uint8_
 void eeprom_bulk_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
 void eeprom_bulk_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t len);
 
-#endif
+#endif // _EEPROM_H_

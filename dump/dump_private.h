@@ -21,12 +21,12 @@
  *     distribution.
  */
 
-#ifndef DUMP_PRIVATE_H
-#define DUMP_PRIVATE_H
+#ifndef _DUMP_PRIVATE_H_
+#define _DUMP_PRIVATE_H_
 
 #include <dump.h>
 
 #define DUMP_FRAME 0
 #define DUMP_BLOB 1
 
-#endif /* DUMP_PRIVATE_H */
+#endif // _DUMP_PRIVATE_H_

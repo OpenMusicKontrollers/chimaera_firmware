@@ -40,4 +40,4 @@ void mdns_announce();
 void mdns_resolve_timeout();
 uint_fast8_t mdns_resolve(char *name, mDNS_Resolve_Cb cb, void *data);
 
-#endif
+#endif // _MDNS_H_

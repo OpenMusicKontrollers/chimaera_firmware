@@ -45,6 +45,8 @@ const uint8_t wiz_nil_ip [] = {0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_nil_mac [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint8_t wiz_broadcast_mac [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
+Wiz_Socket_State wiz_socket_state [WIZ_MAX_SOCK_NUM];
+
 gpio_dev *ss_dev;
 uint8_t ss_bit;
 
@@ -99,7 +101,7 @@ inline __always_inline void
 _dma_read_sock_16(int8_t sock, uint16_t addr, uint16_t *dat)
 {
 	_dma_read_sock(sock, addr,(uint8_t*)dat, 2);
-	*dat = hton(*dat);
+	*dat = ntoh(*dat);
 }
 
 static void __CCM_TEXT__
@@ -412,6 +414,10 @@ wiz_comm_set(uint8_t *mac, uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 	wiz_subnet_set(subnet);
 }
 
+/*
+ * UDP
+ */
+
 void
 udp_end(uint8_t sock)
 {
@@ -422,6 +428,8 @@ udp_end(uint8_t sock)
 	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
 	do _dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
 	while(flag != WIZ_Sn_SR_CLOSED);
+
+	wiz_socket_state[sock] = WIZ_SOCKET_STATE_CLOSED;
 }
 
 void
@@ -451,6 +459,8 @@ udp_begin(uint8_t sock, uint16_t port, uint_fast8_t multicast)
 	do
 		_dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
 	while(flag != WIZ_Sn_SR_UDP);
+	
+	wiz_socket_state[sock] = WIZ_SOCKET_STATE_OPEN;
 
 	udp_update_read_write_pointers(sock);
 }
@@ -593,6 +603,130 @@ udp_dispatch(uint8_t sock, uint8_t *i_buf, void(*cb)(uint8_t *ip, uint16_t port,
 	}
 }
 
+/*
+ * TCP
+ */
+
+void
+tcp_begin(uint8_t sock, uint16_t port, uint_fast8_t server)
+{
+	uint8_t flag;
+
+	// first close socket
+	tcp_end(sock);
+
+	// clear socket interrupt register
+	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+
+	// set socket mode to UDP
+	flag = WIZ_Sn_MR_TCP | WIZ_Sn_MR_ND; // TCP ACK with NoDelay
+	_dma_write_sock(sock, WIZ_Sn_MR, &flag, 1);
+
+	//flag = 20; // 1ms
+	//_dma_write(WIZ_RTR, 0, &flag, 1);
+
+	// set outgoing port
+	_dma_write_sock_16(sock, WIZ_Sn_PORT, port);
+
+	// open socket
+	flag = WIZ_Sn_CR_OPEN;
+	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
+	do
+		_dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
+	while(flag != WIZ_Sn_SR_INIT);
+
+	flag = server ? WIZ_Sn_CR_LISTEN : WIZ_Sn_CR_CONNECT;
+	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
+	
+	wiz_socket_state[sock] = WIZ_SOCKET_STATE_CONNECT;
+
+	/* use IRQ subsystem for state changes
+	do 
+		_dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
+	while(flag != WIZ_Sn_SR_ESTABLISHED);
+
+	udp_update_read_write_pointers(sock);
+	*/
+}
+
+void
+tcp_end(uint8_t sock)
+{
+	uint8_t flag;
+
+	// disconnect and close socket
+	flag = WIZ_Sn_CR_DISCON;
+	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
+	do _dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
+	while(flag != WIZ_Sn_SR_CLOSED);
+	
+	wiz_socket_state[sock] = WIZ_SOCKET_STATE_CLOSED;
+}
+
+inline __always_inline void
+tcp_send(uint8_t sock, uint8_t *o_buf, uint16_t len)
+{
+	if(tcp_send_nonblocking(sock, o_buf, len))
+		tcp_send_block(sock);
+}
+
+void __CCM_TEXT__
+tcp_send_block(uint8_t sock)
+{
+	wiz_job_run_block();
+
+	uint8_t ir;
+	uint8_t sr;
+	uint8_t flag;
+	do
+	{
+		_dma_read_sock(sock, WIZ_Sn_IR, &ir, 1);
+		_dma_read_sock(sock, WIZ_Sn_SR, &sr, 1);
+		if(sr & WIZ_Sn_SR_CLOSED) // DISCON occured, SEND failed
+		{
+			flag = WIZ_Sn_IR_SEND_OK; // set SEND_OK flag
+			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+		} //TODO test this
+	} while( (ir & WIZ_Sn_IR_SEND_OK) != WIZ_Sn_IR_SEND_OK);
+
+	flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
+	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+}
+
+/*
+ * OSC
+ */
+void
+osc_send(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
+{
+	if(osc->tcp)
+		tcp_send(osc->socket.sock, o_buf, len);
+	else // !tcp
+		udp_send(osc->socket.sock, o_buf, len);
+}
+
+uint_fast8_t
+osc_send_nonblocking(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
+{
+	if(osc->tcp)
+		return tcp_send_nonblocking(osc->socket.sock, o_buf, len);
+	else // !tcp
+		return udp_send_nonblocking(osc->socket.sock, o_buf, len);
+}
+
+void
+osc_send_block(OSC_Config *osc)
+{
+	if(osc->tcp)
+		tcp_send_block(osc->socket.sock);
+	else // !tcp
+		udp_send_block(osc->socket.sock);
+}
+
+/*
+ * MACRAW
+ */
+
 void
 macraw_begin(uint8_t sock, uint_fast8_t mac_filter)
 {
@@ -617,12 +751,10 @@ macraw_begin(uint8_t sock, uint_fast8_t mac_filter)
 	do _dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
 	while(flag != WIZ_Sn_SR_MACRAW)
 		;
+	
+	wiz_socket_state[sock] = WIZ_SOCKET_STATE_OPEN;
 
-	// get write pointer
-	_dma_read_sock_16(sock, WIZ_Sn_TX_WR, &Sn_Tx_WR[sock]);
-
-	// get read pointer
-	_dma_read_sock_16(sock, WIZ_Sn_RX_RD, &Sn_Rx_RD[sock]);
+	udp_update_read_write_pointers(sock);
 }
 
 void __CCM_TEXT__

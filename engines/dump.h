@@ -36,4 +36,4 @@ void dump_init(int32_t size, int16_t *swap);
 
 void dump_update(nOSC_Timestamp now, nOSC_Timestamp offset);
 
-#endif
+#endif // _DUMP_H_

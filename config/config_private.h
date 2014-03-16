@@ -21,11 +21,11 @@
  *     distribution.
  */
 
-#ifndef CONFIG_PRIVATE_H
-#define CONFIG_PRIVATE_H
+#ifndef _CONFIG_PRIVATE_H_
+#define _CONFIG_PRIVATE_H_
 
 #include <chimaera.h>
 #include <config.h>
 #include <armfix.h>
 
-#endif
+#endif // _CONFIG_PRIVATE_H_

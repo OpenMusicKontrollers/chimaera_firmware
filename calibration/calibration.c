@@ -409,7 +409,7 @@ _calibration_start(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	calibrating = 1;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -425,23 +425,12 @@ _calibration_zero(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 		// update new range
 		zeroing = 0;
 		range_update_quiescent();
-
-		// debug output
-		/*
-		uint_fast8_t i;
-		for(i=0; i<SENSOR_N; i++)
-		{
-			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/qui", "iii", i, range.qui[i], range.qui[i]-0x7ff);
-			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-		}
-		*/
-		
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -456,23 +445,12 @@ _calibration_min(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	{
 		// update new range
 		uint_fast8_t si = range_update_b0();
-
-		// debug output
-		/*
-		uint_fast8_t i;
-		for(i=0; i<SENSOR_N; i++)
-		{
-			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/thresh", "ii", i, range.thresh[i]);
-			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-		}
-		*/
-
 		size = CONFIG_SUCCESS("isi", uuid, path, si);
 	}
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -496,7 +474,7 @@ _calibration_mid(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
 		
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -517,7 +495,7 @@ _calibration_max(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
 
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -538,30 +516,12 @@ _calibration_end(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 		// end calibration procedure
 		calibrating = 0;
 
-		// debug output
-		/*
-		uint_fast8_t i;
-		for(i=0; i<SENSOR_N; i++)
-		{
-			size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/U", "if", i, range.U[i]);
-			udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-		}
-
-		// output minimal offset
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/W", "f", range.W);
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-
-		// output curve parameters
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), "/range/C", "fff", range.C[0], range.C[1], range.C[2]);
-		udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
-		*/
-
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
 		
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -575,7 +535,7 @@ _calibration_sensor(const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 
 	int32_t n = args[1].i;
 	size = CONFIG_SUCCESS("isiiif", uuid, path, n, range.qui[n], range.thresh[n], range.U[n]);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -587,7 +547,7 @@ _calibration_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isf", uuid, path, range.W);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -599,7 +559,7 @@ _calibration_curve(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	int32_t uuid = args[0].i;
 
 	size = CONFIG_SUCCESS("isfff", uuid, path, range.C[0], range.C[1], range.C[2]);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -613,7 +573,7 @@ _calibration_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 
 	range_save(pos);
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -627,7 +587,7 @@ _calibration_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 
 	range_load(pos);
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }
@@ -642,7 +602,7 @@ _calibration_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 	range_reset();
 
 	size = CONFIG_SUCCESS("is", uuid, path);
-	udp_send(config.config.socket.sock, BUF_O_BASE(buf_o_ptr), size);
+	CONFIG_SEND(size);
 
 	return 1;
 }

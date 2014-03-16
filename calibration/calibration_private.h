@@ -40,4 +40,4 @@ struct _Calibration_Point {
 	float B0, B1, B2, B3;
 };
 
-#endif
+#endif // _CALIBRATION_PRIVATE_H_

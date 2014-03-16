@@ -66,4 +66,4 @@ struct _sntp_t {
 	timestamp64_t transmit_timestamp;
 };
 
-#endif
+#endif // _SNTP_PRIVATE_H_

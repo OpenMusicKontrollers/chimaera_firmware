@@ -21,12 +21,14 @@
  *     distribution.
  */
 
-#ifndef WIZ_H_
-#define WIZ_H_
+#ifndef _WIZ_H_
+#define _WIZ_H_
 
 #include <stdint.h>
 
 #include <libmaple/gpio.h>
+
+#include <config.h>
 
 extern const uint8_t wiz_broadcast_ip [];
 extern const uint8_t wiz_nil_ip [];
@@ -55,6 +57,15 @@ extern const uint8_t wiz_broadcast_mac [];
 
 typedef void(*Wiz_UDP_Dispatch_Cb)(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len);
 typedef void(*Wiz_IRQ_Cb)(uint8_t isr);
+typedef enum _Wiz_Socket_State Wiz_Socket_State;
+
+enum _Wiz_Socket_State {
+	WIZ_SOCKET_STATE_CLOSED		= 0,
+	WIZ_SOCKET_STATE_CONNECT	= 1,
+	WIZ_SOCKET_STATE_OPEN			= 2,
+};
+
+extern Wiz_Socket_State wiz_socket_state [];
 
 void wiz_init(gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
 uint_fast8_t wiz_link_up();
@@ -99,6 +110,30 @@ uint_fast8_t udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len)
 void udp_receive_block(uint8_t sock);
 
 void udp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
+void udp_ignore(uint8_t sock);
+
+/*
+ * TCP
+ */
+
+void tcp_begin(uint8_t sock, uint16_t port, uint_fast8_t server);
+void tcp_end(uint8_t sock);
+
+void tcp_send(uint8_t sock, uint8_t *o_buf, uint16_t len);
+#define tcp_send_nonblocking udp_send_nonblocking
+void tcp_send_block(uint8_t sock);
+
+#define tcp_ignore udp_ignore
+
+/*
+ * OSC
+ */
+
+void osc_send(OSC_Config *osc, uint8_t *o_buf, uint16_t len);
+uint_fast8_t osc_send_nonblocking(OSC_Config *osc, uint8_t *o_buf, uint16_t len);
+void osc_send_block(OSC_Config *osc);
+
+#define osc_ignore udp_ignore
 
 /*
  * MACRAW
@@ -125,4 +160,4 @@ void macraw_begin(uint8_t sock, uint_fast8_t mac_filter);
 
 void macraw_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_MACRAW_Dispatch_Cb cb, void *data);
 
-#endif
+#endif // _WIZ_H_

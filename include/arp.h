@@ -21,8 +21,8 @@
  *     distribution.
  */
 
-#ifndef _ARP_H
-#define _ARP_H
+#ifndef _ARP_H_
+#define _ARP_H_
 
 #include <stdint.h>
 
@@ -38,4 +38,4 @@ uint_fast8_t arp_probe(uint8_t sock, uint8_t *ip);
  */
 void arp_announce(uint8_t sock, uint8_t *ip);
 
-#endif
+#endif // _ARP_H_
