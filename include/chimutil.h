@@ -44,6 +44,7 @@ void mdns_timer_reconfigure();
 uint_fast8_t output_enable(uint8_t b);
 uint_fast8_t config_enable(uint8_t b);
 uint_fast8_t sntp_enable(uint8_t b);
+uint_fast8_t ptp_enable(uint8_t b);
 uint_fast8_t debug_enable(uint8_t b);
 uint_fast8_t mdns_enable(uint8_t b);
 uint_fast8_t dhcpc_enable(uint8_t b);

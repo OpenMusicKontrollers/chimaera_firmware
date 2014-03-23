@@ -48,6 +48,7 @@
 #include <chimutil.h>
 #include <debug.h>
 #include <eeprom.h>
+#include <ptp.h>
 #include <sntp.h>
 #include <config.h>
 #include <tube.h>
@@ -92,8 +93,10 @@ static volatile uint_fast8_t adc3_dma_err = 0;
 static volatile uint_fast8_t adc_time_up = 1;
 static volatile uint_fast8_t adc_raw_ptr = 1;
 static volatile uint_fast8_t mux_counter = MUX_MAX;
-static volatile uint_fast8_t sntp_should_request = 1; // send first request at boot
+static volatile uint_fast8_t sync_should_request = 1; // send first request at boot
 static volatile uint_fast8_t sntp_should_listen = 0;
+static volatile uint_fast8_t ptp_event_should_listen = 0;
+static volatile uint_fast8_t ptp_general_should_listen = 0;
 static volatile uint_fast8_t mdns_should_listen = 0;
 static volatile uint_fast8_t output_should_listen = 0;
 static volatile uint_fast8_t config_should_listen = 0;
@@ -114,9 +117,9 @@ adc_timer_irq()
 }
 
 static void __CCM_TEXT__
-sntp_timer_irq()
+sync_timer_irq()
 {
-	sntp_should_request = 1;
+	sync_should_request = 1;
 }
 
 static void __CCM_TEXT__
@@ -144,6 +147,7 @@ static void __CCM_TEXT__
 wiz_irq()
 {
 	wiz_irq_tick = systick_uptime();
+	//TODO substract 12 cycles interrupt latency for ARM Cortex M4?
 	wiz_needs_attention = 1;
 }
 
@@ -175,6 +179,18 @@ static void __CCM_TEXT__
 wiz_sntp_irq(uint8_t isr)
 {
 	sntp_should_listen = isr;
+}
+
+static void __CCM_TEXT__
+wiz_ptp_event_irq(uint8_t isr)
+{
+	ptp_event_should_listen = isr;
+}
+
+static void __CCM_TEXT__
+wiz_ptp_general_irq(uint8_t isr)
+{
+	ptp_general_should_listen = isr;
 }
 
 static void __CCM_TEXT__
@@ -337,6 +353,12 @@ sntp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	sntp_timestamp_refresh(wiz_irq_tick, &now, NULL);
 	sntp_dispatch(buf, now);
+}
+
+static void __CCM_TEXT__
+ptp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
+{
+	ptp_dispatch(buf, wiz_irq_tick);
 }
 
 static void __CCM_TEXT__
@@ -566,7 +588,10 @@ loop()
 #endif
 			adc_fill(adc_raw_ptr);
 
-			sntp_timestamp_refresh(systick_uptime(), &now, &offset);
+			if(config.sntp.socket.enabled)
+				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
+			else if(config.ptp.event.enabled)
+				ptp_timestamp_refresh(systick_uptime(), &now, &offset);
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
 			{
@@ -724,12 +749,28 @@ loop()
 			}
 
 			// send sntp request
-			if(sntp_should_request)
+			if(sync_should_request)
 			{
 				sntp_timestamp_refresh(systick_uptime(), &now, NULL);
 				len = sntp_request(BUF_O_OFFSET(buf_o_ptr), now);
 				udp_send(config.sntp.socket.sock, BUF_O_BASE(buf_o_ptr), len);
-				sntp_should_request = 0;
+				sync_should_request = 0;
+			}
+		}
+
+		// run ptp client
+		if(config.ptp.event.enabled)
+		{
+			if(ptp_event_should_listen & WIZ_Sn_IR_RECV)
+			{
+				udp_dispatch(config.ptp.event.sock, BUF_I_BASE(buf_i_ptr), ptp_cb);
+				ptp_event_should_listen = 0;
+			}
+
+			if(ptp_general_should_listen & WIZ_Sn_IR_RECV)
+			{
+				udp_dispatch(config.ptp.general.sock, BUF_I_BASE(buf_i_ptr), ptp_cb);
+				ptp_general_should_listen = 0;
 			}
 		}
 
@@ -802,20 +843,20 @@ adc_timer_reconfigure()
 }
 
 void 
-sntp_timer_reconfigure()
+sync_timer_reconfigure()
 {
 	uint16_t prescaler = 0xffff; 
 	uint16_t reload = 72e6 / 0xffff * config.sntp.tau;
 	uint16_t compare = reload;
 
-	timer_set_prescaler(sntp_timer, prescaler);
-	timer_set_reload(sntp_timer, reload);
-	timer_set_mode(sntp_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
-	timer_set_compare(sntp_timer, TIMER_CH1, compare);
-	timer_attach_interrupt(sntp_timer, TIMER_CH1, sntp_timer_irq);
-	timer_generate_update(sntp_timer);
+	timer_set_prescaler(sync_timer, prescaler);
+	timer_set_reload(sync_timer, reload);
+	timer_set_mode(sync_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare(sync_timer, TIMER_CH1, compare);
+	timer_attach_interrupt(sync_timer, TIMER_CH1, sync_timer_irq);
+	timer_generate_update(sync_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER2, SNTP_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_TIMER2, SYNC_TIMER_PRIORITY);
 }
 
 void 
@@ -980,24 +1021,24 @@ setup()
 
 	// initialize WIZnet W5200/W5500
 	uint8_t tx_mem[WIZ_MAX_SOCK_NUM] = {
-		[SOCK_ARP]		= 1, // 1 kB buffer
+		[SOCK_DHCPC]	= 1, // = SOCK_ARP
+		[SOCK_SNTP]		= 1,
+		[SOCK_PTP_EV] = 1,
+		[SOCK_PTP_GE] = 1,
 		[SOCK_OUTPUT]	= 8,
 		[SOCK_CONFIG]	= 2,
-		[SOCK_SNTP]		= 2,
 		[SOCK_DEBUG]	= 1,
 		[SOCK_MDNS]		= 1,
-		[SOCK_DHCPC]	= 1,
-		[SOCK_RTP]		= 0
 	};
 	uint8_t rx_mem[WIZ_MAX_SOCK_NUM] = {
-		[SOCK_ARP]		= 1, // 1 kB buffer
+		[SOCK_DHCPC]	= 1, // = SOCK_ARP
+		[SOCK_SNTP]		= 1,
+		[SOCK_PTP_EV] = 1,
+		[SOCK_PTP_GE] = 1,
 		[SOCK_OUTPUT]	= 8,
 		[SOCK_CONFIG]	= 2,
-		[SOCK_SNTP]		= 2,
 		[SOCK_DEBUG]	= 1,
 		[SOCK_MDNS]		= 1,
-		[SOCK_DHCPC]	= 1,
-		[SOCK_RTP]		= 0
 	};
 	wiz_init(PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem);
 	wiz_mac_set(config.comm.mac);
@@ -1025,22 +1066,22 @@ setup()
 	const uint8_t wiz_udp_multicast_irq_mask = WIZ_Sn_IR_RECV;
 	const uint8_t wiz_udp_irq_mask = wiz_udp_multicast_irq_mask | WIZ_Sn_IR_TIMEOUT;
 	const uint8_t wiz_tcp_irq_mask = wiz_udp_irq_mask | WIZ_Sn_IR_CON | WIZ_Sn_IR_DISCON;
-	wiz_socket_irq_unset(SOCK_ARP);
+	wiz_socket_irq_set(SOCK_SNTP, wiz_sntp_irq, wiz_udp_irq_mask);
+	wiz_socket_irq_set(SOCK_PTP_EV, wiz_ptp_event_irq, wiz_udp_multicast_irq_mask);
+	wiz_socket_irq_set(SOCK_PTP_GE, wiz_ptp_general_irq, wiz_udp_multicast_irq_mask);
 	wiz_socket_irq_set(SOCK_OUTPUT, wiz_output_irq, wiz_tcp_irq_mask);
 	wiz_socket_irq_set(SOCK_CONFIG, wiz_config_irq, wiz_tcp_irq_mask);
-	wiz_socket_irq_set(SOCK_SNTP, wiz_sntp_irq, wiz_udp_irq_mask);
 	wiz_socket_irq_set(SOCK_DEBUG, wiz_debug_irq, wiz_tcp_irq_mask);
 	wiz_socket_irq_set(SOCK_MDNS, wiz_mdns_irq, wiz_udp_multicast_irq_mask);
 	//wiz_socket_irq_set(SOCK_DHCPC, wiz_dhcpc_irq, wiz_udp_irq_mask); FIXME asio
-	wiz_socket_irq_unset(SOCK_DHCPC);
-	wiz_socket_irq_unset(SOCK_RTP);
+	wiz_socket_irq_unset(SOCK_DHCPC); // = SOCK_ARP
 
 	// initialize timers TODO move up
 	timer_init(adc_timer);
 	timer_pause(adc_timer);
 	adc_timer_reconfigure();
 
-	timer_init(sntp_timer);
+	timer_init(sync_timer);
 
 	timer_init(dhcpc_timer);
 	timer_pause(dhcpc_timer);
@@ -1048,11 +1089,11 @@ setup()
 	timer_init(mdns_timer);
 	timer_pause(mdns_timer);
 
-
 	// initialize sockets
 	output_enable(config.output.osc.socket.enabled);
 	config_enable(config.config.osc.socket.enabled);
 	sntp_enable(config.sntp.socket.enabled);
+	ptp_enable(config.ptp.event.enabled);
 	debug_enable(config.debug.osc.socket.enabled);
 	mdns_enable(config.mdns.socket.enabled);
 	
@@ -1149,6 +1190,8 @@ setup()
 
 	// set up continuous music controller output engines
 	cmc_init();
+	ptp_init();
+
 	dump_init(sizeof(adc_swap), adc_swap);
 	tuio2_init();
 	tuio1_init();

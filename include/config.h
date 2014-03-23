@@ -60,13 +60,14 @@ struct _OSC_Config {
 
 enum {
 	SOCK_ARP		= 0,
-	SOCK_OUTPUT	= 1,
-	SOCK_CONFIG = 2,
-	SOCK_SNTP		= 3,
-	SOCK_DEBUG	= 4,
-	SOCK_MDNS		= 5,
-	SOCK_DHCPC	= 6,
-	SOCK_RTP		= 7
+	SOCK_DHCPC	= 0,
+	SOCK_SNTP		= 1,
+	SOCK_PTP_EV = 2,
+	SOCK_PTP_GE = 3,
+	SOCK_OUTPUT	= 4,
+	SOCK_CONFIG = 5,
+	SOCK_DEBUG	= 6,
+	SOCK_MDNS		= 7,
 };
 
 struct _Config {
@@ -132,6 +133,14 @@ struct _Config {
 		OSC_Config osc;
 	} config;
 
+	struct _ptp {
+		uint8_t multiplier;
+		uint8_t offset_stiffness;
+		uint8_t delay_stiffness;
+		Socket_Config event;
+		Socket_Config general;
+	} ptp;
+
 	struct _sntp {
 		uint8_t tau;
 		Socket_Config socket;
@@ -179,9 +188,9 @@ extern const char *fail_str;
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
 uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_check_range8(uint8_t *val, uint8_t min, uint8_t max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *val);
 uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
-uint_fast8_t config_check_rangefloat(float *val, float min, float max, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
+uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val);
 
 const nOSC_Query_Argument config_boolean_args [1];
 const nOSC_Query_Argument config_address_args [1];

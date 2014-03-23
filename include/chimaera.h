@@ -102,7 +102,7 @@ extern const stm32_pin_info PIN_MAP [];
 #define SPI_RX_DMA_PRIORITY 0x3
 #define SPI_TX_DMA_PRIORITY 0x4
 #define ADC_TIMER_PRIORITY 0x5
-#define SNTP_TIMER_PRIORITY 0x6
+#define SYNC_TIMER_PRIORITY 0x6
 #define CONFIG_TIMER_PRIORITY 0x7
 #define DHCPC_TIMER_PRIORITY 0x8
 #define MDNS_TIMER_PRIORITY 0x9
@@ -204,7 +204,7 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define BUF_I_OFFSET(ptr)(buf_i[ptr] + WIZ_SEND_OFFSET)
 
 #define adc_timer TIMER1
-#define sntp_timer TIMER2
+#define sync_timer TIMER2
 #define dhcpc_timer TIMER4
 #define mdns_timer TIMER3
 

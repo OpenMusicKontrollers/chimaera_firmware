@@ -797,6 +797,7 @@ wiz_irq_handle(void)
 	for(sock=0; sock<WIZ_MAX_SOCK_NUM; sock++)
 	{
 		if( (1U << sock) & ir2) // there was an IRQ for this socket
+		{
 			if(irq_socket_cb[sock])
 			{
 				uint8_t sock_ir;
@@ -804,6 +805,7 @@ wiz_irq_handle(void)
 				irq_socket_cb[sock](sock_ir);
 				_dma_write_sock(sock, WIZ_Sn_IR, &sock_ir, 1); // clear socket IRQ flags(this automatically clears WIZ_SIR[sock]
 			}
+		}
 	}
 }
 

@@ -28,24 +28,42 @@
 
 #include <netdef.h>
 
-typedef sat unsigned short fract			fix_0_8_t;		// size: 1
-typedef sat unsigned fract						fix_0_16_t;		// size: 2
-typedef sat unsigned long fract				fix_0_32_t;		// size: 4
-typedef sat unsigned long long fract	fix_0_64_t;		// size: 8
+// unsaturated fixed point types
+typedef unsigned short fract					fix_0_8_t;		// size: 1
+typedef unsigned fract								fix_0_16_t;		// size: 2
+typedef unsigned long fract						fix_0_32_t;		// size: 4
+typedef unsigned long long fract			fix_0_64_t;		// size: 8
 
-typedef sat short fract								fix_s_7_t;		// size: 1
-typedef sat fract											fix_s_15_t;		// size: 2
-typedef sat long fract								fix_s_31_t;		// size: 4
-typedef sat long long fract						fix_s_63_t;		// size: 8
+typedef short fract										fix_s_7_t;		// size: 1
+typedef fract													fix_s_15_t;		// size: 2
+typedef long fract										fix_s_31_t;		// size: 4
+typedef long long fract								fix_s_63_t;		// size: 8
 
-typedef sat unsigned short accum			fix_8_8_t;		// size: 2
-typedef sat unsigned accum						fix_16_16_t;	// size: 4
-typedef sat unsigned long accum				fix_32_32_t;	// size: 8
-//typedef sat unsigned long long accum	fix_32_32_t;	// size: 8
+typedef unsigned short accum					fix_8_8_t;		// size: 2
+typedef unsigned accum								fix_16_16_t;	// size: 4
+typedef unsigned long accum						fix_32_32_t;	// size: 8
 
-typedef sat short accum								fix_s7_8_t;		// size: 2
-typedef sat accum											fix_s15_16_t;	// size: 4
-typedef sat long accum								fix_s31_32_t;	// size: 8
-//typedef sat long long accum						fix_s31_32_t; // size: 8
+typedef short accum										fix_s7_8_t;		// size: 2
+typedef accum													fix_s15_16_t;	// size: 4
+typedef long accum										fix_s31_32_t;	// size: 8
+
+// saturated fixed point types
+typedef sat unsigned short fract			sat_fix_0_8_t;		// size: 1
+typedef sat unsigned fract						sat_fix_0_16_t;		// size: 2
+typedef sat unsigned long fract				sat_fix_0_32_t;		// size: 4
+typedef sat unsigned long long fract	sat_fix_0_64_t;		// size: 8
+
+typedef sat short fract								sat_fix_s_7_t;		// size: 1
+typedef sat fract											sat_fix_s_15_t;		// size: 2
+typedef sat long fract								sat_fix_s_31_t;		// size: 4
+typedef sat long long fract						sat_fix_s_63_t;		// size: 8
+
+typedef sat unsigned short accum			sat_fix_8_8_t;		// size: 2
+typedef sat unsigned accum						sat_fix_16_16_t;	// size: 4
+typedef sat unsigned long accum				sat_fix_32_32_t;	// size: 8
+
+typedef sat short accum								sat_fix_s7_8_t;		// size: 2
+typedef sat accum											sat_fix_s15_16_t;	// size: 4
+typedef sat long accum								sat_fix_s31_32_t;	// size: 8
 
 #endif // _ARMFIX_H_

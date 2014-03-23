@@ -36,6 +36,7 @@
 #include <midi.h>
 #include <calibration.h>
 #include <sntp.h>
+#include <ptp.h>
 #include <engines.h>
 #include <ipv4ll.h>
 #include <dhcpc.h>
@@ -53,14 +54,14 @@ static const char *local_str = ".local";
 static void _host_address_dns_cb(uint8_t *ip, void *data); // forwared declaration
 
 static const Socket_Enable_Cb socket_callbacks [WIZ_MAX_SOCK_NUM] = {
-	[SOCK_ARP]		= NULL,
+	[SOCK_DHCPC]	= NULL, // = SOCK_ARP
+	[SOCK_SNTP]		= sntp_enable,
+	[SOCK_PTP_EV]	= ptp_enable,
+	[SOCK_PTP_GE]	= NULL,
 	[SOCK_OUTPUT]	= output_enable,
 	[SOCK_CONFIG]	= config_enable,
-	[SOCK_SNTP]		= sntp_enable,
 	[SOCK_DEBUG]	= debug_enable,
 	[SOCK_MDNS]		= mdns_enable,
-	[SOCK_DHCPC]	= dhcpc_enable,
-	[SOCK_RTP]		= NULL // not yet used
 };
 
 Config config = {
@@ -140,6 +141,24 @@ Config config = {
 			},
 			.tcp = 0,
 			.slip = 0,
+		}
+	},
+
+	.ptp = {
+		.multiplier = 4, // # of sync messages between PTP delay requests 
+		.offset_stiffness = 16,
+		.delay_stiffness = 16,
+		.event = {
+			.sock = SOCK_PTP_EV,
+			.enabled = 0,
+			.port = {319, 319},
+			.ip = {224, 0, 1, 129} // PTPv2 multicast group, 224.0.0.107 for peer-delay measurements
+		},
+		.general = {
+			.sock = SOCK_PTP_GE,
+			.enabled = 0,
+			.port = {320, 320},
+			.ip = {224, 0, 1, 129} // PTPv2 multicast group, 224.0.0.107 for peer-delay measurements
 		}
 	},
 
@@ -985,6 +1004,7 @@ static const nOSC_Query_Item root_tree [] = {
 	// sockets
 	nOSC_QUERY_ITEM_NODE("config/", "Configuration", config_tree),
 	nOSC_QUERY_ITEM_NODE("sntp/", "Simplified Network Time Protocol", sntp_tree),
+	nOSC_QUERY_ITEM_NODE("ptp/", "Precision Time Protocol", ptp_tree),
 	nOSC_QUERY_ITEM_NODE("ipv4ll/", "IPv4 Link Local Addressing", ipv4ll_tree),
 	nOSC_QUERY_ITEM_NODE("dhcpc/", "DHCP Client", dhcpc_tree),
 	nOSC_QUERY_ITEM_NODE("debug/", "Debug", debug_tree),

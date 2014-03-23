@@ -133,10 +133,39 @@ config_enable(uint8_t b)
 }
 
 uint_fast8_t 
+ptp_enable(uint8_t b)
+{
+	//sntp_enable(0); FIXME
+
+	Socket_Config *event = &config.ptp.event;
+	Socket_Config *general = &config.ptp.general;
+
+	event->enabled = b;
+	general->enabled = b;
+
+	udp_end(event->sock);
+	udp_end(general->sock);
+
+	if(event->enabled)
+	{
+		udp_set_remote(event->sock, event->ip, event->port[DST_PORT]);
+		udp_set_remote(general->sock, general->ip, general->port[DST_PORT]);
+
+		udp_begin(event->sock, event->port[SRC_PORT],
+			wiz_is_multicast(event->ip));
+		udp_begin(general->sock, general->port[SRC_PORT],
+			wiz_is_multicast(general->ip));
+	}
+	return 1; //TODO
+}
+
+uint_fast8_t 
 sntp_enable(uint8_t b)
 {
-	timer_pause(sntp_timer);
-	sntp_timer_reconfigure();
+	//ptp_enable(0); FIXME
+
+	timer_pause(sync_timer);
+	sync_timer_reconfigure();
 
 	Socket_Config *socket = &config.sntp.socket;
 	socket->enabled = b;
@@ -147,7 +176,7 @@ sntp_enable(uint8_t b)
 		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 
-		timer_resume(sntp_timer);
+		timer_resume(sync_timer);
 	}
 	return 1; //TODO
 }

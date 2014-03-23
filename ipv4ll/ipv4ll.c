@@ -46,9 +46,9 @@ IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 
 	do {
 		_IPv4LL_random(link_local_ip);
-	} while(arp_probe(0, link_local_ip)); // collision?
+	} while(arp_probe(SOCK_ARP, link_local_ip)); // collision?
 
-	arp_announce(0, link_local_ip);
+	arp_announce(SOCK_ARP, link_local_ip);
 
 	memcpy(ip, link_local_ip, 4);
 	memcpy(gateway, link_local_gateway, 4);

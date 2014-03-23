@@ -331,14 +331,17 @@ dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to AS
 				dhcpc.timeout = systick_uptime() + dhcpc.delay*SNTP_SYSTICK_RATE;
 				break;
 			case LEASE:
-				if(arp_probe(0, dhcpc.ip)) // collision
+				dhcpc_enable(0);
+				if(arp_probe(SOCK_ARP, dhcpc.ip)) // collision
 				{
+					dhcpc_enable(1); // ARP AND DHCP share the same socket
 					// decline IP because of ARP collision
 					dhcpc.state = DECLINE;
 				}
 				else
 				{
-					arp_announce(0, dhcpc.ip);
+					arp_announce(SOCK_ARP, dhcpc.ip);
+					dhcpc_enable(1); // ARP AND DHCP share the same socket
 					dhcpc.state = CLAIMED;
 					memcpy(ip, dhcpc.ip, 4);
 					memcpy(gateway, dhcpc.router_ip, 4);
@@ -417,14 +420,17 @@ dhcpc_refresh()
 				//TODO if refresh is declined or timed-out, claim a new IP after 7/8 of lease time
 				break;
 			case LEASE:
-				if(arp_probe(0, dhcpc.ip)) // collision
+				dhcpc_enable(0);
+				if(arp_probe(SOCK_ARP, dhcpc.ip)) // collision
 				{
+					dhcpc_enable(1); // ARP AND DHCP share the same socket
 					// decline IP because of ARP collision
 					dhcpc.state = DECLINE;
 				}
 				else
 				{
-					arp_announce(0, dhcpc.ip);
+					arp_announce(SOCK_ARP, dhcpc.ip);
+					dhcpc_enable(1); // ARP AND DHCP share the same socket
 					dhcpc.state = CLAIMED;
 					memcpy(ip, dhcpc.ip, 4);
 					memcpy(gateway, dhcpc.router_ip, 4);

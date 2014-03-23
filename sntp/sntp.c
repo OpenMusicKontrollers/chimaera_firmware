@@ -32,7 +32,7 @@
 #include <config.h>
 
 // globals
-fix_32_32_t roundtrip_delay;
+fix_32_32_t delay;
 fix_s31_32_t clock_offset;
 
 static nOSC_Timestamp t0 = 0ULLK;
@@ -56,7 +56,7 @@ sntp_request(uint8_t *buf, nOSC_Timestamp t3)
 	return len;
 }
 
-void __CCM_TEXT__
+void //__CCM_TEXT__
 sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 {
 	sntp_t *answer =(sntp_t *)buf;
@@ -81,16 +81,22 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
   //Transmit Timestamp      T3   time reply sent by server
   //Destination Timestamp   T4   time reply received by client
 
-	//The roundtrip delay d and local clock offset t are defined as
+	//The delay d and local clock offset t are defined as
 	//d =(T4 - T1) -(T3 - T2)     t =((T2 - T1) +(T3 - T4)) / 2.
 
-	roundtrip_delay =(t4 - t1.fix) -(t3.fix - t2.fix);
+	//TODO use filtering like in PTP implementation
+
+	delay = 0.5LLK * ((t4 - t1.fix) -(t3.fix - t2.fix));
 	clock_offset = 0.5LLK *((fix_s31_32_t)(t2.fix - t1.fix) -(fix_s31_32_t)(t4 - t3.fix));
 
 	if(t0 == 0ULLK) // first sync
-		t0 = t3.fix + 0.5ULLK*roundtrip_delay - t4;
+		t0 = t3.fix + delay - t4;
 	else
 		t0 += clock_offset;
+
+#if 0
+	DEBUG("tt", clock_offset, delay);
+#endif
 }
 
 void __CCM_TEXT__
@@ -144,12 +150,12 @@ _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_sntp_roundtrip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float trip = roundtrip_delay;
+	float trip = delay;
 	size = CONFIG_SUCCESS("isf", uuid, path, trip);
 
 	CONFIG_SEND(size);
@@ -169,7 +175,7 @@ static const nOSC_Query_Argument sntp_offset_args [] = {
 	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
 };
 
-static const nOSC_Query_Argument sntp_roundtrip_args [] = {
+static const nOSC_Query_Argument sntp_delay_args [] = {
 	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, 0.f, INFINITY)
 };
 
@@ -181,5 +187,5 @@ const nOSC_Query_Item sntp_tree [] = {
 
 	// read-only
 	nOSC_QUERY_ITEM_METHOD("offset", "Sync offset", _sntp_offset, sntp_offset_args),
-	nOSC_QUERY_ITEM_METHOD("roundtrip", "Sync roundtrip delay", _sntp_roundtrip, sntp_roundtrip_args)
+	nOSC_QUERY_ITEM_METHOD("delay", "Sync delay", _sntp_delay, sntp_delay_args)
 };

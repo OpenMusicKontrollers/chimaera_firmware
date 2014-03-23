@@ -21,34 +21,34 @@
  *     distribution.
  */
 
-#ifndef _SNTP_H_
-#define _SNTP_H_
+#ifndef _PTP_H_
+#define _PTP_H_
 
 #include <stdint.h>
 
 #include <netdef.h>
 #include <nosc.h>
 
-#define SNTP_SYSTICK_RELOAD_VAL 719 // 10us
-#define SNTP_SYSTICK_DURATION 0.00001ULLK // 10us
-#define SNTP_SYSTICK_RATE 100000
-#define SNTP_SYSTICK_US 10
+//#define PTP_SYSTICK_RELOAD_VAL 719 // 10us
+#define PTP_SYSTICK_DURATION 0.00001LLK // 10us
+//#define PTP_NSEC_PER_SYSTICK 10000LL // nanosecons per systick
+//#define PTP_SYSTICK_RATE 100000
+//#define PTP_SYSTICK_US 10
 
-//#define SNTP_SYSTICK_RELOAD_VAL 71900 // 1ms
-//#define SNTP_SYSTICK_DURATION 0.001ULLK // 1ms
-//#define SNTP_SYSTICK_RATE 1000
-//#define SNTP_SYSTICK_US 1000
+typedef struct _PTP_Timestamp PTP_Timestamp;
 
-extern fix_s31_32_t clock_offset;
-extern fix_32_32_t roundtrip_delay;
-extern const nOSC_Query_Item sntp_tree [5];
+struct _PTP_Timestamp {
+	uint16_t epoch;
+	uint32_t sec;
+	uint32_t nsec;
+} __attribute((packed));
 
-uint32_t sntp_uptime();
+extern const nOSC_Query_Item ptp_tree [6];
 
-void sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
+void ptp_init();
+void ptp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
+uint16_t ptp_request_serialize(uint8_t *buf);
+void ptp_request_timestamp(uint32_t tick);
+void ptp_dispatch(uint8_t *buf, uint32_t tick);
 
-uint16_t sntp_request(uint8_t *buf, nOSC_Timestamp t3);
-
-void sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4);
-
-#endif // _SNTP_H_
+#endif // _PTP_H_
