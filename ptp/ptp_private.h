@@ -30,11 +30,18 @@
 #include <armfix.h>
 #include <nosc.h>
 
+typedef struct _PTP_Timestamp PTP_Timestamp;
 typedef struct _PTP_Request PTP_Request;
 #define PTP_Sync PTP_Request
 #define PTP_Follow_Up PTP_Request
 typedef struct _PTP_Response PTP_Response;
 typedef struct _PTP_Announce PTP_Announce;
+
+struct _PTP_Timestamp {
+	uint16_t epoch;
+	uint32_t sec;
+	uint32_t nsec;
+} __attribute((packed));
 
 struct _PTP_Request {
 	uint8_t message_id;

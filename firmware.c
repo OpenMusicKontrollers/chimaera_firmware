@@ -1190,8 +1190,6 @@ setup()
 
 	// set up continuous music controller output engines
 	cmc_init();
-	ptp_init();
-
 	dump_init(sizeof(adc_swap), adc_swap);
 	tuio2_init();
 	tuio1_init();

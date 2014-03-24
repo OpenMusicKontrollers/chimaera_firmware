@@ -34,21 +34,14 @@
 #define SNTP_SYSTICK_RATE 100000
 #define SNTP_SYSTICK_US 10
 
-//#define SNTP_SYSTICK_RELOAD_VAL 71900 // 1ms
-//#define SNTP_SYSTICK_DURATION 0.001ULLK // 1ms
-//#define SNTP_SYSTICK_RATE 1000
-//#define SNTP_SYSTICK_US 1000
-
 extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;
 extern const nOSC_Query_Item sntp_tree [5];
 
+void sntp_reset();
 uint32_t sntp_uptime();
-
 void sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
-
 uint16_t sntp_request(uint8_t *buf, nOSC_Timestamp t3);
-
 void sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4);
 
 #endif // _SNTP_H_

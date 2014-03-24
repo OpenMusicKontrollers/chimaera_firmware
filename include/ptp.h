@@ -29,23 +29,11 @@
 #include <netdef.h>
 #include <nosc.h>
 
-//#define PTP_SYSTICK_RELOAD_VAL 719 // 10us
 #define PTP_SYSTICK_DURATION 0.00001LLK // 10us
-//#define PTP_NSEC_PER_SYSTICK 10000LL // nanosecons per systick
-//#define PTP_SYSTICK_RATE 100000
-//#define PTP_SYSTICK_US 10
-
-typedef struct _PTP_Timestamp PTP_Timestamp;
-
-struct _PTP_Timestamp {
-	uint16_t epoch;
-	uint32_t sec;
-	uint32_t nsec;
-} __attribute((packed));
 
 extern const nOSC_Query_Item ptp_tree [6];
 
-void ptp_init();
+void ptp_reset();
 void ptp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
 uint16_t ptp_request_serialize(uint8_t *buf);
 void ptp_request_timestamp(uint32_t tick);

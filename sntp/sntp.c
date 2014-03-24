@@ -32,10 +32,20 @@
 #include <config.h>
 
 // globals
-fix_32_32_t delay;
-fix_s31_32_t clock_offset;
+fix_s31_32_t D0, D1, DD0 = 0.0002LLK, DD1 = 0.0002LLK;
+fix_s31_32_t O0, O1, OO0, OO1;
+
+#define JAN_1970 2208988800UL
 
 static nOSC_Timestamp t0 = 0ULLK;
+
+void
+sntp_reset()
+{
+	t0 = 0.0ULLK;
+	D0 = D1 = DD0 = DD1 = 0.0002LLK;
+	O0 = O1 = OO0 = OO1 = 0.0LLK;
+}
 
 uint16_t __CCM_TEXT__
 sntp_request(uint8_t *buf, nOSC_Timestamp t3)
@@ -65,7 +75,8 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 	if( (answer->li_vn_mode & 0x3f) !=(SNTP_VERSION_4 | SNTP_MODE_SERVER) )
 		return;
 
-	volatile timestamp64_t t1, t2, t3;
+	//volatile timestamp64_t t1, t2, t3;
+	timestamp64_t t1, t2, t3;
 
 	t1.osc.sec = ntohl(answer->originate_timestamp.ntp.sec);
 	t1.osc.frac = ntohl(answer->originate_timestamp.ntp.frac);
@@ -76,26 +87,46 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 	t3.osc.sec = ntohl(answer->transmit_timestamp.ntp.sec);
 	t3.osc.frac = ntohl(answer->transmit_timestamp.ntp.frac);
 
+	t1.fix -= JAN_1970;
+	t2.fix -= JAN_1970;
+	t3.fix -= JAN_1970;
+	t4 -= JAN_1970;
+
 	//Originate Timestamp     T1   time request sent by client
   //Receive Timestamp       T2   time request received by server
   //Transmit Timestamp      T3   time reply sent by server
   //Destination Timestamp   T4   time reply received by client
 
 	//The delay d and local clock offset t are defined as
-	//d =(T4 - T1) -(T3 - T2)     t =((T2 - T1) +(T3 - T4)) / 2.
+	//d = ( (T4 - T1) - (T3 - T2) ) / 2     t = ( (T2 - T1) + (T3 - T4) ) / 2.
 
-	//TODO use filtering like in PTP implementation
-
-	delay = 0.5LLK * ((t4 - t1.fix) -(t3.fix - t2.fix));
-	clock_offset = 0.5LLK *((fix_s31_32_t)(t2.fix - t1.fix) -(fix_s31_32_t)(t4 - t3.fix));
+	const fix_s31_32_t Ds = (fix_s31_32_t)0x0.01p2; // 1/64
+	const fix_s31_32_t Os = (fix_s31_32_t)0x0.01p2; // 1/64
 
 	if(t0 == 0ULLK) // first sync
-		t0 = t3.fix + delay - t4;
+		t0 = t3.fix + DD1 - t4;
 	else
-		t0 += clock_offset;
+	{
+		D1 = (fix_s31_32_t)t4 - (fix_s31_32_t)t1.fix;
+		D1 -= (fix_s31_32_t)t3.fix - (fix_s31_32_t)t2.fix;
+		D1 /= 2;
+		DD1 = Ds * (D0 + D1) / 2 + DD0 * (1LLK - Ds);
+
+		O1 = (fix_s31_32_t)t2.fix - (fix_s31_32_t)t1.fix;
+		O1 += (fix_s31_32_t)t3.fix - (fix_s31_32_t)t4;
+		O1 /= 2;
+		OO1 = Os * (O0 + O1) / 2 + OO0 * (1LLK - Os);
+
+		t0 += OO1;
+	}
+
+	D0 = D1;
+	DD0 = DD1;
+	O0 = O1;
+	OO0 = OO1;
 
 #if 0
-	DEBUG("tt", clock_offset, delay);
+	DEBUG("tttt", O1, OO1, D1, DD1);
 #endif
 }
 
@@ -141,7 +172,7 @@ _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float offset = clock_offset;
+	float offset = OO1;
 	size = CONFIG_SUCCESS("isf", uuid, path, offset);
 
 	CONFIG_SEND(size);
@@ -155,7 +186,7 @@ _sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float trip = delay;
+	float trip = DD1;
 	size = CONFIG_SUCCESS("isf", uuid, path, trip);
 
 	CONFIG_SEND(size);

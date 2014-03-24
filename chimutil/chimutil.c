@@ -148,6 +148,8 @@ ptp_enable(uint8_t b)
 
 	if(event->enabled)
 	{
+		ptp_reset();
+
 		udp_set_remote(event->sock, event->ip, event->port[DST_PORT]);
 		udp_set_remote(general->sock, general->ip, general->port[DST_PORT]);
 
@@ -172,6 +174,8 @@ sntp_enable(uint8_t b)
 	udp_end(socket->sock);
 	if(socket->enabled)
 	{
+		sntp_reset();
+
 		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
