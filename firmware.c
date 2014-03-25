@@ -106,6 +106,7 @@ static volatile uint_fast8_t dhcpc_needs_refresh = 0;
 static volatile uint_fast8_t mdns_timeout = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
 static volatile uint32_t wiz_irq_tick;
+static volatile int64_t wiz_ptp_tick;
 
 static nOSC_Timestamp now;
 
@@ -146,8 +147,9 @@ soft_irq()
 static void __CCM_TEXT__
 wiz_irq()
 {
-	wiz_irq_tick = systick_uptime();
 	//TODO substract 12 cycles interrupt latency for ARM Cortex M4?
+	wiz_ptp_tick = ptp_uptime();
+	wiz_irq_tick = systick_uptime();
 	wiz_needs_attention = 1;
 }
 
@@ -358,7 +360,7 @@ sntp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void __CCM_TEXT__
 ptp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	ptp_dispatch(buf, wiz_irq_tick);
+	ptp_dispatch(buf, wiz_ptp_tick);
 }
 
 static void __CCM_TEXT__
@@ -591,7 +593,7 @@ loop()
 			if(config.sntp.socket.enabled)
 				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
 			else if(config.ptp.event.enabled)
-				ptp_timestamp_refresh(systick_uptime(), &now, &offset);
+				ptp_timestamp_refresh(ptp_uptime(), &now, &offset);
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
 			{

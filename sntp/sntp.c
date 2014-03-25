@@ -43,7 +43,7 @@ void
 sntp_reset()
 {
 	t0 = 0.0ULLK;
-	D0 = D1 = DD0 = DD1 = 0.0002LLK;
+	D0 = D1 = DD0 = DD1 = 0.0LLK;
 	O0 = O1 = OO0 = OO1 = 0.0LLK;
 }
 
@@ -100,22 +100,28 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 	//The delay d and local clock offset t are defined as
 	//d = ( (T4 - T1) - (T3 - T2) ) / 2     t = ( (T2 - T1) + (T3 - T4) ) / 2.
 
-	const fix_s31_32_t Ds = (fix_s31_32_t)0x0.01p2; // 1/64
-	const fix_s31_32_t Os = (fix_s31_32_t)0x0.01p2; // 1/64
+	//const fix_s31_32_t Ds = 0.015625LLK; // 1/64
+	//const fix_s31_32_t Os = 0.015625LLK; // 1/64
+	const fix_s31_32_t Ds = 0.25LLK; // 1/4
+	const fix_s31_32_t Os = 0.25LLK; // 1/4
 
-	if(t0 == 0ULLK) // first sync
+	if(t0 == 0.0ULLK) // first sync
 		t0 = t3.fix + DD1 - t4;
 	else
 	{
 		D1 = (fix_s31_32_t)t4 - (fix_s31_32_t)t1.fix;
 		D1 -= (fix_s31_32_t)t3.fix - (fix_s31_32_t)t2.fix;
 		D1 /= 2;
-		DD1 = Ds * (D0 + D1) / 2 + DD0 * (1LLK - Ds);
+
+		if(D0 == 0.0LLK)
+			DD0 = D0 = D1;
+
+		DD1 = Ds * (D0 + D1) / 2 + DD0 * (1.0LLK - Ds);
 
 		O1 = (fix_s31_32_t)t2.fix - (fix_s31_32_t)t1.fix;
 		O1 += (fix_s31_32_t)t3.fix - (fix_s31_32_t)t4;
 		O1 /= 2;
-		OO1 = Os * (O0 + O1) / 2 + OO0 * (1LLK - Os);
+		OO1 = Os * (O0 + O1) / 2 + OO0 * (1.0LLK - Os);
 
 		t0 += OO1;
 	}
@@ -125,8 +131,8 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 	O0 = O1;
 	OO0 = OO1;
 
-#if 0
-	DEBUG("tttt", O1, OO1, D1, DD1);
+#if 1
+	DEBUG("stt", "sNTPv4", OO1, DD1);
 #endif
 }
 

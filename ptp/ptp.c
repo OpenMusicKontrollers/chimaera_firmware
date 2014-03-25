@@ -31,19 +31,22 @@
 #include <chimutil.h>
 #include <config.h>
 #include <debug.h>
+#include <sntp.h>
 
-static fix_32_32_t t0 = 0.0ULLK;
+static int64_t t0 = 0ULL; // us since epoch
 
-static fix_32_32_t t1, t2, t3, t4;
-static fix_32_32_t c1, c2, c3;
+static int64_t t1, t2, t3, t4;
+static double c1, c2, c3;
 
-static fix_32_32_t ta, tb, tc, td;
-static fix_32_32_t ca, cb, cc;
+#if 0
+static int64_t ta, tb, tc, td;
+static double ca, cb, cc;
+#endif
 
-static fix_32_32_t D0, D1, DD0 = 0.0002ULLK, DD1 = 0.0002ULLK; // initial delay of 200us
-static fix_s31_32_t O0, O1, OO0, OO1;
-static fix_s31_32_t Os;
-static fix_32_32_t Ds;
+static double D0, D1, DD0, DD1;
+static double O0, O1, OO0, OO1;
+static double Os;
+static double Ds;
 
 static uint_fast8_t ptp_timescale = 0;
 static uint16_t utc_offset;
@@ -57,13 +60,13 @@ static uint_fast8_t sync_counter = 0;
 void
 ptp_reset()
 {
-	t0 = 0.0ULLK;
-	D0 = D1 = DD0 = DD1 = 0.0002ULLK;
-	O0 = O1 = OO0 = OO1 = 0.0ULLK;
+	t0 = 0ULL;
+	D0 = D1 = DD0 = DD1 = 0.f;
+	O0 = O1 = OO0 = OO1 = 0.f;
 
 	// initialize stiffness
-	Os = 1.0LLK / (fix_s31_32_t)config.ptp.offset_stiffness;
-	Ds = 1.0ULLK / (fix_32_32_t)config.ptp.delay_stiffness;
+	Ds = 1.f / (double)config.ptp.delay_stiffness;
+	Os = 1.f / (double)config.ptp.offset_stiffness;
 }
 
 static inline __always_inline void
@@ -71,7 +74,7 @@ ptp_request_ntoh(PTP_Request *req)
 {
 	req->message_length = ntoh(req->message_length);
 	req->flags = ntoh(req->flags);
-	req->correction = ntohll(req->correction); //TODO use it
+	req->correction = ntohll(req->correction);
 	req->clock_identity = ntohll(req->clock_identity);
 	req->source_port_id = hton(req->source_port_id);
 	req->sequence_id = hton(req->sequence_id);
@@ -96,50 +99,79 @@ ptp_announce_ntoh(PTP_Announce *ann)
 	ann->local_steps_removed = ntoh(ann->local_steps_removed);
 }
 
-//#define JAN_1970 2208988800ULLK
-#define JAN_1970 2208988800UL
-#define NSEC 0.000000001ULLK
-#define PTP_TO_FIX(ts) ((ts).sec + (ts).nsec * NSEC)
-#define TICK_TO_FIX(tick) (t0 + (tick) * PTP_SYSTICK_DURATION)
-#define FIX_TO_OSC(fix) ((fix) + JAN_1970 - (ptp_timescale ? utc_offset : 0))
+#define JAN_1970 2208988800ULLK
+#define PTP_TO_US(ts) ((int64_t)(ts).sec * 1000000 + (ts).nsec / 1000)
+//#define TICK_TO_US(tick) (t0 + (int64_t)(tick) * 10)
+#define TICK_TO_US(tick) (t0 + (tick))
 #define SLAVE_CLOCK_ID (*(uint64_t *)UID_BASE)
+
+int64_t __CCM_TEXT__
+ptp_uptime()
+{
+	uint32_t ticks;
+	uint32_t cycle_cnt;
+	
+	do {
+		ticks = systick_uptime();
+		cycle_cnt = systick_get_count();
+	} while (ticks != systick_uptime());
+
+	int64_t uptime;
+	uptime = (int64_t)ticks * SNTP_SYSTICK_US;
+	uptime += (SNTP_SYSTICK_RELOAD_VAL + 1 - cycle_cnt) / CYCLES_PER_MICROSECOND;
+
+	return uptime;
+}
 
 static void
 _ptp_update_offset()
 {
 	// offset = t2 - t1 - delay - correction1 - correction2
 
-	if(t0 == 0ULLK)
+	if(t0 == 0ULL)
 		t0 = t1 + DD1 - t2;
 	else
 	{
-		if(t2 > t1)
-			O1 = (fix_s31_32_t)(t2 - t1) - (fix_s31_32_t)DD1 - c1 - c2;
-		else
-			O1 = -(fix_s31_32_t)(t1 - t2) - (fix_s31_32_t)DD1 - c1 - c2;
-		OO1 = Os * (O0 + O1) / 2 + OO0 * (1LLK - Os);
+		int64_t a = t2 - t1;
+		double A = a;
+		O1 = A - DD1;
+		O1 -= c1 + c2;
+		OO1 = Os * (O0 + O1) / 2 + OO0 * (1.f - Os);
 		t0 -= OO1;
 
-#if 0
-DEBUG("tttt", O0, O1, OO0, OO1);
+#if 1
+	DEBUG("sdf", "PTPv2", OO1, DD1);
 #endif
 
 		O0 = O1;
 		OO0 = OO1;
 	}
 
-#if 1
-	float oo = OO1;
-	float dd1 = DD1;
-	DEBUG("ff", oo, dd1);
-#endif
-
 	// send delay request
 	if(sync_counter++ >= config.ptp.multiplier)
 	{
-		uint16_t len = ptp_request_serialize(BUF_O_OFFSET(buf_o_ptr));
-		udp_send(config.ptp.event.sock, BUF_O_BASE(buf_o_ptr), len); // port 319
-		ptp_request_timestamp(systick_uptime());
+		uint8_t *buf = BUF_O_OFFSET(buf_o_ptr);
+		static PTP_Request req;
+
+		req.message_id = PTP_MESSAGE_ID_DELAY_REQ;
+		req.version = PTP_VERSION_2;
+		req.message_length = sizeof(PTP_Request);
+		req.flags = 0U;
+		req.correction = 0ULL;
+		req.clock_identity = SLAVE_CLOCK_ID;
+		req.source_port_id = 1U;
+		req.sequence_id = ++req_seq_id;
+		req.control = PTP_CONTROL_DELAY_REQ;
+		req.log_message_interval = 0x7f;
+		req.timestamp.epoch = 0U;
+		req.timestamp.sec = 0UL;
+		req.timestamp.nsec = 0UL;
+
+		ptp_request_ntoh(&req);
+		memcpy(buf, &req, sizeof(PTP_Request));
+		
+		udp_send(config.ptp.event.sock, BUF_O_BASE(buf_o_ptr), sizeof(PTP_Request)); // port 319
+		t3 = TICK_TO_US(ptp_uptime());
 
 		sync_counter = 0;
 	}
@@ -148,33 +180,37 @@ DEBUG("tttt", O0, O1, OO0, OO1);
 static void
 _ptp_update_delay_e2e()
 {
-	uint_fast8_t i;
+	int64_t a = t4 - t1;
+	int64_t b = t3 - t2;
 
-	D1 = (t4 - t1) - (t3 - t2);
+	double A = a;
+	double B = b;
+
+	D1 = A - B;
 	D1 -= c1 + c2 + c3;
 	D1 /= 2;
 
-	DD1 = Ds * (D0 + D1) / 2 + DD0 * (1ULLK - Ds);
+	if(D0 == 0.f)
+		DD0 = D0 = D1;
+
+	DD1 = Ds * (D0 + D1) / 2 + DD0 * (1.f - Ds);
 
 	D0 = D1;
 	DD0 = DD1;
-
-#if 0
-	DEBUG("ttttt", t0, t1, t2, t3, t4);
-#endif
 }
 
 #if 0 // we need two more sockets for P2P mode
 static void
 _ptp_update_delay_p2p()
 {
-	uint_fast8_t i;
+	int64_t a = td - ta;
+	int64_t b = tc - tb;
 
-	D1 = (tb - tc) * rr + (td - ta);
+	D1 = A - B;
 	D1 -= ca + cb + cc;
 	D1 /= 2;
 
-	DD1 = Ds * (D0 + D1) / 2 + DD0 * (1ULLK - Ds);
+	DD1 = Ds * (D0 + D1) / 2 + DD0 * (1.f - Ds);
 
 	D0 = D1;
 	DD0 = DD1;
@@ -190,13 +226,13 @@ _ptp_dispatch_announce(PTP_Announce *ann)
 }
 
 static void
-_ptp_dispatch_sync(PTP_Sync *sync, uint32_t tick)
+_ptp_dispatch_sync(PTP_Sync *sync, int64_t tick)
 {
 	if(master_clock_id != sync->clock_identity)
 		return; // not our master
 
-	t2 = TICK_TO_FIX(tick); // set receive timestamp
-	c2 = (fix_32_32_t)sync->correction * (fix_32_32_t)0x0.0001p0;
+	t2 = TICK_TO_US(tick); // set receive timestamp
+	c2 = sync->correction * 0x0.0001p0;
 	
 	ptp_timescale = sync->flags & PTP_FLAGS_TIMESCALE; // are we using PTP timescale?
 
@@ -204,8 +240,8 @@ _ptp_dispatch_sync(PTP_Sync *sync, uint32_t tick)
 		sync_seq_id = sync->sequence_id; // wait for follow_up message
 	else
 	{
-		t1 = PTP_TO_FIX(sync->timestamp);
-		c1 = 0ULLK;
+		t1 = PTP_TO_US(sync->timestamp);
+		c1 = sync->correction * 0x0.0001p0;
 		_ptp_update_offset();
 	}
 }
@@ -219,8 +255,8 @@ _ptp_dispatch_follow_up(PTP_Follow_Up *folup)
 	if(sync_seq_id != folup->sequence_id)
 		return; // does not match previously received sync packet
 
-	t1 = PTP_TO_FIX(folup->timestamp);
-	c1 = (fix_32_32_t)folup->correction * (fix_32_32_t)0x0.0001p0;
+	t1 = PTP_TO_US(folup->timestamp);
+	c1 = folup->correction * 0x0.0001p0;
 	_ptp_update_offset();
 }
 
@@ -236,14 +272,14 @@ _ptp_dispatch_delay_resp(PTP_Response *resp)
 	if(SLAVE_CLOCK_ID != resp->requesting_clock_identity)
 		return;
 
-	t4 = PTP_TO_FIX(resp->req.timestamp);
-	c3 = (fix_32_32_t)resp->req.correction * (fix_32_32_t)0x0.0001p0;
+	t4 = PTP_TO_US(resp->req.timestamp);
+	c3 = resp->req.correction * 0x0.0001p0;
 	_ptp_update_delay_e2e();
 }
 
 #if 0 // we need two more sockets for P2P mode
 static void
-_ptp_dispatch_pdelay_req(PTP_Request *req, uint32_t tick)
+_ptp_dispatch_pdelay_req(PTP_Request *req, int64_t tick)
 {
 	static PTP_Response resp;
 	uint8_t *offset = BUF_O_OFFSET(buf_o_ptr);
@@ -253,13 +289,13 @@ _ptp_dispatch_pdelay_req(PTP_Request *req, uint32_t tick)
 		return;
 
 	// PEER DELAY RESPONSE
-	fix_32_32_t tx = TICK_TO_FIX(tick);
+	int64_t tx = TICK_TO_US(tick);
 
 	resp.req.message_id = PTP_MESSAGE_ID_PDELAY_RESP;
 	resp.req.version = PTP_VERSION_2;
 	resp.req.message_length = sizeof(PTP_Response);
 	resp.req.flags = PTP_FLAGS_TWO_STEP;
-	resp.req.correction = 0ULL;
+	resp.req.correction = 0.f;
 	resp.req.clock_identity = SLAVE_CLOCK_ID;
 	resp.req.source_port_id = 1U;
 	resp.req.sequence_id = req->sequence_id;
@@ -267,7 +303,7 @@ _ptp_dispatch_pdelay_req(PTP_Request *req, uint32_t tick)
 	resp.req.log_message_interval = 0x7f;
 
 	resp.req.timestamp.epoch = 0U;
-	resp.req.timestamp.sec = (uint32_t)tx;
+	resp.req.timestamp.sec = tx / 1000000;
 	resp.req.timestamp.nsec = (tx - resp.req.timestamp.sec) * 1000000000;
 
 	resp.requesting_clock_identity = req->clock_identity;
@@ -279,11 +315,11 @@ _ptp_dispatch_pdelay_req(PTP_Request *req, uint32_t tick)
 	udp_send(config.ptp.event.sock, base, sizeof(PTP_Response)); // port 319
 
 	// PEER DELAY RESPONSE FOLLOW UP
-	fix_32_32_t ty = TICK_TO_FIX(systick_uptime());
+	int64_t ty = TICK_TO_US(ptp_uptime());
 
 	resp.req.message_id = PTP_MESSAGE_ID_PDELAY_RESP_FOLLOW_UP;
 	resp.req.flags = 0U;
-	resp.req.timestamp.sec = (uint32_t)ty;
+	resp.req.timestamp.sec = ty / 1000000;
 	resp.req.timestamp.nsec = (ty - resp.req.timestamp.sec) * 1000000000;
 
 	memcpy(offset, &resp, sizeof(PTP_Response));
@@ -304,12 +340,12 @@ _ptp_dispatch_pdelay_req(PTP_Request *req, uint32_t tick)
 	ptp_request_ntoh((PTP_Request *)offset);
 	udp_send(config.ptp.event.sock, base, sizeof(PTP_Response)); // port 319
 
-	ta = TICK_TO_FIX(systick_uptime());
-	cb = (fix_32_32_t)req->correction * (fix_32_32_t)0x0.0001p0;
+	ta = TICK_TO_US(ptp_uptime());
+	ca = req->correction * 0x0.0001p0;
 }
 
 static void
-_ptp_dispatch_pdelay_resp(PTP_Response *resp, uint32_t tick)
+_ptp_dispatch_pdelay_resp(PTP_Response *resp, int64_t tick)
 {
 	if(master_clock_id != resp->req.clock_identity)
 		return;
@@ -320,9 +356,9 @@ _ptp_dispatch_pdelay_resp(PTP_Response *resp, uint32_t tick)
 	if(SLAVE_CLOCK_ID != resp->requesting_clock_identity)
 		return;
 
-	tb = PTP_TO_FIX(resp->req.timestamp);
-	cb = (fix_32_32_t)resp->req.correction * (fix_32_32_t)0x0.0001p0;
-	tc = TICK_TO_FIX(tick);
+	tb = PTP_TO_US(resp->req.timestamp);
+	cb = resp->req.correction * 0x0.0001p0;
+	tc = TICK_TO_US(tick);
 	// now wait for follow up
 }
 
@@ -338,19 +374,22 @@ _ptp_dispatch_pdelay_resp_follow_up(PTP_Response *resp)
 	if(SLAVE_CLOCK_ID != resp->requesting_clock_identity)
 		return;
 
-	td = PTP_TO_FIX(resp->req.timestamp);
-	cc = (fix_32_32_t)resp->req.correction * (fix_32_32_t)0x0.0001p0;
-	//TODO update roundtrip delay
+	td = PTP_TO_US(resp->req.timestamp);
+	cc = resp->req.correction * 0x0.0001p0;
+	_ptp_update_delay_p2p();
 }
 #endif
 
 void
-ptp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
+ptp_timestamp_refresh(int64_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
 {
-	fix_32_32_t _now;
-	
-	_now = TICK_TO_FIX(tick);
-	*now = FIX_TO_OSC(_now);
+	uint64_t ts;
+
+	ts = TICK_TO_US(tick);
+
+	*now = ts * 0.000001;
+	*now += JAN_1970;
+	*now -= ptp_timescale ? utc_offset : 0;
 
 	if(offset)
 	{
@@ -361,39 +400,8 @@ ptp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset
 	}
 }
 
-uint16_t
-ptp_request_serialize(uint8_t *buf)
-{
-	static PTP_Request req;
-
-	req.message_id = PTP_MESSAGE_ID_DELAY_REQ;
-	req.version = PTP_VERSION_2;
-	req.message_length = sizeof(PTP_Request);
-	req.flags = 0U;
-	req.correction = 0ULL;
-	req.clock_identity = SLAVE_CLOCK_ID;
-	req.source_port_id = 1U;
-	req.sequence_id = ++req_seq_id;
-	req.control = PTP_CONTROL_DELAY_REQ;
-	req.log_message_interval = 0x7f;
-	req.timestamp.epoch = 0U;
-	req.timestamp.sec = 0UL;
-	req.timestamp.nsec = 0UL;
-
-	ptp_request_ntoh(&req);
-	memcpy(buf, &req, sizeof(PTP_Request));
-
-	return sizeof(PTP_Request);
-}
-
 void
-ptp_request_timestamp(uint32_t tick)
-{
-	t3 = TICK_TO_FIX(tick);
-}
-
-void
-ptp_dispatch(uint8_t *buf, uint32_t tick)
+ptp_dispatch(uint8_t *buf, int64_t tick)
 {
 	PTP_Request *msg = (PTP_Request *)buf;
 
@@ -472,7 +480,7 @@ static uint_fast8_t
 _ptp_offset_stiffness(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint_fast8_t res = config_check_uint8(path, fmt, argc, args, &config.ptp.offset_stiffness);
-	Os = 1.0LLK / (fix_32_32_t)config.ptp.offset_stiffness;
+	Os = 1.f / (double)config.ptp.offset_stiffness;
 	return res;
 }
 
@@ -480,8 +488,7 @@ static uint_fast8_t
 _ptp_delay_stiffness(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint_fast8_t res = config_check_uint8(path, fmt, argc, args, &config.ptp.delay_stiffness);
-	Ds = 1.0ULLK / (fix_32_32_t)config.ptp.delay_stiffness;
-	//FIXME ptp_init()
+	Ds = 1.f / (double)config.ptp.delay_stiffness;
 	return res;
 }
 
@@ -491,8 +498,7 @@ _ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float offset = OO1;
-	size = CONFIG_SUCCESS("isf", uuid, path, offset);
+	size = CONFIG_SUCCESS("isd", uuid, path, OO1);
 
 	CONFIG_SEND(size);
 
@@ -505,8 +511,7 @@ _ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	float delay = DD1;
-	size = CONFIG_SUCCESS("isf", uuid, path, delay);
+	size = CONFIG_SUCCESS("isd", uuid, path, DD1);
 
 	CONFIG_SEND(size);
 
