@@ -61,6 +61,7 @@ void
 ptp_reset()
 {
 	t0 = 0ULL;
+
 	D0 = D1 = DD0 = DD1 = 0.f;
 	O0 = O1 = OO0 = OO1 = 0.f;
 
@@ -101,15 +102,14 @@ ptp_announce_ntoh(PTP_Announce *ann)
 
 #define JAN_1970 2208988800ULLK
 #define PTP_TO_US(ts) ((int64_t)(ts).sec * 1000000 + (ts).nsec / 1000)
-//#define TICK_TO_US(tick) (t0 + (int64_t)(tick) * 10)
 #define TICK_TO_US(tick) (t0 + (tick))
 #define SLAVE_CLOCK_ID (*(uint64_t *)UID_BASE)
 
 int64_t __CCM_TEXT__
 ptp_uptime()
 {
-	uint32_t ticks;
-	uint32_t cycle_cnt;
+	volatile uint32_t ticks;
+	volatile uint32_t cycle_cnt;
 	
 	do {
 		ticks = systick_uptime();
@@ -140,7 +140,7 @@ _ptp_update_offset()
 		t0 -= OO1;
 
 #if 1
-	DEBUG("sdf", "PTPv2", OO1, DD1);
+	DEBUG("sdd", "PTPv2", OO1, DD1);
 #endif
 
 		O0 = O1;
@@ -148,7 +148,7 @@ _ptp_update_offset()
 	}
 
 	// send delay request
-	if(sync_counter++ >= config.ptp.multiplier)
+	if(++sync_counter >= config.ptp.multiplier)
 	{
 		uint8_t *buf = BUF_O_OFFSET(buf_o_ptr);
 		static PTP_Request req;
@@ -498,7 +498,8 @@ _ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	size = CONFIG_SUCCESS("isd", uuid, path, OO1);
+	float fOO1 = OO1;
+	size = CONFIG_SUCCESS("isf", uuid, path, fOO1);
 
 	CONFIG_SEND(size);
 
@@ -511,7 +512,8 @@ _ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	size = CONFIG_SUCCESS("isd", uuid, path, DD1);
+	float fDD1 = DD1;
+	size = CONFIG_SUCCESS("isf", uuid, path, fDD1);
 
 	CONFIG_SEND(size);
 
@@ -527,15 +529,15 @@ static const nOSC_Query_Argument ptp_multiplier_args [] = {
 };
 
 static const nOSC_Query_Argument ptp_stiffness_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Stiffness", nOSC_QUERY_MODE_RW, 1, 64)
+	nOSC_QUERY_ARGUMENT_INT32("Stiffness", nOSC_QUERY_MODE_RW, 1, 128)
 };
 
 static const nOSC_Query_Argument ptp_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
 };
 
 static const nOSC_Query_Argument ptp_delay_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, 0.f, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, 0.f, INFINITY)
 };
 
 const nOSC_Query_Item ptp_tree [] = {

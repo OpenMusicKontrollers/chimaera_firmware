@@ -29,8 +29,6 @@
 #include <netdef.h>
 #include <nosc.h>
 
-#define PTP_SYSTICK_DURATION 0.00001LLK // 10us
-
 extern const nOSC_Query_Item ptp_tree [6];
 
 void ptp_reset();
