@@ -85,7 +85,9 @@ uint_fast8_t
 output_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.output.osc.socket;
+
 	socket->enabled = b;
+
 	if(!config.output.osc.tcp)
 	{
 		udp_end(socket->sock);
@@ -112,7 +114,9 @@ uint_fast8_t
 config_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.config.osc.socket;
+
 	socket->enabled = b;
+
 	if(!config.config.osc.tcp)
 	{
 		udp_end(socket->sock);
@@ -135,14 +139,11 @@ config_enable(uint8_t b)
 uint_fast8_t 
 ptp_enable(uint8_t b)
 {
-	//sntp_enable(0); FIXME
-
 	Socket_Config *event = &config.ptp.event;
 	Socket_Config *general = &config.ptp.general;
 
 	event->enabled = b;
 	general->enabled = b;
-
 	udp_end(event->sock);
 	udp_end(general->sock);
 
@@ -164,14 +165,14 @@ ptp_enable(uint8_t b)
 uint_fast8_t 
 sntp_enable(uint8_t b)
 {
-	//ptp_enable(0); FIXME
+	Socket_Config *socket = &config.sntp.socket;
 
 	timer_pause(sync_timer);
 	sync_timer_reconfigure();
 
-	Socket_Config *socket = &config.sntp.socket;
 	socket->enabled = b;
 	udp_end(socket->sock);
+
 	if(socket->enabled)
 	{
 		sntp_reset();
@@ -189,7 +190,9 @@ uint_fast8_t
 debug_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.debug.osc.socket;
+
 	socket->enabled = b;
+
 	if(!config.debug.osc.tcp)
 	{
 		udp_end(socket->sock);
@@ -215,8 +218,10 @@ uint_fast8_t
 mdns_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.mdns.socket;
+
 	socket->enabled = b;
 	udp_end(socket->sock);
+
 	if(socket->enabled)
 	{
 		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
@@ -233,8 +238,10 @@ dhcpc_enable(uint8_t b)
 	//dhcpc_timer_reconfigure(); //TODO we don't need this
 
 	Socket_Config *socket = &config.dhcpc.socket;
+
 	socket->enabled = b;
 	udp_end(socket->sock);
+
 	if(socket->enabled)
 	{
 		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
@@ -262,7 +269,7 @@ stop_watch_stop(Stop_Watch *sw)
 	{
 		uint16_t size;
 		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.debug.osc.tcp, config.debug.osc.slip,
+			config.debug.osc.tcp,
 			"/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
 		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
 

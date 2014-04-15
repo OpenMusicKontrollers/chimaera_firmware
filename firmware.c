@@ -530,13 +530,13 @@ loop()
 //#define SPEEDTEST
 #ifdef SPEEDTEST
 	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr),
-		config.output.socket.tcp, config.output.socket.slip,
+		config.output.socket.tcp,
 		"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
 	while(1)
 	{
 		osc_send_nonblocking(&config.output.socket, BUF_O_BASE(!buf_o_ptr), cmc_len);
 		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.output.socket.tcp, config.output.socket.slip,
+			config.output.socket.tcp,
 			"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
 		osc_send_block(&config.output.socket);
 		buf_o_ptr ^= 1;
@@ -572,7 +572,7 @@ loop()
 		if(calibrating)
 			range_calibrate(adc12_raw[adc_raw_ptr], adc3_raw[adc_raw_ptr], order12, order3, adc_sum, adc_rela);
 
-		if(config.output.osc.socket.enabled)
+		if(config.output.osc.socket.enabled && (wiz_socket_state[SOCK_OUTPUT] == WIZ_SOCKET_STATE_OPEN) )
 		{
 			uint_fast8_t job = 0;
 
@@ -641,13 +641,13 @@ loop()
 					nest_fmt[job] = nOSC_TERM;
 
 					cmc_len = nosc_bundle_serialize(nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.tcp, config.output.osc.slip);
+						config.output.osc.tcp);
 				}
 				else // job == 1, there's no need to send a nested bundle in this case
 				{
 					nOSC_Item *first = &nest_bndl[0];
 					cmc_len = nosc_bundle_serialize(first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.tcp, config.output.osc.slip);
+						config.output.osc.tcp);
 				}
 			}
 
@@ -674,8 +674,8 @@ loop()
 #endif
 		}
 
-		// handle WIZnet IRQs
-		if(wiz_needs_attention)
+		// handle WIZnet IRQs XXX check manually if we should have missed an interrupt
+		if(wiz_needs_attention || (pin_read_bit(UDP_INT) == 0) )
 		{
 			// as long as interrupt pin is low, handle interrupts
 			while(pin_read_bit(UDP_INT) == 0)
@@ -684,7 +684,7 @@ loop()
 		}
 
 		// run osc config server
-		if(config.config.osc.socket.enabled && config_should_listen)
+		if(config_should_listen)
 		{
 			if(config_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{
@@ -694,15 +694,18 @@ loop()
 			}
 			if( (config_should_listen & WIZ_Sn_IR_TIMEOUT) || (config_should_listen & WIZ_Sn_IR_DISCON) )
 			{
+				uint8_t enabled = config.config.osc.socket.enabled;
 				config_enable(0);
+				if(config.config.osc.tcp && enabled)
+					config_enable(1);
 				debug_str("config ARPto or TCP disconect");
 			}
 			else if( (config_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_CONFIG] == WIZ_SOCKET_STATE_OPEN) )
-				udp_dispatch(config.config.osc.socket.sock, BUF_I_BASE(buf_i_ptr), config_cb); //FIXME implement osc_dispatch
+				osc_dispatch(&config.config.osc, BUF_I_BASE(buf_i_ptr), config_cb);
 			config_should_listen = 0;
 		}
 
-		if(config.output.osc.socket.enabled && output_should_listen)
+		if(output_should_listen)
 		{
 			if(output_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{
@@ -720,7 +723,7 @@ loop()
 			output_should_listen = 0;
 		}
 
-		if(config.debug.osc.socket.enabled && debug_should_listen)
+		if(debug_should_listen)
 		{
 			if(debug_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{

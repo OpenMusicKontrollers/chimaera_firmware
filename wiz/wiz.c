@@ -523,6 +523,16 @@ udp_set_remote(uint8_t sock, uint8_t *ip, uint16_t port)
 	_dma_write_sock_16(sock, WIZ_Sn_DPORT, port);
 }
 
+void
+udp_get_remote(uint8_t sock, uint8_t *ip, uint16_t *port)
+{
+	// get remote ip
+	_dma_read_sock(sock, WIZ_Sn_DIPR, ip, 4);
+
+	// get remote port
+	_dma_read_sock_16(sock, WIZ_Sn_DPORT, port);
+}
+
 void 
 udp_set_remote_har(uint8_t sock, uint8_t *har)
 {
@@ -580,7 +590,7 @@ udp_receive(uint8_t sock, uint8_t *i_buf, uint16_t len)
 }
 
 void __CCM_TEXT__
-udp_dispatch(uint8_t sock, uint8_t *i_buf, void(*cb)(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len))
+udp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
 {
 	uint16_t len;
 
@@ -628,6 +638,7 @@ tcp_begin(uint8_t sock, uint16_t port, uint_fast8_t server)
 	// set outgoing port
 	_dma_write_sock_16(sock, WIZ_Sn_PORT, port);
 
+
 	// open socket
 	flag = WIZ_Sn_CR_OPEN;
 	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
@@ -649,6 +660,7 @@ tcp_begin(uint8_t sock, uint16_t port, uint_fast8_t server)
 	*/
 }
 
+#include <debug.h>
 void
 tcp_end(uint8_t sock)
 {
@@ -658,7 +670,7 @@ tcp_end(uint8_t sock)
 	flag = WIZ_Sn_CR_DISCON;
 	_dma_write_sock(sock, WIZ_Sn_CR, &flag, 1);
 	do _dma_read_sock(sock, WIZ_Sn_SR, &flag, 1);
-	while(flag != WIZ_Sn_SR_CLOSED);
+	while( (flag != WIZ_Sn_SR_CLOSED) && (flag != WIZ_Sn_SR_LISTEN) ); // after a client disconnect, server goes automatically to listening mode
 	
 	wiz_socket_state[sock] = WIZ_SOCKET_STATE_CLOSED;
 }
@@ -693,6 +705,35 @@ tcp_send_block(uint8_t sock)
 	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
 }
 
+void __CCM_TEXT__
+tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
+{
+	uint16_t len;
+
+	uint8_t ip [4];
+	uint16_t port;
+
+	udp_get_remote(sock, ip, &port); // FIXME only to this once right after client connect
+
+	while( (len = tcp_available(sock)) )
+	{
+		// read OSC packet size
+		tcp_receive(sock, i_buf, 4);
+
+		uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
+		int32_t size = ref_ntohl(tmp_buf_i_ptr);
+
+		if(len - 4 < size)
+			while(tcp_available(sock) < size)
+				; // wait for complete OSC packet
+
+		// read TCP payload
+		tcp_receive(sock, i_buf, size);
+
+		cb(ip, port, tmp_buf_i_ptr, size);
+	}
+}
+
 /*
  * OSC
  */
@@ -721,6 +762,15 @@ osc_send_block(OSC_Config *osc)
 		tcp_send_block(osc->socket.sock);
 	else // !tcp
 		udp_send_block(osc->socket.sock);
+}
+
+void __CCM_TEXT__
+osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
+{
+	if(osc->tcp)
+		tcp_dispatch(osc->socket.sock, i_buf, cb);
+	else
+		udp_dispatch(osc->socket.sock, i_buf, cb);
 }
 
 /*

@@ -105,15 +105,16 @@ ptp_announce_ntoh(PTP_Announce *ann)
 #define TICK_TO_US(tick) (t0 + (tick))
 #define SLAVE_CLOCK_ID (*(uint64_t *)UID_BASE)
 
+// returns microseconds since startup
 int64_t __CCM_TEXT__
 ptp_uptime()
 {
 	volatile uint32_t ticks;
 	volatile uint32_t cycle_cnt;
-	
+
 	do {
-		ticks = systick_uptime();
 		cycle_cnt = systick_get_count();
+		ticks = systick_uptime();
 	} while (ticks != systick_uptime());
 
 	int64_t uptime;
@@ -146,6 +147,8 @@ _ptp_update_offset()
 		O0 = O1;
 		OO0 = OO1;
 	}
+
+	//FIXME postpone
 
 	// send delay request
 	if(++sync_counter >= config.ptp.multiplier)

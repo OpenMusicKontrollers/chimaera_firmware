@@ -124,8 +124,7 @@ Config config = {
 				.port = {3333, 3333},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0,
-			.slip = 0,
+			.tcp = 0
 		},
 		.offset = 0.001ULLK // := 1ms offset
 	},
@@ -139,8 +138,7 @@ Config config = {
 				.port = {4444, 4444},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0,
-			.slip = 0,
+			.tcp = 0
 		}
 	},
 
@@ -180,8 +178,7 @@ Config config = {
 				.port = {6666, 6666},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0,
-			.slip = 0,
+			.tcp = 0
 		}
 	},
 
@@ -596,12 +593,6 @@ _output_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 }
 
 static uint_fast8_t
-_output_slip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return config_check_bool(path, fmt, argc, args, &config.output.osc.slip);
-}
-
-static uint_fast8_t
 _config_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, args);
@@ -701,24 +692,22 @@ _config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	uint8_t enabled = config.config.osc.socket.enabled;
 
 	if(argc == 1) // query
+	{
 		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+		CONFIG_SEND(size);
+	}
 	else
 	{
+		// XXX need to send reply before disabling socket...
+		size = CONFIG_SUCCESS("is", uuid, path);
+		CONFIG_SEND(size);
+
 		config_enable(0);
 		*boolean = args[1].i != 0 ? 1 : 0;
 		config_enable(enabled);
-		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
-	CONFIG_SEND(size);
-
 	return 1;
-}
-
-static uint_fast8_t
-_config_slip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return config_check_bool(path, fmt, argc, args, &config.config.osc.slip);
 }
 
 static uint_fast8_t
@@ -944,8 +933,7 @@ const nOSC_Query_Item config_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_boolean_args), //FIXME document
-	nOSC_QUERY_ITEM_METHOD("slip", "Enable/disable SLIP mode", _config_slip, config_boolean_args), //FIXME document
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_boolean_args)
 };
 
 const nOSC_Query_Item reset_tree [] = {
@@ -982,8 +970,7 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_boolean_args), //FIXME document
-	nOSC_QUERY_ITEM_METHOD("slip", "Enable/disable SLIP mode", _output_slip, config_boolean_args), //FIXME document
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_boolean_args),
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
@@ -1021,7 +1008,7 @@ static uint_fast8_t
 _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
-	char *nil = "nil";
+	const char *nil = "nil";
 
 	if(fmt[0] == nOSC_INT32)
 	{
@@ -1055,6 +1042,13 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 					ptr += 4-rem;
 				}
 				size += ptr-response;
+
+				if(config.config.osc.tcp)
+				{
+					// update TCP preamble
+					int32_t *tcp_size = (int32_t *)BUF_O_OFFSET(buf_o_ptr);
+					*tcp_size = htonl(size - sizeof(int32_t));
+				}
 			}
 			else
 				size = CONFIG_FAIL("iss", uuid, path, "unknown query for path");

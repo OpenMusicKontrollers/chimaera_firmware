@@ -29,10 +29,17 @@
 #include <netdef.h>
 #include <nosc.h>
 
+/*
 #define SNTP_SYSTICK_RELOAD_VAL 719 // 10us
 #define SNTP_SYSTICK_DURATION 0.00001ULLK // 10us
 #define SNTP_SYSTICK_RATE 100000
 #define SNTP_SYSTICK_US 10
+*/
+
+#define SNTP_SYSTICK_RELOAD_VAL (72000 - 1) // 1ms
+#define SNTP_SYSTICK_DURATION 0.001ULLK // 1ms
+#define SNTP_SYSTICK_RATE 1000 // 1000 Hz
+#define SNTP_SYSTICK_US 1000
 
 extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;

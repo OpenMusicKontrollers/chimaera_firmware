@@ -228,12 +228,12 @@ nosc_method_dispatch(nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle
  */
 
 uint16_t __CCM_TEXT__
-nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip)
+nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf, uint_fast8_t tcp)
 {
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
 
-	if(tcp && !slip)
+	if(tcp)
 		buf_ptr += sizeof(int32_t);
 
 	memcpy(buf_ptr, bundle_str, 8);
@@ -251,10 +251,10 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 		switch(*type)
 		{
 			case nOSC_MESSAGE:
-				msg_size = nosc_message_serialize(itm->message.msg, itm->message.path, itm->message.fmt, buf_ptr+4, 0, 0);
+				msg_size = nosc_message_serialize(itm->message.msg, itm->message.path, itm->message.fmt, buf_ptr+4, 0);
 				break;
 			case nOSC_BUNDLE:
-				msg_size = nosc_bundle_serialize(itm->bundle.bndl, itm->bundle.tt, itm->bundle.fmt, buf_ptr+4, 0, 0);
+				msg_size = nosc_bundle_serialize(itm->bundle.bndl, itm->bundle.tt, itm->bundle.fmt, buf_ptr+4, 0);
 				break;
 		}
 
@@ -267,18 +267,13 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 		itm++;
 	}
 
-	int32_t len = buf_ptr - buf - (tcp && !slip ? sizeof(int32_t) : 0);
+	int32_t len = buf_ptr - buf - (tcp ? sizeof(int32_t) : 0);
 	if(len > 16) // there's content after the header
 	{
 		if(tcp)
 		{
-			if(slip)
-				return slip_encode(buf, len); //TODO directly do this in message_serialize
-			else // !slip
-			{
-				*(int32_t *)buf = htonl(len);
-				return len + sizeof(int32_t);
-			}
+			*(int32_t *)buf = htonl(len);
+			return len + sizeof(int32_t);
 		}
 		else // !tcp
 			return len;
@@ -292,7 +287,7 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
  */
 
 uint16_t __CCM_TEXT__
-nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip)
+nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, uint8_t *buf, uint_fast8_t tcp)
 {
 	uint_fast8_t i, rem;
 	uint16_t len;
@@ -301,7 +296,7 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 	// resetting buf_ptr to start of buf
 	uint8_t *buf_ptr = buf;
 
-	if(tcp && !slip)
+	if(tcp)
 		buf_ptr += sizeof(int32_t);
 
 	// write path
@@ -411,35 +406,30 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 		arg++;
 	}
 
-	int32_t size = buf_ptr - buf - (tcp && !slip ? sizeof(int32_t) : 0);
+	int32_t size = buf_ptr - buf - (tcp ? sizeof(int32_t) : 0);
 	if(tcp)
 	{
-		if(slip)
-			return slip_encode(buf, size);
-		else // !slip
-		{
-			*(int32_t *)buf = htonl(size);
-			return size + sizeof(int32_t);
-		}
+		*(int32_t *)buf = htonl(size);
+		return size + sizeof(int32_t);
 	}
 	else // !tcp
 		return size;
 }
 
 uint16_t
-nosc_message_vararg_serialize(uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip, const char *path, const char *fmt, ...)
+nosc_message_vararg_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path, const char *fmt, ...)
 {
   va_list args;
 
   va_start(args, fmt);
-	uint16_t size = nosc_message_varlist_serialize(buf, tcp, slip, path, fmt, args);
+	uint16_t size = nosc_message_varlist_serialize(buf, tcp, path, fmt, args);
   va_end(args);
 
 	return size;
 }
 
 uint16_t
-nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip, const char *path, const char *fmt, va_list args)
+nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path, const char *fmt, va_list args)
 {
 	nOSC_Message msg = vararg_msg;
 
@@ -502,7 +492,7 @@ nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, uint_fast8_t slip
 		}
 	}
 
-	return nosc_message_serialize(msg, path, fmt, buf, tcp, slip);
+	return nosc_message_serialize(msg, path, fmt, buf, tcp);
 }
 
 /*

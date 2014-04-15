@@ -97,6 +97,7 @@ void udp_update_read_write_pointers(uint8_t sock);
 void udp_reset_read_write_pointers(uint8_t sock);
 
 void udp_set_remote(uint8_t sock, uint8_t *ip, uint16_t port);
+void udp_get_remote(uint8_t sock, uint8_t *ip, uint16_t *port);
 void udp_set_remote_har(uint8_t sock, uint8_t *har);
 
 void udp_send(uint8_t sock, uint8_t *o_buf, uint16_t len);
@@ -123,6 +124,10 @@ void tcp_send(uint8_t sock, uint8_t *o_buf, uint16_t len);
 #define tcp_send_nonblocking udp_send_nonblocking
 void tcp_send_block(uint8_t sock);
 
+#define tcp_receive udp_receive
+#define tcp_available udp_available
+void tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
+
 #define tcp_ignore udp_ignore
 
 /*
@@ -132,6 +137,8 @@ void tcp_send_block(uint8_t sock);
 void osc_send(OSC_Config *osc, uint8_t *o_buf, uint16_t len);
 uint_fast8_t osc_send_nonblocking(OSC_Config *osc, uint8_t *o_buf, uint16_t len);
 void osc_send_block(OSC_Config *osc);
+
+void osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
 
 #define osc_ignore udp_ignore
 

@@ -55,7 +55,6 @@ struct _Socket_Config {
 struct _OSC_Config {
 	Socket_Config socket;
 	uint8_t tcp;
-	uint8_t slip;
 };
 
 enum {
@@ -182,8 +181,8 @@ uint_fast8_t groups_save();
 
 extern const char *success_str;
 extern const char *fail_str;
-#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, config.config.osc.slip, success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, config.config.osc.slip, fail_str, __VA_ARGS__))
+#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, fail_str, __VA_ARGS__))
 #define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
