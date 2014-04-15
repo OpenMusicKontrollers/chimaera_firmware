@@ -34,6 +34,7 @@ extern const nOSC_Query_Item ptp_tree [6];
 void ptp_reset();
 int64_t ptp_uptime();
 void ptp_timestamp_refresh(int64_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
+void ptp_request();
 void ptp_dispatch(uint8_t *buf, int64_t tick);
 
 #endif // _PTP_H_

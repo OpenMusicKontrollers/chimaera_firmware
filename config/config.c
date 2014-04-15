@@ -476,14 +476,16 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 				*gateway_ptr =(*ip_ptr) & (*subnet_ptr); // default gateway =(ip & subnet)
 				wiz_gateway_set(config.comm.gateway);
 			}
-			size = CONFIG_SUCCESS("is", uuid, path);
 
 			uint8_t brd [4];
 			broadcast_address(brd, config.comm.ip, config.comm.subnet);
 			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
 
+			//FIXME disrupts PTP
 			if(config.mdns.socket.enabled)
 				mdns_announce(); // announce new IP
+			
+			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "ip invalid, format: x.x.x.x/x");
@@ -743,13 +745,15 @@ _host_address_dns_cb(uint8_t *ip, void *data)
 
 		ip2str(ip, string_buf);
 		DEBUG("ss", "_host_address_dns_cb", string_buf);
-		
-		size = CONFIG_SUCCESS("is", address_cb->uuid, address_cb->path);
+
+		if(address_cb)
+			size = CONFIG_SUCCESS("is", address_cb->uuid, address_cb->path);
 	}
 	else // timeout occured
 		size = CONFIG_FAIL("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
-	
-	CONFIG_SEND(size);
+
+	if(address_cb)
+		CONFIG_SEND(size);
 }
 
 static uint_fast8_t

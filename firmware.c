@@ -95,6 +95,7 @@ static volatile uint_fast8_t adc_raw_ptr = 1;
 static volatile uint_fast8_t mux_counter = MUX_MAX;
 static volatile uint_fast8_t sync_should_request = 1; // send first request at boot
 static volatile uint_fast8_t sntp_should_listen = 0;
+static volatile uint_fast8_t ptp_should_request = 0;
 static volatile uint_fast8_t ptp_event_should_listen = 0;
 static volatile uint_fast8_t ptp_general_should_listen = 0;
 static volatile uint_fast8_t mdns_should_listen = 0;
@@ -181,6 +182,13 @@ static void __CCM_TEXT__
 wiz_sntp_irq(uint8_t isr)
 {
 	sntp_should_listen = isr;
+}
+
+static void __CCM_TEXT__
+ptp_timer_irq()
+{
+	ptp_should_request = 1;
+	timer_pause(ptp_timer);
 }
 
 static void __CCM_TEXT__
@@ -777,6 +785,12 @@ loop()
 				udp_dispatch(config.ptp.general.sock, BUF_I_BASE(buf_i_ptr), ptp_cb);
 				ptp_general_should_listen = 0;
 			}
+
+			if(ptp_should_request)
+			{
+				ptp_request();
+				ptp_should_request = 0;
+			}
 		}
 
 		// run ZEROCONF server
@@ -862,6 +876,23 @@ sync_timer_reconfigure()
 	timer_generate_update(sync_timer);
 
 	nvic_irq_set_priority(NVIC_TIMER2, SYNC_TIMER_PRIORITY);
+}
+
+void 
+ptp_timer_reconfigure(float sec)
+{
+	uint16_t prescaler = 0xffff; 
+	uint16_t reload = 72e6 / 0xffff * sec;
+	uint16_t compare = reload;
+
+	timer_set_prescaler(ptp_timer, prescaler);
+	timer_set_reload(ptp_timer, reload);
+	timer_set_mode(ptp_timer, TIMER_CH1, TIMER_OUTPUT_COMPARE);
+	timer_set_compare(ptp_timer, TIMER_CH1, compare);
+	timer_attach_interrupt(ptp_timer, TIMER_CH1, ptp_timer_irq);
+	timer_generate_update(ptp_timer);
+
+	nvic_irq_set_priority(NVIC_TIMER1_BRK_TIMER15, SYNC_TIMER_PRIORITY);
 }
 
 void 
@@ -1093,6 +1124,9 @@ setup()
 
 	timer_init(mdns_timer);
 	timer_pause(mdns_timer);
+	
+	timer_init(ptp_timer);
+	timer_pause(ptp_timer);
 
 	// initialize sockets
 	output_enable(config.output.osc.socket.enabled);

@@ -148,36 +148,41 @@ _ptp_update_offset()
 		OO0 = OO1;
 	}
 
-	//FIXME postpone
-
-	// send delay request
+	// schedule delay request
 	if(++sync_counter >= config.ptp.multiplier)
 	{
-		uint8_t *buf = BUF_O_OFFSET(buf_o_ptr);
-		static PTP_Request req;
-
-		req.message_id = PTP_MESSAGE_ID_DELAY_REQ;
-		req.version = PTP_VERSION_2;
-		req.message_length = sizeof(PTP_Request);
-		req.flags = 0U;
-		req.correction = 0ULL;
-		req.clock_identity = SLAVE_CLOCK_ID;
-		req.source_port_id = 1U;
-		req.sequence_id = ++req_seq_id;
-		req.control = PTP_CONTROL_DELAY_REQ;
-		req.log_message_interval = 0x7f;
-		req.timestamp.epoch = 0U;
-		req.timestamp.sec = 0UL;
-		req.timestamp.nsec = 0UL;
-
-		ptp_request_ntoh(&req);
-		memcpy(buf, &req, sizeof(PTP_Request));
-		
-		udp_send(config.ptp.event.sock, BUF_O_BASE(buf_o_ptr), sizeof(PTP_Request)); // port 319
-		t3 = TICK_TO_US(ptp_uptime());
-
+		float sec = (float)rand() / RAND_MAX;
+		ptp_timer_reconfigure(sec);
+		timer_resume(ptp_timer);
 		sync_counter = 0;
 	}
+}
+
+void
+ptp_request()
+{
+	uint8_t *buf = BUF_O_OFFSET(buf_o_ptr);
+	static PTP_Request req;
+
+	req.message_id = PTP_MESSAGE_ID_DELAY_REQ;
+	req.version = PTP_VERSION_2;
+	req.message_length = sizeof(PTP_Request);
+	req.flags = 0U;
+	req.correction = 0ULL;
+	req.clock_identity = SLAVE_CLOCK_ID;
+	req.source_port_id = 1U;
+	req.sequence_id = ++req_seq_id;
+	req.control = PTP_CONTROL_DELAY_REQ;
+	req.log_message_interval = 0x7f;
+	req.timestamp.epoch = 0U;
+	req.timestamp.sec = 0UL;
+	req.timestamp.nsec = 0UL;
+
+	ptp_request_ntoh(&req);
+	memcpy(buf, &req, sizeof(PTP_Request));
+	
+	udp_send(config.ptp.event.sock, BUF_O_BASE(buf_o_ptr), sizeof(PTP_Request)); // port 319
+	t3 = TICK_TO_US(ptp_uptime());
 }
 
 static void
