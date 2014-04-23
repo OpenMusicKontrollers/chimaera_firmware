@@ -143,7 +143,7 @@ sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offse
 
 	if(offset)
 	{
-		if(config.output.offset > 0ULLK)
+		if( (config.output.offset > 0ULLK) && (t0 != 0ULLK) )
 			*offset = *now + config.output.offset;
 		else
 			*offset = nOSC_IMMEDIATE;

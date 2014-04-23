@@ -401,7 +401,7 @@ ptp_timestamp_refresh(int64_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
 
 	if(offset)
 	{
-		if(config.output.offset > 0ULLK)
+		if( (config.output.offset > 0ULLK) && (t0 != 0ULL) )
 			*offset = *now + config.output.offset;
 		else
 			*offset = nOSC_IMMEDIATE;
