@@ -141,6 +141,8 @@ ptp_enable(uint8_t b)
 {
 	Socket_Config *event = &config.ptp.event;
 	Socket_Config *general = &config.ptp.general;
+		
+	timer_pause(ptp_timer);
 
 	event->enabled = b;
 	general->enabled = b;

@@ -205,6 +205,13 @@ _ptp_update_delay_e2e()
 
 	D0 = D1;
 	DD0 = DD1;
+
+#define DELAY_THRESH 1000.f //FIXME make this configurable
+	if(DD0 > DELAY_THRESH)
+	{
+		timer_pause(ptp_timer);
+		ptp_reset();
+	}
 }
 
 #if 0 // we need two more sockets for P2P mode
