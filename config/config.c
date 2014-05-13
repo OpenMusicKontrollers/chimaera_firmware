@@ -126,11 +126,14 @@ Config config = {
 			},
 			.tcp = 0
 		},
-		.offset = 0.001ULLK // := 1ms offset
+		.offset = 0.002ULLK, // := 2ms offset
+		.invert = {
+			.x = 0,
+			.z = 0
+		}
 	},
 
 	.config = {
-		.rate = 10, // rate in Hz
 		.osc = {
 			.socket = {
 				.sock = SOCK_CONFIG,
@@ -810,6 +813,30 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
+_output_invert(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	if(argc == 1) // query
+	{
+		int32_t x = config.output.invert.x;
+		int32_t z = config.output.invert.z;
+		size = CONFIG_SUCCESS("isii", uuid, path, x, z);
+	}
+	else
+	{
+		config.output.invert.x = args[1].i;
+		config.output.invert.z = args[2].i;
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
 _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -973,10 +1000,16 @@ static const nOSC_Query_Argument engines_offset_args [] = {
 	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY)
 };
 
+static const nOSC_Query_Argument engines_invert_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("x-axis inversion", nOSC_QUERY_MODE_RW, 0, 1),
+	nOSC_QUERY_ARGUMENT_INT32("z-axis inversion", nOSC_QUERY_MODE_RW, 0, 1)
+};
+
 static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _output_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
+	nOSC_QUERY_ITEM_METHOD("invert", "Enable/disable axis inversion", _output_invert, engines_invert_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
 	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_tcp_args),
 

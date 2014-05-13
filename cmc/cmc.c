@@ -405,6 +405,11 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 		x = x < 0.f ? 0.f :(x > 1.f ? 1.f : x); // 0 <= x <= 1
 		y = y < 0.f ? 0.f :(y > 1.f ? 1.f : y); // 0 <= y <= 1
 
+		if(config.output.invert.x)
+			x = 1.f - x;
+		if(config.output.invert.z)
+			y = 1.f - y;
+
 		CMC_Blob *blob = &cmc_neu[J];
 		blob->sid = -1; // not assigned yet
 		blob->pid = vn[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity(+B) magnetic fields increase the output voltage, north-polaritiy(-B) decrease it

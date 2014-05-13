@@ -132,10 +132,13 @@ struct _Config {
 	struct _output {
 		OSC_Config osc;
 		nOSC_Timestamp offset;
+		struct {
+			uint8_t x;
+			uint8_t z;
+		} invert;
 	} output;
 
 	struct _config {
-		uint16_t rate;
 		OSC_Config osc;
 	} config;
 
