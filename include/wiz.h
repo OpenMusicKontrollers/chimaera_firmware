@@ -107,11 +107,14 @@ void udp_send_block(uint8_t sock);
 uint16_t udp_available(uint8_t sock);
 
 void udp_receive(uint8_t sock, uint8_t *i_buf, uint16_t len);
+void udp_peek(uint8_t sock, uint8_t *i_buf, uint16_t len);
 uint_fast8_t udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len);
 void udp_receive_block(uint8_t sock);
 
 void udp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
-void udp_ignore(uint8_t sock);
+
+void udp_skip(uint8_t sock, uint16_t len);
+#define udp_ignore(sock) udp_skip((sock), udp_available((sock)))
 
 /*
  * TCP
@@ -125,9 +128,11 @@ void tcp_send(uint8_t sock, uint8_t *o_buf, uint16_t len);
 void tcp_send_block(uint8_t sock);
 
 #define tcp_receive udp_receive
+#define tcp_peek udp_peek
 #define tcp_available udp_available
-void tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
+void tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip);
 
+#define tcp_skip udp_skip
 #define tcp_ignore udp_ignore
 
 /*
@@ -140,6 +145,7 @@ void osc_send_block(OSC_Config *osc);
 
 void osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb);
 
+#define osc_skip udp_skip
 #define osc_ignore udp_ignore
 
 /*

@@ -233,7 +233,7 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
 
-	if(tcp)
+	if(tcp == OSC_TCP_MODE_PREFIX)
 		buf_ptr += sizeof(int32_t);
 
 	memcpy(buf_ptr, bundle_str, 8);
@@ -267,17 +267,20 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 		itm++;
 	}
 
-	int32_t len = buf_ptr - buf - (tcp ? sizeof(int32_t) : 0);
+	int32_t len = buf_ptr - buf - (tcp == OSC_TCP_MODE_PREFIX ? sizeof(int32_t) : 0);
 	if(len > 16) // there's content after the header
-	{
-		if(tcp)
+		switch((OSC_TCP_Mode)tcp)
 		{
-			*(int32_t *)buf = htonl(len);
-			return len + sizeof(int32_t);
+			case OSC_TCP_MODE_NONE:
+				return len;
+
+			case OSC_TCP_MODE_PREFIX:
+				*(int32_t *)buf = htonl(len);
+				return len + sizeof(int32_t);
+
+			case OSC_TCP_MODE_SLIP:
+				return slip_encode(buf, len);
 		}
-		else // !tcp
-			return len;
-	}
 	else
 		return 0; // there's no content after the header
 }
@@ -296,7 +299,7 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 	// resetting buf_ptr to start of buf
 	uint8_t *buf_ptr = buf;
 
-	if(tcp)
+	if(tcp == OSC_TCP_MODE_PREFIX)
 		buf_ptr += sizeof(int32_t);
 
 	// write path
@@ -406,14 +409,19 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 		arg++;
 	}
 
-	int32_t size = buf_ptr - buf - (tcp ? sizeof(int32_t) : 0);
-	if(tcp)
+	int32_t size = buf_ptr - buf - (tcp == OSC_TCP_MODE_PREFIX ? sizeof(int32_t) : 0);
+	switch((OSC_TCP_Mode)tcp)
 	{
-		*(int32_t *)buf = htonl(size);
-		return size + sizeof(int32_t);
+		case OSC_TCP_MODE_NONE:
+			return size;
+
+		case OSC_TCP_MODE_PREFIX:
+			*(int32_t *)buf = htonl(size);
+			return size + sizeof(int32_t);
+
+		case OSC_TCP_MODE_SLIP:
+			return slip_encode(buf, size);
 	}
-	else // !tcp
-		return size;
 }
 
 uint16_t

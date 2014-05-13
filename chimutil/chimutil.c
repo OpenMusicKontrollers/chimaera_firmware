@@ -489,7 +489,10 @@ slip_decode(uint8_t *buf, size_t len, size_t *size)
 		else if(*src == SLIP_END)
 		{
 			src++;
-			break;
+
+			//break;
+			*size = dst - buf;
+			return src - buf; // return 1 for double SLIP
 		}
 		else
 		{
@@ -501,6 +504,8 @@ slip_decode(uint8_t *buf, size_t len, size_t *size)
 		}
 	}
 
-	*size = dst - buf;
-	return src - buf;
+	*size = 0;
+	return 0;
+	//*size = dst - buf;
+	//return src - buf;
 }

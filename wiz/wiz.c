@@ -705,8 +705,8 @@ tcp_send_block(uint8_t sock)
 	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
 }
 
-void __CCM_TEXT__
-tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
+void //__CCM_TEXT__
+tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
 {
 	uint16_t len;
 
@@ -715,22 +715,43 @@ tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
 
 	udp_get_remote(sock, ip, &port); // FIXME only to this once right after client connect
 
-	while( (len = tcp_available(sock)) )
+	if(!slip)
 	{
-		// read OSC packet size
-		tcp_receive(sock, i_buf, 4);
+		while( (len = tcp_available(sock)) )
+		{
+			// read OSC packet size
+			tcp_receive(sock, i_buf, 4);
 
-		uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
-		int32_t size = ref_ntohl(tmp_buf_i_ptr);
+			uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
+			int32_t size = ref_ntohl(tmp_buf_i_ptr);
 
-		if(len - 4 < size)
-			while(tcp_available(sock) < size)
-				; // wait for complete OSC packet
+			if(len - 4 < size)
+				while(tcp_available(sock) < size)
+					; // wait for complete OSC packet
 
-		// read TCP payload
-		tcp_receive(sock, i_buf, size);
+			// read TCP payload
+			tcp_receive(sock, i_buf, size);
 
-		cb(ip, port, tmp_buf_i_ptr, size);
+			cb(ip, port, tmp_buf_i_ptr, size);
+		}
+	}
+	else // slip
+	{
+		while( (len = tcp_available(sock)) )
+		{
+			// peek all
+			tcp_peek(sock, i_buf, len);
+
+			uint8_t *tmp_buf_i_ptr = i_buf + WIZ_SEND_OFFSET;
+			size_t size;
+			size_t parsed = slip_decode(tmp_buf_i_ptr, len, &size);
+			if(parsed > 0)
+			{
+				if(size > 0)
+					cb(ip, port, tmp_buf_i_ptr, size);
+				tcp_skip(sock, parsed);
+			}
+		}
 	}
 }
 
@@ -768,7 +789,7 @@ void __CCM_TEXT__
 osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
 {
 	if(osc->tcp)
-		tcp_dispatch(osc->socket.sock, i_buf, cb);
+		tcp_dispatch(osc->socket.sock, i_buf, cb, osc->tcp == OSC_TCP_MODE_SLIP);
 	else
 		udp_dispatch(osc->socket.sock, i_buf, cb);
 }

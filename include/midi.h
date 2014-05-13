@@ -62,7 +62,7 @@ uint8_t midi_rem_key(MIDI_Hash *hash, uint32_t sid);
 
 //TODO create a MIDI meta engine, both OSC-MIDI and RTP-MIDI can refer to
 
-#define MIDI_BOT (3.f*12.f - 0.5f -(SENSOR_N/3 % 12 / 2.f))
-#define MIDI_RANGE (SENSOR_N/3.f + 1.f)
+#define MIDI_BOT (3.f*12.f - 0.5f - (SENSOR_N % 18 / 6.f))
+#define MIDI_RANGE (SENSOR_N/3.f)
 
 #endif // _MIDI_H_ 

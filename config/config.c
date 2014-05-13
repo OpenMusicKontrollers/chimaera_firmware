@@ -580,11 +580,11 @@ _output_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	uint8_t enabled = config.output.osc.socket.enabled;
 
 	if(argc == 1) // query
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
 	else
 	{
 		output_enable(0);
-		*boolean = args[1].i != 0 ? 1 : 0;
+		*boolean = args[1].i;
 		output_enable(enabled);
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -695,7 +695,7 @@ _config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 
 	if(argc == 1) // query
 	{
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
 		CONFIG_SEND(size);
 	}
 	else
@@ -705,7 +705,7 @@ _config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		CONFIG_SEND(size);
 
 		config_enable(0);
-		*boolean = args[1].i != 0 ? 1 : 0;
+		*boolean = args[1].i;
 		config_enable(enabled);
 	}
 
@@ -899,6 +899,10 @@ const nOSC_Method config_serv [] = {
 	{NULL, NULL, NULL} // terminator
 };
 
+const nOSC_Query_Argument config_tcp_args [] = {
+	nOSC_QUERY_ARGUMENT_INT32("UDP(0), TCP(1), TCP+SLIP(2)", nOSC_QUERY_MODE_RW, 0, 2)
+};
+
 // global arguments
 const nOSC_Query_Argument config_boolean_args [] = {
 	nOSC_QUERY_ARGUMENT_INT32("Boolean", nOSC_QUERY_MODE_RW, 0, 1)
@@ -937,7 +941,7 @@ const nOSC_Query_Item config_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_boolean_args)
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_tcp_args)
 };
 
 const nOSC_Query_Item reset_tree [] = {
@@ -974,7 +978,7 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_tcp_args),
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
@@ -1047,11 +1051,23 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 				}
 				size += ptr-response;
 
-				if(config.config.osc.tcp)
+				switch(config.config.osc.tcp)
 				{
-					// update TCP preamble
-					int32_t *tcp_size = (int32_t *)BUF_O_OFFSET(buf_o_ptr);
-					*tcp_size = htonl(size - sizeof(int32_t));
+					case OSC_TCP_MODE_NONE:
+						break;
+					case OSC_TCP_MODE_PREFIX:
+					{
+						// update TCP preamble
+						int32_t *tcp_size = (int32_t *)BUF_O_OFFSET(buf_o_ptr);
+						*tcp_size = htonl(size - sizeof(int32_t));
+						break;
+					}
+					case OSC_TCP_MODE_SLIP:
+					{
+						//slip_encode
+						size = slip_encode(BUF_O_OFFSET(buf_o_ptr), size);
+						break;
+					}
 				}
 			}
 			else

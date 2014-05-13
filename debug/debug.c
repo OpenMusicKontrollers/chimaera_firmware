@@ -67,11 +67,11 @@ _debug_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	uint8_t enabled = config.debug.osc.socket.enabled;
 
 	if(argc == 1) // query
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
 	else
 	{
 		debug_enable(0);
-		*boolean = args[1].i != 0 ? 1 : 0;
+		*boolean = args[1].i;
 		debug_enable(enabled);
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -88,5 +88,5 @@ _debug_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 const nOSC_Query_Item debug_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _debug_tcp, config_boolean_args)
+	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _debug_tcp, config_tcp_args)
 };

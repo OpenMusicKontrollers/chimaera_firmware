@@ -169,7 +169,7 @@ _oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	uint_fast8_t res;
 	res = config_check_float(path, fmt, argc, args, &config.oscmidi.range);
 	if(res)
-		config.oscmidi.mul =(float)0x1fff / config.oscmidi.range;
+		config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
 	return res;
 }
 

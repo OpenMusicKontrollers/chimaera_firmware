@@ -37,6 +37,7 @@ typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
 typedef struct _OSC_Config OSC_Config;
 typedef struct _Config Config;
+typedef enum _OSC_TCP_Mode OSC_TCP_Mode;
 
 struct _Firmware_Version {
 	uint8_t revision;	// board layout revision
@@ -50,6 +51,12 @@ struct _Socket_Config {
 	uint8_t enabled;
 	uint16_t port[2]; // SRC_PORT, DST_PORT
 	uint8_t ip[4];
+};
+
+enum _OSC_TCP_Mode {
+	OSC_TCP_MODE_NONE		= 0,
+	OSC_TCP_MODE_PREFIX	= 1,
+	OSC_TCP_MODE_SLIP		= 2
 };
 
 struct _OSC_Config {
@@ -192,6 +199,7 @@ uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t a
 uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val);
 
 const nOSC_Query_Argument config_boolean_args [1];
+const nOSC_Query_Argument config_tcp_args [1];
 const nOSC_Query_Argument config_address_args [1];
 
 #endif // _CONFIG_H_
