@@ -32,6 +32,7 @@
 #include <chimutil.h>
 #include <config.h>
 #include <calibration.h>
+#include <sensors.h>
 
 // engines
 #include <tuio2.h>
@@ -124,10 +125,10 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 			va[newpos] = aval > range.thresh[pos];
 
 			float y =((float)aval * range.U[pos]) - range.W;
-			vy[newpos] = y; //FIXME get rid of cmc structure.
+			vy[newpos] = y;
 		}
 		else
-			vy[newpos] = 0.0; //FIXME neccessary?
+			vy[newpos] = 0.0;
 	}
 
 	uint_fast8_t changed = 1; //TODO actually check for changes
@@ -171,23 +172,23 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 		float x, y;
 		uint_fast8_t P = peaks[p];
 
-		switch(config.sensors.interpolation_order)
+		switch(config.sensors.interpolation_mode)
 		{
-			case 0: // no interpolation
+			case INTERPOLATION_NONE: // no interpolation
 			{
         float y1 = vy[P];
 
 				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
 
 				// lookup distance
-				y1 = curve[(uint16_t)(y1*0x7FF)]; // FIXME incorporate *0x7ff into range.u and range.W
+				y1 = curve[(uint16_t)(y1*0x7FF)]; // TODO incorporate *0x7ff into range.u and range.W
 
         x = vx[P]; 
         y = y1;
 
 				break;
 			}
-			case 1: // linear interpolation FIXME remove this, it's not useful
+			case INTERPOLATION_LINEAR: // linear interpolation TODO remove this, it's not useful
 			{
 				float x0, y0, a, b;
 
@@ -224,7 +225,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 
 				break;
 			}
-			case 2: // quadratic, aka parabolic interpolation
+			case INTERPOLATION_QUADRATIC: // quadratic, aka parabolic interpolation
 			{
 				float y0 = vy[P-1];
 				float y1 = vy[P];
@@ -271,7 +272,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 				}
 				break;
 			}
-			case 3: // cubic interpolation: Catmull-Rom splines
+			case INTERPOLATION_CUBIC: // cubic interpolation: Catmull-Rom splines
 			{
 				float y0, y1, y2, y3, x1;
 
@@ -340,7 +341,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
             if(D < 0.f) // bad, this'd give an imaginary solution
               D = 0.f;
             else
-              D = sqrtf(D); // FIXME use a lookup table?
+              D = sqrtf(D); // TODO use a lookup table?
             mu =(-B - D) / A2;
           }
         }
@@ -351,7 +352,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 
 				break;
 			}
-			case 4: // cubic interpolation: Lagrange Poylnomial
+			case INTERPOLATION_SPLINE: // cubic interpolation: Lagrange Poylnomial
 			{
 				float y0, y1, y2, y3, x1;
 
@@ -549,7 +550,6 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 		{
 			uint_fast8_t ignore = cmc_neu[j].state == CMC_BLOB_IGNORED;
 
-			//FIXME remove duplicate instructions
 			if(newJ != j)
 				memmove(&cmc_neu[newJ], &cmc_neu[j], sizeof(CMC_Blob));
 
@@ -622,7 +622,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 
 	/*
 	 * handle output engines
-	 * FIXME check loop structure for efficiency
+	 * TODO check loop structure for efficiency
 	 */
 	uint_fast8_t res = changed || idle;
 	if(res)
@@ -656,7 +656,6 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 					}
 				}
 
-			//if(engine->off_cb && (I > J) ) //FIXME I and J can be equal with different SIDs
 			if(engine->off_cb)
 				for(i=0; i<I; i++)
 				{

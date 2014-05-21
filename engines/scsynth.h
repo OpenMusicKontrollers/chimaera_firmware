@@ -33,10 +33,7 @@ typedef struct _SCSynth_Group SCSynth_Group;
 
 enum _SCSynth_Add_Action {
 	SCSYNTH_ADD_TO_HEAD = 0,
-	SCSYNTH_ADD_TO_TAIL = 1,
-	SCSYNTH_ADD_BEFORE = 2,
-	SCSYNTH_ADD_AFTER = 3,
-	SCSYNTH_ADD_REPLACE = 4
+	SCSYNTH_ADD_TO_TAIL = 1
 };
 
 struct _SCSynth_Group {

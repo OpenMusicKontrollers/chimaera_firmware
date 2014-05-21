@@ -277,7 +277,9 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	uint16_t gid = args[1].i;
+	uint16_t gid;
+	
+	sscanf(path, "/engines/scsynth/attributes/%hu", &gid);
 
 	char *name;
 	uint16_t sid;
@@ -289,25 +291,25 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	uint8_t add_action;
 	uint8_t is_group;
 
-	if(argc == 2)
+	if(argc == 1)
 	{
 		if(scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group))
-			size = CONFIG_SUCCESS("isisiiiiiiii", uuid, path, gid, name, sid, group, out, arg,
+			size = CONFIG_SUCCESS("issiiiiiiii", uuid, path, name, sid, group, out, arg,
 				alloc?1:0, gate?1:0, add_action, is_group?1:0);
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
 	}
 	else // argc == 11
 	{
-		name = args[2].s;
-		sid = args[3].i;
-		group = args[4].i;
-		out = args[5].i;
-		arg = args[6].i;
-		alloc = args[7].i;
-		gate = args[8].i;
-		add_action = args[9].i;
-		is_group = args[10].i;
+		name = args[1].s;
+		sid = args[2].i;
+		group = args[3].i;
+		out = args[4].i;
+		arg = args[5].i;
+		alloc = args[6].i;
+		gate = args[7].i;
+		add_action = args[8].i;
+		is_group = args[9].i;
 
 		if(scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group))
 			size = CONFIG_SUCCESS("is", uuid, path);
@@ -325,20 +327,24 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  */
 
 static const nOSC_Query_Argument scsynth_group_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_RWX, 0, GROUP_MAX-1),
 	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_RW, 8),
-	nOSC_QUERY_ARGUMENT_INT32("Synth ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("Group ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("Out channel", nOSC_QUERY_MODE_RW, 0, UINT16_MAX),
-	nOSC_QUERY_ARGUMENT_INT32("Argument offset", nOSC_QUERY_MODE_RW, 0, UINT8_MAX),
+	nOSC_QUERY_ARGUMENT_INT32("Synth ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	nOSC_QUERY_ARGUMENT_INT32("Group ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	nOSC_QUERY_ARGUMENT_INT32("Out channel", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	nOSC_QUERY_ARGUMENT_INT32("Argument offset", nOSC_QUERY_MODE_RW, 0, UINT8_MAX, 1),
 	nOSC_QUERY_ARGUMENT_BOOL("Allocate?", nOSC_QUERY_MODE_RW),
 	nOSC_QUERY_ARGUMENT_BOOL("Gate?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_INT32("Add action", nOSC_QUERY_MODE_RW, 0, 4),
+	nOSC_QUERY_ARGUMENT_BOOL("AddToTail?", nOSC_QUERY_MODE_RW),
 	nOSC_QUERY_ARGUMENT_BOOL("Group?", nOSC_QUERY_MODE_RW)
 };
 
-const nOSC_Query_Item scsynth_tree [] = {
-	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("attributes", "Attributes", _scsynth_group, scsynth_group_args),
+static const nOSC_Query_Item scsynth_attribute_tree [] = {
+	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_group, scsynth_group_args),
 };
+
+const nOSC_Query_Item scsynth_tree [] = {
+	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
+};
+
+#undef M

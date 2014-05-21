@@ -21,6 +21,8 @@
  *     distribution.
  */
 
+#include <stdio.h>
+
 #include <sensors.h>
 #include <config.h>
 #include <cmc.h>
@@ -90,6 +92,14 @@ uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
 /*
  * Config
  */
+
+static const nOSC_Query_Value interpolation_mode_args_values [] = {
+	[INTERPOLATION_NONE]			= { .s = "none" },
+	[INTERPOLATION_LINEAR]		= { .s = "linear" },
+	[INTERPOLATION_QUADRATIC]	= { .s = "quadratic" },
+	[INTERPOLATION_CUBIC]			= { .s = "cubic" },
+	[INTERPOLATION_SPLINE]		= { .s = "spline" },
+};
 
 static uint_fast8_t
 _sensors_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
@@ -171,7 +181,25 @@ _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOS
 static uint_fast8_t
 _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return config_check_uint8(path, fmt, argc, args, &config.sensors.interpolation_order);
+	uint16_t size;
+	int32_t uuid = args[0].i;
+	uint8_t *interpolation = &config.sensors.interpolation_mode;
+
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("iss", uuid, path, interpolation_mode_args_values[*interpolation]);
+	else
+	{
+		uint_fast8_t i;
+		for(i=0; i<sizeof(interpolation_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+			if(!strcmp(args[1].s, interpolation_mode_args_values[i].s))
+			{
+				*interpolation = i;
+				break;
+			}
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
 }
 
 static uint_fast8_t
@@ -193,36 +221,26 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	uint16_t gid = args[1].i;
+	uint16_t gid;
 
-	uint16_t pid;
-	float x0;
-	float x1;
-	uint_fast8_t scale;
-		
+	sscanf(path, "/sensors/group/attributes/%hu", &gid);
 	CMC_Group *grp = &cmc_groups[gid];
 
-	if(argc == 2) // request group info
+	if(argc == 1) // request group info
 	{
-
-		pid = grp->pid;
-		x0 = grp->x0;
-		x1 = grp->x1;
-		scale = grp->m == CMC_NOSCALE ? 0 : 1;
-
-		size = CONFIG_SUCCESS("isiiffi", uuid, path, gid, pid, x0, x1, scale);
+		size = CONFIG_SUCCESS("isffiii", uuid, path, grp->x0, grp->x1,
+			grp->pid & CMC_NORTH ? 1 : 0,
+			grp->pid & CMC_SOUTH ? 1 : 0,
+			grp->m == CMC_NOSCALE ? 0 : 1);
 	}
 	else // set group info
 	{
-		pid = args[2].i;
-		x0 = args[3].f;
-		x1 = args[4].f;
-		scale = args[5].i;
-		
-		grp->pid = pid;
-		grp->x0 = x0;
-		grp->x1 = x1;
-		grp->m = scale ? 1.f/(x1-x0) : CMC_NOSCALE;
+		grp->x0 = args[1].f;
+		grp->x1 = args[2].f;
+		grp->pid = 0;
+		grp->pid |= args[3].i ? CMC_NORTH : 0;
+		grp->pid |= args[4].i ? CMC_SOUTH : 0;
+		grp->m = args[5].i ? 1.f/(grp->x1 - grp->x0) : CMC_NOSCALE;
 
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -279,39 +297,50 @@ _group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
  */
 
 static const nOSC_Query_Argument group_number_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX)
+	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX, 1)
 };
 
 static const nOSC_Query_Argument group_attributes_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_RWX, 0, GROUP_MAX - 1),
-	nOSC_QUERY_ARGUMENT_INT32("Polarity", nOSC_QUERY_MODE_RW, 0, 0x180),
-	nOSC_QUERY_ARGUMENT_FLOAT("Min", nOSC_QUERY_MODE_RW, 0.f, 1.f),
-	nOSC_QUERY_ARGUMENT_FLOAT("Max", nOSC_QUERY_MODE_RW, 0.f, 1.f),
-	nOSC_QUERY_ARGUMENT_BOOL("Scale?", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_FLOAT("Min", nOSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
+	nOSC_QUERY_ARGUMENT_FLOAT("Max", nOSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
+	nOSC_QUERY_ARGUMENT_BOOL("North?", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_BOOL("South?", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_BOOL("Scale?", nOSC_QUERY_MODE_RW)
 };
 
-const nOSC_Query_Item group_tree [] = {
+static const nOSC_Query_Item group_attribute_tree [] = {
+	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _group_attributes, group_attributes_args),
+};
+
+static const nOSC_Query_Item group_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _group_load, NULL),
 	nOSC_QUERY_ITEM_METHOD("save", "Save to EEPROM", _group_save, NULL),
 	nOSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
 	nOSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
-	nOSC_QUERY_ITEM_METHOD("attributes", "Attributes", _group_attributes, group_attributes_args),
+	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_tree, GROUP_MAX)
 };
 
 static const nOSC_Query_Argument sensors_number_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, SENSOR_N, SENSOR_N)
+	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, SENSOR_N, SENSOR_N, 16)
 };
 
 static const nOSC_Query_Argument sensors_rate_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Hz", nOSC_QUERY_MODE_RW, 0, 10000)
+	nOSC_QUERY_ARGUMENT_INT32("Hz", nOSC_QUERY_MODE_RW, 0, 10000, 100)
+};
+
+static const nOSC_Query_Value sensors_movingaverage_windows_values [] = {
+	{ .i = 1 },
+	{ .i = 2 },
+	{ .i = 4 },
+	{ .i = 8 }
 };
 
 static const nOSC_Query_Argument sensors_movingaverage_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Sample window [1,2,4,8]", nOSC_QUERY_MODE_RW, 1, 8)
+	nOSC_QUERY_ARGUMENT_INT32_VALUES("Sample window", nOSC_QUERY_MODE_RW, sensors_movingaverage_windows_values)
 };
 
 static const nOSC_Query_Argument sensors_interpolation_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Order [0,1,2,3,4]", nOSC_QUERY_MODE_RW, 0, 4)
+	nOSC_QUERY_ARGUMENT_STRING_VALUES("Order", nOSC_QUERY_MODE_RW, interpolation_mode_args_values)
 };
 
 const nOSC_Query_Item sensors_tree [] = {

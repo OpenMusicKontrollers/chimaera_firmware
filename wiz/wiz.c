@@ -713,7 +713,7 @@ tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
 	uint8_t ip [4];
 	uint16_t port;
 
-	udp_get_remote(sock, ip, &port); // FIXME only to this once right after client connect
+	udp_get_remote(sock, ip, &port); // TODO only to this once right after client connect
 
 	if(!slip)
 	{
@@ -761,7 +761,7 @@ tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
 void
 osc_send(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
 {
-	if(osc->tcp)
+	if(osc->mode)
 		tcp_send(osc->socket.sock, o_buf, len);
 	else // !tcp
 		udp_send(osc->socket.sock, o_buf, len);
@@ -770,7 +770,7 @@ osc_send(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
 uint_fast8_t
 osc_send_nonblocking(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
 {
-	if(osc->tcp)
+	if(osc->mode)
 		return tcp_send_nonblocking(osc->socket.sock, o_buf, len);
 	else // !tcp
 		return udp_send_nonblocking(osc->socket.sock, o_buf, len);
@@ -779,7 +779,7 @@ osc_send_nonblocking(OSC_Config *osc, uint8_t *o_buf, uint16_t len)
 void
 osc_send_block(OSC_Config *osc)
 {
-	if(osc->tcp)
+	if(osc->mode)
 		tcp_send_block(osc->socket.sock);
 	else // !tcp
 		udp_send_block(osc->socket.sock);
@@ -788,8 +788,8 @@ osc_send_block(OSC_Config *osc)
 void __CCM_TEXT__
 osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
 {
-	if(osc->tcp)
-		tcp_dispatch(osc->socket.sock, i_buf, cb, osc->tcp == OSC_TCP_MODE_SLIP);
+	if(osc->mode)
+		tcp_dispatch(osc->socket.sock, i_buf, cb, osc->mode == OSC_MODE_SLIP);
 	else
 		udp_dispatch(osc->socket.sock, i_buf, cb);
 }

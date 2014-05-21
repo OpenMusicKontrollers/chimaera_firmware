@@ -34,4 +34,12 @@ extern uint8_t adc_unused [ADC_UNUSED_LENGTH];
 extern uint8_t adc_order [ADC_LENGTH];
 extern const nOSC_Query_Item sensors_tree [5];
 
+enum Interpolation_Mode {
+	INTERPOLATION_NONE,
+	INTERPOLATION_LINEAR,
+	INTERPOLATION_QUADRATIC,
+	INTERPOLATION_CUBIC,
+	INTERPOLATION_SPLINE
+};
+
 #endif // _SENSORS_H_

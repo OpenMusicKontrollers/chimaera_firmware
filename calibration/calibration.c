@@ -528,18 +528,66 @@ _calibration_end(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 
 // get calibration data per sensor
 static uint_fast8_t
-_calibration_sensor(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_calibration_quiescent(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	int32_t n = args[1].i;
-	size = CONFIG_SUCCESS("isiiif", uuid, path, n, range.qui[n], range.thresh[n], range.U[n]);
+	uint16_t *qui = NULL;
+	size = CONFIG_SUCCESS("isB", uuid, path, sizeof(range.qui), &qui);
+
+	// hton
+	uint_fast8_t i;
+	for(i=0; i<SENSOR_N; i++)
+		qui[i] = hton(range.qui[i]);
+
 	CONFIG_SEND(size);
 
 	return 1;
 }
 
+static uint_fast8_t
+_calibration_threshold(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	uint16_t *thresh = NULL;
+	size = CONFIG_SUCCESS("isB", uuid, path, sizeof(range.thresh), &thresh);
+
+	// hton
+	uint_fast8_t i;
+	for(i=0; i<SENSOR_N; i++)
+		thresh[i] = hton(range.thresh[i]);
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_amplification(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	uint32_t *U = NULL;
+	size = CONFIG_SUCCESS("isB", uuid, path, sizeof(range.U), &U);
+
+	// htonl
+	uint_fast8_t i;
+	uint32_t *_U = (uint32_t *)range.U;
+	for(i=0; i<SENSOR_N; i++)
+	{
+		U[i] = htonl(_U[i]);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+// get calibration data per array
 static uint_fast8_t
 _calibration_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
@@ -612,40 +660,37 @@ _calibration_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
  */
 
 static const nOSC_Query_Argument calibration_load_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
+	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
 };
 
 static const nOSC_Query_Argument calibration_save_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_WX, 0, EEPROM_RANGE_MAX)
+	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
 };
 
 static const nOSC_Query_Argument calibration_min_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_R, 0, SENSOR_N - 1)
+	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_R, 0, SENSOR_N - 1, 1)
 };
 
 static const nOSC_Query_Argument calibration_mid_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
+	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
 };
 
 static const nOSC_Query_Argument calibration_end_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_WX, 0.f, 1.f)
+	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
 };
-
-static const nOSC_Query_Argument calibration_sensor_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_RWX, 0, SENSOR_N - 1),
-	nOSC_QUERY_ARGUMENT_INT32("Quiescent value", nOSC_QUERY_MODE_R, 0, 0x7ff),
-	nOSC_QUERY_ARGUMENT_INT32("Threshold value", nOSC_QUERY_MODE_R, 0, 0x7ff),
-	nOSC_QUERY_ARGUMENT_FLOAT("U", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	
+static const nOSC_Query_Argument calibration_blob_args [] = {
+	nOSC_QUERY_ARGUMENT_BLOB("Blob", nOSC_QUERY_MODE_R)
 };
 
 static const nOSC_Query_Argument calibration_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("W", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("W", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
 static const nOSC_Query_Argument calibration_curve_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("c0", nOSC_QUERY_MODE_R, -INFINITY, INFINITY),
-	nOSC_QUERY_ARGUMENT_FLOAT("c1", nOSC_QUERY_MODE_R, -INFINITY, INFINITY),
-	nOSC_QUERY_ARGUMENT_FLOAT("c2", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("c0", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
+	nOSC_QUERY_ARGUMENT_FLOAT("c1", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
+	nOSC_QUERY_ARGUMENT_FLOAT("c2", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
 const nOSC_Query_Item calibration_tree [] = {
@@ -660,7 +705,10 @@ const nOSC_Query_Item calibration_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("max", "Curve fit point 5", _calibration_max, NULL),
 	nOSC_QUERY_ITEM_METHOD("end", "End calibration procedure", _calibration_end, calibration_end_args),
 
-	nOSC_QUERY_ITEM_METHOD("sensor", "Query sensors calibration data", _calibration_sensor, calibration_sensor_args),
-	nOSC_QUERY_ITEM_METHOD("offset", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
-	nOSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args),
+	nOSC_QUERY_ITEM_METHOD("quiescent", "Query calibration quiescent data", _calibration_quiescent, calibration_blob_args),
+	nOSC_QUERY_ITEM_METHOD("threshold", "Query calibration threshold data", _calibration_threshold, calibration_blob_args),
+	nOSC_QUERY_ITEM_METHOD("U", "Query calibration amplification data", _calibration_amplification, calibration_blob_args),
+
+	nOSC_QUERY_ITEM_METHOD("W", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
+	nOSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args)
 };

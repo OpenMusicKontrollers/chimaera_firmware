@@ -88,7 +88,7 @@ output_enable(uint8_t b)
 
 	socket->enabled = b;
 
-	if(!config.output.osc.tcp)
+	if(!config.output.osc.mode)
 	{
 		udp_end(socket->sock);
 		if(socket->enabled)
@@ -117,7 +117,7 @@ config_enable(uint8_t b)
 
 	socket->enabled = b;
 
-	if(!config.config.osc.tcp)
+	if(!config.config.osc.mode)
 	{
 		udp_end(socket->sock);
 		if(socket->enabled)
@@ -195,7 +195,7 @@ debug_enable(uint8_t b)
 
 	socket->enabled = b;
 
-	if(!config.debug.osc.tcp)
+	if(!config.debug.osc.mode)
 	{
 		udp_end(socket->sock);
 		if(socket->enabled)
@@ -271,7 +271,7 @@ stop_watch_stop(Stop_Watch *sw)
 	{
 		uint16_t size;
 		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.debug.osc.tcp,
+			config.debug.osc.mode,
 			"/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
 		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
 

@@ -32,6 +32,10 @@
 
 #define CMC_NOSCALE 0.0f
 
+#define CMC_NORTH 0x80
+#define CMC_SOUTH 0x100
+#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
+
 typedef void(*CMC_Engine_Frame_Cb)(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
 typedef void(*CMC_Engine_Blob_On_Cb)(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 typedef void(*CMC_Engine_Blob_Off_Cb)(uint32_t sid, uint16_t gid, uint16_t pid);

@@ -205,15 +205,15 @@ _sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
  */
 
 static const nOSC_Query_Argument sntp_tau_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Seconds", nOSC_QUERY_MODE_RW, 1, 60)
+	nOSC_QUERY_ARGUMENT_INT32("Seconds", nOSC_QUERY_MODE_RW, 1, 60, 1)
 };
 
 static const nOSC_Query_Argument sntp_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
 static const nOSC_Query_Argument sntp_delay_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, 0.f, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
 };
 
 const nOSC_Query_Item sntp_tree [] = {

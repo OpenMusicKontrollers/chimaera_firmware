@@ -124,7 +124,7 @@ Config config = {
 				.port = {3333, 3333},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0
+			.mode = OSC_MODE_UDP
 		},
 		.offset = 0.002ULLK, // := 2ms offset
 		.invert = {
@@ -141,7 +141,7 @@ Config config = {
 				.port = {4444, 4444},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0
+			.mode = OSC_MODE_UDP
 		}
 	},
 
@@ -181,7 +181,7 @@ Config config = {
 				.port = {6666, 6666},
 				.ip = IP_BROADCAST
 			},
-			.tcp = 0
+			.mode = OSC_MODE_UDP
 		}
 	},
 
@@ -209,7 +209,7 @@ Config config = {
 
 	.sensors = {
 		.movingaverage_bitshift = 3,
-		.interpolation_order = 2,
+		.interpolation_mode = INTERPOLATION_QUADRATIC,
 		.rate = 2000
 	}
 };
@@ -575,19 +575,25 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_output_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	uint8_t *boolean = &config.output.osc.tcp;
+	uint8_t *mode = &config.output.osc.mode;
 	uint8_t enabled = config.output.osc.socket.enabled;
 
 	if(argc == 1) // query
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
+		size = CONFIG_SUCCESS("iss", uuid, path, config_mode_args_values[*mode]);
 	else
 	{
 		output_enable(0);
-		*boolean = args[1].i;
+		uint_fast8_t i;
+		for(i=0; i<sizeof(config_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			{
+				*mode = i;
+				break;
+			}
 		output_enable(enabled);
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -689,16 +695,16 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 }
 
 static uint_fast8_t
-_config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	uint8_t *boolean = &config.config.osc.tcp;
+	uint8_t *mode = &config.config.osc.mode;
 	uint8_t enabled = config.config.osc.socket.enabled;
 
 	if(argc == 1) // query
 	{
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
+		size = CONFIG_SUCCESS("iss", uuid, path, config_mode_args_values[*mode]);
 		CONFIG_SEND(size);
 	}
 	else
@@ -708,7 +714,13 @@ _config_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 		CONFIG_SEND(size);
 
 		config_enable(0);
-		*boolean = args[1].i;
+		uint_fast8_t i;
+		for(i=0; i<sizeof(config_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			{
+				*mode = i;
+				break;
+			}
 		config_enable(enabled);
 	}
 
@@ -926,17 +938,23 @@ const nOSC_Method config_serv [] = {
 	{NULL, NULL, NULL} // terminator
 };
 
-const nOSC_Query_Argument config_tcp_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("UDP(0), TCP(1), TCP+SLIP(2)", nOSC_QUERY_MODE_RW, 0, 2)
+const nOSC_Query_Value config_mode_args_values [] = {
+	[OSC_MODE_UDP]	= { .s = "osc.udp" },
+	[OSC_MODE_TCP]	= { .s = "osc.tcp" },
+	[OSC_MODE_SLIP]	= { .s = "osc.slip.tcp" }
+};
+
+const nOSC_Query_Argument config_mode_args [] = {
+	nOSC_QUERY_ARGUMENT_STRING_VALUES("mode", nOSC_QUERY_MODE_RW, config_mode_args_values)
 };
 
 // global arguments
 const nOSC_Query_Argument config_boolean_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Boolean", nOSC_QUERY_MODE_RW, 0, 1)
+	nOSC_QUERY_ARGUMENT_BOOL("Boolean", nOSC_QUERY_MODE_RW)
 };
 
 const nOSC_Query_Argument config_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain with colon and port", nOSC_QUERY_MODE_RW, INT32_MAX)
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain with colon and port", nOSC_QUERY_MODE_RW, 32)
 };
 
 // locals arguments
@@ -949,11 +967,11 @@ static const nOSC_Query_Argument comm_ip_args [] = {
 };
 
 static const nOSC_Query_Argument comm_gateway_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_RW, INT32_MAX)
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_RW, 32)
 };
 
 static const nOSC_Query_Argument comm_address_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_WX, INT32_MAX)
+	nOSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", nOSC_QUERY_MODE_W, 32)
 };
 
 const nOSC_Query_Item comm_tree [] = {
@@ -968,7 +986,7 @@ const nOSC_Query_Item config_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _config_tcp, config_tcp_args)
+	nOSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _config_mode, config_mode_args)
 };
 
 const nOSC_Query_Item reset_tree [] = {
@@ -978,11 +996,11 @@ const nOSC_Query_Item reset_tree [] = {
 };
 
 static const nOSC_Query_Argument info_version_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("{Major}.{Minor}.{Patch level} Rev{Board revision}", nOSC_QUERY_MODE_R, INT32_MAX)
+	nOSC_QUERY_ARGUMENT_STRING("{Major}.{Minor}.{Patch level} Rev{Board revision}", nOSC_QUERY_MODE_R, 32)
 };
 
 static const nOSC_Query_Argument info_uid_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("Hexadecimal hyphen", nOSC_QUERY_MODE_R, INT32_MAX)
+	nOSC_QUERY_ARGUMENT_STRING("Hexadecimal hyphen", nOSC_QUERY_MODE_R, 32)
 };
 
 static const nOSC_Query_Argument info_name_args [] = {
@@ -997,12 +1015,12 @@ static const nOSC_Query_Item info_tree [] = {
 };
 
 static const nOSC_Query_Argument engines_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_RW, 0.f, INFINITY, 0.0001f)
 };
 
 static const nOSC_Query_Argument engines_invert_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("x-axis inversion", nOSC_QUERY_MODE_RW, 0, 1),
-	nOSC_QUERY_ARGUMENT_INT32("z-axis inversion", nOSC_QUERY_MODE_RW, 0, 1)
+	nOSC_QUERY_ARGUMENT_BOOL("x-axis inversion", nOSC_QUERY_MODE_RW),
+	nOSC_QUERY_ARGUMENT_BOOL("z-axis inversion", nOSC_QUERY_MODE_RW)
 };
 
 static const nOSC_Query_Item engines_tree [] = {
@@ -1011,7 +1029,7 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
 	nOSC_QUERY_ITEM_METHOD("invert", "Enable/disable axis inversion", _output_invert, engines_invert_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _output_tcp, config_tcp_args),
+	nOSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _output_mode, config_mode_args),
 
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
@@ -1058,18 +1076,18 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		char *query = strrchr(path, '!'); // last occurence
 		if(query)
 		{
-			// serialize empty string
-			size = CONFIG_SUCCESS("iss", uuid, path, nil);
-			size -= 4;
-
-			// wind back to beginning of empty string on buffer
-			uint8_t *response = BUF_O_OFFSET(buf_o_ptr) + size;
-
-			// serialize query response directly to buffer
-			*query = 0;
-			const nOSC_Query_Item *item = nosc_query_find(&root, path);
+			*query = '\0';
+			const nOSC_Query_Item *item = nosc_query_find(&root, path, -1);
 			if(item)
 			{
+				// serialize empty string
+				size = CONFIG_SUCCESS("iss", uuid, path, nil);
+				size -= 4;
+
+				// wind back to beginning of empty string on buffer
+				uint8_t *response = BUF_O_OFFSET(buf_o_ptr) + size;
+
+				// serialize query response directly to buffer
 				nosc_query_response(response, item, path);
 
 				// calculate new message size
@@ -1084,18 +1102,18 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 				}
 				size += ptr-response;
 
-				switch(config.config.osc.tcp)
+				switch(config.config.osc.mode)
 				{
-					case OSC_TCP_MODE_NONE:
+					case OSC_MODE_UDP:
 						break;
-					case OSC_TCP_MODE_PREFIX:
+					case OSC_MODE_TCP:
 					{
 						// update TCP preamble
 						int32_t *tcp_size = (int32_t *)BUF_O_OFFSET(buf_o_ptr);
 						*tcp_size = htonl(size - sizeof(int32_t));
 						break;
 					}
-					case OSC_TCP_MODE_SLIP:
+					case OSC_MODE_SLIP:
 					{
 						//slip_encode
 						size = slip_encode(BUF_O_OFFSET(buf_o_ptr), size);
@@ -1108,8 +1126,8 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		}
 		else
 		{
-			const nOSC_Query_Item *item = nosc_query_find(&root, path);
-			if(item && (item->type != nOSC_QUERY_NODE) )
+			const nOSC_Query_Item *item = nosc_query_find(&root, path, -1);
+			if(item && (item->type != nOSC_QUERY_NODE) && (item->type != nOSC_QUERY_ARRAY) )
 			{
 				nOSC_Method_Cb cb = item->item.method.cb;
 				if(cb && nosc_query_check(item, fmt+1, args+1))

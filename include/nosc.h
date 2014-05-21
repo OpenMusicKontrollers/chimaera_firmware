@@ -71,6 +71,7 @@ typedef enum _nOSC_Type {
 
 	nOSC_INT32_ZERO = 'j',
 	nOSC_FLOAT_ZERO = 'g',
+	nOSC_BLOB_INLINE = 'B',
 
 	nOSC_END = '\0'
 } nOSC_Type;
@@ -215,39 +216,35 @@ typedef struct _nOSC_Query_Argument nOSC_Query_Argument;
 
 typedef enum _nOSC_Query_Type {
 	nOSC_QUERY_NODE,
+	nOSC_QUERY_ARRAY,
 	nOSC_QUERY_METHOD,
 } nOSC_Query_Type;
 
 typedef enum _nOSC_Query_Mode {
 	nOSC_QUERY_MODE_R		= 0b001,
 	nOSC_QUERY_MODE_W		= 0b010,
-	nOSC_QUERY_MODE_X		= 0b100,
-
 	nOSC_QUERY_MODE_RW	= 0b011,
-	nOSC_QUERY_MODE_WX	= 0b110,
-	nOSC_QUERY_MODE_RWX	= 0b111
 } nOSC_Query_Mode;
+
+typedef union _nOSC_Query_Value {
+	int32_t i;
+	float f;
+	char *s;
+} nOSC_Query_Value;
 
 struct _nOSC_Query_Argument {
 	nOSC_Type type;
 	nOSC_Query_Mode mode;
 	const char *description;
 	struct {
-		union {
-			int32_t i;
-			float f;
-			int64_t h;
-			nOSC_Timestamp t;
-			double d;
-		} min;
-		union {
-			int32_t i;
-			float f;
-			int64_t h;
-			nOSC_Timestamp t;
-			double d;
-		} max;
+		nOSC_Query_Value min;
+		nOSC_Query_Value max;
+		nOSC_Query_Value step;
 	} range;
+	struct {
+		uint_fast8_t argc;
+		const nOSC_Query_Value *ptr;
+	} values;
 };
 
 struct _nOSC_Query_Method {
@@ -271,7 +268,7 @@ struct _nOSC_Query_Item {
 	} item;
 };
 
-const nOSC_Query_Item *nosc_query_find(const nOSC_Query_Item *item, const char *path);
+const nOSC_Query_Item *nosc_query_find(const nOSC_Query_Item *item, const char *path, int_fast8_t argc);
 void nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path);
 uint_fast8_t nosc_query_format(const nOSC_Query_Item *item, const char *fmt);
 uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOSC_Arg *args);
@@ -283,6 +280,15 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 	.type = nOSC_QUERY_NODE, \
 	.item.node.tree =(TREE), \
 	.item.node.argc = sizeof((TREE)) / sizeof(nOSC_Query_Item) \
+}
+
+#define nOSC_QUERY_ITEM_ARRAY(PATH, DESCRIPTION, TREE, SIZE) \
+{ \
+	.path =(PATH), \
+	.description =(DESCRIPTION), \
+	.type = nOSC_QUERY_ARRAY, \
+	.item.node.tree =(TREE), \
+	.item.node.argc = (SIZE) \
 }
 
 #define nOSC_QUERY_ITEM_METHOD(PATH, DESCRIPTION, CB, ARGS) \
@@ -304,41 +310,51 @@ uint_fast8_t nosc_query_check(const nOSC_Query_Item *item, const char *fmt,  nOS
 { \
 	nOSC_QUERY_ARGUMENT(nOSC_INT32,(DESCRIPTION),(MODE)), \
 	.range.min.i = 0, \
-	.range.max.i = 1 \
+	.range.max.i = 1, \
+	.range.step.i = 1 \
 }
 
-#define nOSC_QUERY_ARGUMENT_INT32(DESCRIPTION, MODE, MIN, MAX) \
+#define nOSC_QUERY_ARGUMENT_INT32(DESCRIPTION, MODE, MIN, MAX, STEP) \
 { \
 	nOSC_QUERY_ARGUMENT(nOSC_INT32,(DESCRIPTION),(MODE)), \
 	.range.min.i =(MIN), \
-	.range.max.i =(MAX) \
+	.range.max.i =(MAX), \
+	.range.step.i =(STEP), \
 }
 
-#define nOSC_QUERY_ARGUMENT_FLOAT(DESCRIPTION, MODE, MIN, MAX) \
+#define nOSC_QUERY_ARGUMENT_INT32_VALUES(DESCRIPTION, MODE, VALUES) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_INT32,(DESCRIPTION),(MODE)), \
+	.values.ptr = (VALUES), \
+	.values.argc = sizeof((VALUES)) / sizeof(nOSC_Query_Value) \
+}
+
+#define nOSC_QUERY_ARGUMENT_FLOAT(DESCRIPTION, MODE, MIN, MAX, STEP) \
 { \
 	nOSC_QUERY_ARGUMENT(nOSC_FLOAT,(DESCRIPTION),(MODE)), \
 	.range.min.f =(MIN), \
-	.range.max.f =(MAX) \
-}
-
-#define nOSC_QUERY_ARGUMENT_INT64(DESCRIPTION, MODE, MIN, MAX) \
-{ \
-	nOSC_QUERY_ARGUMENT(nOSC_INT64,(DESCRIPTION),(MODE)), \
-	.range.min.h =(MIN), \
-	.range.max.h =(MAX) \
-}
-
-#define nOSC_QUERY_ARGUMENT_DOUBLE(DESCRIPTION, MODE, MIN, MAX) \
-{ \
-	nOSC_QUERY_ARGUMENT(nOSC_DOUBLE,(DESCRIPTION),(MODE)), \
-	.range.min.d =(MIN), \
-	.range.max.d =(MAX) \
+	.range.max.f =(MAX), \
+	.range.step.f =(STEP) \
 }
 
 #define nOSC_QUERY_ARGUMENT_STRING(DESCRIPTION, MODE, MAX) \
 { \
 	nOSC_QUERY_ARGUMENT(nOSC_STRING,(DESCRIPTION),(MODE)), \
-	.range.max.i = (MAX) \
+	.range.min.i = 0, \
+	.range.max.i = (MAX), \
+	.range.step.i = 1 \
+}
+
+#define nOSC_QUERY_ARGUMENT_STRING_VALUES(DESCRIPTION, MODE, VALUES) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_STRING,(DESCRIPTION),(MODE)), \
+	.values.ptr = (VALUES), \
+	.values.argc = sizeof((VALUES)) / sizeof(nOSC_Query_Value) \
+}
+
+#define nOSC_QUERY_ARGUMENT_BLOB(DESCRIPTION, MODE) \
+{ \
+	nOSC_QUERY_ARGUMENT(nOSC_BLOB,(DESCRIPTION),(MODE)) \
 }
 
 #endif // _NOSC_H_

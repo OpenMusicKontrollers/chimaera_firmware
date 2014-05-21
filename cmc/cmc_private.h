@@ -28,10 +28,6 @@
 #include <cmc.h>
 #include <tuio2.h>
 
-#define CMC_NORTH 0x80
-#define CMC_SOUTH 0x100
-#define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
-
 #define POLE_NORTH 1
 #define POLE_SOUTH 0
 

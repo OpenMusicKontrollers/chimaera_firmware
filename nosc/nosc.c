@@ -233,7 +233,7 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 	uint8_t *buf_ptr = buf;
 	int32_t msg_size;
 
-	if(tcp == OSC_TCP_MODE_PREFIX)
+	if(tcp == OSC_MODE_TCP)
 		buf_ptr += sizeof(int32_t);
 
 	memcpy(buf_ptr, bundle_str, 8);
@@ -267,18 +267,18 @@ nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uin
 		itm++;
 	}
 
-	int32_t len = buf_ptr - buf - (tcp == OSC_TCP_MODE_PREFIX ? sizeof(int32_t) : 0);
+	int32_t len = buf_ptr - buf - (tcp == OSC_MODE_TCP ? sizeof(int32_t) : 0);
 	if(len > 16) // there's content after the header
-		switch((OSC_TCP_Mode)tcp)
+		switch((OSC_Mode)tcp)
 		{
-			case OSC_TCP_MODE_NONE:
+			case OSC_MODE_UDP:
 				return len;
 
-			case OSC_TCP_MODE_PREFIX:
+			case OSC_MODE_TCP:
 				*(int32_t *)buf = htonl(len);
 				return len + sizeof(int32_t);
 
-			case OSC_TCP_MODE_SLIP:
+			case OSC_MODE_SLIP:
 				return slip_encode(buf, len);
 		}
 	else
@@ -299,7 +299,7 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 	// resetting buf_ptr to start of buf
 	uint8_t *buf_ptr = buf;
 
-	if(tcp == OSC_TCP_MODE_PREFIX)
+	if(tcp == OSC_MODE_TCP)
 		buf_ptr += sizeof(int32_t);
 
 	// write path
@@ -360,6 +360,18 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 					buf_ptr += 4-rem;
 				}
 				break;
+			case nOSC_BLOB_INLINE:
+				fmt[i+1] = nOSC_BLOB;
+				ref_htonl(buf_ptr, arg->b.size);
+				buf_ptr += 4;
+				*(uint8_t **)arg->b.data = buf_ptr; // store pointer for later inline filling
+				buf_ptr += arg->b.size;
+				if(rem=arg->b.size%4)
+				{
+					memset(buf_ptr, '\0', 4-rem);
+					buf_ptr += 4-rem;
+				}
+				break;
 
 			case nOSC_TRUE:
 			case nOSC_FALSE:
@@ -409,17 +421,17 @@ nosc_message_serialize(nOSC_Message msg, const char *path, const char *types, ui
 		arg++;
 	}
 
-	int32_t size = buf_ptr - buf - (tcp == OSC_TCP_MODE_PREFIX ? sizeof(int32_t) : 0);
-	switch((OSC_TCP_Mode)tcp)
+	int32_t size = buf_ptr - buf - (tcp == OSC_MODE_TCP ? sizeof(int32_t) : 0);
+	switch((OSC_Mode)tcp)
 	{
-		case OSC_TCP_MODE_NONE:
+		case OSC_MODE_UDP:
 			return size;
 
-		case OSC_TCP_MODE_PREFIX:
+		case OSC_MODE_TCP:
 			*(int32_t *)buf = htonl(size);
 			return size + sizeof(int32_t);
 
-		case OSC_TCP_MODE_SLIP:
+		case OSC_MODE_SLIP:
 			return slip_encode(buf, size);
 	}
 }
@@ -462,6 +474,9 @@ nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path,
 				nosc_message_set_string(msg, pos, va_arg(args, char *));
         break;
 			case nOSC_BLOB:
+				nosc_message_set_blob(msg, pos, va_arg(args, int32_t), va_arg(args, uint8_t *));
+				break;
+			case nOSC_BLOB_INLINE:
 				nosc_message_set_blob(msg, pos, va_arg(args, int32_t), va_arg(args, uint8_t *));
 				break;
 
@@ -508,9 +523,17 @@ nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path,
  */
 
 const nOSC_Query_Item *
-nosc_query_find(const nOSC_Query_Item *item, const char *path)
+nosc_query_find(const nOSC_Query_Item *item, const char *path, int_fast8_t argc)
 {
-	if(!strcmp(path, item->path))
+	// is array element?
+	if(argc >= 0)
+	{
+		char str [32]; //TODO how big?
+		sprintf(str, item->path, argc);
+		if(!strcmp(path, str))
+			return item;
+	}
+	else if(!strcmp(path, item->path))
 		return item;
 
 	const char *end = strchr(path, '/');
@@ -526,11 +549,23 @@ nosc_query_find(const nOSC_Query_Item *item, const char *path)
 		for(i=0; i<item->item.node.argc; i++)
 		{
 			const nOSC_Query_Item *sub = &item->item.node.tree[i];
-			const nOSC_Query_Item *subsub = nosc_query_find(sub, end+1);
+			const nOSC_Query_Item *subsub = nosc_query_find(sub, end+1, -1);
 			if(subsub)
 				return subsub;
 		}
 	}
+	else if(item->type == nOSC_QUERY_ARRAY)
+	{
+		const nOSC_Query_Item *sub = item->item.node.tree;
+		uint_fast8_t i;
+		for(i=0; i<item->item.node.argc; i++)
+		{
+			const nOSC_Query_Item *subsub = nosc_query_find(sub, end+1, i);
+			if(subsub)
+				return subsub;
+		}
+	}
+
 	return NULL;
 }
 
@@ -542,45 +577,14 @@ nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 	const nOSC_Query_Argument *args = item->item.method.args;
 	uint_fast8_t i;
 
-	uint_fast8_t argc_x = 0;
-	for(i=0; i<argc; i++)
-		if(args[i].mode & nOSC_QUERY_MODE_X)
-			argc_x++;
-
 	uint_fast8_t argc_w = 0;
 	for(i=0; i<argc; i++)
 		if(args[i].mode & nOSC_QUERY_MODE_W)
 			argc_w++;
 
 	// mandatory arguments and enough of them?
-	if( (len != argc_x) && (len != argc_w) )
+	if( (len != argc_w) && (len != 0) )
 		return 0;
-
-	/*
-	/calibration/save
-	WX
-
-	/calibration/sensor
-	RWX
-	R
-	R
-	R
-
-	/calibration/curve
-	R
-	R
-	R
-
-	/sensors/group
-	RWX
-	RW
-	RW
-	RW
-	RW
-
-	/engines/enabled
-	RW
-	*/
 
 	for(i=0; i<len; i++)
 	{
@@ -592,31 +596,39 @@ nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 		switch(fmt[i])
 		{
 			case nOSC_INT32:
-				if( (argv[i].i < args[i].range.min.i) || (argv[i].i > args[i].range.max.i) )
+				if(args[i].values.ptr)
+				{
+					uint_fast8_t j;
+					for(j=0; j<args[i].values.argc; j++)
+						if(argv[i].i == args[i].values.ptr[j].i)
+							return 1;
+					return 0;
+				}
+				else if( (argv[i].i < args[i].range.min.i) || (argv[i].i > args[i].range.max.i) )
 					return 0;
 				break;
 			case nOSC_FLOAT:
-				if( (argv[i].f < args[i].range.min.f) || (argv[i].f > args[i].range.max.f) )
+				if(args[i].values.ptr)
+				{
+					uint_fast8_t j;
+					for(j=0; j<args[i].values.argc; j++)
+						if(argv[i].f == args[i].values.ptr[j].f)
+							return 1;
 					return 0;
-				break;
-			case nOSC_INT64:
-				if( (argv[i].h < args[i].range.min.h) || (argv[i].h > args[i].range.max.h) )
-					return 0;
-				break;
-			case nOSC_DOUBLE:
-				if( (argv[i].d < args[i].range.min.d) || (argv[i].d > args[i].range.max.d) )
-					return 0;
-				break;
-			case nOSC_TIMESTAMP:
-				if( (argv[i].t < args[i].range.min.t) || (argv[i].t > args[i].range.max.t) )
+				}
+				else if( (argv[i].f < args[i].range.min.f) || (argv[i].f > args[i].range.max.f) )
 					return 0;
 				break;
 			case nOSC_STRING:
-				if(strlen(argv[i].s) > args[i].range.max.i)
+				if(args[i].values.ptr)
+				{
+					uint_fast8_t j;
+					for(j=0; j<args[i].values.argc; j++)
+						if(!strcmp(argv[i].s, args[i].values.ptr[j].s))
+							return 1;
 					return 0;
-				break;
-			case nOSC_SYMBOL:
-				if(strlen(argv[i].S) > args[i].range.max.i)
+				}
+				else if(strlen(argv[i].s) > args[i].range.max.i)
 					return 0;
 				break;
 			default:
@@ -625,6 +637,25 @@ nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 	}
 
 	return 1;
+}
+
+static const char *inf_s = "1e9999";
+static const char *ninf_s = "-1e9999";
+static const char *null_s = "null";
+
+static void
+_serialize_float(char *str, float f)
+{
+	if(isinf(f)) {
+		if(f < 0.f)
+			sprintf(str, ninf_s);
+		else
+			sprintf(str, inf_s);
+	}
+	else if(isnan(f))
+		sprintf(str, null_s);
+	else
+		sprintf(str, "%f", f);
 }
 
 void
@@ -650,98 +681,137 @@ nosc_query_response(uint8_t *buf, const nOSC_Query_Item *item, const char *path)
 
 		*buf++ = ']';
 	}
-	else // !nOSC_QUERY_NODE
+	else if(item->type == nOSC_QUERY_ARRAY)
 	{
-		sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"%s\",\"arguments\":[",
+		sprintf(buf, "\"path\":\"%s\",\"type\":\"node\",\"description\":\"%s\",\"items\":[",
 			path, item->description);
 		buf += strlen(buf);
+
+		const nOSC_Query_Item *sub = item->item.node.tree;
+		uint_fast8_t i;
+		for(i=0; i<item->item.node.argc; i++)
+		{
+			*buf++ = '"';
+			sprintf(buf, sub->path, i);
+			buf += strlen(buf);
+			*buf++ = '"';
+			if(i < item->item.node.argc-1)
+				*buf++ = ',';
+		}
+
+		*buf++ = ']';
+	}
+	else // nOSC_QUERY_METHOD
+	{
+		char *meth = strrchr(path, '/');
+		if(meth && strcmp(item->path, meth+1)) // is array element
+		{
+			int i;
+			sscanf(meth+1, item->path, &i);
+
+			sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"", path);
+			buf += strlen(buf);
+			sprintf(buf, item->description, i);
+			buf += strlen(buf);
+			sprintf(buf, "\",\"arguments\":[");
+			buf += strlen(buf);
+		}
+		else
+		{
+			sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"%s\",\"arguments\":[",
+				path, item->description);
+			buf += strlen(buf);
+		}
 
 		uint_fast8_t i;
 		for(i=0; i<item->item.method.argc; i++)
 		{
 			const nOSC_Query_Argument *arg = &item->item.method.args[i];
-			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"read\":%s,\"write\":%s,\"optional\":%s",
+			sprintf(buf, "{\"type\":\"%c\",\"description\":\"%s\",\"read\":%s,\"write\":%s",
 				arg->type, arg->description,
 				arg->mode & nOSC_QUERY_MODE_R ? "true" : "false",
-				arg->mode & nOSC_QUERY_MODE_W ? "true" : "false",
-				arg->mode & nOSC_QUERY_MODE_X ? "false" : "true");
+				arg->mode & nOSC_QUERY_MODE_W ? "true" : "false");
 			buf += strlen(buf);
+
 			switch(arg->type)
 			{
 				case nOSC_INT32:
-					sprintf(buf, ",\"range\":[%i,%i]", arg->range.min.i, arg->range.max.i);
-					buf += strlen(buf);
+					if(arg->values.argc)
+					{
+						sprintf(buf, ",\"values\":[");
+						buf += strlen(buf);
+						uint_fast8_t j;
+						for(j=0; j<arg->values.argc; j++)
+						{
+							sprintf(buf, "%i,", arg->values.ptr[j].i);
+							buf += strlen(buf);
+						}
+						buf--;
+						*buf++ = ']';
+					}
+					else // !values
+					{
+						sprintf(buf, ",\"range\":[%i,%i,%i]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
+						buf += strlen(buf);
+					}
 					break;
 				case nOSC_FLOAT:
 				{
-					char min[32];
-					char max[32];
-
-					if(isinf(arg->range.min.f)) {
-						if(arg->range.min.f < 0)
-							sprintf(min, "-1e9999");
-						else
-							sprintf(min, "1e9999");
+					char val[32];
+					if(arg->values.argc)
+					{
+						sprintf(buf, ",\"values\":[");
+						buf += strlen(buf);
+						uint_fast8_t j;
+						for(j=0; j<arg->values.argc; j++)
+						{
+							_serialize_float(val, arg->values.ptr[j].f);
+							sprintf(buf, "%s,", val);
+							buf += strlen(buf);
+						}
+						buf--;
+						*buf++ = ']';
 					}
-					else if(isnan(arg->range.min.f))
-						sprintf(min, "null");
-					else
-						sprintf(min, "%f", arg->range.min.f);
+					else // !values
+					{
+						sprintf(buf, ",\"range\":[");
+						buf += strlen(buf);
 
-					if(isinf(arg->range.max.f)) {
-						if(arg->range.max.f < 0)
-							sprintf(max, "-1e9999");
-						else
-							sprintf(max, "1e9999");
+						_serialize_float(val, arg->range.min.f);
+						sprintf(buf, "%s,", val);
+						buf += strlen(buf);
+
+						_serialize_float(val, arg->range.max.f);
+						sprintf(buf, "%s,", val);
+						buf += strlen(buf);
+
+						_serialize_float(val, arg->range.step.f);
+						sprintf(buf, "%s", val);
+						buf += strlen(buf);
+
+						*buf++ = ']';
 					}
-					else if(isnan(arg->range.max.f))
-						sprintf(max, "null");
-					else
-						sprintf(max, "%f", arg->range.max.f);
-
-					sprintf(buf, ",\"range\":[%s,%s]", min, max);
-					buf += strlen(buf);
-					break;
-				}
-				case nOSC_INT64:
-					sprintf(buf, ",\"range\":[%li,%li]", arg->range.min.h, arg->range.max.h);
-					buf += strlen(buf);
-					break;
-				case nOSC_DOUBLE:
-				{
-					char min[32];
-					char max[32];
-
-					if(isinf(arg->range.min.d)) {
-						if(arg->range.min.d < 0)
-							sprintf(min, "-1e9999");
-						else
-							sprintf(min, "1e9999");
-					}
-					else if(isnan(arg->range.min.d))
-						sprintf(min, "null");
-					else
-						sprintf(min, "l%f", arg->range.min.d);
-
-					if(isinf(arg->range.max.d)) {
-						if(arg->range.max.d < 0)
-							sprintf(max, "-1e9999");
-						else
-							sprintf(max, "1e9999");
-					}
-					else if(isnan(arg->range.max.d))
-						sprintf(min, "null");
-					else
-						sprintf(max, "l%f", arg->range.max.d);
-
-					sprintf(buf, ",\"range\":[%s,%s]", min, max);
-					buf += strlen(buf);
 					break;
 				}
 				case nOSC_STRING:
-				case nOSC_SYMBOL:
-					sprintf(buf, ",\"maxlen\":%u", arg->range.max.i);
-					buf += strlen(buf);
+					if(arg->values.argc)
+					{
+						sprintf(buf, ",\"values\":[");
+						buf += strlen(buf);
+						uint_fast8_t j;
+						for(j=0; j<arg->values.argc; j++)
+						{
+							sprintf(buf, "\"%s\",", arg->values.ptr[j].s);
+							buf += strlen(buf);
+						}
+						buf--;
+						*buf++ = ']';
+					}
+					else // !values
+					{
+						sprintf(buf, ",\"range\":[%i,%i,%i]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
+						buf += strlen(buf);
+					}
 					break;
 				//FIXME add other types
 				default:

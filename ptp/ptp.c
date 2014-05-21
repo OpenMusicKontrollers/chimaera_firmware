@@ -206,7 +206,7 @@ _ptp_update_delay_e2e()
 	D0 = D1;
 	DD0 = DD1;
 
-#define DELAY_THRESH 1000.f //FIXME make this configurable
+#define DELAY_THRESH 1000.f //TODO make this configurable
 	if(DD0 > DELAY_THRESH)
 	{
 		timer_pause(ptp_timer);
@@ -540,19 +540,19 @@ _ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
  */
 
 static const nOSC_Query_Argument ptp_multiplier_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Rate", nOSC_QUERY_MODE_RW, 1, 16)
+	nOSC_QUERY_ARGUMENT_INT32("Rate", nOSC_QUERY_MODE_RW, 1, 16, 1)
 };
 
 static const nOSC_Query_Argument ptp_stiffness_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Stiffness", nOSC_QUERY_MODE_RW, 1, 128)
+	nOSC_QUERY_ARGUMENT_INT32("Stiffness", nOSC_QUERY_MODE_RW, 1, 128, 1)
 };
 
 static const nOSC_Query_Argument ptp_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
 static const nOSC_Query_Argument ptp_delay_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, 0.f, INFINITY)
+	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
 };
 
 const nOSC_Query_Item ptp_tree [] = {

@@ -538,13 +538,13 @@ loop()
 //#define SPEEDTEST
 #ifdef SPEEDTEST
 	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr),
-		config.output.socket.tcp,
+		config.output.socket.mode,
 		"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
 	while(1)
 	{
 		osc_send_nonblocking(&config.output.socket, BUF_O_BASE(!buf_o_ptr), cmc_len);
 		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.output.socket.tcp,
+			config.output.socket.mode,
 			"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
 		osc_send_block(&config.output.socket);
 		buf_o_ptr ^= 1;
@@ -649,13 +649,13 @@ loop()
 					nest_fmt[job] = nOSC_TERM;
 
 					cmc_len = nosc_bundle_serialize(nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.tcp);
+						config.output.osc.mode);
 				}
 				else // job == 1, there's no need to send a nested bundle in this case
 				{
 					nOSC_Item *first = &nest_bndl[0];
 					cmc_len = nosc_bundle_serialize(first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.tcp);
+						config.output.osc.mode);
 				}
 			}
 
@@ -704,7 +704,7 @@ loop()
 			{
 				uint8_t enabled = config.config.osc.socket.enabled;
 				config_enable(0);
-				if(config.config.osc.tcp && enabled)
+				if(config.config.osc.mode && enabled)
 					config_enable(1);
 				debug_str("config ARPto or TCP disconect");
 			}

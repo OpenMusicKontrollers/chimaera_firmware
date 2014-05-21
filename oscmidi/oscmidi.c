@@ -184,15 +184,15 @@ _oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
  */
 
 static const nOSC_Query_Argument oscmidi_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
 };
 
 static const nOSC_Query_Argument oscmidi_range_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f),
+	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
 };
 
 static const nOSC_Query_Argument oscmidi_effect_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Controller number", nOSC_QUERY_MODE_RW, 0, 0x7f),
+	nOSC_QUERY_ARGUMENT_INT32("Controller number", nOSC_QUERY_MODE_RW, 0, 0x7f, 1),
 };
 
 const nOSC_Query_Item oscmidi_tree [] = {

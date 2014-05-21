@@ -37,7 +37,7 @@ typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
 typedef struct _OSC_Config OSC_Config;
 typedef struct _Config Config;
-typedef enum _OSC_TCP_Mode OSC_TCP_Mode;
+typedef enum _OSC_Mode OSC_Mode;
 
 struct _Firmware_Version {
 	uint8_t revision;	// board layout revision
@@ -53,15 +53,17 @@ struct _Socket_Config {
 	uint8_t ip[4];
 };
 
-enum _OSC_TCP_Mode {
-	OSC_TCP_MODE_NONE		= 0,
-	OSC_TCP_MODE_PREFIX	= 1,
-	OSC_TCP_MODE_SLIP		= 2
+enum _OSC_Mode {
+	OSC_MODE_UDP	= 0,
+	OSC_MODE_TCP	= 1,
+	OSC_MODE_SLIP	= 2
 };
+
+extern const nOSC_Query_Value config_mode_args_values [3];
 
 struct _OSC_Config {
 	Socket_Config socket;
-	uint8_t tcp;
+	uint8_t mode;
 };
 
 enum {
@@ -173,7 +175,7 @@ struct _Config {
 
 	struct _sensors {
 		uint8_t movingaverage_bitshift;
-		uint8_t interpolation_order;
+		uint8_t interpolation_mode;
 		uint16_t rate; // the maximal update rate the chimaera should run at
 	} sensors;
 };
@@ -191,8 +193,8 @@ uint_fast8_t groups_save();
 
 extern const char *success_str;
 extern const char *fail_str;
-#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.tcp, fail_str, __VA_ARGS__))
+#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.mode, success_str, __VA_ARGS__))
+#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.mode, fail_str, __VA_ARGS__))
 #define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
@@ -202,7 +204,7 @@ uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t a
 uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val);
 
 const nOSC_Query_Argument config_boolean_args [1];
-const nOSC_Query_Argument config_tcp_args [1];
+const nOSC_Query_Argument config_mode_args [1];
 const nOSC_Query_Argument config_address_args [1];
 
 #endif // _CONFIG_H_

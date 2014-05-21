@@ -34,7 +34,7 @@ DEBUG(const char *fmt, ...)
 		
 		va_start(args, fmt);
 		uint16_t size = nosc_message_varlist_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.debug.osc.tcp,
+			config.debug.osc.mode,
 			"/debug", fmt, args);
 		va_end(args);
 
@@ -59,19 +59,25 @@ _debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
-_debug_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	uint8_t *boolean = &config.debug.osc.tcp;
+	uint8_t *mode = &config.debug.osc.mode;
 	uint8_t enabled = config.debug.osc.socket.enabled;
 
 	if(argc == 1) // query
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean);
+		size = CONFIG_SUCCESS("iss", uuid, path, config_mode_args_values[*mode]);
 	else
 	{
 		debug_enable(0);
-		*boolean = args[1].i;
+		uint_fast8_t i;
+		for(i=0; i<sizeof(config_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			{
+				*mode = i;
+				break;
+			}
 		debug_enable(enabled);
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -88,5 +94,5 @@ _debug_tcp(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 const nOSC_Query_Item debug_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tcp", "Enable/disable TCP mode", _debug_tcp, config_tcp_args)
+	nOSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _debug_mode, config_mode_args)
 };
