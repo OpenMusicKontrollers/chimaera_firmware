@@ -24,9 +24,7 @@
 #ifndef _CMC_PRIVATE_H_
 #define _CMC_PRIVATE_H_
 
-#include <chimaera.h>
 #include <cmc.h>
-#include <tuio2.h>
 
 #define POLE_NORTH 1
 #define POLE_SOUTH 0

@@ -27,6 +27,10 @@
 #include <stdint.h>
 
 #include <nosc.h>
+#include <cmc.h>
+#include <chimaera.h>
+
+#include <scsynth.h>
 
 #define SRC_PORT 0
 #define DST_PORT 1
@@ -178,6 +182,9 @@ struct _Config {
 		uint8_t interpolation_mode;
 		uint16_t rate; // the maximal update rate the chimaera should run at
 	} sensors;
+
+	CMC_Group groups [GROUP_MAX];
+	SCSynth_Group scsynth_groups [GROUP_MAX];
 };
 
 extern Config config;

@@ -211,6 +211,49 @@ Config config = {
 		.movingaverage_bitshift = 3,
 		.interpolation_mode = INTERPOLATION_QUADRATIC,
 		.rate = 2000
+	},
+
+	// we only define attributes for two groups for factory settings
+	.groups = {
+		[0] = {
+			.x0 = 0.f,
+			.x1 = 1.f,
+			.m = 1.f,
+			.gid = 0,
+			.pid = CMC_SOUTH
+		},
+		[1] = {
+			.x0 = 0.f,
+			.x1 = 1.f,
+			.m = 1.f,
+			.gid = 1,
+			.pid = CMC_NORTH
+		}
+	},
+
+	.scsynth_groups = {
+		[0] = {
+			.name = {'g', 'r', 'o', 'u', 'p', '0', '\0'},
+			.sid = 1000,
+			.group = 0,
+			.out = 0, 
+			.arg = 0,
+			.alloc = 1,
+			.gate = 1,
+			.add_action = SCSYNTH_ADD_TO_HEAD,
+			.is_group = 0
+		},
+		[1] = {
+			.name = {'g', 'r', 'o', 'u', 'p', '1', '\0'},
+			.sid = 1000,
+			.group = 1,
+			.out = 1, 
+			.arg = 0,
+			.alloc = 1,
+			.gate = 1,
+			.add_action = SCSYNTH_ADD_TO_HEAD,
+			.is_group = 0
+		}
 	}
 };
 
@@ -242,25 +285,6 @@ uint_fast8_t
 config_save()
 {
 	eeprom_bulk_write(eeprom_24LC64, EEPROM_CONFIG_OFFSET,(uint8_t *)&config, sizeof(config));
-
-	return 1;
-}
-
-uint_fast8_t
-groups_load()
-{
-	if(version_match())
-		eeprom_bulk_read(eeprom_24LC64, EEPROM_GROUP_OFFSET,(uint8_t *)cmc_groups, GROUP_MAX*sizeof(CMC_Group));
-	else
-		groups_save();
-
-	return 1;
-}
-
-uint_fast8_t
-groups_save()
-{
-	eeprom_bulk_write(eeprom_24LC64, EEPROM_GROUP_OFFSET,(uint8_t *)cmc_groups, GROUP_MAX*sizeof(CMC_Group));
 
 	return 1;
 }

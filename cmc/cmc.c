@@ -45,7 +45,7 @@
 // globals
 CMC_Engine *engines [ENGINE_MAX+1];
 uint_fast8_t cmc_engines_active = 0;
-CMC_Group cmc_groups[GROUP_MAX];
+CMC_Group *cmc_groups = config.groups;
 
 // locals
 static uint16_t idle_word = 0;
@@ -94,8 +94,6 @@ cmc_init()
 		vy[i] = 0;
 		vn[i] = 0;
 	}
-
-	cmc_group_clear();
 
 	old = 0;
 	neu = 1;

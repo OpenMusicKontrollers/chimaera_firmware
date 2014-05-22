@@ -1237,11 +1237,7 @@ setup()
 	dummy_init();
 	rtpmidi_init();
 
-	// load saved groups
-	groups_load();
-
 	pin_write_bit(CHIM_LED_PIN, 1);
-
 	DEBUG("si", "reset_mode", reset_mode);
 }
 

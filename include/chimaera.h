@@ -31,7 +31,10 @@
 extern const stm32_pin_info PIN_MAP [];
 #include <board/board.h>
 
+#define GROUP_MAX 8
+
 #include <nosc.h>
+#include <config.h>
 #include <wiz.h>
 
 #define pin_set_mode(PIN, MODE)(gpio_set_mode(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE)))
@@ -92,7 +95,6 @@ extern const stm32_pin_info PIN_MAP [];
 #define ADC_HALF_BITDEPTH 0x7ff
 
 #define BLOB_MAX 8
-#define GROUP_MAX 8
 
 #define OSC_ARGS_MAX 12
 
@@ -120,7 +122,6 @@ typedef enum _Reset_Mode {
 
 #define EEPROM_SIZE 0x2000
 #define EEPROM_CONFIG_OFFSET 0x0000
-#define EEPROM_GROUP_OFFSET 0x0c00
 #define EEPROM_RANGE_OFFSET 0x1000
 #define EEPROM_RANGE_SIZE 0x0510
 #define EEPROM_RANGE_MAX 2 // we have place for three slots: 0, 1, 2

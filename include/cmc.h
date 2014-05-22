@@ -28,7 +28,6 @@
 #include <stdlib.h>
 
 #include <nosc.h>
-#include <config.h>
 
 #define CMC_NOSCALE 0.0f
 
@@ -58,7 +57,7 @@ struct _CMC_Group {
 	uint16_t pid;
 };
 
-extern CMC_Group cmc_groups[];
+extern CMC_Group *cmc_groups;
 
 extern CMC_Engine *engines [];
 extern uint_fast8_t cmc_engines_active;

@@ -31,8 +31,10 @@
 
 #include "scsynth_private.h"
 
-static SCSynth_Group scsynth_groups [GROUP_MAX];
+// global
+SCSynth_Group *scsynth_groups = config.scsynth_groups;
 
+// local
 static nOSC_Item scsynth_early_bndl [BLOB_MAX];
 static nOSC_Item scsynth_late_bndl [BLOB_MAX];
 static nOSC_Item scsynth_bndl [2];
@@ -78,21 +80,6 @@ scsynth_init()
 
 	memset(scsynth_fmt, nOSC_BUNDLE, 2);
 	scsynth_fmt[2] = nOSC_TERM;
-
-	uint_fast8_t i;
-	for(i=0; i<GROUP_MAX; i++)
-	{
-		SCSynth_Group *group = &scsynth_groups[i];
-		sprintf(group->name, default_fmt, i);
-		group->sid = 1000;
-		group->group = i;
-		group->out = i;
-		group->arg = 0;
-		group->alloc = 1;
-		group->gate = 1;
-		group->add_action = SCSYNTH_ADD_TO_HEAD;
-		group->is_group = 0;
-	}
 }
 
 static void
@@ -273,7 +260,7 @@ _scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg 
 }
 
 static uint_fast8_t
-_scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
@@ -322,11 +309,38 @@ _scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return 1;
 }
 
+static uint_fast8_t
+_scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	uint_fast8_t i;
+	for(i=0; i<GROUP_MAX; i++)
+	{
+		SCSynth_Group *group = &scsynth_groups[i];
+		sprintf(group->name, default_fmt, i);
+		group->sid = 1000;
+		group->group = i;
+		group->out = i;
+		group->arg = 0;
+		group->alloc = 1;
+		group->gate = 1;
+		group->add_action = SCSYNTH_ADD_TO_HEAD;
+		group->is_group = 0;
+	}
+	
+	size = CONFIG_SUCCESS("is", uuid, path);
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
 /*
  * Query
  */
 
-static const nOSC_Query_Argument scsynth_group_args [] = {
+static const nOSC_Query_Argument scsynth_attributes_args [] = {
 	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_RW, 8),
 	nOSC_QUERY_ARGUMENT_INT32("Synth ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
 	nOSC_QUERY_ARGUMENT_INT32("Group ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
@@ -339,11 +353,12 @@ static const nOSC_Query_Argument scsynth_group_args [] = {
 };
 
 static const nOSC_Query_Item scsynth_attribute_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_group, scsynth_group_args),
+	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_attributes, scsynth_attributes_args),
 };
 
 const nOSC_Query_Item scsynth_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
+	nOSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _scsynth_reset, NULL),
 	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
 };
 

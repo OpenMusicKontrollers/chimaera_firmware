@@ -251,36 +251,6 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 }
 
 static uint_fast8_t
-_group_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t uuid = args[0].i;
-
-	if(groups_load())
-		size = CONFIG_SUCCESS("is", uuid, path);
-	else
-		size = CONFIG_FAIL("iss", uuid, path, "groups could not be loaded from EEPROM");
-	CONFIG_SEND(size);
-
-	return 1;
-}
-
-static uint_fast8_t
-_group_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t uuid = args[0].i;
-
-	if(groups_save())
-		size = CONFIG_SUCCESS("is", uuid, path);
-	else
-		size = CONFIG_FAIL("iss", uuid, path, "groups could not be saved to EEPROM");
-	CONFIG_SEND(size);
-
-	return 1;
-}
-
-static uint_fast8_t
 _group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -313,8 +283,6 @@ static const nOSC_Query_Item group_attribute_tree [] = {
 };
 
 static const nOSC_Query_Item group_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _group_load, NULL),
-	nOSC_QUERY_ITEM_METHOD("save", "Save to EEPROM", _group_save, NULL),
 	nOSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
 	nOSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
 	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_tree, GROUP_MAX)
