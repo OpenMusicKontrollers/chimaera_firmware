@@ -639,8 +639,10 @@ nosc_query_check(const nOSC_Query_Item *item, const char *fmt, nOSC_Arg *argv)
 	return 1;
 }
 
-static const char *inf_s = "1e9999";
-static const char *ninf_s = "-1e9999";
+//static const char *inf_s = "1e9999";
+//static const char *ninf_s = "-1e9999";
+static const char *inf_s = "null";
+static const char *ninf_s = "null";
 static const char *null_s = "null";
 
 static void
