@@ -500,7 +500,6 @@ slip_decode(uint8_t *buf, size_t len, size_t *size)
 				*dst = *src;
 			src++;
 			dst++;
-			//TODO *dst++ = *src++;
 		}
 	}
 

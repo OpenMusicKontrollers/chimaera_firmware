@@ -166,7 +166,7 @@ tuio2_engine_token_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y
 	msg[2].i = gid;
 	msg[3].f = x;
 	msg[4].f = y;
-	msg[5].f = pid == 0x80 ? 0.f : M_PI; //TODO use POLE_NORTH
+	msg[5].f = pid == CMC_NORTH ? 0.f : M_PI;
 
 	nosc_message_set_int32(alv, counter, sid);
 

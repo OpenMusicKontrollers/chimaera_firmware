@@ -230,7 +230,7 @@ dhcpc_dispatch(uint8_t *buf, uint16_t size)
 						dhcpc.state = LEASE;
 						break;
 					case DHCPNAK:
-						dhcpc.state = LEASE;
+						dhcpc.state = DISCOVER;
 						break;
 					default:
 						// should never get here

@@ -59,13 +59,24 @@ static int len_arpa;
 static char hook_arpa [32];
 
 // dns-sd PTR methods array
-static DNS_PTR_Method hooks [] = {
+static DNS_PTR_Method hooks_udp [] = {
 	[HOOK_SERVICES]	= {"\011_services\007_dns-sd\004_udp\005local", _hook_services},
 	[HOOK_OSC]			= {"\004_osc\004_udp\005local", _hook_osc},
 	[HOOK_CHIMAERA]	= {"\010chimaera\004_osc\004_udp\005local", _hook_chimaera},
 	[HOOK_ARPA]			= {hook_arpa, _hook_arpa},
 	{NULL, NULL}
 };
+
+static DNS_PTR_Method hooks_tcp [] = {
+	[HOOK_SERVICES]	= {"\011_services\007_dns-sd\004_udp\005local", _hook_services},
+	[HOOK_OSC]			= {"\004_osc\004_tcp\005local", _hook_osc},
+	[HOOK_CHIMAERA]	= {"\010chimaera\004_osc\004_tcp\005local", _hook_chimaera},
+	[HOOK_ARPA]			= {hook_arpa, _hook_arpa},
+	{NULL, NULL}
+};
+
+const char *TXT_COMMON = "\011txtvers=1\013version=1.1\056uri=http://open-music-kontrollers.ch/chimaera/\017types=ifsbhdtSm";
+const char *TXT_SLIP = "\014framing=slip";
 
 // unrolled query name label
 static uint8_t qname_unrolled [32]; //TODO big enough?
@@ -168,10 +179,16 @@ _serialize_PTR_services(uint8_t *buf)
 	uint16_t len;
 	uint8_t *buf_ptr = buf;
 
+	DNS_PTR_Method *hooks = NULL;
+	if(config.config.osc.mode == OSC_MODE_UDP)
+		hooks = hooks_udp;
+	else
+		hooks = hooks_tcp;
+
 	qname = hooks[HOOK_OSC].name;
 	len = strlen(qname) + 1;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_SERVICES].name, MDNS_TYPE_PTR, MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_SERVICES].name, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
 
 	memcpy(buf_ptr, qname, len);
 	buf_ptr += len;
@@ -186,10 +203,16 @@ _serialize_PTR_osc(uint8_t *buf)
 	uint16_t len;
 	uint8_t *buf_ptr = buf;
 
+	DNS_PTR_Method *hooks = NULL;
+	if(config.config.osc.mode == OSC_MODE_UDP)
+		hooks = hooks_udp;
+	else
+		hooks = hooks_tcp;
+
 	qname = hooks[HOOK_CHIMAERA].name;
 	len = strlen(qname) + 1;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_OSC].name, MDNS_TYPE_PTR, MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_OSC].name, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
 
 	memcpy(buf_ptr, qname, len);
 	buf_ptr += len;
@@ -201,10 +224,25 @@ static uint8_t *
 _serialize_TXT_chimaera(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
+	uint16_t len;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_TXT, MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 1);
+	DNS_PTR_Method *hooks = NULL;
+	if(config.config.osc.mode == OSC_MODE_UDP)
+		hooks = hooks_udp;
+	else
+		hooks = hooks_tcp;
 
-	*buf_ptr++ = 0x0; // text length
+	len = strlen(TXT_COMMON) + (config.config.osc.mode == OSC_MODE_SLIP ? strlen(TXT_SLIP) : 0);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+
+	memcpy(buf_ptr, TXT_COMMON, strlen(TXT_COMMON));
+	buf_ptr += strlen(TXT_COMMON);
+	if(config.config.osc.mode == OSC_MODE_SLIP)
+	{
+		memcpy(buf_ptr, TXT_SLIP, strlen(TXT_SLIP));
+		buf_ptr += strlen(TXT_SLIP);
+	}
+	//*buf_ptr++ = 0x0; // text length
 
 	return buf_ptr;
 }
@@ -214,7 +252,13 @@ _serialize_SRV_chimaera(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_SRV, MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 6 + len_self);
+	DNS_PTR_Method *hooks = NULL;
+	if(config.config.osc.mode == OSC_MODE_UDP)
+		hooks = hooks_udp;
+	else
+		hooks = hooks_tcp;
+
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_SRV, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 6 + len_self);
 
 	*buf_ptr++ = 0x0; // priority MSB
 	*buf_ptr++ = 0x0; // priority LSB
@@ -237,7 +281,7 @@ _serialize_A_chimaera(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
-	buf_ptr = _serialize_answer(buf_ptr, hook_self, MDNS_TYPE_A, MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4); //TODO FLUSH
+	buf_ptr = _serialize_answer(buf_ptr, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
 
 	memcpy(buf_ptr, config.comm.ip, 4);
 	buf_ptr += 4;
@@ -383,6 +427,12 @@ static uint8_t *
 _dns_question(DNS_Query *query, uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
+
+	DNS_PTR_Method *hooks = NULL;
+	if(config.config.osc.mode == OSC_MODE_UDP)
+		hooks = hooks_udp;
+	else
+		hooks = hooks_tcp;
 
 	char *qname;
 	buf_ptr = _unroll_qname(query, buf_ptr, &qname);
@@ -533,12 +583,18 @@ void mdns_announce()
 		uint8_t *tail = head;
 		
 		uint16_t id = rand() & 0xffff;
-		tail = _serialize_query(tail, id, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
+		tail = _serialize_query(tail, id, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 5, 0, 0);
 		tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
-		//TODO append dns-sd services here, too?
 		
 		memcpy(tail, config.comm.ip, 4);
 		tail += 4;
+
+		// append dns-sd services here, too
+		tail = _serialize_PTR_services(tail); 
+		tail = _serialize_PTR_osc(tail);
+		tail = _serialize_TXT_chimaera(tail);
+		tail = _serialize_SRV_chimaera(tail);
+		tail = _serialize_A_chimaera(tail);
 		
 		udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 

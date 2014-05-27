@@ -60,14 +60,6 @@ oscmidi_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset,
 	oscmidi_osc.tt = offset;
 
 	oscmidi_tok = 0;
-
-	if(nblob_old + nblob_new == 0) // idling
-		for(ch=0; ch<0x10; ch++) //TODO check if 0x10 < OSCMIDI_MAX
-		{
-			nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_ALL_NOTES_OFF, 0x0); // send all notes off on all channels
-			midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-		}
-
 	midi_fmt[oscmidi_tok] = nOSC_END;
 }
 

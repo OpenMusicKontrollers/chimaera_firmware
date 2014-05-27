@@ -76,7 +76,7 @@ _nosc_method_message_dispatch(nOSC_Method *meth, char *path, char *fmt)
 	}
 }
 
-void// __CCM_TEXT__ TODO
+void
 _nosc_message_deserialize(uint8_t *buf, uint16_t size, char **path, char **fmt)
 {
 	nOSC_Message msg = dispatch_msg;
@@ -180,7 +180,7 @@ _nosc_message_deserialize(uint8_t *buf, uint16_t size, char **path, char **fmt)
 	}
 }
 
-void __CCM_TEXT__
+void
 nosc_method_dispatch(nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end)
 {
 	if(!strncmp(buf, bundle_str, 8))

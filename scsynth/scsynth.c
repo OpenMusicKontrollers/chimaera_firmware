@@ -203,13 +203,10 @@ CMC_Engine scsynth_engine = {
 	scsynth_engine_set_cb
 };
 
-uint_fast8_t
+static void
 scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
 										uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group)
 {
-	if(gid >= GROUP_MAX)
-		return 0;
-
 	SCSynth_Group *grp = &scsynth_groups[gid];
 
 	*name = grp->name;
@@ -221,17 +218,12 @@ scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group,
 	*gate = grp->gate;
 	*add_action = grp->add_action;
 	*is_group = grp->is_group;
-
-	return 1;
 }
 
-uint_fast8_t
+static void
 scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
 										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
 {
-	if( (gid >= GROUP_MAX) || (strlen(name)+1>offsetof(SCSynth_Group, sid)) ) //TODO checks for remaining arguments
-		return 0;
-
 	SCSynth_Group *grp = &scsynth_groups[gid];
 
 	strcpy(grp->name, name);
@@ -243,8 +235,6 @@ scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, ui
 	grp->gate = gate;
 	grp->add_action = add_action;
 	grp->is_group = is_group;
-
-	return 1;
 }
 
 /*
@@ -280,11 +270,9 @@ _scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 
 	if(argc == 1)
 	{
-		if(scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group))
-			size = CONFIG_SUCCESS("issiiiiiiii", uuid, path, name, sid, group, out, arg,
-				alloc?1:0, gate?1:0, add_action, is_group?1:0);
-		else
-			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
+		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
+		size = CONFIG_SUCCESS("issiiiiiiii", uuid, path, name, sid, group, out, arg,
+			alloc?1:0, gate?1:0, add_action, is_group?1:0);
 	}
 	else // argc == 11
 	{
@@ -298,10 +286,8 @@ _scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 		add_action = args[8].i;
 		is_group = args[9].i;
 
-		if(scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group))
-			size = CONFIG_SUCCESS("is", uuid, path);
-		else
-			size = CONFIG_FAIL("iss", uuid, path, "argument out of bounds"); // TODO remove
+		scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group);
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
 	CONFIG_SEND(size);

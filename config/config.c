@@ -746,6 +746,9 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 				break;
 			}
 		config_enable(enabled);
+
+		if(config.mdns.socket.enabled)
+			mdns_announce(); // announce new IP
 	}
 
 	return 1;

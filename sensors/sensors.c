@@ -228,7 +228,8 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 
 	if(argc == 1) // request group info
 	{
-		size = CONFIG_SUCCESS("isffiii", uuid, path, grp->x0, grp->x1,
+		size = CONFIG_SUCCESS("isffiii", uuid, path,
+			grp->x0, grp->x1,
 			grp->pid & CMC_NORTH ? 1 : 0,
 			grp->pid & CMC_SOUTH ? 1 : 0,
 			grp->m == CMC_NOSCALE ? 0 : 1);
