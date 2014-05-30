@@ -587,10 +587,8 @@ loop()
 #ifdef BENCHMARK
 			stop_watch_start(&sw_output_send);
 #endif
-			if(cmc_job) // start nonblocking sending of last cycles output
-			{
+			if(config.output.parallel && cmc_job) // start nonblocking sending of last cycles output
 				cmc_stat = osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
-			}
 
 		// fill adc_rela
 #ifdef BENCHMARK
@@ -665,13 +663,20 @@ loop()
 #ifdef BENCHMARK
 				stop_watch_start(&sw_output_block);
 #endif
-			if(cmc_job && cmc_stat) // block for end of sending of last cycles output
+			if(config.output.parallel && cmc_job && cmc_stat) // block for end of sending of last cycles output
 				osc_send_block(&config.output.osc);
 
 			if(job) // switch output buffer
 				buf_o_ptr ^= 1;
 
 			cmc_job = job;
+
+			// serial output processing
+			if(!config.output.parallel && cmc_job) // start blocking sending of this cycles output
+			{
+				osc_send(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
+				cmc_job = 0;
+			}
 
 #ifdef BENCHMARK
 			stop_watch_stop(&sw_output_send);

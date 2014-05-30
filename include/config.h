@@ -142,6 +142,7 @@ struct _Config {
 			uint8_t x;
 			uint8_t z;
 		} invert;
+		uint8_t parallel;
 	} output;
 
 	struct _config {

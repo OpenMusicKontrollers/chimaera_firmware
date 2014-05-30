@@ -130,7 +130,8 @@ Config config = {
 		.invert = {
 			.x = 0,
 			.z = 0
-		}
+		},
+		.parallel = 1
 	},
 
 	.config = {
@@ -876,6 +877,12 @@ _output_invert(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
+_output_parallel(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	return config_check_bool(path, fmt, argc, args, &config.output.parallel);
+}
+
+static uint_fast8_t
 _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
@@ -1055,6 +1062,7 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	nOSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
 	nOSC_QUERY_ITEM_METHOD("invert", "Enable/disable axis inversion", _output_invert, engines_invert_args),
+	nOSC_QUERY_ITEM_METHOD("parallel", "Parallel processing", _output_parallel, config_boolean_args),
 	nOSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
 	nOSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _output_mode, config_mode_args),
 
