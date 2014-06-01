@@ -115,6 +115,30 @@ Config config = {
 	.dummy = {
 		.enabled = 0,
 	},
+
+	.custom = {
+		.enabled = 0,
+		.frm = {
+			.path = {'/', '\0'},
+			.fmt = {'\0'},
+			.args = {'\0'}
+		},
+		.on = {
+			.path = {'/', '\0'},
+			.fmt = {'\0'},
+			.args = {'\0'}
+		},
+		.off = {
+			.path = {'/', '\0'},
+			.fmt = {'\0'},
+			.args = {'\0'}
+		},
+		.set = {
+			.path = {'/', '\0'},
+			.fmt = {'\0'},
+			.args = {'\0'}
+		}
+	},
 	
 	.output = {
 		.osc = {
@@ -1069,6 +1093,7 @@ static const nOSC_Query_Item engines_tree [] = {
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
 	nOSC_QUERY_ITEM_NODE("dummy/", "Dummy output engine", dummy_tree),
+	nOSC_QUERY_ITEM_NODE("custom/", "Custom output engine", custom_tree),
 	nOSC_QUERY_ITEM_NODE("tuio2/", "TUIO 2.0 output engine", tuio2_tree),
 	nOSC_QUERY_ITEM_NODE("tuio1/", "TUIO 1.0 output engine", tuio1_tree),
 	nOSC_QUERY_ITEM_NODE("scsynth/", "SuperCollider output engine", scsynth_tree),

@@ -21,16 +21,27 @@
  *     distribution.
  */
 
-#ifndef _ENGINES_H_
-#define _ENGINES_H_
+#ifndef _CUSTOM_H_
+#define _CUSTOM_H_
 
-#include <dump.h>
-#include <tuio2.h>
-#include <tuio1.h>
-#include <dummy.h>
-#include <custom.h>
-#include <oscmidi.h>
-#include <rtpmidi.h>
-#include <scsynth.h>
+#include <cmc.h>
 
-#endif // _ENGINES_H_
+#define CUSTOM_PATH_LEN		16
+#define CUSTOM_FMT_LEN		16
+#define CUSTOM_ARGS_LEN		64
+
+typedef struct _Custom_Item  Custom_Item;
+
+struct _Custom_Item {
+	char path [CUSTOM_PATH_LEN];
+	char fmt [CUSTOM_FMT_LEN];
+	char args [CUSTOM_ARGS_LEN];
+};
+
+extern nOSC_Bundle_Item custom_osc;
+extern CMC_Engine custom_engine;
+extern const nOSC_Query_Item custom_tree [5];
+
+void custom_init ();
+
+#endif // _CUSTOM_H_

@@ -40,6 +40,7 @@
 #include <scsynth.h>
 #include <oscmidi.h>
 #include <dummy.h>
+#include <custom.h>
 #include <rtpmidi.h>
 
 // globals
@@ -712,6 +713,9 @@ cmc_engines_update()
 
 	if(config.dummy.enabled)
 		engines[cmc_engines_active++] = &dummy_engine;
+
+	if(config.custom.enabled)
+		engines[cmc_engines_active++] = &custom_engine;
 
 	if(config.rtpmidi.enabled)
 		engines[cmc_engines_active++] = &rtpmidi_engine;

@@ -21,16 +21,35 @@
  *     distribution.
  */
 
-#ifndef _ENGINES_H_
-#define _ENGINES_H_
+#ifndef _CUSTOM_PRIVATE_H_
+#define _CUSTOM_PRIVATE_H_
 
-#include <dump.h>
-#include <tuio2.h>
-#include <tuio1.h>
-#include <dummy.h>
 #include <custom.h>
-#include <oscmidi.h>
-#include <rtpmidi.h>
-#include <scsynth.h>
+#include <nosc.h>
 
-#endif // _ENGINES_H_
+#define RPN_STACK_HEIGHT	8
+
+typedef nOSC_Arg Custom_Msg [5];
+typedef struct _RPN_Stack RPN_Stack;
+
+struct _RPN_Stack {
+	uint32_t fid;
+	//nOSC_Timestamp now;
+	//nOSC_Timestamp offset;
+	//uint_fast8_t old_n;
+	//uint_fast8_t new_n;
+	uint32_t sid;
+	uint16_t gid;
+	uint16_t pid;
+	float x;
+	float z;
+
+	union {
+		int32_t i;
+		float f;
+	} arr [RPN_STACK_HEIGHT];
+};
+
+uint_fast8_t rpn_eval(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack);
+
+#endif // _CUSTOM_PRIVATE_H_

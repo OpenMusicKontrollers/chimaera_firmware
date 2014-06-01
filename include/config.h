@@ -31,6 +31,7 @@
 #include <chimaera.h>
 
 #include <scsynth.h>
+#include <custom.h>
 
 #define SRC_PORT 0
 #define DST_PORT 1
@@ -130,6 +131,14 @@ struct _Config {
 	struct _dummy {
 		uint8_t enabled;
 	} dummy;
+
+	struct _custom {
+		uint8_t enabled;
+		Custom_Item frm;
+		Custom_Item on;
+		Custom_Item off;
+		Custom_Item set;
+	} custom;
 
 	struct _rtpmidi {
 		uint8_t enabled;

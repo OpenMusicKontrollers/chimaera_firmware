@@ -631,6 +631,9 @@ loop()
 					if(config.dummy.enabled)
 						nosc_item_bundle_set(nest_bndl, job++, dummy_osc.bndl, dummy_osc.tt, dummy_osc.fmt);
 
+					if(config.custom.enabled)
+						nosc_item_bundle_set(nest_bndl, job++, custom_osc.bndl, custom_osc.tt, custom_osc.fmt);
+
 					if(config.rtpmidi.enabled) //FIXME we cannot run RTP-MIDI and OSC output at the same time
 						cmc_len = rtpmidi_serialize(BUF_O_OFFSET(buf_o_ptr));
 				}
@@ -1240,6 +1243,7 @@ setup()
 	scsynth_init();
 	oscmidi_init();
 	dummy_init();
+	custom_init();
 	rtpmidi_init();
 
 	pin_write_bit(CHIM_LED_PIN, 1);
