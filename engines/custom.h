@@ -31,16 +31,51 @@
 #define CUSTOM_ARGS_LEN		64
 
 typedef struct _Custom_Item  Custom_Item;
+typedef enum _RPN_Instruction RPN_Instruction;
+typedef struct _RPN_VM RPN_VM;
+
+enum _RPN_Instruction {
+	RPN_TERMINATOR = 0,
+
+	RPN_PUSH_VALUE,
+	RPN_POP_INT32,
+	RPN_POP_FLOAT,
+
+	RPN_PUSH_FID,
+	RPN_PUSH_SID,
+	RPN_PUSH_GID,
+	RPN_PUSH_PID,
+	RPN_PUSH_X,
+	RPN_PUSH_Z,
+
+	RPN_ADD,
+	RPN_SUB,
+	RPN_MUL,
+	RPN_DIV,
+	RPN_MOD,
+	RPN_POW,
+
+	RPN_LT,
+	RPN_LEQ,
+	RPN_GT,
+	RPN_GEQ,
+	RPN_EQ
+};
+
+struct _RPN_VM {
+	RPN_Instruction inst [32];
+	float val [32];
+};
 
 struct _Custom_Item {
 	char path [CUSTOM_PATH_LEN];
 	char fmt [CUSTOM_FMT_LEN];
-	char args [CUSTOM_ARGS_LEN];
+	RPN_VM vm;
 };
 
 extern nOSC_Bundle_Item custom_osc;
 extern CMC_Engine custom_engine;
-extern const nOSC_Query_Item custom_tree [5];
+extern const nOSC_Query_Item custom_tree [6];
 
 void custom_init ();
 

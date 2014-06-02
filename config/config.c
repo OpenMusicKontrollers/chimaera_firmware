@@ -119,24 +119,24 @@ Config config = {
 	.custom = {
 		.enabled = 0,
 		.frm = {
-			.path = {'/', '\0'},
+			.path = {'\0'},
 			.fmt = {'\0'},
-			.args = {'\0'}
+			.vm = { .inst = { RPN_TERMINATOR } }
 		},
 		.on = {
-			.path = {'/', '\0'},
+			.path = {'\0'},
 			.fmt = {'\0'},
-			.args = {'\0'}
+			.vm = { .inst = { RPN_TERMINATOR } }
 		},
 		.off = {
-			.path = {'/', '\0'},
+			.path = {'\0'},
 			.fmt = {'\0'},
-			.args = {'\0'}
+			.vm = { .inst = { RPN_TERMINATOR } }
 		},
 		.set = {
-			.path = {'/', '\0'},
+			.path = {'\0'},
 			.fmt = {'\0'},
-			.args = {'\0'}
+			.vm = { .inst = { RPN_TERMINATOR } }
 		}
 	},
 	

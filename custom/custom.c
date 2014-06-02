@@ -73,8 +73,9 @@ custom_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, 
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
 
-	if(rpn_eval(msg, frm, &stack))
+	if(frm->path[0])
 	{
+		rpn_run(msg, frm, &stack);
 		nosc_item_message_set(custom_bndl, custom_tok, msg, frm->path, frm->fmt);
 		custom_fmt[custom_tok++] = nOSC_MESSAGE;
 	}
@@ -94,8 +95,9 @@ custom_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	stack.x = x;
 	stack.z = y;
 
-	if (rpn_eval(msg, on, &stack))
+	if(on->path[0])
 	{
+		rpn_run(msg, on, &stack);
 		nosc_item_message_set(custom_bndl, custom_tok, msg, on->path, on->fmt);
 		custom_fmt[custom_tok++] = nOSC_MESSAGE;
 	}
@@ -114,8 +116,9 @@ custom_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 	stack.pid = pid;
 	stack.x = stack.z = 0.f;
 
-	if(rpn_eval(msg, off, &stack))
+	if(off->path[0])
 	{
+		rpn_run(msg, off, &stack);
 		nosc_item_message_set(custom_bndl, custom_tok, msg, off->path, off->fmt);
 		custom_fmt[custom_tok++] = nOSC_MESSAGE;
 	}
@@ -135,8 +138,9 @@ custom_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	stack.x = x;
 	stack.z = y;
 
-	if(rpn_eval(msg, set, &stack))
+	if(set->path[0])
 	{
+		rpn_run(msg, set, &stack);
 		nosc_item_message_set(custom_bndl, custom_tok, msg, set->path, set->fmt);
 		custom_fmt[custom_tok++] = nOSC_MESSAGE;
 	}
@@ -163,20 +167,48 @@ _custom_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 }
 
 static uint_fast8_t
-_custom_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, char *format_path, char *format_args)
+_custom_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+{
+	uint16_t size;
+	int32_t uuid = args[0].i;
+
+	frm->path[0] = '\0';
+	frm->vm.inst[0] = RPN_TERMINATOR;
+	
+	on->path[0] = '\0';
+	on->vm.inst[0] = RPN_TERMINATOR;
+	
+	off->path[0] = '\0';
+	off->vm.inst[0] = RPN_TERMINATOR;
+	
+	set->path[0] = '\0';
+	set->vm.inst[0] = RPN_TERMINATOR;
+
+	size = CONFIG_SUCCESS("is", uuid, path);
+	CONFIG_SEND(size);
+	return 1;
+}
+
+static uint_fast8_t
+_custom_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, Custom_Item *itm)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
 	
 	if(argc == 1)
 	{
-		size = CONFIG_SUCCESS("isss", uuid, path, format_path, format_args);
+		//FIXME this is write only for now 
+		//size = CONFIG_SUCCESS("isss", uuid, path, itm->path, itm->fmt);
 	}
-	else // argc == 11
+	else
 	{
-		size = CONFIG_SUCCESS("is", uuid, path);
-		strcpy(format_path, args[1].s);
-		strcpy(format_args, args[2].s);
+		if(strcmp(args[1].s, "") && rpn_compile(args[2].s, &itm->vm)) //FIXME may give unusable VM
+		{
+			strcpy(itm->path, args[1].s); // TODO check for valid path
+			size = CONFIG_SUCCESS("is", uuid, path);
+		}
+		else
+			size = CONFIG_FAIL("iss", uuid, path, "parse error");
 	}
 
 	CONFIG_SEND(size);
@@ -187,30 +219,30 @@ _custom_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 static uint_fast8_t
 _custom_frame_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _custom_format(path, fmt, argc, args, frm->path, frm->args);
+	return _custom_format(path, fmt, argc, args, frm);
 }
 
 static uint_fast8_t
 _custom_on_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _custom_format(path, fmt, argc, args, on->path, on->args);
+	return _custom_format(path, fmt, argc, args, on);
 }
 
 static uint_fast8_t
 _custom_off_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _custom_format(path, fmt, argc, args, off->path, off->args);
+	return _custom_format(path, fmt, argc, args, off);
 }
 
 static uint_fast8_t
 _custom_set_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
-	return _custom_format(path, fmt, argc, args, set->path, set->args);
+	return _custom_format(path, fmt, argc, args, set);
 }
 
 static const nOSC_Query_Argument custom_format_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_RW, CUSTOM_PATH_LEN),
-	nOSC_QUERY_ARGUMENT_STRING("Arguments", nOSC_QUERY_MODE_RW, CUSTOM_ARGS_LEN)
+	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
+	nOSC_QUERY_ARGUMENT_STRING("Arguments", nOSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
 };
 
 /*
@@ -220,6 +252,7 @@ static const nOSC_Query_Argument custom_format_args [] = {
 const nOSC_Query_Item custom_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _custom_enabled, config_boolean_args),
 
+	nOSC_QUERY_ITEM_METHOD("reset", "Reset", _custom_reset, NULL),
 	nOSC_QUERY_ITEM_METHOD("frame", "Frame format", _custom_frame_format, custom_format_args),
 	nOSC_QUERY_ITEM_METHOD("on", "On format", _custom_on_format, custom_format_args),
 	nOSC_QUERY_ITEM_METHOD("off", "Off format", _custom_off_format, custom_format_args),

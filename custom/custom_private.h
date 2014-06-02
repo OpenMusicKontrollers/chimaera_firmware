@@ -44,12 +44,10 @@ struct _RPN_Stack {
 	float x;
 	float z;
 
-	union {
-		int32_t i;
-		float f;
-	} arr [RPN_STACK_HEIGHT];
+	float arr [RPN_STACK_HEIGHT];
 };
 
-uint_fast8_t rpn_eval(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack);
+void rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack);
+uint_fast8_t rpn_compile(char *args, RPN_VM *vm);
 
 #endif // _CUSTOM_PRIVATE_H_

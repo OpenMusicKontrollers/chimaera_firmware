@@ -25,441 +25,406 @@
 
 #include "custom_private.h"
 
-static int32_t
-pop_i(RPN_Stack *stack)
+static float
+pop(RPN_Stack *stack)
 {
-	int32_t v = stack->arr[0].i;
+	float v = stack->arr[0];
 
 	int32_t i;
 	for(i=0; i<RPN_STACK_HEIGHT-1; i++)
-		stack->arr[i].i = stack->arr[i+1].i;
-	stack->arr[RPN_STACK_HEIGHT-1].i = 0;
+		stack->arr[i] = stack->arr[i+1];
+	stack->arr[RPN_STACK_HEIGHT-1] = 0.f;
 
 	return v;
 }
 
 static void
-push_i(RPN_Stack *stack, int32_t v)
+push(RPN_Stack *stack, float v)
 {
 	int32_t i;
 	for(i=RPN_STACK_HEIGHT-1; i>0; i--)
-		stack->arr[i].i = stack->arr[i-1].i;
-	stack->arr[0].i = v;
+		stack->arr[i] = stack->arr[i-1];
+	stack->arr[0] = v;
 }
 
-static float
-pop_f(RPN_Stack *stack)
+void
+rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
 {
-	float v = stack->arr[0].f;
+	RPN_VM *vm = &itm->vm;
+	char *dst = itm->fmt;
 
-	int32_t i;
-	for(i=0; i<RPN_STACK_HEIGHT-1; i++)
-		stack->arr[i].f = stack->arr[i+1].f;
-	stack->arr[RPN_STACK_HEIGHT-1].f = 0.f;
-
-	return v;
-}
-
-static void
-push_f(RPN_Stack *stack, float v)
-{
-	int32_t i;
-	for(i=RPN_STACK_HEIGHT-1; i>0; i--)
-		stack->arr[i].f = stack->arr[i-1].f;
-	stack->arr[0].f = v;
-}
-
-static int32_t
-eval_i(char *str, size_t len, RPN_Stack *stack)
-{
-	char *ptr = str;
-	char *end = str + len;
-
-	while(ptr < end)
-	{
-		switch(*ptr)
+	RPN_Instruction *inst;
+	for(inst = vm->inst; *inst != RPN_TERMINATOR; inst++)
+		switch(*inst)
 		{
-			case '$':
+			case RPN_PUSH_VALUE:
 			{
-				switch(ptr[1])
-				{
-					case 'f':
-						push_i(stack, stack->fid);
-						ptr++;
-						break;
-					case 'b':
-						push_i(stack, stack->sid);
-						ptr++;
-						break;
-					case 'g':
-						push_i(stack, stack->gid);
-						ptr++;
-						break;
-					case 'p':
-						push_i(stack, stack->pid);
-						ptr++;
-						break;
-					case 'x':
-						push_i(stack, stack->x);
-						ptr++;
-						break;
-					case 'z':
-						push_i(stack, stack->z);
-						ptr++;
-						break;
-					default:
-						break;
-				}
-				ptr++;
+				push(stack, vm->val[inst - vm->inst]);
+				break;
+			}
+			case RPN_POP_INT32:
+			{
+				int32_t i = pop(stack);
+				nosc_message_set_int32(msg, dst - itm->fmt, i);
+				*dst++ = nOSC_INT32;
+				break;
+			}
+			case RPN_POP_FLOAT:
+			{
+				float f = pop(stack);
+				nosc_message_set_float(msg, dst - itm->fmt, f);
+				*dst++ = nOSC_FLOAT;
 				break;
 			}
 
-			case ' ':
-			case '\t':
-				ptr++;
-				break;
-
-			case '+':
+			case RPN_PUSH_FID:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c = a + b;
-				push_i(stack, c);
-				ptr++;
+				push(stack, stack->fid);
 				break;
 			}
-			case '-':
+			case RPN_PUSH_SID:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c = a - b;
-				push_i(stack, c);
-				ptr++;
+				push(stack, stack->sid);
 				break;
 			}
-			case '*':
+			case RPN_PUSH_GID:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c = a * b;
-				push_i(stack, c);
-				ptr++;
+				push(stack, stack->gid);
 				break;
 			}
-			case '/':
+			case RPN_PUSH_PID:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c = a / b;
-				push_i(stack, c);
-				ptr++;
+				push(stack, stack->pid);
 				break;
 			}
-			case '%':
+			case RPN_PUSH_X:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c = a % b;
-				push_i(stack, c);
-				ptr++;
+				push(stack, stack->x);
 				break;
 			}
-			case '<':
+			case RPN_PUSH_Z:
 			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c;
-				switch(ptr[1])
-				{
-					case '=':
-						c = a <= b;
-						ptr++;
-						break;
-					default:
-						c = a < b;
-						break;
-				}
-				push_i(stack, c);
-				ptr++;
-				break;
-			}
-			case '>':
-			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c;
-				switch(ptr[1])
-				{
-					case '=':
-						c = a >= b;
-						ptr++;
-						break;
-					default:
-						c = a > b;
-						break;
-				}
-				push_i(stack, c);
-				ptr++;
-				break;
-			}
-			case '=':
-			{
-				int32_t b = pop_i(stack);
-				int32_t a = pop_i(stack);
-				int32_t c;
-				switch(ptr[1])
-				{
-					case '=':
-						ptr++;
-						// fall-thru
-					default:
-						c = a == b;
-						break;
-				}
-				push_i(stack, c);
-				ptr++;
-				break;
-			}
-			default:
-			{
-				int32_t c = strtol(ptr, &ptr, 10);
-				push_i(stack, c);
-			}
-		}
-	}
-
-	return pop_i(stack);
-}
-
-static float
-eval_f(char *str, size_t len, RPN_Stack *stack)
-{
-	char *ptr = str;
-	char *end = str + len;
-
-	while(ptr < end)
-	{
-		switch(*ptr)
-		{
-			case '$':
-			{
-				switch(ptr[1])
-				{
-					case 'f':
-						push_f(stack, stack->fid);
-						ptr++;
-						break;
-					case 'b':
-						push_f(stack, stack->sid);
-						ptr++;
-						break;
-					case 'g':
-						push_f(stack, stack->gid);
-						ptr++;
-						break;
-					case 'p':
-						push_f(stack, stack->pid);
-						ptr++;
-						break;
-					case 'x':
-						push_f(stack, stack->x);
-						ptr++;
-						break;
-					case 'z':
-						push_f(stack, stack->z);
-						ptr++;
-						break;
-					default:
-						break;
-				}
-				ptr++;
+				push(stack, stack->z);
 				break;
 			}
 
-			case ' ':
-			case '\t':
-				ptr++;
-				break;
-
-			case '+':
+			// standard operators
+			case RPN_ADD:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = a + b;
-				push_f(stack, c);
-				ptr++;
+				push(stack, c);
 				break;
 			}
-			case '-':
+			case RPN_SUB:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = a - b;
-				push_f(stack, c);
-				ptr++;
+				push(stack, c);
 				break;
 			}
-			case '*':
+			case RPN_MUL:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = a * b;
-				push_f(stack, c);
-				ptr++;
+				push(stack, c);
 				break;
 			}
-			case '/':
+			case RPN_DIV:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = a / b;
-				push_f(stack, c);
-				ptr++;
+				push(stack, c);
 				break;
 			}
-			case '%':
+			case RPN_MOD:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = fmod(a, b);
-				push_f(stack, c);
-				ptr++;
+				push(stack, c);
 				break;
 			}
-			case '^':
+			case RPN_POW:
 			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
+				float b = pop(stack);
+				float a = pop(stack);
 				float c = pow(a, b);
-				push_f(stack, c);
+				push(stack, c);
+				break;
+			}
+
+			// conditionals
+			case RPN_LT:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a < b;
+				push(stack, c);
+				break;
+			}
+			case RPN_LEQ:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a <= b;
+				push(stack, c);
+				break;
+			}
+			case RPN_GT:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a > b;
+				push(stack, c);
+				break;
+			}
+			case RPN_GEQ:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a >= b;
+				push(stack, c);
+				break;
+			}
+			case RPN_EQ:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a == b;
+				push(stack, c);
+				break;
+			}
+		}
+	
+	*dst = '\0';
+}
+
+static uint_fast8_t
+rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
+{
+	char *ptr = str;
+	char *end = str + len;
+
+	RPN_Instruction *inst = &vm->inst[offset];
+
+	while(ptr < end)
+	{
+		switch(*ptr)
+		{
+			case '$':
+			{
+				switch(ptr[1])
+				{
+					case 'f':
+						*inst++ = RPN_PUSH_FID;
+						ptr++;
+						break;
+					case 'b':
+						*inst++ = RPN_PUSH_SID;
+						ptr++;
+						break;
+					case 'g':
+						*inst++ = RPN_PUSH_GID;
+						ptr++;
+						break;
+					case 'p':
+						*inst++ = RPN_PUSH_PID;
+						ptr++;
+						break;
+					case 'x':
+						*inst++ = RPN_PUSH_X;
+						ptr++;
+						break;
+					case 'z':
+						*inst++ = RPN_PUSH_Z;
+						ptr++;
+						break;
+					default:
+						return 0; // parse error
+				}
 				ptr++;
 				break;
 			}
+
+			case ' ':
+			case '\t':
+				// skip
+				ptr++;
+				break;
+
+			case '+':
+				*inst++ = RPN_ADD;
+				ptr++;
+				break;
+			case '-':
+				*inst++ = RPN_SUB;
+				ptr++;
+				break;
+			case '*':
+				*inst++ = RPN_MUL;
+				ptr++;
+				break;
+			case '/':
+				*inst++ = RPN_DIV;
+				ptr++;
+				break;
+			case '%':
+				*inst++ = RPN_MOD;
+				ptr++;
+				break;
+			case '^':
+				*inst++ = RPN_POW;
+				ptr++;
+				break;
+
 			case '<':
-			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
-				float c;
 				switch(ptr[1])
 				{
 					case '=':
-						c = a <= b;
+						*inst++ = RPN_LEQ;
 						ptr++;
 						break;
-					default:
-						c = a < b;
+					case ' ':
+					case '\t':
+						*inst++ = RPN_LT;
 						break;
+					default:
+						return 0; // parse error
 				}
-				push_f(stack, c);
 				ptr++;
 				break;
-			}
 			case '>':
-			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
-				float c;
 				switch(ptr[1])
 				{
 					case '=':
-						c = a >= b;
+						*inst++ = RPN_GEQ;
 						ptr++;
 						break;
-					default:
-						c = a > b;
+					case ' ':
+					case '\t':
+						*inst++ = RPN_GT;
 						break;
+					default:
+						return 0; // parse error
 				}
-				push_f(stack, c);
 				ptr++;
 				break;
-			}
 			case '=':
-			{
-				float b = pop_f(stack);
-				float a = pop_f(stack);
-				float c;
 				switch(ptr[1])
 				{
 					case '=':
+						*inst++ = RPN_EQ;
 						ptr++;
-						// fall-thru
-					default:
-						c = a == b;
 						break;
+					default:
+						return 0; // parse error
 				}
-				push_f(stack, c);
 				ptr++;
 				break;
-			}
+
 			default:
 			{
-				float c = strtod(ptr, &ptr);
-				push_f(stack, c);
+				char *endptr = NULL;
+				float v = strtod(ptr, &endptr);
+				if(ptr != endptr)
+				{
+					vm->val[inst - vm->inst] = v;
+					*inst++ = RPN_PUSH_VALUE;
+					ptr = endptr;
+				}
+				else
+					return 0; // parse error
 			}
 		}
 	}
 
-	return pop_f(stack);
+	return inst - vm->inst; // new offset
 }
 
 uint_fast8_t
-rpn_eval(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
+rpn_compile(char *args, RPN_VM *vm)
 {
-	char *ptr = itm->args;
-	char *end = itm->args + strlen(itm->args);
-	char *dst = itm->fmt;
-
-	uint_fast8_t ret = 0;
+	char *ptr = args;
+	char *end = args + strlen(args);
+	uint_fast8_t offset = 0;
 
 	while(ptr < end)
-	{
 		switch(*ptr)
 		{
 			case ' ':
 			case '\t':
-			case '\n':
-			 ptr++;
-			 break;
+				//skip white space
+				ptr++;
+				break;
 
 			case 'i':
 			{
 				ptr++; // skip 'i'
-				ptr++; // skip '('
-				size_t size = strchr(ptr, ')') - ptr;
-				int32_t i = eval_i(ptr, size, stack);
-				ptr += size;
-				ptr++; // skip ')'
+				if(*ptr == '(')
+				{
+					ptr++; // skip '('
+					char *closing = strchr(ptr, ')');
+					if(closing)
+					{
+						size_t size = closing - ptr;
+						offset = rpn_compile_sub(ptr, size, vm, offset);
+						if(offset)
+						{
+							ptr += size;
+							ptr++; // skip ')'
 
-				nosc_message_set_int32(msg, dst - itm->fmt, i);
-				*dst++ = nOSC_INT32;
-
-				ret = 1;
+							vm->inst[offset++] = RPN_POP_INT32;
+						}
+						else
+							return 0; // parse error
+					}
+					else
+						return 0; // parse error
+				}
+				else
+					return 0; // parse error
 				break;
 			}
+
 			case 'f':
 			{
-				ptr++; // skip 'i'
-				ptr++; // skip '('
-				size_t size = strchr(ptr, ')') - ptr;
-				float f = eval_f(ptr, size, stack);
-				ptr += size;
-				ptr++; // skip ')'
-				
-				nosc_message_set_float(msg, dst - itm->fmt, f);
-				*dst++ = nOSC_FLOAT;
+				ptr++; // skip 'f'
+				if(*ptr == '(')
+				{
+					ptr++; // skip '('
+					char *closing = strchr(ptr, ')');
+					if(closing)
+					{
+						size_t size = closing - ptr;
+						offset = rpn_compile_sub(ptr, size, vm, offset);
+						if(offset)
+						{
+							ptr += size;
+							ptr++; // skip ')'
 
-				ret = 1;
+							vm->inst[offset++] = RPN_POP_FLOAT;
+						}
+						else
+							return 0; // parse error
+					}
+					else
+						return 0; // parse error
+				}
+				else
+					return 0; // parse error
 				break;
 			}
-			case 's':
-			{
-				// FIXME
-				break;
-			}
+
+			default:
+				return 0; // parse error
 		}
-	}
-	
-	*dst = '\0';
 
-	return ret;
+	vm->inst[offset] = RPN_TERMINATOR;
+
+	return ptr == end;
 }
