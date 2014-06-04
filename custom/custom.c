@@ -34,10 +34,7 @@
 static nOSC_Item custom_bndl [BLOB_MAX];
 static char custom_fmt [BLOB_MAX+1];
 
-static Custom_Item *frm = &config.custom.frm;
-static Custom_Item *on = &config.custom.on;
-static Custom_Item *off = &config.custom.off;
-static Custom_Item *set = &config.custom.set;
+static Custom_Item *items = config.custom.items;
 
 static RPN_Stack stack;
 
@@ -61,23 +58,28 @@ custom_init()
 static void
 custom_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	custom_osc.tt = offset;
-
-	custom_tok = 0;
-
 	nOSC_Message msg;
-	msg = msgs[custom_tok];
+
+	custom_osc.tt = offset;
+	
+	custom_tok = 0;
 
 	stack.fid = fid;
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
 
-	if(frm->path[0])
-	{
-		rpn_run(msg, frm, &stack);
-		nosc_item_message_set(custom_bndl, custom_tok, msg, frm->path, frm->fmt);
-		custom_fmt[custom_tok++] = nOSC_MESSAGE;
-	}
+	Custom_Item *item;
+	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		if(item->dest == RPN_FRAME)
+		{
+			msg = msgs[custom_tok];
+
+			rpn_run(msg, item, &stack);
+			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
+			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+		}
+		else if(item->dest == RPN_NONE)
+			break;
 
 	custom_fmt[custom_tok] = nOSC_TERM;
 }
@@ -86,7 +88,6 @@ static void
 custom_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
-	msg = msgs[custom_tok];
 
 	stack.sid = sid;
 	stack.gid = gid;
@@ -94,12 +95,18 @@ custom_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	stack.x = x;
 	stack.z = y;
 
-	if(on->path[0])
-	{
-		rpn_run(msg, on, &stack);
-		nosc_item_message_set(custom_bndl, custom_tok, msg, on->path, on->fmt);
-		custom_fmt[custom_tok++] = nOSC_MESSAGE;
-	}
+	Custom_Item *item;
+	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		if(item->dest == RPN_ON)
+		{
+			msg = msgs[custom_tok];
+
+			rpn_run(msg, item, &stack);
+			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
+			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+		}
+		else if(item->dest == RPN_NONE)
+			break;
 
 	custom_fmt[custom_tok] = nOSC_TERM;
 }
@@ -108,19 +115,24 @@ static void
 custom_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	nOSC_Message msg;
-	msg = msgs[custom_tok];
 
 	stack.sid = sid;
 	stack.gid = gid;
 	stack.pid = pid;
 	stack.x = stack.z = 0.f;
 
-	if(off->path[0])
-	{
-		rpn_run(msg, off, &stack);
-		nosc_item_message_set(custom_bndl, custom_tok, msg, off->path, off->fmt);
-		custom_fmt[custom_tok++] = nOSC_MESSAGE;
-	}
+	Custom_Item *item;
+	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		if(item->dest == RPN_OFF)
+		{
+			msg = msgs[custom_tok];
+
+			rpn_run(msg, item, &stack);
+			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
+			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+		}
+		else if(item->dest == RPN_NONE)
+			break;
 
 	custom_fmt[custom_tok] = nOSC_TERM;
 }
@@ -129,7 +141,6 @@ static void
 custom_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	nOSC_Message msg;
-	msg = msgs[custom_tok];
 
 	stack.sid = sid;
 	stack.gid = gid;
@@ -137,12 +148,18 @@ custom_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 	stack.x = x;
 	stack.z = y;
 
-	if(set->path[0])
-	{
-		rpn_run(msg, set, &stack);
-		nosc_item_message_set(custom_bndl, custom_tok, msg, set->path, set->fmt);
-		custom_fmt[custom_tok++] = nOSC_MESSAGE;
-	}
+	Custom_Item *item;
+	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		if(item->dest == RPN_SET)
+		{
+			msg = msgs[custom_tok];
+			
+			rpn_run(msg, item, &stack);
+			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
+			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+		}
+		else if(item->dest == RPN_NONE)
+			break;
 
 	custom_fmt[custom_tok] = nOSC_TERM;
 }
@@ -171,39 +188,57 @@ _custom_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	uint16_t size;
 	int32_t uuid = args[0].i;
 
-	frm->path[0] = '\0';
-	frm->vm.inst[0] = RPN_TERMINATOR;
-	
-	on->path[0] = '\0';
-	on->vm.inst[0] = RPN_TERMINATOR;
-	
-	off->path[0] = '\0';
-	off->vm.inst[0] = RPN_TERMINATOR;
-	
-	set->path[0] = '\0';
-	set->vm.inst[0] = RPN_TERMINATOR;
+	uint_fast8_t i;
+	for(i=0; i<CUSTOM_MAX_EXPR; i++)
+	{
+		Custom_Item *item = &items[i];
+
+		item->dest = RPN_NONE;
+		item->path[0] = '\0';
+		item->vm.inst[0] = RPN_TERMINATOR;
+	}
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
 	return 1;
 }
 
+static const nOSC_Query_Value custom_append_destination_args_values [] = {
+	[RPN_FRAME]	= { .s = "frame" },
+	[RPN_ON]	= { .s = "on" },
+	[RPN_OFF]	= { .s = "off" },
+	[RPN_SET]	= { .s = "set" },
+	[RPN_IDLE]	= { .s = "idle" }
+};
+
 static uint_fast8_t
-_custom_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, Custom_Item *itm)
+_custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 {
 	uint16_t size;
 	int32_t uuid = args[0].i;
-	
+
 	if(argc == 1)
 	{
-		//FIXME this is write only for now 
-		//size = CONFIG_SUCCESS("isss", uuid, path, itm->path, itm->fmt);
+		//TODO this is write only for now 
+		//size = CONFIG_SUCCESS("isss", uuid, path, item->path, item->fmt);
 	}
 	else
 	{
-		if(strcmp(args[1].s, "") && rpn_compile(args[2].s, &itm->vm)) //FIXME may give unusable VM
+		Custom_Item *item;
+		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+			if(item->dest == RPN_NONE)
+				break;
+
+		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(args[2].s, "") && rpn_compile(args[3].s, &item->vm) )
 		{
-			strcpy(itm->path, args[1].s); // TODO check for valid path
+			uint_fast8_t i;
+			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(nOSC_Query_Value); i++)
+				if(!strcmp(args[1].s, custom_append_destination_args_values[i].s))
+				{
+					item->dest = i;
+					break;
+				}
+			strcpy(item->path, args[2].s); // TODO check for valid path
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
@@ -215,31 +250,8 @@ _custom_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return 1;
 }
 
-static uint_fast8_t
-_custom_frame_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _custom_format(path, fmt, argc, args, frm);
-}
-
-static uint_fast8_t
-_custom_on_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _custom_format(path, fmt, argc, args, on);
-}
-
-static uint_fast8_t
-_custom_off_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _custom_format(path, fmt, argc, args, off);
-}
-
-static uint_fast8_t
-_custom_set_format(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	return _custom_format(path, fmt, argc, args, set);
-}
-
-static const nOSC_Query_Argument custom_format_args [] = {
+static const nOSC_Query_Argument custom_append_args [] = {
+	nOSC_QUERY_ARGUMENT_STRING_VALUES("Destination", nOSC_QUERY_MODE_W, custom_append_destination_args_values),
 	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
 	nOSC_QUERY_ARGUMENT_STRING("Arguments", nOSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
 };
@@ -252,8 +264,5 @@ const nOSC_Query_Item custom_tree [] = {
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _custom_enabled, config_boolean_args),
 
 	nOSC_QUERY_ITEM_METHOD("reset", "Reset", _custom_reset, NULL),
-	nOSC_QUERY_ITEM_METHOD("frame", "Frame format", _custom_frame_format, custom_format_args),
-	nOSC_QUERY_ITEM_METHOD("on", "On format", _custom_on_format, custom_format_args),
-	nOSC_QUERY_ITEM_METHOD("off", "Off format", _custom_off_format, custom_format_args),
-	nOSC_QUERY_ITEM_METHOD("set", "Set format", _custom_set_format, custom_format_args),
+	nOSC_QUERY_ITEM_METHOD("append", "Append format", _custom_append, custom_append_args)
 };

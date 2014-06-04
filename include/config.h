@@ -134,10 +134,7 @@ struct _Config {
 
 	struct _custom {
 		uint8_t enabled;
-		Custom_Item frm;
-		Custom_Item on;
-		Custom_Item off;
-		Custom_Item set;
+		Custom_Item items [CUSTOM_MAX_EXPR];
 	} custom;
 
 	struct _output {

@@ -26,12 +26,16 @@
 
 #include <cmc.h>
 
+#define CUSTOM_MAX_EXPR		8 // FIXME we'd rather like to have 8 here!
+#define CUSTOM_MAX_INST		24 // FIXME we'd rather like to have 32 here!
+
 #define CUSTOM_PATH_LEN		16
 #define CUSTOM_FMT_LEN		16
 #define CUSTOM_ARGS_LEN		64
 
 typedef struct _Custom_Item  Custom_Item;
 typedef enum _RPN_Instruction RPN_Instruction;
+typedef enum _RPN_Destination RPN_Destination;
 typedef struct _RPN_VM RPN_VM;
 
 enum _RPN_Instruction {
@@ -67,12 +71,22 @@ enum _RPN_Instruction {
 	RPN_EQ
 };
 
+enum _RPN_Destination {
+	RPN_NONE = 0,
+	RPN_FRAME,
+	RPN_ON,
+	RPN_OFF,
+	RPN_SET,
+	RPN_IDLE
+};
+
 struct _RPN_VM {
-	RPN_Instruction inst [32];
-	float val [32];
+	RPN_Instruction inst [CUSTOM_MAX_INST];
+	float val [CUSTOM_MAX_INST];
 };
 
 struct _Custom_Item {
+	RPN_Destination dest;
 	char path [CUSTOM_PATH_LEN];
 	char fmt [CUSTOM_FMT_LEN];
 	RPN_VM vm;
@@ -80,8 +94,8 @@ struct _Custom_Item {
 
 extern nOSC_Bundle_Item custom_osc;
 extern CMC_Engine custom_engine;
-extern const nOSC_Query_Item custom_tree [6];
+extern const nOSC_Query_Item custom_tree [3];
 
-void custom_init ();
+void custom_init();
 
 #endif // _CUSTOM_H_
