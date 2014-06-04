@@ -47,6 +47,14 @@ push(RPN_Stack *stack, float v)
 	stack->arr[0] = v;
 }
 
+static void
+xchange(RPN_Stack *stack)
+{
+	float v = stack->arr[0];
+	stack->arr[0] = stack->arr[1];
+	stack->arr[1] = v;
+}
+
 void
 rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
 {
@@ -157,8 +165,41 @@ rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
 				push(stack, c);
 				break;
 			}
+			case RPN_NEG:
+			{
+				float c = pop(stack);
+				push(stack, -c);
+				break;
+			}
+			case RPN_XCHANGE:
+			{
+				xchange(stack);
+				break;
+			}
 
 			// conditionals
+			case RPN_NOT:
+			{
+				float c = pop(stack);
+				push(stack, !c);
+				break;
+			}
+			case RPN_NOTEQ:
+			{
+				float a = pop(stack);
+				float b = pop(stack);
+				float c = a != b;
+				push(stack, c);
+				break;
+			}
+			case RPN_COND:
+			{
+				float c = pop(stack);
+				if(!c)
+					xchange(stack);
+				pop(stack);
+				break;
+			}
 			case RPN_LT:
 			{
 				float b = pop(stack);
@@ -281,7 +322,32 @@ rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				*inst++ = RPN_POW;
 				ptr++;
 				break;
+			case '~':
+				*inst++ = RPN_NEG;
+				ptr++;
+				break;
+			case '#':
+				*inst++ = RPN_XCHANGE;
+				ptr++;
+				break;
 
+			case '!':
+				switch(ptr[1])
+				{
+					case '=':
+						*inst++ = RPN_NOTEQ;
+						ptr++;
+						break;
+					default:
+						*inst++ = RPN_NOT;
+						break;
+				}
+				ptr++;
+				break;
+			case '?':
+				*inst++ = RPN_COND;
+				ptr++;
+				break;
 			case '<':
 				switch(ptr[1])
 				{
@@ -289,12 +355,9 @@ rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 						*inst++ = RPN_LEQ;
 						ptr++;
 						break;
-					case ' ':
-					case '\t':
+					default:
 						*inst++ = RPN_LT;
 						break;
-					default:
-						return 0; // parse error
 				}
 				ptr++;
 				break;
@@ -305,12 +368,9 @@ rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 						*inst++ = RPN_GEQ;
 						ptr++;
 						break;
-					case ' ':
-					case '\t':
+					default:
 						*inst++ = RPN_GT;
 						break;
-					default:
-						return 0; // parse error
 				}
 				ptr++;
 				break;

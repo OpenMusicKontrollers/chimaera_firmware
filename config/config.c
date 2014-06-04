@@ -100,10 +100,6 @@ Config config = {
 		.enabled = 0
 	},
 
-	.rtpmidi = {
-		.enabled = 0,
-	},
-
 	.oscmidi = {
 		.enabled = 0,
 		.offset = MIDI_BOT,
@@ -615,7 +611,6 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	config.scsynth.enabled = 0;
 	config.oscmidi.enabled = 0;
 	config.dummy.enabled = 0;
-	config.rtpmidi.enabled = 0;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
@@ -1098,7 +1093,6 @@ static const nOSC_Query_Item engines_tree [] = {
 	nOSC_QUERY_ITEM_NODE("tuio1/", "TUIO 1.0 output engine", tuio1_tree),
 	nOSC_QUERY_ITEM_NODE("scsynth/", "SuperCollider output engine", scsynth_tree),
 	nOSC_QUERY_ITEM_NODE("oscmidi/", "OSC MIDI output engine", oscmidi_tree),
-	//nOSC_QUERY_ITEM_NODE("rtpmidi/", "RTP MIDI output engine", rtpmidi_tree),
 };
 
 static const nOSC_Query_Item root_tree [] = {

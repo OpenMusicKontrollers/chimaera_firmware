@@ -34,7 +34,6 @@
 static nOSC_Item custom_bndl [BLOB_MAX];
 static char custom_fmt [BLOB_MAX+1];
 
-//TODO put those into config struct
 static Custom_Item *frm = &config.custom.frm;
 static Custom_Item *on = &config.custom.on;
 static Custom_Item *off = &config.custom.off;

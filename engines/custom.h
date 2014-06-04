@@ -54,7 +54,12 @@ enum _RPN_Instruction {
 	RPN_DIV,
 	RPN_MOD,
 	RPN_POW,
+	RPN_NEG,
+	RPN_XCHANGE,
 
+	RPN_NOT,
+	RPN_NOTEQ,
+	RPN_COND,
 	RPN_LT,
 	RPN_LEQ,
 	RPN_GT,

@@ -30,7 +30,6 @@
 #include <dummy.h>
 #include <custom.h>
 #include <oscmidi.h>
-#include <rtpmidi.h>
 #include <scsynth.h>
 
 #endif // _ENGINES_H_

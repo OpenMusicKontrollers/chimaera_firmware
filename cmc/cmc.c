@@ -41,7 +41,6 @@
 #include <oscmidi.h>
 #include <dummy.h>
 #include <custom.h>
-#include <rtpmidi.h>
 
 // globals
 CMC_Engine *engines [ENGINE_MAX+1];
@@ -716,9 +715,6 @@ cmc_engines_update()
 
 	if(config.custom.enabled)
 		engines[cmc_engines_active++] = &custom_engine;
-
-	if(config.rtpmidi.enabled)
-		engines[cmc_engines_active++] = &rtpmidi_engine;
 
 	engines[cmc_engines_active] = NULL;
 }

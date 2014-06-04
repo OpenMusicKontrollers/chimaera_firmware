@@ -140,10 +140,6 @@ struct _Config {
 		Custom_Item set;
 	} custom;
 
-	struct _rtpmidi {
-		uint8_t enabled;
-	} rtpmidi;
-
 	struct _output {
 		OSC_Config osc;
 		nOSC_Timestamp offset;
