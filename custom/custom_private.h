@@ -29,7 +29,6 @@
 
 #define RPN_STACK_HEIGHT	8
 
-typedef nOSC_Arg Custom_Msg [5];
 typedef struct _RPN_Stack RPN_Stack;
 
 struct _RPN_Stack {
@@ -47,7 +46,7 @@ struct _RPN_Stack {
 	float arr [RPN_STACK_HEIGHT];
 };
 
-void rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack);
-uint_fast8_t rpn_compile(char *args, RPN_VM *vm);
+osc_data_t *rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack);
+uint_fast8_t rpn_compile(char *args, Custom_Item *itm);
 
 #endif // _CUSTOM_PRIVATE_H_

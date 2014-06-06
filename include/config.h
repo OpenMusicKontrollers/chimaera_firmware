@@ -26,7 +26,6 @@
 
 #include <stdint.h>
 
-#include <nosc.h>
 #include <cmc.h>
 #include <chimaera.h>
 
@@ -201,10 +200,8 @@ uint_fast8_t config_save();
 uint_fast8_t groups_load();
 uint_fast8_t groups_save();
 
-extern const char *success_str;
-extern const char *fail_str;
-#define CONFIG_SUCCESS(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.mode, success_str, __VA_ARGS__))
-#define CONFIG_FAIL(...)(nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr), config.config.osc.mode, fail_str, __VA_ARGS__))
+uint16_t CONFIG_SUCCESS(const char *fmt, ...);
+uint16_t CONFIG_FAIL(const char *fmt, ...);
 #define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);

@@ -26,8 +26,6 @@
 
 #include <stdint.h>
 
-#include <netdef.h>
-
 typedef enum _SCSynth_Add_Action SCSynth_Add_Action;
 typedef struct _SCSynth_Group SCSynth_Group;
 
@@ -49,7 +47,6 @@ struct _SCSynth_Group {
 };
 
 extern SCSynth_Group *scsynth_groups;
-extern nOSC_Bundle_Item scsynth_osc;
 extern CMC_Engine scsynth_engine;
 extern const nOSC_Query_Item scsynth_tree [3];
 

@@ -39,10 +39,6 @@
 typedef fix_32_32_t nOSC_Timestamp;
 typedef union _nOSC_Arg nOSC_Arg;
 typedef nOSC_Arg *nOSC_Message;
-typedef struct _nOSC_Bundle_Item nOSC_Bundle_Item;
-typedef struct _nOSC_Message_Item nOSC_Message_Item;
-typedef union _nOSC_Item nOSC_Item;
-typedef nOSC_Item *nOSC_Bundle;
 typedef struct _nOSC_Blob nOSC_Blob;
 typedef struct _nOSC_Method nOSC_Method;
 
@@ -99,50 +95,6 @@ union _nOSC_Arg {
 	char c;
 };
 
-typedef enum _nOSC_Item_Type {
-	nOSC_MESSAGE = 'M',
-	nOSC_BUNDLE = 'B',
-	nOSC_TERM = '\0'
-} nOSC_Item_Type;
-
-struct _nOSC_Bundle_Item {
-	nOSC_Bundle bndl;
-	nOSC_Timestamp tt;
-	char *fmt;
-};
-
-struct _nOSC_Message_Item {
-	nOSC_Message msg;
-	char *path;
-	char *fmt;
-};
-
-union _nOSC_Item {
-	nOSC_Bundle_Item bundle;
-	nOSC_Message_Item message;
-};
-
-#define nosc_message(m,p,f)	(nOSC_Item){.message={.msg=m, .path=p, .fmt=f}}
-#define nosc_bundle(b,t,f)	(nOSC_Item){.bundle={.bndl=b, .tt=t, .fmt=f}}
-
-#define nosc_item_message_set(ITM,POS,MSG,PATH,FMT) \
-({ \
-	nOSC_Item *itm =(nOSC_Item *)(ITM); \
-	uint_fast8_t pos =(uint_fast8_t)(POS); \
-	itm[pos].message.msg =(nOSC_Message)(MSG); \
-	itm[pos].message.path =(char *)PATH; \
-	itm[pos].message.fmt =(char *)FMT; \
-})
-
-#define nosc_item_bundle_set(ITM,POS,BNDL,TIMESTAMP,FMT) \
-({ \
-	nOSC_Item *itm =(nOSC_Item *)(ITM); \
-	uint_fast8_t pos =(uint_fast8_t)(POS); \
-	itm[pos].bundle.bndl =(nOSC_Item *)BNDL; \
-	itm[pos].bundle.tt =(nOSC_Timestamp)TIMESTAMP; \
-	itm[pos].bundle.fmt =(char *)FMT; \
-})
-
 struct _nOSC_Method {
 	char *path;
 	char *fmt;
@@ -162,12 +114,6 @@ struct _nOSC_Method {
  */
 
 void nosc_method_dispatch(nOSC_Method *meth, uint8_t *buf, uint16_t size, nOSC_Bundle_Start_Cb start, nOSC_Bundle_End_Cb end);
-
-/*
- * Bundle functions
- */
-
-uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char *fmt, uint8_t *buf, uint_fast8_t tcp);
 
 /*
  * Message functions
@@ -200,10 +146,6 @@ uint16_t nosc_bundle_serialize(nOSC_Bundle bund, nOSC_Timestamp timestamp, char 
 })
 #define nosc_message_set_symbol(MSG,POS,_S)(((nOSC_Message)(MSG))[POS].S =(char *)(_S))
 #define nosc_message_set_char(MSG,POS,C)(((nOSC_Message)(MSG))[POS].c =(char)(C))
-
-uint16_t nosc_message_serialize(nOSC_Message msg, const char *path, const char *fmt, uint8_t *buf, uint_fast8_t tcp);
-uint16_t nosc_message_vararg_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path, const char *fmt, ...);
-uint16_t nosc_message_varlist_serialize(uint8_t *buf, uint_fast8_t tcp, const char *path, const char *fmt, va_list argv);
 
 /*
  * Query system

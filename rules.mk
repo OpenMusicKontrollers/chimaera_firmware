@@ -17,8 +17,7 @@ include $(MAKEDIR)/header.mk
 BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
 BUILDDIRS += $(BUILD_PATH)/$(d)/wiz
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
-BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
-BUILDDIRS += $(BUILD_PATH)/$(d)/tuio1
+BUILDDIRS += $(BUILD_PATH)/$(d)/posc
 BUILDDIRS += $(BUILD_PATH)/$(d)/dump
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
 BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
@@ -31,15 +30,18 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/chimaera
 BUILDDIRS += $(BUILD_PATH)/$(d)/ipv4ll
 BUILDDIRS += $(BUILD_PATH)/$(d)/mdns-sd
 BUILDDIRS += $(BUILD_PATH)/$(d)/dhcpc
+BUILDDIRS += $(BUILD_PATH)/$(d)/arp
+BUILDDIRS += $(BUILD_PATH)/$(d)/calibration
+BUILDDIRS += $(BUILD_PATH)/$(d)/linalg
+BUILDDIRS += $(BUILD_PATH)/$(d)/sensors
+
+BUILDDIRS += $(BUILD_PATH)/$(d)/tuio2
+BUILDDIRS += $(BUILD_PATH)/$(d)/tuio1
 BUILDDIRS += $(BUILD_PATH)/$(d)/oscmidi
 BUILDDIRS += $(BUILD_PATH)/$(d)/midi
 BUILDDIRS += $(BUILD_PATH)/$(d)/dummy
 BUILDDIRS += $(BUILD_PATH)/$(d)/custom
 BUILDDIRS += $(BUILD_PATH)/$(d)/scsynth
-BUILDDIRS += $(BUILD_PATH)/$(d)/arp
-BUILDDIRS += $(BUILD_PATH)/$(d)/calibration
-BUILDDIRS += $(BUILD_PATH)/$(d)/linalg
-BUILDDIRS += $(BUILD_PATH)/$(d)/sensors
 
 ### Local flags: these control how the compiler gets called.
 
@@ -101,9 +103,7 @@ ifeq ($(WIZ_CHIP), 5500)
 cSRCS_$(d) += wiz/W5500.c
 endif
 cSRCS_$(d) += nosc/nosc.c
-cSRCS_$(d) += tuio2/tuio2.c
-cSRCS_$(d) += tuio1/tuio1.c
-cSRCS_$(d) += dump/dump.c
+cSRCS_$(d) += posc/posc.c
 cSRCS_$(d) += config/config.c
 cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += ptp/ptp.c
@@ -115,17 +115,21 @@ cSRCS_$(d) += chimaera/chimaera.c
 cSRCS_$(d) += mdns-sd/mdns-sd.c
 cSRCS_$(d) += ipv4ll/ipv4ll.c
 cSRCS_$(d) += dhcpc/dhcpc.c
-cSRCS_$(d) += oscmidi/oscmidi.c
-cSRCS_$(d) += midi/midi.c
-cSRCS_$(d) += dummy/dummy.c
-cSRCS_$(d) += custom/custom.c
-cSRCS_$(d) += custom/custom_rpn.c
-cSRCS_$(d) += scsynth/scsynth.c
 cSRCS_$(d) += arp/arp.c
 cSRCS_$(d) += calibration/calibration.c
 cSRCS_$(d) += linalg/linalg.c
 cSRCS_$(d) += sensors/sensors.c
 cSRCS_$(d) += firmware.c
+
+cSRCS_$(d) += dump/dump.c
+cSRCS_$(d) += oscmidi/oscmidi.c
+cSRCS_$(d) += midi/midi.c
+cSRCS_$(d) += dummy/dummy.c
+cSRCS_$(d) += scsynth/scsynth.c
+cSRCS_$(d) += tuio2/tuio2.c
+cSRCS_$(d) += tuio1/tuio1.c
+cSRCS_$(d) += custom/custom.c
+cSRCS_$(d) += custom/custom_rpn.c
 
 # cppSRCS_$(d) are the C++ sources we want compiled.  We have our own
 # main.cpp, and one additional file.

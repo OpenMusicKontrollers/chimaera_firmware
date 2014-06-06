@@ -268,6 +268,54 @@ Config config = {
 	}
 };
 
+uint16_t
+CONFIG_SUCCESS(const char *fmt, ...)
+{
+	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *preamble;
+
+	if(config.config.osc.mode == OSC_MODE_TCP)
+		buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+
+  va_list args;
+  va_start(args, fmt);
+	buf_ptr = osc_varlist_set(buf_ptr, success_str, fmt, args);
+  va_end(args);
+	
+	uint16_t size = buf_ptr - buf;
+	if(config.config.osc.mode == OSC_MODE_TCP)
+		buf_ptr = osc_end_preamble(buf_ptr, preamble);
+	else if(config.config.osc.mode == OSC_MODE_SLIP)
+		size = slip_encode(buf, size);
+
+	return buf_ptr - buf;
+}
+
+uint16_t
+CONFIG_FAIL(const char *fmt, ...)
+{
+	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *preamble;
+
+	if(config.config.osc.mode == OSC_MODE_TCP)
+		buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+
+  va_list args;
+  va_start(args, fmt);
+	buf_ptr = osc_varlist_set(buf_ptr, fail_str, fmt, args);
+  va_end(args);
+
+	uint16_t size = buf_ptr - buf;
+	if(config.config.osc.mode == OSC_MODE_TCP)
+		buf_ptr = osc_end_preamble(buf_ptr, preamble);
+	else if(config.config.osc.mode == OSC_MODE_SLIP)
+		size = slip_encode(buf, size);
+
+	return size;
+}
+
 uint_fast8_t
 version_match()
 {
@@ -1078,11 +1126,11 @@ static const nOSC_Query_Item engines_tree [] = {
 	// engines
 	nOSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),
 	nOSC_QUERY_ITEM_NODE("dummy/", "Dummy output engine", dummy_tree),
-	nOSC_QUERY_ITEM_NODE("custom/", "Custom output engine", custom_tree),
+	nOSC_QUERY_ITEM_NODE("oscmidi/", "OSC MIDI output engine", oscmidi_tree),
+	nOSC_QUERY_ITEM_NODE("scsynth/", "SuperCollider output engine", scsynth_tree),
 	nOSC_QUERY_ITEM_NODE("tuio2/", "TUIO 2.0 output engine", tuio2_tree),
 	nOSC_QUERY_ITEM_NODE("tuio1/", "TUIO 1.0 output engine", tuio1_tree),
-	nOSC_QUERY_ITEM_NODE("scsynth/", "SuperCollider output engine", scsynth_tree),
-	nOSC_QUERY_ITEM_NODE("oscmidi/", "OSC MIDI output engine", oscmidi_tree),
+	nOSC_QUERY_ITEM_NODE("custom/", "Custom output engine", custom_tree)
 };
 
 static const nOSC_Query_Item root_tree [] = {
@@ -1125,7 +1173,7 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			if(item)
 			{
 				// serialize empty string
-				size = CONFIG_SUCCESS("iss", uuid, path, nil);
+				size = CONFIG_SUCCESS("iss", uuid, path, nil); // FIXME adapt to new osc thingy
 				size -= 4;
 
 				// wind back to beginning of empty string on buffer

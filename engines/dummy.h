@@ -25,9 +25,7 @@
 #define _DUMMY_H_
 
 #include <cmc.h>
-#include <midi.h>
 
-extern nOSC_Bundle_Item dummy_osc;
 extern CMC_Engine dummy_engine;
 extern const nOSC_Query_Item dummy_tree [1];
 

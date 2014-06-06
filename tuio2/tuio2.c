@@ -28,7 +28,7 @@
 #include <chimutil.h>
 #include <config.h>
 
-#include "tuio2_private.h"
+#include <tuio2.h>
 
 static const char *frm_str = "/tuio2/frm";
 static const char *tok_str = "/tuio2/tok";
@@ -38,23 +38,13 @@ static const char *frm_fmt [2] = { "it", "itsiii" };
 static const char *tok_fmt = "iiifff";
 static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
-static nOSC_Arg frm_short [2];
-static nOSC_Arg frm_long [6];
-static nOSC_Arg * frm [2] = {frm_short, frm_long};
-static Tuio2_Tok tok [BLOB_MAX];
-static nOSC_Arg alv [BLOB_MAX];
+static int32_t alv_ids [BLOB_MAX];
+static uint_fast8_t counter;
 
-static nOSC_Item tuio2_bndl [TUIO2_MAX]; // BLOB_MAX + frame + alv
-static char tuio2_fmt [TUIO2_MAX+1];
+static int32_t addr;
+static int32_t inst;
 
-nOSC_Bundle_Item tuio2_osc = {
-	.bndl = tuio2_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = tuio2_fmt
-};
-
-static uint_fast8_t old_end = BLOB_MAX;
-static uint_fast8_t counter = 0;
+static osc_data_t *pack;
 
 void
 tuio2_init()
@@ -62,122 +52,102 @@ tuio2_init()
 	uint_fast8_t i;
 	uint_fast8_t long_header = config.tuio2.long_header;
 
-	// initialize bundle format
-	memset(tuio2_fmt, nOSC_MESSAGE, TUIO2_MAX);
-	tuio2_fmt[TUIO2_MAX] = nOSC_TERM;
-
-	// initialize bundle
-	nosc_item_message_set(tuio2_bndl, 0, frm[long_header],(char *)frm_str,(char *)frm_fmt[long_header]);
-
-	for(i=0; i<BLOB_MAX; i++)
-		nosc_item_message_set(tuio2_bndl, i+1, tok[i],(char *)tok_str,(char *)tok_fmt);
-
-	nosc_item_message_set(tuio2_bndl, BLOB_MAX + 1, alv,(char *)alv_str, alv_fmt);
-
-	// initialize short frame
-	nosc_message_set_int32(frm[0], 0, 0);
-	nosc_message_set_timestamp(frm[0], 1, nOSC_IMMEDIATE);
-
 	// initialize long frame
-	uint8_t *mac = config.comm.mac;
-	int32_t addr =(mac[2] << 24) | (mac[3] << 16) | (mac[4] << 8) | mac[5]; // MAC[2:5] last four bytes
-	int32_t inst = uid_seed(); // 32 bit conglomerate of unique ID
-	nosc_message_set_int32(frm[1], 0, 0);
-	nosc_message_set_timestamp(frm[1], 1, nOSC_IMMEDIATE);
-	nosc_message_set_string(frm[1], 2, config.name);
-	nosc_message_set_int32(frm[1], 3, addr);
-	nosc_message_set_int32(frm[1], 4, inst);
-	nosc_message_set_int32(frm[1], 5,(SENSOR_N << 16) | 1);
-
-	// initialize tok
-	for(i=0; i<BLOB_MAX; i++)
-	{
-		nOSC_Message msg = tok[i];
-
-		nosc_message_set_int32(msg, 0, 0);			// sid
-		nosc_message_set_int32(msg, 1, 0);			// tuid
-		nosc_message_set_int32(msg, 2, 0);			// gid
-		nosc_message_set_float(msg, 3, 0.0);		// x
-		nosc_message_set_float(msg, 4, 0.0);		// y
-		nosc_message_set_float(msg, 5, 0.0);		// angle
-	}
-
-	// initialize alv
-	for(i=0; i<BLOB_MAX; i++)
-	{
-		nosc_message_set_int32(alv, i, 0);
-		alv_fmt[i] = nOSC_INT32;
-	}
-	alv_fmt[BLOB_MAX] = nOSC_END;
+	uint8_t *mac = config.comm.mac; //FIXME this should be when MAC is changed
+	addr =(mac[2] << 24) | (mac[3] << 16) | (mac[4] << 8) | mac[5]; // MAC[2:5] last four bytes
+	inst = uid_seed(); // 32 bit conglomerate of unique ID
 }
 
-static void
-tuio2_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
+static osc_data_t *
+tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint_fast8_t long_header = config.tuio2.long_header;
 
-	frm[long_header][0].i = fid;
-	frm[long_header][1].t = now;
-	nOSC_Item *frm_itm = &tuio2_bndl[0];
-	frm_itm->message.msg = frm[long_header];
-	frm_itm->message.fmt =(char *)frm_fmt[long_header];
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	tuio2_osc.tt = offset;
+	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset);
 
-	// first undo previous unlinking at position old_end
-	if(old_end < BLOB_MAX)
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
 	{
-		// relink alv message
-		alv_fmt[old_end] = nOSC_INT32;
+		buf_ptr = osc_set_path(buf_ptr, frm_str);
+		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt[long_header]);
 
-		nosc_item_message_set(tuio2_bndl, old_end + 1, tok[old_end],(char *)tok_str,(char *)tok_fmt);
-
-		if(old_end < BLOB_MAX-1)
-			nosc_item_message_set(tuio2_bndl, old_end + 2, tok[old_end+1],(char *)tok_str,(char *)tok_fmt);
-
-		tuio2_fmt[old_end+2] = nOSC_MESSAGE;
+		buf_ptr = osc_set_int32(buf_ptr, fid);
+		buf_ptr = osc_set_timetag(buf_ptr, now);
+		if(long_header)
+		{
+			buf_ptr = osc_set_string(buf_ptr, config.name);
+			buf_ptr = osc_set_int32(buf_ptr, addr);
+			buf_ptr = osc_set_int32(buf_ptr, inst);
+			buf_ptr = osc_set_int32(buf_ptr, (SENSOR_N << 16) | 1);
+		}
 	}
-
-	// then unlink at position end
-	if(end < BLOB_MAX)
-	{
-		// unlink alv message
-		alv_fmt[end] = nOSC_END;
-
-		// prepend alv message
-		nosc_item_message_set(tuio2_bndl, end + 1, alv,(char *)alv_str, alv_fmt);
-
-		// unlink bundle
-		tuio2_fmt[end+2] = nOSC_TERM;
-	}
-
-	old_end = end;
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
 
 	counter = 0; // reset token pointer
+
+	return buf_ptr;
 }
 
-static void
-tuio2_engine_token_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	nOSC_Message msg = tok[counter];
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	msg[0].i = sid;
-	msg[1].i = pid;
-	msg[2].i = gid;
-	msg[3].f = x;
-	msg[4].f = y;
-	msg[5].f = pid == CMC_NORTH ? 0.f : M_PI;
+	uint_fast8_t i;
+	for(i=0; i<counter; i++)
+		alv_fmt[i] = OSC_INT32;
+	alv_fmt[counter] = '\0';
 
-	nosc_message_set_int32(alv, counter, sid);
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, alv_str);
+		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
 
-	counter++; // increase token pointer
+		for(i=0; i<counter; i++)
+			buf_ptr = osc_set_int32(buf_ptr, alv_ids[i]);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+
+	return buf_ptr;
+}
+
+static osc_data_t *
+tuio2_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, tok_str);
+		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt);
+
+		buf_ptr = osc_set_int32(buf_ptr, sid);
+		buf_ptr = osc_set_int32(buf_ptr, pid);
+		buf_ptr = osc_set_int32(buf_ptr, gid);
+		buf_ptr = osc_set_float(buf_ptr, x);
+		buf_ptr = osc_set_float(buf_ptr, y);
+		buf_ptr = osc_set_float(buf_ptr, pid == CMC_NORTH ? 0.f : M_PI);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	alv_ids[counter++] = sid;
+
+	return buf_ptr;
 }
 
 CMC_Engine tuio2_engine = {
 	tuio2_engine_frame_cb,
 	tuio2_engine_token_cb,
 	NULL,
-	tuio2_engine_token_cb
+	tuio2_engine_token_cb,
+	tuio2_engine_end_cb
 };
 
 /*

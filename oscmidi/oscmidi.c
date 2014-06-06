@@ -24,117 +24,184 @@
 #include <string.h>
 #include <math.h> // floor
 
-#include "oscmidi_private.h"
+#include <midi.h>
+#include <oscmidi.h>
 
-static nOSC_Item oscmidi_bndl [1];
-static char oscmidi_fmt [2] = {nOSC_MESSAGE, nOSC_TERM};
-
-nOSC_Bundle_Item oscmidi_osc = {
-	.bndl = oscmidi_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = oscmidi_fmt
-};
-
-static OSCMidi_Msg msg;
-
-static const char *midi_str = "/midi";
-static char midi_fmt [OSCMIDI_MAX+1];
+static const char *oscmidi_str = "/midi";
+static const char *oscmidi_fmt_4 = "mmmm";
+static const char *oscmidi_fmt_3 = "mmm";
+static const char *oscmidi_fmt_2 = "mm";
+static const char *oscmidi_fmt_1 = "m";
 
 static MIDI_Hash oscmidi_hash [BLOB_MAX];
 
-static uint_fast8_t oscmidi_tok;
+static osc_data_t *pack;
 
 void
 oscmidi_init()
 {
-	nosc_item_message_set(oscmidi_bndl, 0, msg, midi_str, midi_fmt);
-	midi_fmt[0] = nOSC_END;
-
 	config.oscmidi.mul =(float)0x2000 / config.oscmidi.range;
 }
 
-static void
-oscmidi_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+static osc_data_t *
+oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	uint8_t ch;
-	oscmidi_osc.tt = offset;
+	osc_data_t *buf_ptr = buf;
 
-	oscmidi_tok = 0;
-	midi_fmt[oscmidi_tok] = nOSC_END;
-}
-
-static void
-oscmidi_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
-{
-	uint8_t ch = gid % 0xf;
-	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = floor(X);
-	midi_add_key(oscmidi_hash, sid, key);
-
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_NOTE_ON, key, 0x7f);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
-
-	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
-	uint16_t eff = y * 0x3fff;
-
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
-
-	if(config.oscmidi.effect <= 0xd)
+	if(!(nblob_old + nblob_new))
 	{
-		nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
-		midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-		midi_fmt[oscmidi_tok] = nOSC_END;
+		osc_data_t *buf_ptr = buf;
+		osc_data_t *itm;
+
+		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+		buf_ptr = osc_start_bundle(buf_ptr, offset);
 	}
 
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_MSV, eff >> 7);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
+	return buf_ptr;
 }
 
-static void 
-oscmidi_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
+static osc_data_t *
+oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	uint8_t ch = gid % 0xf;
-	uint8_t key = midi_rem_key(oscmidi_hash, sid);
+	osc_data_t *buf_ptr = buf;
 
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_NOTE_OFF, key, 0x7f);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
+	if(!(nblob_old + nblob_new))
+		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+
+	return buf_ptr;
 }
 
-static void
-oscmidi_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+oscmidi_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
-	uint8_t ch = gid % 0xf;
-	float X = config.oscmidi.offset + x*config.oscmidi.range;
-	uint8_t key = midi_get_key(oscmidi_hash, sid);
-	uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
-	uint16_t eff = y * 0x3fff;
-
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
-
-	if(config.oscmidi.effect <= 0xd)
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
 	{
-		nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_LSV, eff & 0x7f);
-		midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-		midi_fmt[oscmidi_tok] = nOSC_END;
-	}
+		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
+		if(config.oscmidi.effect <= 0xd)
+			buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_4);
+		else
+			buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_3);
 
-	nosc_message_set_midi(msg, oscmidi_tok, ch, MIDI_STATUS_CONTROL_CHANGE, config.oscmidi.effect | MIDI_MSV, eff >> 7);
-	midi_fmt[oscmidi_tok++] = nOSC_MIDI;
-	midi_fmt[oscmidi_tok] = nOSC_END;
+		uint8_t ch = gid % 0xf;
+		float X = config.oscmidi.offset + x*config.oscmidi.range;
+		uint8_t key = floor(X);
+		midi_add_key(oscmidi_hash, sid, key);
+
+		uint8_t *M;
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_NOTE_ON;
+		M[2] = key;
+		M[3] = 0x7f;
+
+		uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
+		uint16_t eff = y * 0x3fff;
+
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_PITCH_BEND;
+		M[2] = bend & 0x7f;
+		M[3] = bend >> 7;
+
+		if(config.oscmidi.effect <= 0xd)
+		{
+			buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+			M[0] = ch;
+			M[1] = MIDI_STATUS_CONTROL_CHANGE;
+			M[2] = config.oscmidi.effect | MIDI_LSV;
+			M[3] = eff & 0x7f;
+		}
+
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_CONTROL_CHANGE;
+		M[2] = config.oscmidi.effect | MIDI_MSV;
+		M[3] = eff >> 7;
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	return buf_ptr;
+}
+
+static osc_data_t * 
+oscmidi_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
+		buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_1);
+
+		uint8_t ch = gid % 0xf;
+		uint8_t key = midi_rem_key(oscmidi_hash, sid);
+
+		uint8_t *M;
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_NOTE_OFF;
+		M[2] = key;
+		M[3] = 0x7f;
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	return buf_ptr;
+}
+
+static osc_data_t *
+oscmidi_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
+		if(config.oscmidi.effect <= 0xd)
+			buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_3);
+		else
+			buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_2);
+
+		uint8_t ch = gid % 0xf;
+		float X = config.oscmidi.offset + x*config.oscmidi.range;
+		uint8_t key = midi_get_key(oscmidi_hash, sid);
+		uint16_t bend =(X - key)*config.oscmidi.mul + 0x1fff;
+		uint16_t eff = y * 0x3fff;
+
+		uint8_t *M;
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_PITCH_BEND;
+		M[2] = bend & 0x7f;
+		M[3] = bend >> 7;
+
+		if(config.oscmidi.effect <= 0xd)
+		{
+			buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+			M[0] = ch;
+			M[1] = MIDI_STATUS_CONTROL_CHANGE;
+			M[2] = config.oscmidi.effect | MIDI_LSV;
+			M[3] = eff & 0x7f;
+		}
+
+		buf_ptr = osc_set_midi_inline(buf_ptr, &M);
+		M[0] = ch;
+		M[1] = MIDI_STATUS_CONTROL_CHANGE;
+		M[2] = config.oscmidi.effect | MIDI_MSV;
+		M[3] = eff >> 7;
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	return buf_ptr;
 }
 
 CMC_Engine oscmidi_engine = {
 	oscmidi_engine_frame_cb,
 	oscmidi_engine_on_cb,
 	oscmidi_engine_off_cb,
-	oscmidi_engine_set_cb
+	oscmidi_engine_set_cb,
+	oscmidi_engine_end_cb
 };
 
 /*

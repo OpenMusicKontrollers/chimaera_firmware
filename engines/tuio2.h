@@ -26,10 +26,8 @@
 
 #include <stdint.h>
 
-#include <netdef.h>
 #include <cmc.h>
 
-extern nOSC_Bundle_Item tuio2_osc;
 extern CMC_Engine tuio2_engine;
 extern const nOSC_Query_Item tuio2_tree [2];
 

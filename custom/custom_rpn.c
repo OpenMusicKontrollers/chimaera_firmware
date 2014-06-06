@@ -55,11 +55,11 @@ xchange(RPN_Stack *stack)
 	stack->arr[1] = v;
 }
 
-void
-rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
+osc_data_t *
+rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 {
+	osc_data_t *buf_ptr = buf;
 	RPN_VM *vm = &itm->vm;
-	char *dst = itm->fmt;
 
 	RPN_Instruction *inst;
 	for(inst = vm->inst; *inst != RPN_TERMINATOR; inst++)
@@ -73,15 +73,13 @@ rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
 			case RPN_POP_INT32:
 			{
 				int32_t i = pop(stack);
-				nosc_message_set_int32(msg, dst - itm->fmt, i);
-				*dst++ = nOSC_INT32;
+				buf_ptr = osc_set_int32(buf_ptr, i);
 				break;
 			}
 			case RPN_POP_FLOAT:
 			{
 				float f = pop(stack);
-				nosc_message_set_float(msg, dst - itm->fmt, f);
-				*dst++ = nOSC_FLOAT;
+				buf_ptr = osc_set_float(buf_ptr, f);
 				break;
 			}
 
@@ -242,7 +240,7 @@ rpn_run(nOSC_Message msg, Custom_Item *itm, RPN_Stack *stack)
 			}
 		}
 	
-	*dst = '\0';
+	return buf_ptr;
 }
 
 static uint_fast8_t
@@ -407,11 +405,14 @@ rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 }
 
 uint_fast8_t
-rpn_compile(char *args, RPN_VM *vm)
+rpn_compile(char *args, Custom_Item *itm)
 {
+	RPN_VM *vm = &itm->vm;
+
 	char *ptr = args;
 	char *end = args + strlen(args);
 	uint_fast8_t offset = 0;
+	uint_fast8_t counter = 0;
 
 	while(ptr < end)
 		switch(*ptr)
@@ -438,6 +439,7 @@ rpn_compile(char *args, RPN_VM *vm)
 							ptr += size;
 							ptr++; // skip ')'
 
+							itm->fmt[counter++] = OSC_INT32;
 							vm->inst[offset++] = RPN_POP_INT32;
 						}
 						else
@@ -467,6 +469,7 @@ rpn_compile(char *args, RPN_VM *vm)
 							ptr += size;
 							ptr++; // skip ')'
 
+							itm->fmt[counter++] = OSC_FLOAT;
 							vm->inst[offset++] = RPN_POP_FLOAT;
 						}
 						else
@@ -484,6 +487,7 @@ rpn_compile(char *args, RPN_VM *vm)
 				return 0; // parse error
 		}
 
+	itm->fmt[counter] = '\0'; //TODO check overflow
 	vm->inst[offset] = RPN_TERMINATOR;
 
 	return ptr == end;

@@ -26,8 +26,8 @@
 
 #include <cmc.h>
 
-#define CUSTOM_MAX_EXPR		8 // FIXME we'd rather like to have 8 here!
-#define CUSTOM_MAX_INST		24 // FIXME we'd rather like to have 32 here!
+#define CUSTOM_MAX_EXPR		12
+#define CUSTOM_MAX_INST		24
 
 #define CUSTOM_PATH_LEN		16
 #define CUSTOM_FMT_LEN		16
@@ -77,6 +77,7 @@ enum _RPN_Destination {
 	RPN_ON,
 	RPN_OFF,
 	RPN_SET,
+	RPN_END,
 	RPN_IDLE
 };
 
@@ -92,7 +93,6 @@ struct _Custom_Item {
 	RPN_VM vm;
 };
 
-extern nOSC_Bundle_Item custom_osc;
 extern CMC_Engine custom_engine;
 extern const nOSC_Query_Item custom_tree [3];
 

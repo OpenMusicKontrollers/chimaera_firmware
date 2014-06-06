@@ -60,6 +60,7 @@
 #include <wiz.h>
 #include <calibration.h>
 #include <sensors.h>
+#include <posc.h>
 
 static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
@@ -524,9 +525,6 @@ adc_fill(uint_fast8_t raw_ptr)
 void
 loop()
 {
-	nOSC_Item nest_bndl [ENGINE_MAX];
-	char nest_fmt [ENGINE_MAX+1];
-
 	uint_fast8_t cmc_stat;
 	uint_fast8_t cmc_job = 0;
 	uint_fast16_t cmc_len = 0;
@@ -535,18 +533,34 @@ loop()
 	uint_fast8_t first = 1;
 	nOSC_Timestamp offset;
 
-//#define SPEEDTEST
-#ifdef SPEEDTEST
-	cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(!buf_o_ptr),
-		config.output.socket.mode,
-		"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
+//#define OSCTEST
+#ifdef OSCTEST
+	osc_data_t *itm;
+	osc_data_t *buf_ptr;
+	
+	buf_ptr = BUF_O_OFFSET(!buf_o_ptr);
+	buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
+		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			buf_ptr = osc_set_path(buf_ptr, "/osc");
+			buf_ptr = osc_set_fmt(buf_ptr, "b");
+			buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
+		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	cmc_len = buf_ptr - BUF_O_OFFSET(!buf_o_ptr);
+
 	while(1)
 	{
-		osc_send_nonblocking(&config.output.socket, BUF_O_BASE(!buf_o_ptr), cmc_len);
-		cmc_len = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.output.socket.mode,
-			"/speed", "b", CHIMAERA_BUFSIZE-0x20, adc12_raw);
-		osc_send_block(&config.output.socket);
+		osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
+
+		buf_ptr = BUF_O_OFFSET(buf_o_ptr);
+		buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
+			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+				buf_ptr = osc_set_path(buf_ptr, "/osc");
+				buf_ptr = osc_set_fmt(buf_ptr, "b");
+				buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
+			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		cmc_len = buf_ptr - BUF_O_OFFSET(buf_o_ptr);
+
+		osc_send_block(&config.output.osc);
 		buf_o_ptr ^= 1;
 	}
 #endif
@@ -601,64 +615,43 @@ loop()
 			else if(config.ptp.event.enabled)
 				ptp_timestamp_refresh(ptp_uptime(), &now, &offset);
 
+			// initiate OSC bundle
+			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+			osc_data_t *buf_ptr = buf;
+			osc_data_t *preamble;
+			if(config.output.osc.mode == OSC_MODE_TCP)
+				buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+			buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE); // node bundle
+
 			if(config.dump.enabled) // dump output is functional even when calibrating
-			{
-				dump_update(now, offset); // 6us
-				nosc_item_bundle_set(nest_bndl, job++, dump_osc.bndl, dump_osc.tt, dump_osc.fmt);
-			}
+				buf_ptr = dump_update(buf_ptr, now, offset);
 		
 			if(!calibrating && cmc_engines_active) // output engines are disfunctional when calibrating
 			{
 #ifdef BENCHMARK
 				stop_watch_start(&sw_tuio_process);
 #endif
-				uint_fast8_t blobs = cmc_process(now, offset, adc_rela, engines); // touch recognition of current cycle
-
-				if(blobs) // was there any update?
-				{
-					if(config.tuio2.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, tuio2_osc.bndl, tuio2_osc.tt, tuio2_osc.fmt);
-
-					if(config.tuio1.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, tuio1_osc.bndl, tuio1_osc.tt, tuio1_osc.fmt);
-
-					if(config.scsynth.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, scsynth_osc.bndl, scsynth_osc.tt, scsynth_osc.fmt);
-
-					if(config.oscmidi.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, oscmidi_osc.bndl, oscmidi_osc.tt, oscmidi_osc.fmt);
-
-					if(config.dummy.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, dummy_osc.bndl, dummy_osc.tt, dummy_osc.fmt);
-
-					if(config.custom.enabled)
-						nosc_item_bundle_set(nest_bndl, job++, custom_osc.bndl, custom_osc.tt, custom_osc.fmt);
-				}
+				buf_ptr = cmc_process(now, offset, adc_rela, engines, buf_ptr); // touch recognition of current cycle
 			}
 
-			if(job)
+			cmc_len = buf_ptr - buf;
+			if(cmc_len > 16) // is there anything after OSC bundle header?
 			{
-#ifdef BENCHMARK
-				stop_watch_start(&sw_output_serialize);
-#endif
-				if(job > 1)
-				{
-					memset(nest_fmt, nOSC_BUNDLE, job);
-					nest_fmt[job] = nOSC_TERM;
+				job = 1;
 
-					cmc_len = nosc_bundle_serialize(nest_bndl, nOSC_IMMEDIATE, nest_fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.mode);
-				}
-				else // job == 1, there's no need to send a nested bundle in this case
-				{
-					nOSC_Item *first = &nest_bndl[0];
-					cmc_len = nosc_bundle_serialize(first->bundle.bndl, first->bundle.tt, first->bundle.fmt, BUF_O_OFFSET(buf_o_ptr),
-						config.output.osc.mode);
-				}
+				if(config.output.osc.mode == OSC_MODE_TCP)
+					buf_ptr = osc_end_preamble(buf_ptr, preamble);
+				else if(config.output.osc.mode == OSC_MODE_SLIP)
+					cmc_len = slip_encode(buf, cmc_len);
+			}
+			else // cmc_len <= 16
+			{
+				job = 0;
+				cmc_len = 0;
 			}
 
 #ifdef BENCHMARK
-				stop_watch_start(&sw_output_block);
+			stop_watch_start(&sw_output_block);
 #endif
 			if(config.output.parallel && cmc_job && cmc_stat) // block for end of sending of last cycles output
 				osc_send_block(&config.output.osc);
@@ -1232,15 +1225,16 @@ setup()
 	// set up continuous music controller output engines
 	cmc_init();
 	dump_init(sizeof(adc_swap), adc_swap);
+	dummy_init();
+	oscmidi_init();
+	scsynth_init();
 	tuio2_init();
 	tuio1_init();
-	scsynth_init();
-	oscmidi_init();
-	dummy_init();
 	custom_init();
 
 	pin_write_bit(CHIM_LED_PIN, 1);
 	DEBUG("si", "reset_mode", reset_mode);
+	DEBUG("si", "config_size", sizeof(Config));
 }
 
 void

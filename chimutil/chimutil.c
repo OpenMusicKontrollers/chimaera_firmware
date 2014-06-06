@@ -255,6 +255,7 @@ dhcpc_enable(uint8_t b)
 	return 1; //TODO
 }
 
+/* FIXME
 void
 stop_watch_start(Stop_Watch *sw)
 {
@@ -279,6 +280,7 @@ stop_watch_stop(Stop_Watch *sw)
 		sw->counter = 0;
 	}
 }
+*/
 
 uint32_t
 uid_seed()

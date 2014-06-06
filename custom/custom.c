@@ -31,23 +31,10 @@
 
 #include "custom_private.h"
 
-static nOSC_Item custom_bndl [BLOB_MAX];
-static char custom_fmt [BLOB_MAX+1];
-
 static Custom_Item *items = config.custom.items;
-
 static RPN_Stack stack;
 
-// global
-nOSC_Bundle_Item custom_osc = {
-	.bndl = custom_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = custom_fmt
-};
-
-static Custom_Msg msgs [BLOB_MAX];
-
-static uint_fast8_t custom_tok;
+static osc_data_t *pack;
 
 void
 custom_init()
@@ -55,120 +42,183 @@ custom_init()
 	// do nothing
 }
 
-static void
-custom_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+static osc_data_t *
+custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	nOSC_Message msg;
-
-	custom_osc.tt = offset;
-	
-	custom_tok = 0;
-
 	stack.fid = fid;
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
 
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
+	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset);
+
+	Custom_Item *item;
+	if(nblob_old + nblob_new)
+	{
+		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+			if(item->dest == RPN_FRAME)
+			{
+				buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+				{
+					buf_ptr = osc_set_path(buf_ptr, item->path);
+					buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
+
+					buf_ptr = rpn_run(buf_ptr, item, &stack);
+				}
+				buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			}
+			else if(item->dest == RPN_NONE)
+				break;
+	}
+	else
+	{
+		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+			if(item->dest == RPN_IDLE)
+			{
+				buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+				{
+					buf_ptr = osc_set_path(buf_ptr, item->path);
+					buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
+
+					buf_ptr = rpn_run(buf_ptr, item, &stack);
+				}
+				buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			}
+			else if(item->dest == RPN_NONE)
+				break;
+	}
+
+	return buf_ptr;
+}
+
+static osc_data_t *
+custom_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
 	Custom_Item *item;
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
-		if(item->dest == RPN_FRAME)
+		if(item->dest == RPN_END)
 		{
-			msg = msgs[custom_tok];
+			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			{
+				buf_ptr = osc_set_path(buf_ptr, item->path);
+				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
-			rpn_run(msg, item, &stack);
-			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
-			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+				buf_ptr = rpn_run(buf_ptr, item, &stack);
+			}
+			buf_ptr = osc_end_item_variable(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
 
-	custom_fmt[custom_tok] = nOSC_TERM;
+	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+
+	return buf_ptr;
 }
 
-static void
-custom_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+custom_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
-	nOSC_Message msg;
-
 	stack.sid = sid;
 	stack.gid = gid;
 	stack.pid = pid;
 	stack.x = x;
 	stack.z = y;
+
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
 	Custom_Item *item;
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_ON)
 		{
-			msg = msgs[custom_tok];
+			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			{
+				buf_ptr = osc_set_path(buf_ptr, item->path);
+				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
-			rpn_run(msg, item, &stack);
-			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
-			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+				buf_ptr = rpn_run(buf_ptr, item, &stack);
+			}
+			buf_ptr = osc_end_item_variable(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
-
-	custom_fmt[custom_tok] = nOSC_TERM;
+	
+	return buf_ptr;
 }
 
-static void
-custom_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
+static osc_data_t *
+custom_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
-	nOSC_Message msg;
-
 	stack.sid = sid;
 	stack.gid = gid;
 	stack.pid = pid;
 	stack.x = stack.z = 0.f;
 
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
 	Custom_Item *item;
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_OFF)
 		{
-			msg = msgs[custom_tok];
+			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			{
+				buf_ptr = osc_set_path(buf_ptr, item->path);
+				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
-			rpn_run(msg, item, &stack);
-			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
-			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+				buf_ptr = rpn_run(buf_ptr, item, &stack);
+			}
+			buf_ptr = osc_end_item_variable(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
-
-	custom_fmt[custom_tok] = nOSC_TERM;
+	
+	return buf_ptr;
 }
 
-static void
-custom_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+custom_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
-	nOSC_Message msg;
-
 	stack.sid = sid;
 	stack.gid = gid;
 	stack.pid = pid;
 	stack.x = x;
 	stack.z = y;
 
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
 	Custom_Item *item;
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_SET)
 		{
-			msg = msgs[custom_tok];
-			
-			rpn_run(msg, item, &stack);
-			nosc_item_message_set(custom_bndl, custom_tok, msg, item->path, item->fmt);
-			custom_fmt[custom_tok++] = nOSC_MESSAGE;
+			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			{
+				buf_ptr = osc_set_path(buf_ptr, item->path);
+				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
+
+				buf_ptr = rpn_run(buf_ptr, item, &stack);
+			}
+			buf_ptr = osc_end_item_variable(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
-
-	custom_fmt[custom_tok] = nOSC_TERM;
+	
+	return buf_ptr;
 }
 
 CMC_Engine custom_engine = {
 	custom_engine_frame_cb,
 	custom_engine_on_cb,
 	custom_engine_off_cb,
-	custom_engine_set_cb
+	custom_engine_set_cb,
+	custom_engine_end_cb
 };
 
 /*
@@ -208,6 +258,7 @@ static const nOSC_Query_Value custom_append_destination_args_values [] = {
 	[RPN_ON]	= { .s = "on" },
 	[RPN_OFF]	= { .s = "off" },
 	[RPN_SET]	= { .s = "set" },
+	[RPN_END]	= { .s = "end" },
 	[RPN_IDLE]	= { .s = "idle" }
 };
 
@@ -229,7 +280,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 			if(item->dest == RPN_NONE)
 				break;
 
-		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(args[2].s, "") && rpn_compile(args[3].s, &item->vm) )
+		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(args[2].s, "") && rpn_compile(args[3].s, item) )
 		{
 			uint_fast8_t i;
 			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(nOSC_Query_Value); i++)
@@ -238,6 +289,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 					item->dest = i;
 					break;
 				}
+			DEBUG("s", item->fmt);
 			strcpy(item->path, args[2].s); // TODO check for valid path
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}

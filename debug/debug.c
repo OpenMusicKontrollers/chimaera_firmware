@@ -30,13 +30,23 @@ DEBUG(const char *fmt, ...)
 {
 	if(config.debug.osc.socket.enabled && (wiz_socket_state[SOCK_DEBUG] == WIZ_SOCKET_STATE_OPEN) )
 	{
+		osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+		osc_data_t *buf_ptr = buf;
+		osc_data_t *preamble;
+
+		if(config.debug.osc.mode == OSC_MODE_TCP)
+			buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+
 		va_list args;
-		
 		va_start(args, fmt);
-		uint16_t size = nosc_message_varlist_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.debug.osc.mode,
-			"/debug", fmt, args);
+		buf_ptr = osc_varlist_set(buf_ptr, "/debug", fmt, args);
 		va_end(args);
+
+		uint16_t size = buf_ptr - buf;
+		if(config.debug.osc.mode == OSC_MODE_TCP)
+			buf_ptr = osc_end_preamble(buf_ptr, preamble);
+		else if(config.debug.osc.mode == OSC_MODE_SLIP)
+			size = slip_encode(buf, size);
 
 		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
 	}

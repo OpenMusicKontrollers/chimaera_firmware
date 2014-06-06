@@ -24,37 +24,44 @@
 #include <chimaera.h>
 #include <config.h>
 
-#include "dump_private.h"
+#include <dump.h>
+
+static const char *dump_str = "/dump";
+static const char *dump_fmt = "ib";
 
 static uint32_t frame = 0;
-static nOSC_Arg dump_msg [2];
-
-static nOSC_Item dump_bndl [] = {
-	nosc_message(dump_msg, "/dump", "ib")
-};
-
-static char dump_fmt [] = {
-	nOSC_MESSAGE,
-	nOSC_TERM
-};
-
-nOSC_Bundle_Item dump_osc = {
-	.bndl = dump_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = dump_fmt
-};
+static int32_t len;
+static uint8_t *payload;
 
 void
 dump_init(int32_t size, int16_t *swap)
 {
-	nosc_message_set_blob(dump_msg, DUMP_BLOB, size,(uint8_t *)swap);
+	len = size;
+	payload = (uint8_t *)swap;
 }
 
-inline __always_inline void
-dump_update(nOSC_Timestamp now, nOSC_Timestamp offset)
+osc_data_t *
+dump_update(osc_data_t *buf, nOSC_Timestamp now, nOSC_Timestamp offset)
 {
-	dump_osc.tt = offset;
-	nosc_message_set_int32(dump_msg, DUMP_FRAME, ++frame);
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+	osc_data_t *pack;
+
+	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	{
+		buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		{
+			buf_ptr = osc_set_path(buf_ptr, dump_str);
+			buf_ptr = osc_set_fmt(buf_ptr, dump_fmt);
+			buf_ptr = osc_set_int32(buf_ptr, ++frame);
+			buf_ptr = osc_set_blob(buf_ptr, len, payload);
+		}
+		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+
+	return buf_ptr;
 }
 
 /*
@@ -73,6 +80,5 @@ _dump_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
  */
 
 const nOSC_Query_Item dump_tree [] = {
-	// read-write
 	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dump_enabled, config_boolean_args),
 };

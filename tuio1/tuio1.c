@@ -27,150 +27,131 @@
 #include <chimaera.h>
 #include <chimutil.h>
 
-#include "tuio1_private.h"
+#include <tuio1.h>
 
-static const char *profile_str [2] = { "/tuio/2Dobj", "/tuio/_sixya" };
+static const char *profile_str [2] = {
+	"/tuio/2Dobj",
+	"/tuio/_sixya"
+};
 static const char *fseq_str = "fseq";
 static const char *set_str = "set";
 static const char *alive_str = "alive";
 
 static const char *frm_fmt = "si";
 static const char *tok_fmt [2] = {
-	"siifffggggg", // "set" s i x y a X Y A m r
+	"siiffffffff", // "set" s i x y a X Y A m r
 	"siifff" // "set" s i x y a
 };
-static char alv_fmt [BLOB_MAX+2]; // this has a variable string len
+static char alv_fmt [BLOB_MAX+2] = {
+	OSC_STRING
+}; // this has a variable string len
 
-static nOSC_Arg frm [2];
-static Tuio1_Tok tok [BLOB_MAX];
-static nOSC_Arg alv [BLOB_MAX+1];
+static int32_t alv_ids [BLOB_MAX];
+static uint_fast8_t counter;
 
-static nOSC_Item tuio1_bndl [TUIO1_MAX]; // BLOB_MAX + frame + alv
-static char tuio1_fmt [TUIO1_MAX+1];
-
-nOSC_Bundle_Item tuio1_osc = {
-	.bndl = tuio1_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = tuio1_fmt
-};
-
-static uint_fast8_t old_end = BLOB_MAX;
-static uint_fast8_t counter = 0;
+static osc_data_t *pack;
+static osc_data_t *pp;
 
 void
 tuio1_init()
 {
-	uint_fast8_t i;
-
-	// initialize bundle format
-	memset(tuio1_fmt, nOSC_MESSAGE, TUIO1_MAX);
-	tuio1_fmt[TUIO1_MAX] = nOSC_TERM;
-
-	// initialize bundle
-	char *profile =(char *)profile_str[config.tuio1.custom_profile];
-	char *tokfmt =(char *)tok_fmt[config.tuio1.custom_profile];
-
-	nosc_item_message_set(tuio1_bndl, 0, alv, profile, alv_fmt);
-
-	for(i=0; i<BLOB_MAX; i++)
-		nosc_item_message_set(tuio1_bndl, i+1, tok[i], profile, tokfmt);
-
-	nosc_item_message_set(tuio1_bndl, BLOB_MAX + 1, frm, profile,(char *)frm_fmt);
-
-	// initialize frame
-	nosc_message_set_string(frm, 0,(char *)fseq_str);
-	nosc_message_set_int32(frm, 1, 0);
-
-	// initialize tok
-	for(i=0; i<BLOB_MAX; i++)
-	{
-		nOSC_Message msg = tok[i];
-
-		nosc_message_set_string(msg, 0,(char *)set_str);
-		nosc_message_set_int32(msg, 1, 0);			// sid
-		nosc_message_set_int32(msg, 2, 0);			// gid
-		nosc_message_set_float(msg, 3, 0.f);		// x
-		nosc_message_set_float(msg, 4, 0.f);		// y
-		nosc_message_set_float(msg, 5, 0.f);		// angle, aka pid
-	}
-
-	// initialize alv
-	nosc_message_set_string(alv, 0,(char *)alive_str);
-	alv_fmt[0] = nOSC_STRING;
-	for(i=0; i<BLOB_MAX; i++)
-	{
-		nosc_message_set_int32(alv, 1+i, 0);
-		alv_fmt[1+i] = nOSC_INT32;
-	}
-	alv_fmt[1+BLOB_MAX] = nOSC_END;
+	// do nothing
 }
 
-static void
-tuio1_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t end)
+static osc_data_t *
+tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	char *profile =(char *)profile_str[config.tuio1.custom_profile];
-	char *tokfmt =(char *)tok_fmt[config.tuio1.custom_profile];
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	tuio1_bndl[0].message.path = profile;
+	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset);
 
-	frm[1].i = fid;
+	uint_fast8_t i;
+	for(i=0; i<counter; i++)
+		alv_fmt[i+1] = OSC_INT32;
+	alv_fmt[counter+1] = '\0';
 
-	tuio1_osc.tt = offset;
-
-	// first undo previous unlinking at position old_end
-	if(old_end < BLOB_MAX)
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
 	{
-		// relink alv message
-		alv_fmt[1+old_end] = nOSC_INT32;
+		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
 
-		nosc_item_message_set(tuio1_bndl, old_end + 1, tok[old_end], profile, tokfmt);
-
-		if(old_end < BLOB_MAX-1)
-			nosc_item_message_set(tuio1_bndl, old_end + 2, tok[old_end+1], profile, tokfmt);
-
-		tuio1_fmt[old_end+2] = nOSC_MESSAGE;
+		buf_ptr = osc_set_string(buf_ptr, alive_str);
+		pp = buf_ptr;
+		buf_ptr += nblob_new * 4;
 	}
-
-	// then unlink at position end
-	if(end < BLOB_MAX)
-	{
-		// unlink alv message
-		alv_fmt[1+end] = nOSC_END;
-
-		// prepend frm message
-		nosc_item_message_set(tuio1_bndl, end + 1, frm, profile,(char *)frm_fmt);
-
-		// unlink bundle
-		tuio1_fmt[end+2] = nOSC_TERM;
-	}
-
-	old_end = end;
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
 
 	counter = 0; // reset token pointer
+
+	return buf_ptr;
 }
 
-static void
-tuio1_engine_token_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	nOSC_Message msg = tok[counter];
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	//msg[0].s =(char *)set_str;
-	msg[1].i = sid;
-	msg[2].i = gid;
-	msg[3].f = x;
-	msg[4].f = y;
-	msg[5].f = pid == 0x80 ? 0.f : M_PI;
+	uint_fast8_t i;
+	for(i=0; i<counter; i++)
+		pp = osc_set_int32(pp, alv_ids[i]);
 
-	nosc_message_set_int32(alv, 1+counter, sid);
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt);
 
-	counter++; // increase token pointer
+		buf_ptr = osc_set_string(buf_ptr, fseq_str);
+		buf_ptr = osc_set_int32(buf_ptr, fid);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+
+	return buf_ptr;
+}
+
+static osc_data_t *
+tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt[config.tuio1.custom_profile]);
+
+		buf_ptr = osc_set_string(buf_ptr, set_str);
+		buf_ptr = osc_set_int32(buf_ptr, sid);
+		buf_ptr = osc_set_int32(buf_ptr, gid);
+		buf_ptr = osc_set_float(buf_ptr, x);
+		buf_ptr = osc_set_float(buf_ptr, y);
+		buf_ptr = osc_set_float(buf_ptr, pid == CMC_NORTH ? 0.f : M_PI);
+		if(!config.tuio1.custom_profile)
+		{
+			buf_ptr = osc_set_float(buf_ptr, 0.f);
+			buf_ptr = osc_set_float(buf_ptr, 0.f);
+			buf_ptr = osc_set_float(buf_ptr, 0.f);
+			buf_ptr = osc_set_float(buf_ptr, 0.f);
+			buf_ptr = osc_set_float(buf_ptr, 0.f);
+		}
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	alv_ids[counter++] = sid;
+
+	return buf_ptr;
 }
 
 CMC_Engine tuio1_engine = {
 	tuio1_engine_frame_cb,
 	tuio1_engine_token_cb,
 	NULL,
-	tuio1_engine_token_cb
+	tuio1_engine_token_cb,
+	tuio1_engine_end_cb
 };
 
 /*

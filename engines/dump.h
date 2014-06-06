@@ -29,11 +29,10 @@
 #include <netdef.h>
 #include <nosc.h>
 
-extern nOSC_Bundle_Item dump_osc;
 extern const nOSC_Query_Item dump_tree [1];
 
 void dump_init(int32_t size, int16_t *swap);
 
-void dump_update(nOSC_Timestamp now, nOSC_Timestamp offset);
+osc_data_t *dump_update(osc_data_t *buf, nOSC_Timestamp now, nOSC_Timestamp offset);
 
 #endif // _DUMP_H_

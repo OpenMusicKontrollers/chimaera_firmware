@@ -102,9 +102,10 @@ cmc_init()
 	cmc_neu = blobs[neu];
 }
 
-uint_fast8_t __CCM_TEXT__
-cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines)
+osc_data_t *__CCM_TEXT__
+cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	/*
 	 * find areas of interest
 	 */
@@ -636,7 +637,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 				break;
 
 			if(engine->frame_cb)
-				engine->frame_cb(fid, now, offset, I, J);
+				buf_ptr = engine->frame_cb(buf_ptr, fid, now, offset, I, J);
 
 			if(engine->on_cb || engine->set_cb)
 				for(j=0; j<J; j++)
@@ -645,12 +646,12 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 					if(tar->state == CMC_BLOB_APPEARED)
 					{
 						if(engine->on_cb)
-							engine->on_cb(tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+							buf_ptr = engine->on_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 					}
 					else // tar->state == CMC_BLOB_EXISTED
 					{
 						if(engine->set_cb)
-							engine->set_cb(tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
 					}
 				}
 
@@ -659,8 +660,11 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 				{
 					CMC_Blob *tar = &cmc_old[i];
 					if(tar->state == CMC_BLOB_DISAPPEARED)
-						engine->off_cb(tar->sid, tar->group->gid, tar->pid);
+						buf_ptr = engine->off_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid);
 				}
+
+			if(engine->end_cb)
+				buf_ptr = engine->end_cb(buf_ptr, fid, now, offset, I, J);
 		}
 	}
 
@@ -674,7 +678,7 @@ cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine
 	cmc_old = blobs[old];
 	cmc_neu = blobs[neu];
 
-	return res;
+	return buf_ptr;
 }
 
 void 
@@ -698,20 +702,20 @@ cmc_engines_update()
 {
 	cmc_engines_active = 0;
 
-	if(config.tuio2.enabled)
-		engines[cmc_engines_active++] = &tuio2_engine;
-
-	if(config.tuio1.enabled)
-		engines[cmc_engines_active++] = &tuio1_engine;
-
-	if(config.scsynth.enabled)
-		engines[cmc_engines_active++] = &scsynth_engine;
-
 	if(config.oscmidi.enabled)
 		engines[cmc_engines_active++] = &oscmidi_engine;
 
 	if(config.dummy.enabled)
 		engines[cmc_engines_active++] = &dummy_engine;
+
+	if(config.scsynth.enabled)
+		engines[cmc_engines_active++] = &scsynth_engine;
+
+	if(config.tuio2.enabled)
+		engines[cmc_engines_active++] = &tuio2_engine;
+
+	if(config.tuio1.enabled)
+		engines[cmc_engines_active++] = &tuio1_engine;
 
 	if(config.custom.enabled)
 		engines[cmc_engines_active++] = &custom_engine;

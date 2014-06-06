@@ -29,19 +29,7 @@
 #include <config.h>
 #include <cmc.h>
 
-#include "dummy_private.h"
-
-static nOSC_Item dummy_bndl [BLOB_MAX];
-static char dummy_fmt [BLOB_MAX+1];
-
-// global
-nOSC_Bundle_Item dummy_osc = {
-	.bndl = dummy_bndl,
-	.tt = nOSC_IMMEDIATE,
-	.fmt = dummy_fmt
-};
-
-static Dummy_Msg msgs [BLOB_MAX];
+#include <dummy.h>
 
 static const char *dummy_idle_str = "/idle";
 static const char *dummy_on_str = "/on";
@@ -53,7 +41,7 @@ static const char *dummy_on_fmt = "iiiff";
 static const char *dummy_off_fmt = "iii";
 static const char *dummy_set_fmt = "iiiff";
 
-static uint_fast8_t dummy_tok;
+static osc_data_t *pack;
 
 void
 dummy_init()
@@ -61,79 +49,105 @@ dummy_init()
 	// do nothing
 }
 
-static void
-dummy_engine_frame_cb(uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+static osc_data_t *
+dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	dummy_osc.tt = offset;
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	dummy_tok = 0;
+	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset);
 
 	if(!(nblob_old + nblob_new))
 	{
-		nOSC_Message msg;
-
-		msg = msgs[dummy_tok];
-		nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_idle_str, dummy_idle_fmt);
-		dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
+		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		{
+			buf_ptr = osc_set_path(buf_ptr, dummy_idle_str);
+			buf_ptr = osc_set_fmt(buf_ptr, dummy_idle_fmt);
+		}
+		buf_ptr = osc_end_item_variable(buf_ptr, itm);
 	}
 
-	dummy_fmt[dummy_tok] = nOSC_TERM;
+	return buf_ptr;
 }
 
-static void
-dummy_engine_on_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+dummy_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	nOSC_Message msg;
+	osc_data_t *buf_ptr = buf;
 
-	msg = msgs[dummy_tok];
-	nosc_message_set_int32(msg, 0, sid);
-	nosc_message_set_int32(msg, 1, gid);
-	nosc_message_set_int32(msg, 2, pid);
-	nosc_message_set_float(msg, 3, x);
-	nosc_message_set_float(msg, 4, y);
-	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_on_str, dummy_on_fmt);
-	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
+	buf_ptr = osc_end_item_variable(buf_ptr, pack);
 
-	dummy_fmt[dummy_tok] = nOSC_TERM;
+	return buf_ptr;
 }
 
-static void
-dummy_engine_off_cb(uint32_t sid, uint16_t gid, uint16_t pid)
+static osc_data_t *
+dummy_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
-	nOSC_Message msg;
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	msg = msgs[dummy_tok];
-	nosc_message_set_int32(msg, 0, sid);
-	nosc_message_set_int32(msg, 1, gid);
-	nosc_message_set_int32(msg, 2, pid);
-	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_off_str, dummy_off_fmt);
-	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, dummy_on_str);
+		buf_ptr = osc_set_fmt(buf_ptr, dummy_on_fmt);
+		buf_ptr = osc_set_int32(buf_ptr, sid);
+		buf_ptr = osc_set_int32(buf_ptr, gid);
+		buf_ptr = osc_set_int32(buf_ptr, pid);
+		buf_ptr = osc_set_float(buf_ptr, x);
+		buf_ptr = osc_set_float(buf_ptr, y);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
 
-	dummy_fmt[dummy_tok] = nOSC_TERM;
+	return buf_ptr;
 }
 
-static void
-dummy_engine_set_cb(uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+static osc_data_t *
+dummy_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
-	nOSC_Message msg;
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
 
-	msg = msgs[dummy_tok];
-	nosc_message_set_int32(msg, 0, sid);
-	nosc_message_set_int32(msg, 1, gid);
-	nosc_message_set_int32(msg, 2, pid);
-	nosc_message_set_float(msg, 3, x);
-	nosc_message_set_float(msg, 4, y);
-	nosc_item_message_set(dummy_bndl, dummy_tok, msg, dummy_set_str, dummy_set_fmt);
-	dummy_fmt[dummy_tok++] = nOSC_MESSAGE;
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, dummy_off_str);
+		buf_ptr = osc_set_fmt(buf_ptr, dummy_off_fmt);
+		buf_ptr = osc_set_int32(buf_ptr, sid);
+		buf_ptr = osc_set_int32(buf_ptr, gid);
+		buf_ptr = osc_set_int32(buf_ptr, pid);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
 
-	dummy_fmt[dummy_tok] = nOSC_TERM;
+	return buf_ptr;
+}
+
+static osc_data_t *
+dummy_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+{
+	osc_data_t *buf_ptr = buf;
+	osc_data_t *itm;
+
+	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, dummy_set_str);
+		buf_ptr = osc_set_fmt(buf_ptr, dummy_set_fmt);
+		buf_ptr = osc_set_int32(buf_ptr, sid);
+		buf_ptr = osc_set_int32(buf_ptr, gid);
+		buf_ptr = osc_set_int32(buf_ptr, pid);
+		buf_ptr = osc_set_float(buf_ptr, x);
+		buf_ptr = osc_set_float(buf_ptr, y);
+	}
+	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+
+	return buf_ptr;
 }
 
 CMC_Engine dummy_engine = {
 	dummy_engine_frame_cb,
 	dummy_engine_on_cb,
 	dummy_engine_off_cb,
-	dummy_engine_set_cb
+	dummy_engine_set_cb,
+	dummy_engine_end_cb
 };
 
 /*
