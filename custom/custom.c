@@ -43,7 +43,7 @@ custom_init()
 }
 
 static osc_data_t *
-custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	stack.fid = fid;
 	stack.sid = stack.gid = stack.pid = 0;
@@ -95,7 +95,7 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_T
 }
 
 static osc_data_t *
-custom_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+custom_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -225,18 +225,21 @@ CMC_Engine custom_engine = {
  * Config
  */
 static uint_fast8_t
-_custom_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_custom_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.custom.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.custom.enabled);
 	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_custom_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_custom_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	uint_fast8_t i;
 	for(i=0; i<CUSTOM_MAX_EXPR; i++)
@@ -263,10 +266,13 @@ static const OSC_Query_Value custom_append_destination_args_values [] = {
 };
 
 static uint_fast8_t
-_custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1)
 	{
@@ -280,17 +286,25 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 			if(item->dest == RPN_NONE)
 				break;
 
-		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(args[2].s, "") && rpn_compile(args[3].s, item) )
+		const char *dest;
+		const char *opath;
+		const char *argv;
+
+		buf_ptr = osc_get_string(buf_ptr, &dest);
+		buf_ptr = osc_get_string(buf_ptr, &opath);
+		buf_ptr = osc_get_string(buf_ptr, &argv);
+
+		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(opath, "") && rpn_compile(argv, item) )
 		{
 			uint_fast8_t i;
 			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(OSC_Query_Value); i++)
-				if(!strcmp(args[1].s, custom_append_destination_args_values[i].s))
+				if(!strcmp(dest, custom_append_destination_args_values[i].s))
 				{
 					item->dest = i;
 					break;
 				}
 			DEBUG("s", item->fmt);
-			strcpy(item->path, args[2].s); // TODO check for valid path
+			strcpy(item->path, opath); // TODO check for valid path
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else

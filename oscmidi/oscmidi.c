@@ -44,7 +44,7 @@ oscmidi_init()
 }
 
 static osc_data_t *
-oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 
@@ -61,7 +61,7 @@ oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_
 }
 
 static osc_data_t *
-oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 
@@ -209,33 +209,33 @@ CMC_Engine oscmidi_engine = {
  */
 
 static uint_fast8_t
-_oscmidi_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.oscmidi.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.oscmidi.enabled);
 	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_oscmidi_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_float(path, fmt, argc, args, &config.oscmidi.offset);
+	return config_check_float(path, fmt, argc, buf, &config.oscmidi.offset);
 }
 
 static uint_fast8_t
-_oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	uint_fast8_t res;
-	res = config_check_float(path, fmt, argc, args, &config.oscmidi.range);
+	res = config_check_float(path, fmt, argc, buf, &config.oscmidi.range);
 	if(res)
 		config.oscmidi.mul = (float)0x1fff / config.oscmidi.range;
 	return res;
 }
 
 static uint_fast8_t
-_oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_uint8(path, fmt, argc, args, &config.oscmidi.effect);
+	return config_check_uint8(path, fmt, argc, buf, &config.oscmidi.effect);
 }
 
 /*

@@ -349,16 +349,21 @@ config_save()
 }
 
 uint_fast8_t
-config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean)
+config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *boolean)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
 	else
 	{
-		*boolean = args[1].i != 0 ? 1 : 0;
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		*boolean = i != 0 ? 1 : 0;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -368,16 +373,21 @@ config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 }
 
 uint_fast8_t
-config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *val)
+config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *val)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isi", uuid, path, *val);
 	else
 	{
-		*val = args[1].i;
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		*val = i;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -387,16 +397,21 @@ config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 }
 
 uint_fast8_t
-config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val)
+config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isf", uuid, path, *val);
 	else
 	{
-		*val = args[1].f;
+		float f;
+		buf_ptr = osc_get_float(buf_ptr, &f);
+		*val = f;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -406,10 +421,13 @@ config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
 }
 
 static uint_fast8_t
-_info_version(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_info_version(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	sprintf(string_buf, "%i.%i.%i-%i",
 		config.version.major,
@@ -423,10 +441,13 @@ _info_version(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_info_uid(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_info_uid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	uid_str(string_buf);
 	size = CONFIG_SUCCESS("iss", uuid, path, string_buf);
@@ -436,18 +457,23 @@ _info_uid(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_info_name(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("iss", uuid, path, config.name);
 	else
 	{
-		if(strlen(args[1].s) < NAME_LENGTH)
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
+		if(strlen(s) < NAME_LENGTH)
 		{
-			strcpy(config.name, args[1].s);
+			strcpy(config.name, s);
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
@@ -460,10 +486,13 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_config_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_load(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(config_load())
 		size = CONFIG_SUCCESS("is", uuid, path);
@@ -476,10 +505,13 @@ _config_load(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_config_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_save(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(config_save())
 		size = CONFIG_SUCCESS("is", uuid, path);
@@ -492,10 +524,13 @@ _config_save(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_comm_mac(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_comm_mac(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 	{
@@ -504,7 +539,9 @@ _comm_mac(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	}
 	else
 	{
-		if(str2mac(args[1].s, config.comm.mac))
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
+		if(str2mac(s, config.comm.mac))
 		{
 			wiz_mac_set(config.comm.mac);
 			config.comm.custom_mac = 1;
@@ -520,10 +557,13 @@ _comm_mac(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	uint32_t *ip_ptr =(uint32_t *)config.comm.ip;
 	uint32_t *subnet_ptr =(uint32_t *)config.comm.subnet;
@@ -539,7 +579,9 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 	{
 		if(argc == 3)
 		{
-			if(str2ip(args[2].s, config.comm.gateway))
+			const char *s; //FIXME wrong order, needs to be read after CIDR!!!!
+			buf_ptr = osc_get_string(buf_ptr, &s);
+			if(str2ip(s, config.comm.gateway))
 				wiz_gateway_set(config.comm.gateway);
 			else // return
 			{
@@ -550,7 +592,9 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 		}
 
 		uint8_t mask;
-		if(str2ipCIDR(args[1].s, config.comm.ip, &mask))
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
+		if(str2ipCIDR(s, config.comm.ip, &mask))
 		{
 			wiz_ip_set(config.comm.ip);
 
@@ -583,10 +627,13 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 }
 
 static uint_fast8_t
-_comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 	{
@@ -595,7 +642,9 @@ _comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	}
 	else
 	{
-		if(str2ip(args[2].s, config.comm.gateway))
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
+		if(str2ip(s, config.comm.gateway))
 		{
 			wiz_gateway_set(config.comm.gateway);
 			size = CONFIG_SUCCESS("is", uuid, path);
@@ -610,17 +659,22 @@ _comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 uint_fast8_t
-config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isi", uuid, path, socket->enabled ? 1 : 0);
 	else
 	{
 		Socket_Enable_Cb cb = socket_callbacks[socket->sock];
-		if(cb(args[1].i))
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		if(cb(i))
 			size = CONFIG_SUCCESS("is", uuid, path);
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "socket could not be enabled");
@@ -632,16 +686,19 @@ config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, 
 }
 
 static uint_fast8_t
-_output_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.output.osc.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.output.osc.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_output_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	config.dump.enabled = 0;
 	config.tuio2.enabled = 0;
@@ -657,10 +714,13 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_output_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	uint8_t *mode = &config.output.osc.mode;
 	uint8_t enabled = config.output.osc.socket.enabled;
 
@@ -670,8 +730,10 @@ _output_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	{
 		output_enable(0);
 		uint_fast8_t i;
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
 		for(i=0; i<sizeof(config_mode_args_values)/sizeof(OSC_Query_Value); i++)
-			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			if(!strcmp(s, config_mode_args_values[i].s))
 			{
 				*mode = i;
 				break;
@@ -686,9 +748,9 @@ _output_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_config_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, buf);
 }
 
 typedef struct _Address_Cb Address_Cb;
@@ -727,12 +789,16 @@ _address_dns_cb(uint8_t *ip, void *data)
 }
 
 uint_fast8_t
-config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	static Address_Cb address_cb;
 	uint16_t size = 0;
-	int32_t uuid = args[0].i;
-	char *hostname = args[1].s;
+	int32_t uuid;
+	const char *hostname;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+	buf_ptr = osc_get_string(buf_ptr, &hostname);
 
 	if(argc == 1) // query
 	{
@@ -777,10 +843,13 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 }
 
 static uint_fast8_t
-_config_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	uint8_t *mode = &config.config.osc.mode;
 	uint8_t enabled = config.config.osc.socket.enabled;
 
@@ -797,8 +866,10 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 
 		config_enable(0);
 		uint_fast8_t i;
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
 		for(i=0; i<sizeof(config_mode_args_values)/sizeof(OSC_Query_Value); i++)
-			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			if(!strcmp(s, config_mode_args_values[i].s))
 			{
 				*mode = i;
 				break;
@@ -813,15 +884,15 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_output_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_address(&config.output.osc.socket, path, fmt, argc, args);
+	return config_address(&config.output.osc.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_config_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_config_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_address(&config.config.osc.socket, path, fmt, argc, args);
+	return config_address(&config.config.osc.socket, path, fmt, argc, buf);
 }
 
 static void
@@ -857,12 +928,16 @@ _host_address_dns_cb(uint8_t *ip, void *data)
 }
 
 static uint_fast8_t
-_comm_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_comm_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	static Address_Cb address_cb;
 	uint16_t size = 0;
-	int32_t uuid = args[0].i;
-	char *hostname = args[1].s;
+	int32_t uuid;
+	const char *hostname;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+	buf_ptr = osc_get_string(buf_ptr, &hostname);
 
 	address_cb.uuid = uuid;
 	strcpy(address_cb.path, path); //TODO check length
@@ -888,10 +963,13 @@ _comm_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 	{
@@ -900,7 +978,9 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	}
 	else
 	{
-		config.output.offset = args[1].f;
+		float f;
+		buf_ptr = osc_get_float(buf_ptr, &f);
+		config.output.offset = f;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -910,10 +990,13 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
-_output_invert(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_invert(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 	{
@@ -923,8 +1006,11 @@ _output_invert(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	}
 	else
 	{
-		config.output.invert.x = args[1].i;
-		config.output.invert.z = args[2].i;
+		int32_t x, z;
+		buf_ptr = osc_get_int32(buf_ptr, &x);
+		buf_ptr = osc_get_int32(buf_ptr, &z);
+		config.output.invert.x = x;
+		config.output.invert.z = z;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -934,16 +1020,19 @@ _output_invert(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 }
 
 static uint_fast8_t
-_output_parallel(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_output_parallel(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_bool(path, fmt, argc, args, &config.output.parallel);
+	return config_check_bool(path, fmt, argc, buf, &config.output.parallel);
 }
 
 static uint_fast8_t
-_reset_soft(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
@@ -960,10 +1049,13 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 }
 
 static uint_fast8_t
-_reset_hard(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
@@ -980,10 +1072,13 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 }
 
 static uint_fast8_t
-_reset_flash(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
@@ -999,32 +1094,9 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 	return 1;
 }
 
-static uint_fast8_t
-_ping(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
-{
-	uint16_t size;
-	int32_t id = args[0].i;
+static uint_fast8_t _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 
-	Socket_Config *socket = &config.config.osc.socket;
-
-	// set remote to broadcast address
-	udp_set_remote(socket->sock,(uint8_t *)wiz_broadcast_ip, socket->port[DST_PORT]);
-
-	//TODO what should we send here, and how?
-	_info_uid(path, fmt, argc, args);
-	_comm_mac(path, fmt, argc, args);
-	_comm_ip(path, fmt, argc, args);
-
-	// reset remote to configured address
-	udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-
-	return 1;
-}
-
-static uint_fast8_t _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-
-const nOSC_Method config_serv [] = {
-	//{"/chimaera/ping", "i", _ping},
+const OSC_Method config_serv [] = {
 	{NULL, NULL, _query},
 	{NULL, NULL, NULL} // terminator
 };
@@ -1156,14 +1228,17 @@ static const OSC_Query_Item root_tree [] = {
 static const OSC_Query_Item root = OSC_QUERY_ITEM_NODE("/", "Root node", root_tree);
 
 static uint_fast8_t
-_query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	const char *nil = "nil";
 
-	if(fmt[0] == nOSC_INT32)
+	if(fmt[0] == OSC_INT32)
 	{
-		int32_t uuid = args[0].i;
+		int32_t uuid;
+
+		buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 		char *query = strrchr(path, '!'); // last occurence
 		if(query)
@@ -1221,9 +1296,9 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
 			const OSC_Query_Item *item = osc_query_find(&root, path, -1);
 			if(item && (item->type != OSC_QUERY_NODE) && (item->type != OSC_QUERY_ARRAY) )
 			{
-				nOSC_Method_Cb cb = item->item.method.cb;
-				if(cb && osc_query_check(item, fmt+1, args+1))
-					return cb(path, fmt, argc, args);
+				OSC_Method_Cb cb = item->item.method.cb;
+				if(cb && osc_query_check(item, fmt+1, buf_ptr))
+					return cb(path, fmt, argc, buf);
 				else
 					size = CONFIG_FAIL("iss", uuid, path, "callback, format or range invalid");
 			}

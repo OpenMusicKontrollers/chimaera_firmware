@@ -618,14 +618,14 @@ mdns_resolve_timeout()
 
 //TODO implement timeout
 uint_fast8_t
-mdns_resolve(char *name, mDNS_Resolve_Cb cb, void *data)
+mdns_resolve(const char *name, mDNS_Resolve_Cb cb, void *data)
 {
 	if(resolve.cb) // is there a mDNS resolve request already ongoing?
 		return 0;
 
 	// construct DNS label from mDNS name
 	uint8_t *ref = resolve.name;
-	uint8_t *s0 = name;
+	const uint8_t *s0 = name;
 	uint8_t *s1;
 	uint8_t len;
 	while( (s1 = strchr(s0, '.')) )
@@ -669,10 +669,10 @@ mdns_resolve(char *name, mDNS_Resolve_Cb cb, void *data)
  */
 
 static uint_fast8_t
-_mdns_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_mdns_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	// needs a config save and reboot to take action
-	return config_socket_enabled(&config.mdns.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.mdns.socket, path, fmt, argc, buf);
 }
 
 /*

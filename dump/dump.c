@@ -41,7 +41,7 @@ dump_init(int32_t size, int16_t *swap)
 }
 
 osc_data_t *
-dump_update(osc_data_t *buf, nOSC_Timestamp now, nOSC_Timestamp offset)
+dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -68,9 +68,9 @@ dump_update(osc_data_t *buf, nOSC_Timestamp now, nOSC_Timestamp offset)
  * Config
  */
 static uint_fast8_t
-_dump_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dump_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.dump.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.dump.enabled);
 	cmc_engines_update();
 	return res;
 }

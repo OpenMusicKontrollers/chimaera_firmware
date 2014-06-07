@@ -103,7 +103,7 @@ cmc_init()
 }
 
 osc_data_t *__CCM_TEXT__
-cmc_process(nOSC_Timestamp now, nOSC_Timestamp offset, int16_t *rela, CMC_Engine **engines, osc_data_t *buf)
+cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **engines, osc_data_t *buf)
 {
 	osc_data_t *buf_ptr = buf;
 	/*

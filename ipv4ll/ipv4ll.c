@@ -69,10 +69,10 @@ IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
  */
 
 static uint_fast8_t
-_ipv4ll_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ipv4ll_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	// needs a config save and reboot to take action
-	return config_check_bool(path, fmt, argc, args, &config.ipv4ll.enabled);
+	return config_check_bool(path, fmt, argc, buf, &config.ipv4ll.enabled);
 }
 
 /*

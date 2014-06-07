@@ -318,7 +318,7 @@ uid_str(char *str)
 }
 
 uint_fast8_t
-str2mac(char *str, uint8_t *mac)
+str2mac(const char *str, uint8_t *mac)
 {
 	uint16_t smac [6];
 	uint_fast8_t res;
@@ -346,7 +346,7 @@ mac2str(uint8_t *mac, char *str)
 }
 
 uint_fast8_t
-str2ip(char *str, uint8_t *ip)
+str2ip(const char *str, uint8_t *ip)
 {
 	uint16_t sip [4];
 	uint_fast8_t res;
@@ -364,7 +364,7 @@ str2ip(char *str, uint8_t *ip)
 }
 
 uint_fast8_t
-str2ipCIDR(char *str, uint8_t *ip, uint8_t *mask)
+str2ipCIDR(const char *str, uint8_t *ip, uint8_t *mask)
 {
 	uint16_t sip [4];
 	uint16_t smask;
@@ -398,7 +398,7 @@ ip2strCIDR(uint8_t *ip, uint8_t mask, char *str)
 }
 
 uint_fast8_t
-str2addr(char *str, uint8_t *ip, uint16_t *port)
+str2addr(const char *str, uint8_t *ip, uint16_t *port)
 {
 	uint16_t sip [4];
 	uint16_t sport;

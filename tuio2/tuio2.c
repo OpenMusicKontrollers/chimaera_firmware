@@ -59,7 +59,7 @@ tuio2_init()
 }
 
 static osc_data_t *
-tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	uint_fast8_t long_header = config.tuio2.long_header;
 
@@ -92,7 +92,7 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Ti
 }
 
 static osc_data_t *
-tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -154,15 +154,15 @@ CMC_Engine tuio2_engine = {
  * Config
  */
 static uint_fast8_t
-_tuio2_long_header(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio2_long_header(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_bool(path, fmt, argc, args, &config.tuio2.long_header);
+	return config_check_bool(path, fmt, argc, buf, &config.tuio2.long_header);
 }
 
 static uint_fast8_t
-_tuio2_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio2_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.tuio2.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.tuio2.enabled);
 	cmc_engines_update();
 	return res;
 }

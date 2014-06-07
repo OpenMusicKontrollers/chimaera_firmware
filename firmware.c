@@ -110,7 +110,7 @@ static volatile uint_fast8_t wiz_needs_attention = 0;
 static volatile uint32_t wiz_irq_tick;
 static volatile int64_t wiz_ptp_tick;
 
-static nOSC_Timestamp now;
+static OSC_Timetag now;
 
 static void __CCM_TEXT__
 adc_timer_irq()
@@ -356,7 +356,10 @@ adc_dma_block()
 static void __CCM_TEXT__
 config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	nosc_method_dispatch((nOSC_Method *)config_serv, buf, len, NULL, NULL);
+	if(osc_packet_check(buf, len))
+		osc_method_dispatch(buf, len, config_serv);
+	else
+		DEBUG("s", "invalid OSC packet");
 }
 
 static void __CCM_TEXT__
@@ -531,7 +534,7 @@ loop()
 	uint_fast16_t len = 0;
 
 	uint_fast8_t first = 1;
-	nOSC_Timestamp offset;
+	OSC_Timetag offset;
 
 //#define OSCTEST
 #ifdef OSCTEST

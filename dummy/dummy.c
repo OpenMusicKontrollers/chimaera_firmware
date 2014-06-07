@@ -50,7 +50,7 @@ dummy_init()
 }
 
 static osc_data_t *
-dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -72,7 +72,7 @@ dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Ti
 }
 
 static osc_data_t *
-dummy_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 
@@ -154,9 +154,9 @@ CMC_Engine dummy_engine = {
  * Config
  */
 static uint_fast8_t
-_dummy_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dummy_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.dummy.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.dummy.enabled);
 	cmc_engines_update();
 	return res;
 }

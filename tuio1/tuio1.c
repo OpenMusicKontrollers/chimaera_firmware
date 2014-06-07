@@ -59,7 +59,7 @@ tuio1_init()
 }
 
 static osc_data_t *
-tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -89,7 +89,7 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Ti
 }
 
 static osc_data_t *
-tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -159,17 +159,17 @@ CMC_Engine tuio1_engine = {
  */
 
 static uint_fast8_t
-_tuio1_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio1_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.tuio1.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.tuio1.enabled);
 	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_tuio1_custom_profile(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_tuio1_custom_profile(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_bool(path, fmt, argc, args, &config.tuio1.custom_profile);
+	return config_check_bool(path, fmt, argc, buf, &config.tuio1.custom_profile);
 }
 
 /*

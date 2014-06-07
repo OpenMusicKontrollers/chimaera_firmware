@@ -46,8 +46,8 @@ extern const OSC_Query_Item sntp_tree [5];
 
 void sntp_reset();
 uint32_t sntp_uptime();
-void sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset);
-uint16_t sntp_request(uint8_t *buf, nOSC_Timestamp t3);
-void sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4);
+void sntp_timestamp_refresh(uint32_t tick, OSC_Timetag *now, OSC_Timetag *offset);
+uint16_t sntp_request(uint8_t *buf, OSC_Timetag t3);
+void sntp_dispatch(uint8_t *buf, OSC_Timetag t4);
 
 #endif // _SNTP_H_

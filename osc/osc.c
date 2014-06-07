@@ -98,6 +98,186 @@ osc_check_fmt(const char *format, int offset)
 	return 1;
 }
 
+int
+osc_method_match(OSC_Method *methods, const char *path, const char *fmt)
+{
+	OSC_Method *meth;
+	for(meth=methods; meth->cb; meth++)
+		if( (!meth->path || !strcmp(meth->path, path)) && (!meth->fmt || !strcmp(meth->fmt, fmt+1)) )
+			return 1;
+	return 0;
+}
+
+static void
+_osc_method_dispatch_message(osc_data_t *buf, size_t size, const OSC_Method *methods)
+{
+	osc_data_t *ptr = buf;
+	osc_data_t *end = buf + size;
+
+	const char *path;
+	const char *fmt;
+
+	ptr = osc_get_path(ptr, &path);
+	ptr = osc_get_fmt(ptr, &fmt);
+
+	const OSC_Method *meth;
+	for(meth=methods; meth->cb; meth++)
+		if( (!meth->path || !strcmp(meth->path, path)) && (!meth->fmt || !strcmp(meth->fmt, fmt+1)) )
+			if(meth->cb(path, fmt+1, strlen(fmt)-1, ptr))
+				break;
+}
+
+static void
+_osc_method_dispatch_bundle(osc_data_t *buf, size_t size, const OSC_Method *methods)
+{
+	osc_data_t *ptr = buf;
+	osc_data_t *end = buf + size;
+
+	ptr += 16; // skip bundle header
+
+	while(ptr < end)
+	{
+		int32_t len = ntohl(*((int32_t *)ptr));
+		ptr += sizeof(int32_t);
+		switch(*ptr)
+		{
+			case '#':
+				_osc_method_dispatch_bundle(ptr, len, methods);
+				break;
+			case '/':
+				_osc_method_dispatch_message(ptr, len, methods);
+				break;
+		}
+		ptr += len;
+	}
+}
+
+void
+osc_method_dispatch(osc_data_t *buf, size_t size, const OSC_Method *methods)
+{
+	switch(*buf)
+	{
+		case '#':
+			_osc_method_dispatch_bundle(buf, size, methods);
+			break;
+		case '/':
+			_osc_method_dispatch_message(buf, size, methods);
+			break;
+	}
+}
+
+int
+osc_message_check(osc_data_t *buf, size_t size)
+{
+	osc_data_t *ptr = buf;
+	osc_data_t *end = buf + size;
+
+	const char *path;
+	const char *fmt;
+
+	ptr = osc_get_path(ptr, &path);
+	if( (ptr > end) || !osc_check_path(path) )
+		return 0;
+
+	ptr = osc_get_fmt(ptr, &fmt);
+	if( (ptr > end) || !osc_check_fmt(fmt, 1) )
+		return 0;
+
+	const char *type;
+	for(type=fmt+1; (*type!='\0') && (ptr <= end); type++)
+	{
+		switch(*type)
+		{
+			case OSC_INT32:
+			case OSC_FLOAT:
+			case OSC_MIDI:
+			case OSC_CHAR:
+				ptr += 4;
+				break;
+
+			case OSC_STRING:
+			case OSC_SYMBOL:
+				ptr += osc_strlen((const char *)ptr);
+				break;
+
+			case OSC_BLOB:
+				ptr += osc_bloblen(ptr);
+				break;
+
+			case OSC_INT64:
+			case OSC_DOUBLE:
+			case OSC_TIMETAG:
+				ptr += 8;
+				break;
+
+			case OSC_TRUE:
+			case OSC_FALSE:
+			case OSC_NIL:
+			case OSC_BANG:
+				break;
+		}
+	}
+
+	return ptr == end;
+}
+
+int
+osc_bundle_check(osc_data_t *buf, size_t size)
+{
+	osc_data_t *ptr = buf;
+	osc_data_t *end = buf + size;
+	
+	if(strncmp((char *)ptr, "#bundle", 8)) // bundle header valid?
+		return 0;
+	ptr += 16; // skip bundle header
+
+	while(ptr < end)
+	{
+		int32_t *len = (int32_t *)ptr;
+		int32_t hlen = htonl(*len);
+		ptr += sizeof(int32_t);
+
+		switch(*ptr)
+		{
+			case '#':
+				if(!osc_bundle_check(ptr, hlen))
+					return 0;
+				break;
+			case '/':
+				if(!osc_message_check(ptr, hlen))
+					return 0;
+				break;
+			default:
+				return 0;
+		}
+		ptr += hlen;
+	}
+
+	return ptr == end;
+}
+
+int
+osc_packet_check(osc_data_t *buf, size_t size)
+{
+	osc_data_t *ptr = buf;
+	
+	switch(*ptr)
+	{
+		case '#':
+			if(!osc_bundle_check(ptr, size))
+				return 0;
+			break;
+		case '/':
+			if(!osc_message_check(ptr, size))
+				return 0;
+			break;
+		default:
+			return 0;
+	}
+
+	return 1;
+}
+
 size_t
 osc_strlen(const char *buf)
 {

@@ -48,7 +48,7 @@ static const char *set_fmt = "iififii";
 
 static const char *default_fmt = "group%02i";
 
-static nOSC_Timestamp tt;
+static OSC_Timetag tt;
 
 static uint_fast8_t early_i = 0;
 static uint_fast8_t late_i = 0;
@@ -62,7 +62,7 @@ scsynth_init()
 }
 
 static osc_data_t *
-scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	tt = offset;
 	early_i = 0;
@@ -83,7 +83,7 @@ scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_
 }
 
 static osc_data_t *
-scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, nOSC_Timestamp now, nOSC_Timestamp offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	osc_data_t *buf_ptr = buf;
 
@@ -161,7 +161,6 @@ scsynth_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 	osc_data_t *itm;
 
 	uint32_t id;
-	nOSC_Message msg;
 	SCSynth_Group *group = &scsynth_groups[gid];
 
 	id = group->is_group ? group->group : group->sid + sid;
@@ -190,7 +189,6 @@ scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 	osc_data_t *itm;
 
 	uint32_t id;
-	nOSC_Message msg;
 	SCSynth_Group *group = &scsynth_groups[gid];
 
 	id = group->is_group ? group->group : group->sid + sid;
@@ -239,7 +237,7 @@ scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group,
 }
 
 static void
-scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
+scsynth_group_set(uint_fast8_t gid, const char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
 										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
 {
 	SCSynth_Group *grp = &scsynth_groups[gid];
@@ -260,49 +258,62 @@ scsynth_group_set(uint_fast8_t gid, char *name, uint16_t sid, uint16_t group, ui
  */
 
 static uint_fast8_t
-_scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_bool(path, fmt, argc, args, &config.scsynth.enabled);
+	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.scsynth.enabled);
 	cmc_engines_update();
 	return res;
 }
 
 static uint_fast8_t
-_scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
 	uint16_t gid;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 	
 	sscanf(path, "/engines/scsynth/attributes/%hu", &gid);
 
-	char *name;
-	uint16_t sid;
-	uint16_t group;
-	uint16_t out;
-	uint8_t arg;
-	uint8_t alloc;
-	uint8_t gate;
-	uint8_t add_action;
-	uint8_t is_group;
-
 	if(argc == 1)
 	{
+		char *name;
+		uint16_t sid;
+		uint16_t group;
+		uint16_t out;
+		uint8_t arg;
+		uint8_t alloc;
+		uint8_t gate;
+		uint8_t add_action;
+		uint8_t is_group;
+
 		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
 		size = CONFIG_SUCCESS("issiiiiiiii", uuid, path, name, sid, group, out, arg,
 			alloc?1:0, gate?1:0, add_action, is_group?1:0);
 	}
 	else // argc == 11
 	{
-		name = args[1].s;
-		sid = args[2].i;
-		group = args[3].i;
-		out = args[4].i;
-		arg = args[5].i;
-		alloc = args[6].i;
-		gate = args[7].i;
-		add_action = args[8].i;
-		is_group = args[9].i;
+		const char *name;
+		int32_t sid;
+		int32_t group;
+		int32_t out;
+		int32_t arg;
+		int32_t alloc;
+		int32_t gate;
+		int32_t add_action;
+		int32_t is_group;
+
+		buf_ptr = osc_get_string(buf_ptr, &name);
+		buf_ptr = osc_get_int32(buf_ptr, &sid);
+		buf_ptr = osc_get_int32(buf_ptr, &group);
+		buf_ptr = osc_get_int32(buf_ptr, &out);
+		buf_ptr = osc_get_int32(buf_ptr, &arg);
+		buf_ptr = osc_get_int32(buf_ptr, &alloc);
+		buf_ptr = osc_get_int32(buf_ptr, &gate);
+		buf_ptr = osc_get_int32(buf_ptr, &add_action);
+		buf_ptr = osc_get_int32(buf_ptr, &is_group);
 
 		scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group);
 		size = CONFIG_SUCCESS("is", uuid, path);
@@ -314,10 +325,13 @@ _scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_A
 }
 
 static uint_fast8_t
-_scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	uint_fast8_t i;
 	for(i=0; i<GROUP_MAX; i++)

@@ -57,24 +57,27 @@ DEBUG(const char *fmt, ...)
  */
 
 static uint_fast8_t
-_debug_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.debug.osc.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.debug.osc.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_debug_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_address(&config.debug.osc.socket, path, fmt, argc, args);
+	return config_address(&config.debug.osc.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_debug_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_debug_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
 	uint8_t *mode = &config.debug.osc.mode;
 	uint8_t enabled = config.debug.osc.socket.enabled;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("iss", uuid, path, config_mode_args_values[*mode]);
@@ -82,8 +85,10 @@ _debug_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	{
 		debug_enable(0);
 		uint_fast8_t i;
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
 		for(i=0; i<sizeof(config_mode_args_values)/sizeof(OSC_Query_Value); i++)
-			if(!strcmp(args[1].s, config_mode_args_values[i].s))
+			if(!strcmp(s, config_mode_args_values[i].s))
 			{
 				*mode = i;
 				break;

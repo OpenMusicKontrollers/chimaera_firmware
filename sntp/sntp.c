@@ -37,7 +37,7 @@ fix_s31_32_t O0, O1, OO0, OO1;
 
 #define JAN_1970 2208988800UL
 
-static nOSC_Timestamp t0 = 0ULLK;
+static OSC_Timetag t0 = 0ULLK;
 
 void
 sntp_reset()
@@ -48,7 +48,7 @@ sntp_reset()
 }
 
 uint16_t __CCM_TEXT__
-sntp_request(uint8_t *buf, nOSC_Timestamp t3)
+sntp_request(uint8_t *buf, OSC_Timetag t3)
 {
 	uint16_t len = sizeof(sntp_t);
 
@@ -67,7 +67,7 @@ sntp_request(uint8_t *buf, nOSC_Timestamp t3)
 }
 
 void //__CCM_TEXT__
-sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
+sntp_dispatch(uint8_t *buf, OSC_Timetag t4)
 {
 	sntp_t *answer =(sntp_t *)buf;
 
@@ -137,7 +137,7 @@ sntp_dispatch(uint8_t *buf, nOSC_Timestamp t4)
 }
 
 void __CCM_TEXT__
-sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
+sntp_timestamp_refresh(uint32_t tick, OSC_Timetag *now, OSC_Timetag *offset)
 {
 	*now = t0 + tick*SNTP_SYSTICK_DURATION;
 
@@ -146,7 +146,7 @@ sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offse
 		if( (config.output.offset > 0ULLK) && (t0 != 0ULLK) )
 			*offset = *now + config.output.offset;
 		else
-			*offset = nOSC_IMMEDIATE;
+			*offset = OSC_IMMEDIATE;
 	}
 }
 
@@ -155,28 +155,31 @@ sntp_timestamp_refresh(uint32_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offse
  */
 
 static uint_fast8_t
-_sntp_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.sntp.socket, path, fmt, argc, args);
+	return config_socket_enabled(&config.sntp.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_sntp_address(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_address(&config.sntp.socket, path, fmt, argc, args);
+	return config_address(&config.sntp.socket, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_sntp_tau(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_tau(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_uint8(path, fmt, argc, args, &config.sntp.tau);
+	return config_check_uint8(path, fmt, argc, buf, &config.sntp.tau);
 }
 
 static uint_fast8_t
-_sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	float offset = OO1;
 	size = CONFIG_SUCCESS("isf", uuid, path, offset);
@@ -187,10 +190,13 @@ _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	float trip = DD1;
 	size = CONFIG_SUCCESS("isf", uuid, path, trip);

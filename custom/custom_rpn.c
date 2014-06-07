@@ -244,10 +244,10 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 }
 
 static uint_fast8_t
-rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
+rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 {
-	char *ptr = str;
-	char *end = str + len;
+	const char *ptr = str;
+	const char *end = str + len;
 
 	RPN_Instruction *inst = &vm->inst[offset];
 
@@ -405,12 +405,12 @@ rpn_compile_sub(char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 }
 
 uint_fast8_t
-rpn_compile(char *args, Custom_Item *itm)
+rpn_compile(const char *args, Custom_Item *itm)
 {
 	RPN_VM *vm = &itm->vm;
 
-	char *ptr = args;
-	char *end = args + strlen(args);
+	const char *ptr = args;
+	const char *end = args + strlen(args);
 	uint_fast8_t offset = 0;
 	uint_fast8_t counter = 0;
 

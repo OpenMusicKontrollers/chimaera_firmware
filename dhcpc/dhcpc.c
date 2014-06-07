@@ -452,10 +452,10 @@ dhcpc_refresh()
  */
 
 static uint_fast8_t
-_dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	// needs a config save and reboot to take action
-	return config_check_bool(path, fmt, argc, args, &config.dhcpc.socket.enabled);
+	return config_check_bool(path, fmt, argc, buf, &config.dhcpc.socket.enabled);
 }
 
 /*

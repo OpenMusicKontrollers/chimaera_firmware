@@ -138,7 +138,7 @@ struct _Config {
 
 	struct _output {
 		OSC_Config osc;
-		nOSC_Timestamp offset;
+		OSC_Timetag offset;
 		struct {
 			uint8_t x;
 			uint8_t z;
@@ -190,7 +190,7 @@ struct _Config {
 };
 
 extern Config config;
-extern const nOSC_Method config_serv [];
+extern const OSC_Method config_serv [];
 
 uint_fast8_t version_match();
 
@@ -204,11 +204,11 @@ uint16_t CONFIG_SUCCESS(const char *fmt, ...);
 uint16_t CONFIG_FAIL(const char *fmt, ...);
 #define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
 
-uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args);
-uint_fast8_t config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *val);
-uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
-uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val);
+uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
+uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
+uint_fast8_t config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *val);
+uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *boolean);
+uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val);
 
 const OSC_Query_Argument config_boolean_args [1];
 const OSC_Query_Argument config_mode_args [1];

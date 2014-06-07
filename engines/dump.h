@@ -31,6 +31,6 @@ extern const OSC_Query_Item dump_tree [1];
 
 void dump_init(int32_t size, int16_t *swap);
 
-osc_data_t *dump_update(osc_data_t *buf, nOSC_Timestamp now, nOSC_Timestamp offset);
+osc_data_t *dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset);
 
 #endif // _DUMP_H_

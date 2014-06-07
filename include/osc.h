@@ -41,9 +41,11 @@ typedef fix_32_32_t OSC_Timetag;
 typedef struct _OSC_Blob OSC_Blob;
 typedef struct _OSC_Method OSC_Method;
 
-typedef uint_fast8_t(*OSC_Method_Cb)(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *args);
+typedef uint_fast8_t (*OSC_Method_Cb)(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *arg);
 
-typedef enum _osc_Type {
+typedef enum _OSC_Type {
+	OSC_END = 0,
+
 	OSC_INT32 = 'i',
 	OSC_FLOAT = 'f',
 	OSC_STRING = 's',
@@ -60,10 +62,8 @@ typedef enum _osc_Type {
 
 	OSC_SYMBOL = 'S',
 	OSC_CHAR = 'c',
-	OSC_MIDI = 'm',
-
-	OSC_END = '\0'
-} osc_Type;
+	OSC_MIDI = 'm'
+} OSC_Type;
 
 struct _OSC_Blob {
 	int32_t size;
@@ -88,6 +88,12 @@ struct _OSC_Method {
 
 int osc_check_path(const char *path);
 int osc_check_fmt(const char *format, int offset);
+
+int osc_method_match(OSC_Method *methods, const char *path, const char *fmt);
+void osc_method_dispatch(osc_data_t *buf, size_t size, const OSC_Method *methods);
+int osc_message_check(osc_data_t *buf, size_t size);
+int osc_bundle_check(osc_data_t *buf, size_t size);
+int osc_packet_check(osc_data_t *buf, size_t size);
 
 // OSC object lengths
 size_t osc_strlen(const char *buf);

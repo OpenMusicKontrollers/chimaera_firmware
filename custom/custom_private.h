@@ -32,8 +32,8 @@ typedef struct _RPN_Stack RPN_Stack;
 
 struct _RPN_Stack {
 	uint32_t fid;
-	//nOSC_Timestamp now;
-	//nOSC_Timestamp offset;
+	//OSC_Timetag now;
+	//OSC_Timetag offset;
 	//uint_fast8_t old_n;
 	//uint_fast8_t new_n;
 	uint32_t sid;
@@ -46,6 +46,6 @@ struct _RPN_Stack {
 };
 
 osc_data_t *rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack);
-uint_fast8_t rpn_compile(char *args, Custom_Item *itm);
+uint_fast8_t rpn_compile(const char *args, Custom_Item *itm);
 
 #endif // _CUSTOM_PRIVATE_H_

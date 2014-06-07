@@ -102,10 +102,13 @@ static const OSC_Query_Value interpolation_mode_args_values [] = {
 };
 
 static uint_fast8_t
-_sensors_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	size = CONFIG_SUCCESS("isi", uuid, path, SENSOR_N);
 	CONFIG_SEND(size);
@@ -114,16 +117,21 @@ _sensors_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
 }
 
 static uint_fast8_t
-_sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isi", uuid, path, config.sensors.rate);
 	else
 	{
-		config.sensors.rate = args[1].i;
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		config.sensors.rate = i;
 
 		if(config.sensors.rate)
 		{
@@ -143,15 +151,21 @@ _sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 }
 
 static uint_fast8_t
-_sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("isi", uuid, path, 1U << config.sensors.movingaverage_bitshift);
 	else
-		switch(args[1].i)
+	{
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		switch(i)
 		{
 			case 1:
 				config.sensors.movingaverage_bitshift = 0;
@@ -172,6 +186,7 @@ _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOS
 			default:
 				size = CONFIG_FAIL("iss", uuid, path, "valid sample windows are 1, 2, 4 and 8");
 		}
+	}
 
 	CONFIG_SEND(size);
 
@@ -179,19 +194,24 @@ _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, nOS
 }
 
 static uint_fast8_t
-_sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
 	uint8_t *interpolation = &config.sensors.interpolation_mode;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
 		size = CONFIG_SUCCESS("iss", uuid, path, interpolation_mode_args_values[*interpolation]);
 	else
 	{
 		uint_fast8_t i;
+		const char *s;
+		buf_ptr = osc_get_string(buf_ptr, &s);
 		for(i=0; i<sizeof(interpolation_mode_args_values)/sizeof(OSC_Query_Value); i++)
-			if(!strcmp(args[1].s, interpolation_mode_args_values[i].s))
+			if(!strcmp(s, interpolation_mode_args_values[i].s))
 			{
 				*interpolation = i;
 				break;
@@ -203,10 +223,13 @@ _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, nOS
 }
 
 static uint_fast8_t
-_group_clear(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	cmc_group_clear();
 
@@ -217,11 +240,14 @@ _group_clear(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *arg
 }
 
 static uint_fast8_t
-_group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
 	uint16_t gid;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	sscanf(path, "/sensors/group/attributes/%hu", &gid);
 	CMC_Group *grp = &cmc_groups[gid];
@@ -236,12 +262,20 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 	}
 	else // set group info
 	{
-		grp->x0 = args[1].f;
-		grp->x1 = args[2].f;
+		float x0, x1;
+		int32_t north, south, scale;
+		buf_ptr = osc_get_float(buf_ptr, &x0);
+		buf_ptr = osc_get_float(buf_ptr, &x1);
+		buf_ptr = osc_get_int32(buf_ptr, &north);
+		buf_ptr = osc_get_int32(buf_ptr, &south);
+		buf_ptr = osc_get_int32(buf_ptr, &scale);
+
+		grp->x0 = x0;
+		grp->x1 = x1;
 		grp->pid = 0;
-		grp->pid |= args[3].i ? CMC_NORTH : 0;
-		grp->pid |= args[4].i ? CMC_SOUTH : 0;
-		grp->m = args[5].i ? 1.f/(grp->x1 - grp->x0) : CMC_NOSCALE;
+		grp->pid |= north ? CMC_NORTH : 0;
+		grp->pid |= south ? CMC_SOUTH : 0;
+		grp->m = scale ? 1.f/(grp->x1 - grp->x0) : CMC_NOSCALE;
 
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -252,10 +286,13 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg
 }
 
 static uint_fast8_t
-_group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_group_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	size = CONFIG_SUCCESS("isi", uuid, path, GROUP_MAX);
 	CONFIG_SEND(size);

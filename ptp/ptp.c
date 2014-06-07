@@ -396,7 +396,7 @@ _ptp_dispatch_pdelay_resp_follow_up(PTP_Response *resp)
 #endif
 
 void
-ptp_timestamp_refresh(int64_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
+ptp_timestamp_refresh(int64_t tick, OSC_Timetag *now, OSC_Timetag *offset)
 {
 	uint64_t ts;
 
@@ -411,7 +411,7 @@ ptp_timestamp_refresh(int64_t tick, nOSC_Timestamp *now, nOSC_Timestamp *offset)
 		if( (config.output.offset > 0ULLK) && (t0 != 0ULL) )
 			*offset = *now + config.output.offset;
 		else
-			*offset = nOSC_IMMEDIATE;
+			*offset = OSC_IMMEDIATE;
 	}
 }
 
@@ -480,38 +480,41 @@ ptp_dispatch(uint8_t *buf, int64_t tick)
  */
 
 static uint_fast8_t
-_ptp_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.ptp.event, path, fmt, argc, args);
+	return config_socket_enabled(&config.ptp.event, path, fmt, argc, buf);
 }
 
 static uint_fast8_t
-_ptp_multiplier(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_multiplier(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_check_uint8(path, fmt, argc, args, &config.ptp.multiplier);
+	return config_check_uint8(path, fmt, argc, buf, &config.ptp.multiplier);
 }
 
 static uint_fast8_t
-_ptp_offset_stiffness(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_offset_stiffness(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_uint8(path, fmt, argc, args, &config.ptp.offset_stiffness);
+	uint_fast8_t res = config_check_uint8(path, fmt, argc, buf, &config.ptp.offset_stiffness);
 	Os = 1.f / (double)config.ptp.offset_stiffness;
 	return res;
 }
 
 static uint_fast8_t
-_ptp_delay_stiffness(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_delay_stiffness(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	uint_fast8_t res = config_check_uint8(path, fmt, argc, args, &config.ptp.delay_stiffness);
+	uint_fast8_t res = config_check_uint8(path, fmt, argc, buf, &config.ptp.delay_stiffness);
 	Ds = 1.f / (double)config.ptp.delay_stiffness;
 	return res;
 }
 
 static uint_fast8_t
-_ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	float fOO1 = OO1;
 	size = CONFIG_SUCCESS("isf", uuid, path, fOO1);
@@ -522,10 +525,13 @@ _ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 }
 
 static uint_fast8_t
-_ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
+_ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	int32_t uuid = args[0].i;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	float fDD1 = DD1;
 	size = CONFIG_SUCCESS("isf", uuid, path, fDD1);

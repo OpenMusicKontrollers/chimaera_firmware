@@ -33,7 +33,6 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define GROUP_MAX 8
 
-#include <nosc.h>
 #include <config.h>
 #include <wiz.h>
 
