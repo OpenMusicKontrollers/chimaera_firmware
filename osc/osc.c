@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <posc.h>
+#include <osc.h>
 
 #include <chimaera.h>
 #include <debug.h>
@@ -40,12 +40,10 @@ union _swap32_t {
 };
 
 union _swap64_t {
-	uint32_t u; //FIXME
-
 	struct {
 		uint32_t upper;
 		uint32_t lower;
-	} part;
+	} u;
 
 	int64_t h;
 	OSC_Timetag t;
@@ -178,27 +176,33 @@ osc_get_blob(osc_data_t *buf, OSC_Blob *b)
 osc_data_t *
 osc_get_int64(osc_data_t *buf, int64_t *h)
 {
-	swap64_t s = {.u = *(uint64_t *)buf};
-	s.u = ntohll(s.u); //FIXME
-	*h = s.h;
+	swap64_t *s0 = (swap64_t *)buf;
+	swap64_t s1;
+	s1.u.lower = ntohl(s0->u.upper);
+	s1.u.upper = ntohl(s0->u.lower);
+	*h = s1.h;
 	return buf + 8;
 }
 
 osc_data_t *
 osc_get_double(osc_data_t *buf, double *d)
 {
-	swap64_t s = {.u = *(uint64_t *)buf};
-	s.u = ntohll(s.u); //FIXME
-	*d = s.d;
+	swap64_t *s0 = (swap64_t *)buf;
+	swap64_t s1;
+	s1.u.lower = ntohl(s0->u.upper);
+	s1.u.upper = ntohl(s0->u.lower);
+	*d = s1.d;
 	return buf + 8;
 }
 
 osc_data_t *
 osc_get_timetag(osc_data_t *buf, uint64_t *t)
 {
-	swap64_t s = {.u = *(uint64_t *)buf};
-	s.u = ntohll(s.u); //FIXME
-	*t = s.t;
+	swap64_t *s0 = (swap64_t *)buf;
+	swap64_t s1;
+	s1.u.lower = ntohl(s0->u.upper);
+	s1.u.upper = ntohl(s0->u.lower);
+	*t = s1.t;
 	return buf + 8;
 }
 
@@ -247,8 +251,8 @@ osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag)
 	strncpy(buf, "#bundle", 8);
 	swap64_t s0 = { .t = timetag };
 	swap64_t *s1 = (swap64_t *)(buf + 8);
-	s1->part.upper = htonl(s0.part.lower);
-	s1->part.lower = htonl(s0.part.upper);
+	s1->u.upper = htonl(s0.u.lower);
+	s1->u.lower = htonl(s0.u.upper);
 	return buf + 16;
 }
 
@@ -351,8 +355,8 @@ osc_set_int64(osc_data_t *buf, int64_t h)
 {
 	swap64_t s0 = { .h = h };
 	swap64_t *s1 = (swap64_t *)buf;
-	s1->part.upper = htonl(s0.part.lower);
-	s1->part.lower = htonl(s0.part.upper);
+	s1->u.upper = htonl(s0.u.lower);
+	s1->u.lower = htonl(s0.u.upper);
 	return buf + 8;
 }
 
@@ -361,8 +365,8 @@ osc_set_double(osc_data_t *buf, double d)
 {
 	swap64_t s0 = { .d = d };
 	swap64_t *s1 = (swap64_t *)buf;
-	s1->part.upper = htonl(s0.part.lower);
-	s1->part.lower = htonl(s0.part.upper);
+	s1->u.upper = htonl(s0.u.lower);
+	s1->u.lower = htonl(s0.u.upper);
 	return buf + 8;
 }
 
@@ -371,8 +375,8 @@ osc_set_timetag(osc_data_t *buf, uint64_t t)
 {
 	swap64_t s0 = { .t = t };
 	swap64_t *s1 = (swap64_t *)buf;
-	s1->part.upper = htonl(s0.part.lower);
-	s1->part.lower = htonl(s0.part.upper);
+	s1->u.upper = htonl(s0.u.lower);
+	s1->u.lower = htonl(s0.u.upper);
 	return buf + 8;
 }
 

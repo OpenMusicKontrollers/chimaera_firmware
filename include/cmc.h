@@ -28,7 +28,7 @@
 #include <stdlib.h>
 
 #include <nosc.h>
-#include <posc.h>
+#include <osc.h>
 
 #define CMC_NOSCALE 0.0f
 

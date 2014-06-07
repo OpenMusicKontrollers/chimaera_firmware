@@ -17,7 +17,7 @@ include $(MAKEDIR)/header.mk
 BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
 BUILDDIRS += $(BUILD_PATH)/$(d)/wiz
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
-BUILDDIRS += $(BUILD_PATH)/$(d)/posc
+BUILDDIRS += $(BUILD_PATH)/$(d)/osc
 BUILDDIRS += $(BUILD_PATH)/$(d)/dump
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
 BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
@@ -103,7 +103,7 @@ ifeq ($(WIZ_CHIP), 5500)
 cSRCS_$(d) += wiz/W5500.c
 endif
 cSRCS_$(d) += nosc/nosc.c
-cSRCS_$(d) += posc/posc.c
+cSRCS_$(d) += osc/osc.c
 cSRCS_$(d) += config/config.c
 cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += ptp/ptp.c

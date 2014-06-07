@@ -60,7 +60,7 @@
 #include <wiz.h>
 #include <calibration.h>
 #include <sensors.h>
-#include <posc.h>
+#include <osc.h>
 
 static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
