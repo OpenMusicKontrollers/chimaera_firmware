@@ -624,7 +624,8 @@ loop()
 			osc_data_t *preamble;
 			if(config.output.osc.mode == OSC_MODE_TCP)
 				buf_ptr = osc_start_preamble(buf_ptr, &preamble);
-			buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE); // node bundle
+			if(cmc_engines_active + config.dump.enabled > 1)
+				buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE); // node bundle
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
 				buf_ptr = dump_update(buf_ptr, now, offset);
@@ -638,7 +639,7 @@ loop()
 			}
 
 			cmc_len = buf_ptr - buf;
-			if(cmc_len > 16) // is there anything after OSC bundle header?
+			if(cmc_len > (config.output.osc.mode == OSC_MODE_TCP ? 20 : 16)) // is there anything after OSC bundle header?
 			{
 				job = 1;
 

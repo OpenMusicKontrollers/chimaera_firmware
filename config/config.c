@@ -577,11 +577,14 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 	}
 	else
 	{
+		const char *cidr;
+		buf_ptr = osc_get_string(buf_ptr, &cidr);
+
 		if(argc == 3)
 		{
-			const char *s; //FIXME wrong order, needs to be read after CIDR!!!!
-			buf_ptr = osc_get_string(buf_ptr, &s);
-			if(str2ip(s, config.comm.gateway))
+			const char *gat;
+			buf_ptr = osc_get_string(buf_ptr, &gat);
+			if(str2ip(gat, config.comm.gateway))
 				wiz_gateway_set(config.comm.gateway);
 			else // return
 			{
@@ -592,9 +595,7 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 		}
 
 		uint8_t mask;
-		const char *s;
-		buf_ptr = osc_get_string(buf_ptr, &s);
-		if(str2ipCIDR(s, config.comm.ip, &mask))
+		if(str2ipCIDR(cidr, config.comm.ip, &mask))
 		{
 			wiz_ip_set(config.comm.ip);
 
@@ -1248,7 +1249,7 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 			if(item)
 			{
 				// serialize empty string
-				size = CONFIG_SUCCESS("iss", uuid, path, nil); // FIXME adapt to new osc thingy, SLIP etc...
+				size = CONFIG_SUCCESS("iss", uuid, path, nil);
 				size -= 4;
 
 				// wind back to beginning of empty string on buffer

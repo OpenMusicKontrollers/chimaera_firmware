@@ -64,7 +64,8 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
 	buf_ptr = osc_start_bundle(buf_ptr, offset);
 
 	uint_fast8_t i;
@@ -108,7 +109,8 @@ tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 	}
 	buf_ptr = osc_end_item_variable(buf_ptr, itm);
 
-	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_end_item_variable(buf_ptr, pack);
 
 	return buf_ptr;
 }

@@ -47,7 +47,8 @@ dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset)
 	osc_data_t *itm;
 	osc_data_t *pack;
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
 	{
 		buf_ptr = osc_start_bundle(buf_ptr, offset);
 		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
@@ -59,7 +60,8 @@ dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset)
 		}
 		buf_ptr = osc_end_item_variable(buf_ptr, itm);
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, pack);
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_end_item_variable(buf_ptr, pack);
 
 	return buf_ptr;
 }
