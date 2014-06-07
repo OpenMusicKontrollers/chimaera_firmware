@@ -165,6 +165,6 @@ _dummy_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  * Query
  */
 
-const nOSC_Query_Item dummy_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dummy_enabled, config_boolean_args),
+const OSC_Query_Item dummy_tree [] = {
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dummy_enabled, config_boolean_args),
 };

@@ -242,22 +242,22 @@ _oscmidi_effect(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *
  * Query
  */
 
-static const nOSC_Query_Argument oscmidi_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
+static const OSC_Query_Argument oscmidi_offset_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Notes", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
 };
 
-static const nOSC_Query_Argument oscmidi_range_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Notes", nOSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
+static const OSC_Query_Argument oscmidi_range_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Notes", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
 };
 
-static const nOSC_Query_Argument oscmidi_effect_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Controller number", nOSC_QUERY_MODE_RW, 0, 0x7f, 1),
+static const OSC_Query_Argument oscmidi_effect_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Controller number", OSC_QUERY_MODE_RW, 0, 0x7f, 1),
 };
 
-const nOSC_Query_Item oscmidi_tree [] = {
+const OSC_Query_Item oscmidi_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _oscmidi_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("offset", "MIDI key offset", _oscmidi_offset, oscmidi_offset_args),
-	nOSC_QUERY_ITEM_METHOD("range", "MIDI pitch bend range", _oscmidi_range, oscmidi_range_args),
-	nOSC_QUERY_ITEM_METHOD("effect", "MIDI vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _oscmidi_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("offset", "MIDI key offset", _oscmidi_offset, oscmidi_offset_args),
+	OSC_QUERY_ITEM_METHOD("range", "MIDI pitch bend range", _oscmidi_range, oscmidi_range_args),
+	OSC_QUERY_ITEM_METHOD("effect", "MIDI vicinity mapping", _oscmidi_effect, oscmidi_effect_args),
 };

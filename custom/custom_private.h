@@ -25,7 +25,6 @@
 #define _CUSTOM_PRIVATE_H_
 
 #include <custom.h>
-#include <nosc.h>
 
 #define RPN_STACK_HEIGHT	8
 

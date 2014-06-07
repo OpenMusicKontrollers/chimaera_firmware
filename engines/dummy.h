@@ -25,9 +25,10 @@
 #define _DUMMY_H_
 
 #include <cmc.h>
+#include <oscquery.h>
 
 extern CMC_Engine dummy_engine;
-extern const nOSC_Query_Item dummy_tree [1];
+extern const OSC_Query_Item dummy_tree [1];
 
 void dummy_init ();
 

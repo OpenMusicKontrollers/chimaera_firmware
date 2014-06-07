@@ -28,7 +28,7 @@
 
 #include <libmaple/gpio.h>
 
-#include <nosc.h>
+#include <oscquery.h>
 #include <config.h>
 
 extern const uint8_t wiz_broadcast_ip [];

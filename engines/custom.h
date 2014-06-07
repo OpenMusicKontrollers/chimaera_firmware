@@ -25,6 +25,7 @@
 #define _CUSTOM_H_
 
 #include <cmc.h>
+#include <oscquery.h>
 
 #define CUSTOM_MAX_EXPR		12
 #define CUSTOM_MAX_INST		24
@@ -94,7 +95,7 @@ struct _Custom_Item {
 };
 
 extern CMC_Engine custom_engine;
-extern const nOSC_Query_Item custom_tree [3];
+extern const OSC_Query_Item custom_tree [3];
 
 void custom_init();
 

@@ -28,7 +28,6 @@
 
 #include <libmaple/adc.h>
 
-#include <nosc.h>
 #include <wiz.h>
 
 uint_fast8_t ip_part_of_subnet(uint8_t *ip);

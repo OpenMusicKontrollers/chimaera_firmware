@@ -344,26 +344,26 @@ _scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  * Query
  */
 
-static const nOSC_Query_Argument scsynth_attributes_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_RW, 8),
-	nOSC_QUERY_ARGUMENT_INT32("Synth ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	nOSC_QUERY_ARGUMENT_INT32("Group ID offset", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	nOSC_QUERY_ARGUMENT_INT32("Out channel", nOSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	nOSC_QUERY_ARGUMENT_INT32("Argument offset", nOSC_QUERY_MODE_RW, 0, UINT8_MAX, 1),
-	nOSC_QUERY_ARGUMENT_BOOL("Allocate?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("Gate?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("AddToTail?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("Group?", nOSC_QUERY_MODE_RW)
+static const OSC_Query_Argument scsynth_attributes_args [] = {
+	OSC_QUERY_ARGUMENT_STRING("Name", OSC_QUERY_MODE_RW, 8),
+	OSC_QUERY_ARGUMENT_INT32("Synth ID offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	OSC_QUERY_ARGUMENT_INT32("Group ID offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	OSC_QUERY_ARGUMENT_INT32("Out channel", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
+	OSC_QUERY_ARGUMENT_INT32("Argument offset", OSC_QUERY_MODE_RW, 0, UINT8_MAX, 1),
+	OSC_QUERY_ARGUMENT_BOOL("Allocate?", OSC_QUERY_MODE_RW),
+	OSC_QUERY_ARGUMENT_BOOL("Gate?", OSC_QUERY_MODE_RW),
+	OSC_QUERY_ARGUMENT_BOOL("AddToTail?", OSC_QUERY_MODE_RW),
+	OSC_QUERY_ARGUMENT_BOOL("Group?", OSC_QUERY_MODE_RW)
 };
 
-static const nOSC_Query_Item scsynth_attribute_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_attributes, scsynth_attributes_args),
+static const OSC_Query_Item scsynth_attribute_tree [] = {
+	OSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_attributes, scsynth_attributes_args),
 };
 
-const nOSC_Query_Item scsynth_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _scsynth_reset, NULL),
-	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
+const OSC_Query_Item scsynth_tree [] = {
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _scsynth_reset, NULL),
+	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
 };
 
 #undef M

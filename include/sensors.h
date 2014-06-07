@@ -25,14 +25,14 @@
 #define _SENSORS_H_
 
 #include <chimaera.h>
-#include <nosc.h>
+#include <oscquery.h>
 
 extern uint8_t adc1_sequence [ADC_DUAL_LENGTH]; // analog input pins read out by the ADC1
 extern uint8_t adc2_sequence [ADC_DUAL_LENGTH]; // analog input pins read out by the ADC2
 extern uint8_t adc3_sequence [ADC_SING_LENGTH]; // analog input pins read out by the ADC3
 extern uint8_t adc_unused [ADC_UNUSED_LENGTH];
 extern uint8_t adc_order [ADC_LENGTH];
-extern const nOSC_Query_Item sensors_tree [5];
+extern const OSC_Query_Item sensors_tree [5];
 
 enum Interpolation_Mode {
 	INTERPOLATION_NONE,

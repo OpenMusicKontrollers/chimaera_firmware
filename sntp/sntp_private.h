@@ -28,7 +28,6 @@
 
 #include <sntp.h>
 #include <armfix.h>
-#include <nosc.h>
 
 typedef union _timestamp64_t timestamp64_t;
 typedef struct _sntp_t sntp_t;

@@ -253,7 +253,7 @@ _custom_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
 	return 1;
 }
 
-static const nOSC_Query_Value custom_append_destination_args_values [] = {
+static const OSC_Query_Value custom_append_destination_args_values [] = {
 	[RPN_FRAME]	= { .s = "frame" },
 	[RPN_ON]	= { .s = "on" },
 	[RPN_OFF]	= { .s = "off" },
@@ -283,7 +283,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(args[2].s, "") && rpn_compile(args[3].s, item) )
 		{
 			uint_fast8_t i;
-			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(nOSC_Query_Value); i++)
+			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(OSC_Query_Value); i++)
 				if(!strcmp(args[1].s, custom_append_destination_args_values[i].s))
 				{
 					item->dest = i;
@@ -302,19 +302,19 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
 	return 1;
 }
 
-static const nOSC_Query_Argument custom_append_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING_VALUES("Destination", nOSC_QUERY_MODE_W, custom_append_destination_args_values),
-	nOSC_QUERY_ARGUMENT_STRING("Name", nOSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
-	nOSC_QUERY_ARGUMENT_STRING("Arguments", nOSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
+static const OSC_Query_Argument custom_append_args [] = {
+	OSC_QUERY_ARGUMENT_STRING_VALUES("Destination", OSC_QUERY_MODE_W, custom_append_destination_args_values),
+	OSC_QUERY_ARGUMENT_STRING("Name", OSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
+	OSC_QUERY_ARGUMENT_STRING("Arguments", OSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
 };
 
 /*
  * Query
  */
 
-const nOSC_Query_Item custom_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _custom_enabled, config_boolean_args),
+const OSC_Query_Item custom_tree [] = {
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _custom_enabled, config_boolean_args),
 
-	nOSC_QUERY_ITEM_METHOD("reset", "Reset", _custom_reset, NULL),
-	nOSC_QUERY_ITEM_METHOD("append", "Append format", _custom_append, custom_append_args)
+	OSC_QUERY_ITEM_METHOD("reset", "Reset", _custom_reset, NULL),
+	OSC_QUERY_ITEM_METHOD("append", "Append format", _custom_append, custom_append_args)
 };

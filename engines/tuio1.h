@@ -24,12 +24,11 @@
 #ifndef _TUIO1_H_
 #define _TUIO1_H_
 
-#include <stdint.h>
-
 #include <cmc.h>
+#include <oscquery.h>
 
 extern CMC_Engine tuio1_engine;
-extern const nOSC_Query_Item tuio1_tree [2];
+extern const OSC_Query_Item tuio1_tree [2];
 
 void tuio1_init();
 

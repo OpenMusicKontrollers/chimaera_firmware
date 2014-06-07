@@ -539,30 +539,30 @@ _ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args)
  * Query
  */
 
-static const nOSC_Query_Argument ptp_multiplier_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Rate", nOSC_QUERY_MODE_RW, 1, 16, 1)
+static const OSC_Query_Argument ptp_multiplier_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Rate", OSC_QUERY_MODE_RW, 1, 16, 1)
 };
 
-static const nOSC_Query_Argument ptp_stiffness_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Stiffness", nOSC_QUERY_MODE_RW, 1, 128, 1)
+static const OSC_Query_Argument ptp_stiffness_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Stiffness", OSC_QUERY_MODE_RW, 1, 128, 1)
 };
 
-static const nOSC_Query_Argument ptp_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+static const OSC_Query_Argument ptp_offset_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Microseconds", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
-static const nOSC_Query_Argument ptp_delay_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Microseconds", nOSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
+static const OSC_Query_Argument ptp_delay_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Microseconds", OSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
 };
 
-const nOSC_Query_Item ptp_tree [] = {
+const OSC_Query_Item ptp_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _ptp_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("multiplier", "Delay request rate multiplier", _ptp_multiplier, ptp_multiplier_args),
-	nOSC_QUERY_ITEM_METHOD("offset_stiffness", "Stiffness of offset filter", _ptp_offset_stiffness, ptp_stiffness_args),
-	nOSC_QUERY_ITEM_METHOD("delay_stiffness", "Stiffness of delay filter", _ptp_delay_stiffness, ptp_stiffness_args),
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _ptp_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("multiplier", "Delay request rate multiplier", _ptp_multiplier, ptp_multiplier_args),
+	OSC_QUERY_ITEM_METHOD("offset_stiffness", "Stiffness of offset filter", _ptp_offset_stiffness, ptp_stiffness_args),
+	OSC_QUERY_ITEM_METHOD("delay_stiffness", "Stiffness of delay filter", _ptp_delay_stiffness, ptp_stiffness_args),
 
 	// read-only
-	nOSC_QUERY_ITEM_METHOD("offset", "Sync offset", _ptp_offset, ptp_offset_args),
-	nOSC_QUERY_ITEM_METHOD("delay", "Sync roundtrip delay", _ptp_delay, ptp_delay_args)
+	OSC_QUERY_ITEM_METHOD("offset", "Sync offset", _ptp_offset, ptp_offset_args),
+	OSC_QUERY_ITEM_METHOD("delay", "Sync roundtrip delay", _ptp_delay, ptp_delay_args)
 };

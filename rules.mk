@@ -18,6 +18,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)/cmc
 BUILDDIRS += $(BUILD_PATH)/$(d)/wiz
 BUILDDIRS += $(BUILD_PATH)/$(d)/nosc
 BUILDDIRS += $(BUILD_PATH)/$(d)/osc
+BUILDDIRS += $(BUILD_PATH)/$(d)/oscquery
 BUILDDIRS += $(BUILD_PATH)/$(d)/dump
 BUILDDIRS += $(BUILD_PATH)/$(d)/config
 BUILDDIRS += $(BUILD_PATH)/$(d)/sntp
@@ -104,6 +105,7 @@ cSRCS_$(d) += wiz/W5500.c
 endif
 cSRCS_$(d) += nosc/nosc.c
 cSRCS_$(d) += osc/osc.c
+cSRCS_$(d) += oscquery/oscquery.c
 cSRCS_$(d) += config/config.c
 cSRCS_$(d) += sntp/sntp.c
 cSRCS_$(d) += ptp/ptp.c

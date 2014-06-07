@@ -63,7 +63,7 @@ enum _OSC_Mode {
 	OSC_MODE_SLIP	= 2
 };
 
-extern const nOSC_Query_Value config_mode_args_values [3];
+extern const OSC_Query_Value config_mode_args_values [3];
 
 struct _OSC_Config {
 	Socket_Config socket;
@@ -210,8 +210,8 @@ uint_fast8_t config_check_uint8(const char *path, const char *fmt, uint_fast8_t 
 uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, uint8_t *boolean);
 uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args, float *val);
 
-const nOSC_Query_Argument config_boolean_args [1];
-const nOSC_Query_Argument config_mode_args [1];
-const nOSC_Query_Argument config_address_args [1];
+const OSC_Query_Argument config_boolean_args [1];
+const OSC_Query_Argument config_mode_args [1];
+const OSC_Query_Argument config_address_args [1];
 
 #endif // _CONFIG_H_

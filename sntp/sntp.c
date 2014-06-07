@@ -204,25 +204,25 @@ _sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
  * Query
  */
 
-static const nOSC_Query_Argument sntp_tau_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Seconds", nOSC_QUERY_MODE_RW, 1, 60, 1)
+static const OSC_Query_Argument sntp_tau_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Seconds", OSC_QUERY_MODE_RW, 1, 60, 1)
 };
 
-static const nOSC_Query_Argument sntp_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+static const OSC_Query_Argument sntp_offset_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
-static const nOSC_Query_Argument sntp_delay_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Seconds", nOSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
+static const OSC_Query_Argument sntp_delay_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
 };
 
-const nOSC_Query_Item sntp_tree [] = {
+const OSC_Query_Item sntp_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _sntp_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _sntp_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("tau", "Update period", _sntp_tau, sntp_tau_args),
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _sntp_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("address", "Single remote address", _sntp_address, config_address_args),
+	OSC_QUERY_ITEM_METHOD("tau", "Update period", _sntp_tau, sntp_tau_args),
 
 	// read-only
-	nOSC_QUERY_ITEM_METHOD("offset", "Sync offset", _sntp_offset, sntp_offset_args),
-	nOSC_QUERY_ITEM_METHOD("delay", "Sync delay", _sntp_delay, sntp_delay_args)
+	OSC_QUERY_ITEM_METHOD("offset", "Sync offset", _sntp_offset, sntp_offset_args),
+	OSC_QUERY_ITEM_METHOD("delay", "Sync delay", _sntp_delay, sntp_delay_args)
 };

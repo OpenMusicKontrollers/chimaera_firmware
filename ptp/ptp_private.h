@@ -28,7 +28,6 @@
 
 #include <ptp.h>
 #include <armfix.h>
-#include <nosc.h>
 
 typedef struct _PTP_Timestamp PTP_Timestamp;
 typedef struct _PTP_Request PTP_Request;

@@ -462,6 +462,6 @@ _dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *a
  * Query
  */
 
-const nOSC_Query_Item dhcpc_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dhcpc_enabled, config_boolean_args),
+const OSC_Query_Item dhcpc_tree [] = {
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dhcpc_enabled, config_boolean_args),
 };

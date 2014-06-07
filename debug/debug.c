@@ -82,7 +82,7 @@ _debug_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
 	{
 		debug_enable(0);
 		uint_fast8_t i;
-		for(i=0; i<sizeof(config_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+		for(i=0; i<sizeof(config_mode_args_values)/sizeof(OSC_Query_Value); i++)
 			if(!strcmp(args[1].s, config_mode_args_values[i].s))
 			{
 				*mode = i;
@@ -101,8 +101,8 @@ _debug_mode(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *args
  * Query
  */
 
-const nOSC_Query_Item debug_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
-	nOSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _debug_mode, config_mode_args)
+const OSC_Query_Item debug_tree [] = {
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
+	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _debug_mode, config_mode_args)
 };

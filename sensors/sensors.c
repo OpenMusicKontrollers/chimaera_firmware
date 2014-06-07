@@ -93,7 +93,7 @@ uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
  * Config
  */
 
-static const nOSC_Query_Value interpolation_mode_args_values [] = {
+static const OSC_Query_Value interpolation_mode_args_values [] = {
 	[INTERPOLATION_NONE]			= { .s = "none" },
 	[INTERPOLATION_LINEAR]		= { .s = "linear" },
 	[INTERPOLATION_QUADRATIC]	= { .s = "quadratic" },
@@ -190,7 +190,7 @@ _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, nOS
 	else
 	{
 		uint_fast8_t i;
-		for(i=0; i<sizeof(interpolation_mode_args_values)/sizeof(nOSC_Query_Value); i++)
+		for(i=0; i<sizeof(interpolation_mode_args_values)/sizeof(OSC_Query_Value); i++)
 			if(!strcmp(args[1].s, interpolation_mode_args_values[i].s))
 			{
 				*interpolation = i;
@@ -267,57 +267,57 @@ _group_number(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Arg *ar
  * Query
  */
 
-static const nOSC_Query_Argument group_number_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX, 1)
+static const OSC_Query_Argument group_number_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX, 1)
 };
 
-static const nOSC_Query_Argument group_attributes_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Min", nOSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
-	nOSC_QUERY_ARGUMENT_FLOAT("Max", nOSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
-	nOSC_QUERY_ARGUMENT_BOOL("North?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("South?", nOSC_QUERY_MODE_RW),
-	nOSC_QUERY_ARGUMENT_BOOL("Scale?", nOSC_QUERY_MODE_RW)
+static const OSC_Query_Argument group_attributes_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Min", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
+	OSC_QUERY_ARGUMENT_FLOAT("Max", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
+	OSC_QUERY_ARGUMENT_BOOL("North?", OSC_QUERY_MODE_RW),
+	OSC_QUERY_ARGUMENT_BOOL("South?", OSC_QUERY_MODE_RW),
+	OSC_QUERY_ARGUMENT_BOOL("Scale?", OSC_QUERY_MODE_RW)
 };
 
-static const nOSC_Query_Item group_attribute_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("%i", "Group %i", _group_attributes, group_attributes_args),
+static const OSC_Query_Item group_attribute_tree [] = {
+	OSC_QUERY_ITEM_METHOD("%i", "Group %i", _group_attributes, group_attributes_args),
 };
 
-static const nOSC_Query_Item group_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
-	nOSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
-	nOSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_tree, GROUP_MAX)
+static const OSC_Query_Item group_tree [] = {
+	OSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
+	OSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
+	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_tree, GROUP_MAX)
 };
 
-static const nOSC_Query_Argument sensors_number_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Number", nOSC_QUERY_MODE_R, SENSOR_N, SENSOR_N, 16)
+static const OSC_Query_Argument sensors_number_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, SENSOR_N, SENSOR_N, 16)
 };
 
-static const nOSC_Query_Argument sensors_rate_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Hz", nOSC_QUERY_MODE_RW, 0, 10000, 100)
+static const OSC_Query_Argument sensors_rate_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Hz", OSC_QUERY_MODE_RW, 0, 10000, 100)
 };
 
-static const nOSC_Query_Value sensors_movingaverage_windows_values [] = {
+static const OSC_Query_Value sensors_movingaverage_windows_values [] = {
 	{ .i = 1 },
 	{ .i = 2 },
 	{ .i = 4 },
 	{ .i = 8 }
 };
 
-static const nOSC_Query_Argument sensors_movingaverage_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32_VALUES("Sample window", nOSC_QUERY_MODE_RW, sensors_movingaverage_windows_values)
+static const OSC_Query_Argument sensors_movingaverage_args [] = {
+	OSC_QUERY_ARGUMENT_INT32_VALUES("Sample window", OSC_QUERY_MODE_RW, sensors_movingaverage_windows_values)
 };
 
-static const nOSC_Query_Argument sensors_interpolation_args [] = {
-	nOSC_QUERY_ARGUMENT_STRING_VALUES("Order", nOSC_QUERY_MODE_RW, interpolation_mode_args_values)
+static const OSC_Query_Argument sensors_interpolation_args [] = {
+	OSC_QUERY_ARGUMENT_STRING_VALUES("Order", OSC_QUERY_MODE_RW, interpolation_mode_args_values)
 };
 
-const nOSC_Query_Item sensors_tree [] = {
-	nOSC_QUERY_ITEM_NODE("group/", "Group", group_tree),
+const OSC_Query_Item sensors_tree [] = {
+	OSC_QUERY_ITEM_NODE("group/", "Group", group_tree),
 
-	nOSC_QUERY_ITEM_METHOD("movingaverage", "Movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
-	nOSC_QUERY_ITEM_METHOD("interpolation", "Interpolation", _sensors_interpolation, sensors_interpolation_args),
-	nOSC_QUERY_ITEM_METHOD("rate", "Update rate", _sensors_rate, sensors_rate_args),
+	OSC_QUERY_ITEM_METHOD("movingaverage", "Movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
+	OSC_QUERY_ITEM_METHOD("interpolation", "Interpolation", _sensors_interpolation, sensors_interpolation_args),
+	OSC_QUERY_ITEM_METHOD("rate", "Update rate", _sensors_rate, sensors_rate_args),
 
-	nOSC_QUERY_ITEM_METHOD("number", "Sensor number", _sensors_number, sensors_number_args),
+	OSC_QUERY_ITEM_METHOD("number", "Sensor number", _sensors_number, sensors_number_args),
 };

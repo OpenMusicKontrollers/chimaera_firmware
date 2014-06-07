@@ -26,8 +26,7 @@
 
 #include <stdint.h>
 
-#include <netdef.h>
-#include <nosc.h>
+#include <oscquery.h>
 
 /*
 #define SNTP_SYSTICK_RELOAD_VAL 719 // 10us
@@ -43,7 +42,7 @@
 
 extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;
-extern const nOSC_Query_Item sntp_tree [5];
+extern const OSC_Query_Item sntp_tree [5];
 
 void sntp_reset();
 uint32_t sntp_uptime();

@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-#include <nosc.h>
+#include <oscquery.h>
 #include <wiz.h>
 #include <config.h>
 
@@ -41,6 +41,6 @@ void DEBUG(const char *fmt, ...);
 #define debug_double(d) DEBUG("d", d)
 #define debug_timestamp(t) DEBUG("t", t)
 
-extern const nOSC_Query_Item debug_tree [3];
+extern const OSC_Query_Item debug_tree [3];
 
 #endif // _DEBUG_H_

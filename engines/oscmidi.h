@@ -25,9 +25,10 @@
 #define _OSCMIDI_H_
 
 #include <cmc.h>
+#include <oscquery.h>
 
 extern CMC_Engine oscmidi_engine;
-extern const nOSC_Query_Item oscmidi_tree [4];
+extern const OSC_Query_Item oscmidi_tree [4];
 
 void oscmidi_init();
 

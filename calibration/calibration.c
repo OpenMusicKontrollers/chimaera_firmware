@@ -659,56 +659,56 @@ _calibration_reset(const char *path, const char *fmt, uint_fast8_t argc, nOSC_Ar
  * Query
  */
 
-static const nOSC_Query_Argument calibration_load_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
+static const OSC_Query_Argument calibration_load_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Slot", OSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
 };
 
-static const nOSC_Query_Argument calibration_save_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Slot", nOSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
+static const OSC_Query_Argument calibration_save_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Slot", OSC_QUERY_MODE_W, 0, EEPROM_RANGE_MAX, 1)
 };
 
-static const nOSC_Query_Argument calibration_min_args [] = {
-	nOSC_QUERY_ARGUMENT_INT32("Sensor", nOSC_QUERY_MODE_R, 0, SENSOR_N - 1, 1)
+static const OSC_Query_Argument calibration_min_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Sensor", OSC_QUERY_MODE_R, 0, SENSOR_N - 1, 1)
 };
 
-static const nOSC_Query_Argument calibration_mid_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
+static const OSC_Query_Argument calibration_mid_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", OSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
 };
 
-static const nOSC_Query_Argument calibration_end_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", nOSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
+static const OSC_Query_Argument calibration_end_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Relative vicinity", OSC_QUERY_MODE_W, 0.f, 1.f, 0.01)
 };
 	
-static const nOSC_Query_Argument calibration_blob_args [] = {
-	nOSC_QUERY_ARGUMENT_BLOB("Blob", nOSC_QUERY_MODE_R)
+static const OSC_Query_Argument calibration_blob_args [] = {
+	OSC_QUERY_ARGUMENT_BLOB("Blob", OSC_QUERY_MODE_R)
 };
 
-static const nOSC_Query_Argument calibration_offset_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("W", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+static const OSC_Query_Argument calibration_offset_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("W", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
-static const nOSC_Query_Argument calibration_curve_args [] = {
-	nOSC_QUERY_ARGUMENT_FLOAT("c0", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
-	nOSC_QUERY_ARGUMENT_FLOAT("c1", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
-	nOSC_QUERY_ARGUMENT_FLOAT("c2", nOSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+static const OSC_Query_Argument calibration_curve_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("c0", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
+	OSC_QUERY_ARGUMENT_FLOAT("c1", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
+	OSC_QUERY_ARGUMENT_FLOAT("c2", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
-const nOSC_Query_Item calibration_tree [] = {
-	nOSC_QUERY_ITEM_METHOD("load", "Load calibration from EEPROM", _calibration_load, calibration_load_args),
-	nOSC_QUERY_ITEM_METHOD("save", "Save calibration to EEPROM", _calibration_save, calibration_save_args),
-	nOSC_QUERY_ITEM_METHOD("reset", "Reset calibration to factory settings", _calibration_reset, NULL),
+const OSC_Query_Item calibration_tree [] = {
+	OSC_QUERY_ITEM_METHOD("load", "Load calibration from EEPROM", _calibration_load, calibration_load_args),
+	OSC_QUERY_ITEM_METHOD("save", "Save calibration to EEPROM", _calibration_save, calibration_save_args),
+	OSC_QUERY_ITEM_METHOD("reset", "Reset calibration to factory settings", _calibration_reset, NULL),
 
-	nOSC_QUERY_ITEM_METHOD("start", "Start calibration procedure", _calibration_start, NULL),
-	nOSC_QUERY_ITEM_METHOD("zero", "Calibrate quiescent values", _calibration_zero, NULL),
-	nOSC_QUERY_ITEM_METHOD("min", "Calibrate threshold values / curve fit point 1", _calibration_min, calibration_min_args),
-	nOSC_QUERY_ITEM_METHOD("mid", "Curve fit points 2-4", _calibration_mid, calibration_mid_args),
-	nOSC_QUERY_ITEM_METHOD("max", "Curve fit point 5", _calibration_max, NULL),
-	nOSC_QUERY_ITEM_METHOD("end", "End calibration procedure", _calibration_end, calibration_end_args),
+	OSC_QUERY_ITEM_METHOD("start", "Start calibration procedure", _calibration_start, NULL),
+	OSC_QUERY_ITEM_METHOD("zero", "Calibrate quiescent values", _calibration_zero, NULL),
+	OSC_QUERY_ITEM_METHOD("min", "Calibrate threshold values / curve fit point 1", _calibration_min, calibration_min_args),
+	OSC_QUERY_ITEM_METHOD("mid", "Curve fit points 2-4", _calibration_mid, calibration_mid_args),
+	OSC_QUERY_ITEM_METHOD("max", "Curve fit point 5", _calibration_max, NULL),
+	OSC_QUERY_ITEM_METHOD("end", "End calibration procedure", _calibration_end, calibration_end_args),
 
-	nOSC_QUERY_ITEM_METHOD("quiescent", "Query calibration quiescent data", _calibration_quiescent, calibration_blob_args),
-	nOSC_QUERY_ITEM_METHOD("threshold", "Query calibration threshold data", _calibration_threshold, calibration_blob_args),
-	nOSC_QUERY_ITEM_METHOD("U", "Query calibration amplification data", _calibration_amplification, calibration_blob_args),
+	OSC_QUERY_ITEM_METHOD("quiescent", "Query calibration quiescent data", _calibration_quiescent, calibration_blob_args),
+	OSC_QUERY_ITEM_METHOD("threshold", "Query calibration threshold data", _calibration_threshold, calibration_blob_args),
+	OSC_QUERY_ITEM_METHOD("U", "Query calibration amplification data", _calibration_amplification, calibration_blob_args),
 
-	nOSC_QUERY_ITEM_METHOD("W", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
-	nOSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args)
+	OSC_QUERY_ITEM_METHOD("W", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
+	OSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args)
 };

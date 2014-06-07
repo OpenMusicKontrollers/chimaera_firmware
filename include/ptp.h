@@ -27,9 +27,9 @@
 #include <stdint.h>
 
 #include <netdef.h>
-#include <nosc.h>
+#include <oscquery.h>
 
-extern const nOSC_Query_Item ptp_tree [6];
+extern const OSC_Query_Item ptp_tree [6];
 
 void ptp_reset();
 int64_t ptp_uptime();

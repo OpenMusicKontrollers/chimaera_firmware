@@ -24,12 +24,10 @@
 #ifndef _DUMP_H_
 #define _DUMP_H_
 
-#include <stdint.h>
+#include <cmc.h>
+#include <oscquery.h>
 
-#include <netdef.h>
-#include <nosc.h>
-
-extern const nOSC_Query_Item dump_tree [1];
+extern const OSC_Query_Item dump_tree [1];
 
 void dump_init(int32_t size, int16_t *swap);
 

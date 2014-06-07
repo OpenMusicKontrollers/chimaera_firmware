@@ -24,7 +24,8 @@
 #ifndef _SCSYNTH_H_
 #define _SCSYNTH_H_
 
-#include <stdint.h>
+#include <cmc.h>
+#include <oscquery.h>
 
 typedef enum _SCSynth_Add_Action SCSynth_Add_Action;
 typedef struct _SCSynth_Group SCSynth_Group;
@@ -48,7 +49,7 @@ struct _SCSynth_Group {
 
 extern SCSynth_Group *scsynth_groups;
 extern CMC_Engine scsynth_engine;
-extern const nOSC_Query_Item scsynth_tree [3];
+extern const OSC_Query_Item scsynth_tree [3];
 
 void scsynth_init();
 

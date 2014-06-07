@@ -26,9 +26,9 @@
 
 #include <stdint.h>
 
-#include <nosc.h>
+#include <oscquery.h>
 
-extern const nOSC_Query_Item ipv4ll_tree [1];
+extern const OSC_Query_Item ipv4ll_tree [1];
 
 void IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
 

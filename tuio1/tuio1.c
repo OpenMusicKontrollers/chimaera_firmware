@@ -176,8 +176,8 @@ _tuio1_custom_profile(const char *path, const char *fmt, uint_fast8_t argc, nOSC
  * Query
  */
 
-const nOSC_Query_Item tuio1_tree [] = {
+const OSC_Query_Item tuio1_tree [] = {
 	// read-write
-	nOSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio1_enabled, config_boolean_args),
-	nOSC_QUERY_ITEM_METHOD("custom_profile", "Toggle custom profile", _tuio1_custom_profile, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio1_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("custom_profile", "Toggle custom profile", _tuio1_custom_profile, config_boolean_args),
 };
