@@ -70,15 +70,9 @@ scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Time
 
 	osc_data_t *buf_ptr = buf;
 
-	if(!(nblob_old + nblob_new))
-	{
-		osc_data_t *buf_ptr = buf;
-		osc_data_t *itm;
-
-		if(cmc_engines_active + config.dump.enabled > 1)
-			buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-		buf_ptr = osc_start_bundle(buf_ptr, offset);
-	}
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset);
 
 	return buf_ptr;
 }
@@ -88,9 +82,8 @@ scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 {
 	osc_data_t *buf_ptr = buf;
 
-	if(!(nblob_old + nblob_new))
-		if(cmc_engines_active + config.dump.enabled > 1)
-			buf_ptr = osc_end_item_variable(buf_ptr, pack);
+	if(cmc_engines_active + config.dump.enabled > 1)
+		buf_ptr = osc_end_item_variable(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -111,10 +104,10 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 	{
 		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
 		{
-			buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
-			osc_data_t *sub;
-			buf_ptr = osc_start_item_variable(buf_ptr, &sub);
-			{
+			//buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
+			//osc_data_t *sub;
+			//buf_ptr = osc_start_item_variable(buf_ptr, &sub);
+			//{
 				buf_ptr = osc_set_path(buf_ptr, on_str);
 				buf_ptr = osc_set_fmt(buf_ptr, on_fmt);
 
@@ -126,8 +119,8 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 				buf_ptr = osc_set_int32(buf_ptr, 0); // do not start synth yet
 				buf_ptr = osc_set_string(buf_ptr,(char *)out_str);
 				buf_ptr = osc_set_int32(buf_ptr, group->out);
-			}
-			buf_ptr = osc_end_item_variable(buf_ptr, sub);
+			//}
+			//buf_ptr = osc_end_item_variable(buf_ptr, sub);
 		}
 		buf_ptr = osc_end_item_variable(buf_ptr, itm);
 	}
