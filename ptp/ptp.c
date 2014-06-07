@@ -140,7 +140,7 @@ _ptp_update_offset()
 		OO1 = Os * (O0 + O1) / 2 + OO0 * (1.f - Os);
 		t0 -= OO1;
 
-#if 0
+#if 1
 	DEBUG("sdd", "PTPv2", OO1, DD1);
 #endif
 
