@@ -252,52 +252,6 @@ osc_get_midi(osc_data_t *buf, uint8_t **m)
 	return buf + 4;
 }
 
-// create preamble for TCP mode
-extern inline osc_data_t *
-osc_start_preamble(osc_data_t *buf, osc_data_t **itm)
-{
-	*itm = buf;
-	return buf + 4;
-}
-
-extern inline osc_data_t *
-osc_end_preamble(osc_data_t *buf, osc_data_t *itm)
-{
-	swap32_t *s = (swap32_t *)itm;
-	s->i = buf - (itm + 4);
-	s->u = htonl(s->u);
-	return buf;
-}
-
-// create bundle
-extern inline osc_data_t *
-osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag)
-{
-	strncpy(buf, "#bundle", 8);
-	swap64_t s0 = { .t = timetag };
-	swap64_t *s1 = (swap64_t *)(buf + 8);
-	s1->u.upper = htonl(s0.u.lower);
-	s1->u.lower = htonl(s0.u.upper);
-	return buf + 16;
-}
-
-// create item
-extern inline osc_data_t *
-osc_start_item_variable(osc_data_t *buf, osc_data_t **itm)
-{
-	*itm = buf;
-	return buf + 4;
-}
-
-extern inline osc_data_t *
-osc_end_item_variable(osc_data_t *buf, osc_data_t *itm)
-{
-	swap32_t *s = (swap32_t *)itm;
-	s->i = buf - (itm + 4);
-	s->u = htonl(s->u);
-	return buf;
-}
-
 // write OSC argument to raw buffer
 extern inline osc_data_t *
 osc_set_path(osc_data_t *buf, const char *path)
@@ -430,6 +384,46 @@ osc_set_midi_inline(osc_data_t *buf, uint8_t **m)
 {
 	*m = (uint8_t *)buf;
 	return buf + 4;
+}
+
+// create bundle
+extern inline osc_data_t *
+osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag, osc_data_t **bndl)
+{
+	strncpy(buf, "#bundle", 8);
+	osc_set_timetag(buf + 8, timetag);
+	return buf + 16;
+}
+
+extern inline osc_data_t *
+osc_end_bundle(osc_data_t *buf, osc_data_t *bndl)
+{
+	size_t len = buf - (bndl + 16);
+	if(len > 0)
+		return buf;
+	else // empty bundle
+		return bndl;
+}
+
+// create item
+extern inline osc_data_t *
+osc_start_bundle_item(osc_data_t *buf, osc_data_t **itm)
+{
+	*itm = buf;
+	return buf + 4;
+}
+
+extern inline osc_data_t *
+osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm)
+{
+	size_t len = buf - (itm + 4);
+	if(len > 0)
+	{
+		osc_set_int32(itm, len);
+		return buf;
+	}
+	else // empty item
+		return itm;
 }
 
 osc_data_t *osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...);

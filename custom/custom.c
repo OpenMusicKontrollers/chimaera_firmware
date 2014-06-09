@@ -35,6 +35,7 @@ static Custom_Item *items = config.custom.items;
 static RPN_Stack stack;
 
 static osc_data_t *pack;
+static osc_data_t *bndl;
 
 void
 custom_init()
@@ -53,8 +54,8 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
 	Custom_Item *item;
 	if(nblob_old + nblob_new)
@@ -62,14 +63,14 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 			if(item->dest == RPN_FRAME)
 			{
-				buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+				buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 				{
 					buf_ptr = osc_set_path(buf_ptr, item->path);
 					buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 					buf_ptr = rpn_run(buf_ptr, item, &stack);
 				}
-				buf_ptr = osc_end_item_variable(buf_ptr, itm);
+				buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 			}
 			else if(item->dest == RPN_NONE)
 				break;
@@ -79,14 +80,14 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 			if(item->dest == RPN_IDLE)
 			{
-				buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+				buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 				{
 					buf_ptr = osc_set_path(buf_ptr, item->path);
 					buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 					buf_ptr = rpn_run(buf_ptr, item, &stack);
 				}
-				buf_ptr = osc_end_item_variable(buf_ptr, itm);
+				buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 			}
 			else if(item->dest == RPN_NONE)
 				break;
@@ -105,20 +106,21 @@ custom_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_END)
 		{
-			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 			{
 				buf_ptr = osc_set_path(buf_ptr, item->path);
 				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 				buf_ptr = rpn_run(buf_ptr, item, &stack);
 			}
-			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
 
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -139,14 +141,14 @@ custom_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_ON)
 		{
-			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 			{
 				buf_ptr = osc_set_path(buf_ptr, item->path);
 				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 				buf_ptr = rpn_run(buf_ptr, item, &stack);
 			}
-			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
@@ -169,14 +171,14 @@ custom_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_OFF)
 		{
-			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 			{
 				buf_ptr = osc_set_path(buf_ptr, item->path);
 				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 				buf_ptr = rpn_run(buf_ptr, item, &stack);
 			}
-			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;
@@ -200,14 +202,14 @@ custom_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
 		if(item->dest == RPN_SET)
 		{
-			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 			{
 				buf_ptr = osc_set_path(buf_ptr, item->path);
 				buf_ptr = osc_set_fmt(buf_ptr, item->fmt);
 
 				buf_ptr = rpn_run(buf_ptr, item, &stack);
 			}
-			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 		}
 		else if(item->dest == RPN_NONE)
 			break;

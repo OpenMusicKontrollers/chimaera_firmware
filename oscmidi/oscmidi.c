@@ -36,6 +36,7 @@ static const char *oscmidi_fmt_1 = "m";
 static MIDI_Hash oscmidi_hash [BLOB_MAX];
 
 static osc_data_t *pack;
+static osc_data_t *bndl;
 
 void
 oscmidi_init()
@@ -49,8 +50,8 @@ oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Time
 	osc_data_t *buf_ptr = buf;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
 	return buf_ptr;
 }
@@ -60,8 +61,9 @@ oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 {
 	osc_data_t *buf_ptr = buf;
 
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -71,7 +73,7 @@ oscmidi_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
 		if(config.oscmidi.effect <= 0xd)
@@ -115,7 +117,7 @@ oscmidi_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 		M[2] = config.oscmidi.effect | MIDI_MSV;
 		M[3] = eff >> 7;
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	return buf_ptr;
 }
@@ -125,7 +127,7 @@ oscmidi_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
 		buf_ptr = osc_set_fmt(buf_ptr, oscmidi_fmt_1);
@@ -140,7 +142,7 @@ oscmidi_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 		M[2] = key;
 		M[3] = 0x7f;
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	return buf_ptr;
 }
@@ -150,7 +152,7 @@ oscmidi_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, oscmidi_str);
 		if(config.oscmidi.effect <= 0xd)
@@ -186,7 +188,7 @@ oscmidi_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 		M[2] = config.oscmidi.effect | MIDI_MSV;
 		M[3] = eff >> 7;
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	return buf_ptr;
 }

@@ -54,6 +54,7 @@ static uint_fast8_t early_i = 0;
 static uint_fast8_t late_i = 0;
 
 static osc_data_t *pack;
+static osc_data_t *bndl;
 
 void
 scsynth_init()
@@ -71,8 +72,8 @@ scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Time
 	osc_data_t *buf_ptr = buf;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
 	return buf_ptr;
 }
@@ -82,8 +83,9 @@ scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 {
 	osc_data_t *buf_ptr = buf;
 
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -102,11 +104,12 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 	// message to create synth(sent early, e.g immediately)
 	if(group->alloc)
 	{
-		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 		{
-			//buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
 			//osc_data_t *sub;
-			//buf_ptr = osc_start_item_variable(buf_ptr, &sub);
+			//osc_data_t *s;
+			//buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &s);
+			//buf_ptr = osc_start_bundle_item(buf_ptr, &sub);
 			//{
 				buf_ptr = osc_set_path(buf_ptr, on_str);
 				buf_ptr = osc_set_fmt(buf_ptr, on_fmt);
@@ -120,15 +123,16 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 				buf_ptr = osc_set_string(buf_ptr,(char *)out_str);
 				buf_ptr = osc_set_int32(buf_ptr, group->out);
 			//}
-			//buf_ptr = osc_end_item_variable(buf_ptr, sub);
+			//buf_ptr = osc_end_bundle_item(buf_ptr, sub);
+			//buf_ptr = osc_end_bundle(buf_ptr, s);
 		}
-		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 	}
 
 	// message to start synth(sent late, e.g. with lag)
 	if(group->gate)
 	{
-		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 		{
 			buf_ptr = osc_set_path(buf_ptr, set_str);
 			buf_ptr = osc_set_fmt(buf_ptr, on_set_fmt);
@@ -143,7 +147,7 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 			buf_ptr = osc_set_string(buf_ptr, (char *)gate_str);
 			buf_ptr = osc_set_int32(buf_ptr, 1);
 		}
-		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 	}
 	
 	return buf_ptr;
@@ -162,7 +166,7 @@ scsynth_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 
 	if(group->gate)
 	{
-		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 		{
 			buf_ptr = osc_set_path(buf_ptr, set_str);
 			buf_ptr = osc_set_fmt(buf_ptr, off_fmt);
@@ -171,7 +175,7 @@ scsynth_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 			buf_ptr = osc_set_string(buf_ptr, (char *)gate_str);
 			buf_ptr = osc_set_int32(buf_ptr, 0);
 		}
-		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 	}
 
 	return buf_ptr;
@@ -188,7 +192,7 @@ scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 
 	id = group->is_group ? group->group : group->sid + sid;
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, set_str);
 		buf_ptr = osc_set_fmt(buf_ptr, set_fmt);
@@ -201,7 +205,7 @@ scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 		buf_ptr = osc_set_int32(buf_ptr, group->arg + 2);
 		buf_ptr = osc_set_int32(buf_ptr, pid);
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	return buf_ptr;
 }

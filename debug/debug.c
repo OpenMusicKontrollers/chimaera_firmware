@@ -35,17 +35,18 @@ DEBUG(const char *fmt, ...)
 		osc_data_t *preamble;
 
 		if(config.debug.osc.mode == OSC_MODE_TCP)
-			buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
 
 		va_list args;
 		va_start(args, fmt);
 		buf_ptr = osc_varlist_set(buf_ptr, "/debug", fmt, args);
 		va_end(args);
 
-		uint16_t size = buf_ptr - buf;
 		if(config.debug.osc.mode == OSC_MODE_TCP)
-			buf_ptr = osc_end_preamble(buf_ptr, preamble);
-		else if(config.debug.osc.mode == OSC_MODE_SLIP)
+			buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
+		
+		uint16_t size = buf_ptr - buf;
+		if(config.debug.osc.mode == OSC_MODE_SLIP)
 			size = slip_encode(buf, size);
 
 		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);

@@ -50,6 +50,7 @@ static int32_t alv_ids [BLOB_MAX];
 static uint_fast8_t counter;
 
 static osc_data_t *pack;
+static osc_data_t *bndl;
 static osc_data_t *pp;
 
 void
@@ -65,15 +66,15 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
 	uint_fast8_t i;
 	for(i=0; i<counter; i++)
 		alv_fmt[i+1] = OSC_INT32;
 	alv_fmt[counter+1] = '\0';
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
 		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
@@ -82,7 +83,7 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 		pp = buf_ptr;
 		buf_ptr += nblob_new * 4;
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	counter = 0; // reset token pointer
 
@@ -99,7 +100,7 @@ tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 	for(i=0; i<counter; i++)
 		pp = osc_set_int32(pp, alv_ids[i]);
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
 		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt);
@@ -107,10 +108,11 @@ tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 		buf_ptr = osc_set_string(buf_ptr, fseq_str);
 		buf_ptr = osc_set_int32(buf_ptr, fid);
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -121,7 +123,7 @@ tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
 		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt[config.tuio1.custom_profile]);
@@ -141,7 +143,7 @@ tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 			buf_ptr = osc_set_float(buf_ptr, 0.f);
 		}
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	alv_ids[counter++] = sid;
 

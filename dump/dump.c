@@ -46,22 +46,24 @@ dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset)
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 	osc_data_t *pack;
+	osc_data_t *bndl;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
+
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
-		buf_ptr = osc_start_bundle(buf_ptr, offset);
-		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
-		{
-			buf_ptr = osc_set_path(buf_ptr, dump_str);
-			buf_ptr = osc_set_fmt(buf_ptr, dump_fmt);
-			buf_ptr = osc_set_int32(buf_ptr, ++frame);
-			buf_ptr = osc_set_blob(buf_ptr, len, payload);
-		}
-		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		buf_ptr = osc_set_path(buf_ptr, dump_str);
+		buf_ptr = osc_set_fmt(buf_ptr, dump_fmt);
+		buf_ptr = osc_set_int32(buf_ptr, ++frame);
+		buf_ptr = osc_set_blob(buf_ptr, len, payload);
 	}
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }

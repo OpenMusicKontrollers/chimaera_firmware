@@ -45,6 +45,7 @@ static int32_t addr;
 static int32_t inst;
 
 static osc_data_t *pack;
+static osc_data_t *bndl;
 
 void
 tuio2_init()
@@ -67,10 +68,10 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_item_variable(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, frm_str);
 		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt[long_header]);
@@ -85,7 +86,7 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 			buf_ptr = osc_set_int32(buf_ptr, (SENSOR_N << 16) | 1);
 		}
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	counter = 0; // reset token pointer
 
@@ -103,7 +104,7 @@ tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 		alv_fmt[i] = OSC_INT32;
 	alv_fmt[counter] = '\0';
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, alv_str);
 		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
@@ -111,10 +112,11 @@ tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 		for(i=0; i<counter; i++)
 			buf_ptr = osc_set_int32(buf_ptr, alv_ids[i]);
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_item_variable(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
 
 	return buf_ptr;
 }
@@ -125,7 +127,7 @@ tuio2_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
-	buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, tok_str);
 		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt);
@@ -137,7 +139,7 @@ tuio2_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 		buf_ptr = osc_set_float(buf_ptr, y);
 		buf_ptr = osc_set_float(buf_ptr, pid == CMC_NORTH ? 0.f : M_PI);
 	}
-	buf_ptr = osc_end_item_variable(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
 	alv_ids[counter++] = sid;
 

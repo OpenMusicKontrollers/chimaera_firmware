@@ -538,16 +538,18 @@ loop()
 
 //#define OSCTEST
 #ifdef OSCTEST
+	osc_data_t *bndl;
 	osc_data_t *itm;
 	osc_data_t *buf_ptr;
 	
 	buf_ptr = BUF_O_OFFSET(!buf_o_ptr);
-	buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
-		buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl);
+		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 			buf_ptr = osc_set_path(buf_ptr, "/osc");
 			buf_ptr = osc_set_fmt(buf_ptr, "b");
 			buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
-		buf_ptr = osc_end_item_variable(buf_ptr, itm);
+		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	cmc_len = buf_ptr - BUF_O_OFFSET(!buf_o_ptr);
 
 	while(1)
@@ -555,12 +557,13 @@ loop()
 		osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
 
 		buf_ptr = BUF_O_OFFSET(buf_o_ptr);
-		buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE);
-			buf_ptr = osc_start_item_variable(buf_ptr, &itm);
+		buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl);
+			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 				buf_ptr = osc_set_path(buf_ptr, "/osc");
 				buf_ptr = osc_set_fmt(buf_ptr, "b");
 				buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
-			buf_ptr = osc_end_item_variable(buf_ptr, itm);
+			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+		buf_ptr = osc_end_bundle(buf_ptr, bndl);
 		cmc_len = buf_ptr - BUF_O_OFFSET(buf_o_ptr);
 
 		osc_send_block(&config.output.osc);
@@ -622,10 +625,11 @@ loop()
 			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
 			osc_data_t *buf_ptr = buf;
 			osc_data_t *preamble;
+			osc_data_t *bndl;
 			if(config.output.osc.mode == OSC_MODE_TCP)
-				buf_ptr = osc_start_preamble(buf_ptr, &preamble);
+				buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
 			if(cmc_engines_active + config.dump.enabled > 1)
-				buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE); // node bundle
+				buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl); // node bundle
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
 				buf_ptr = dump_update(buf_ptr, now, offset);
@@ -637,22 +641,22 @@ loop()
 #endif
 				buf_ptr = cmc_process(now, offset, adc_rela, engines, buf_ptr); // touch recognition of current cycle
 			}
+			
+			if(cmc_engines_active + config.dump.enabled > 1)
+				buf_ptr = osc_end_bundle(buf_ptr, bndl); // node bundle
+			if(config.output.osc.mode == OSC_MODE_TCP)
+				buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
 
 			cmc_len = buf_ptr - buf;
-			if(cmc_len > (config.output.osc.mode == OSC_MODE_TCP ? 20 : 16)) // is there anything after OSC bundle header?
+			if(cmc_len > 0) // is there anything after OSC bundle header?
 			{
 				job = 1;
 
-				if(config.output.osc.mode == OSC_MODE_TCP)
-					buf_ptr = osc_end_preamble(buf_ptr, preamble);
-				else if(config.output.osc.mode == OSC_MODE_SLIP)
+				if(config.output.osc.mode == OSC_MODE_SLIP)
 					cmc_len = slip_encode(buf, cmc_len);
 			}
 			else // cmc_len <= 16
-			{
 				job = 0;
-				cmc_len = 0;
-			}
 
 #ifdef BENCHMARK
 			stop_watch_start(&sw_output_block);
