@@ -293,7 +293,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 		buf_ptr = osc_get_string(buf_ptr, &opath);
 		buf_ptr = osc_get_string(buf_ptr, &argv);
 
-		if( (item-items < CUSTOM_MAX_EXPR) && strcmp(opath, "") && rpn_compile(argv, item) )
+		if( (item-items < CUSTOM_MAX_EXPR) && osc_check_path(opath) && rpn_compile(argv, item) )
 		{
 			uint_fast8_t i;
 			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(OSC_Query_Value); i++)
@@ -302,7 +302,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 					item->dest = i;
 					break;
 				}
-			strcpy(item->path, opath); // TODO check for valid path
+			strcpy(item->path, opath);
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
