@@ -28,37 +28,16 @@
 static inline __always_inline float
 pop(RPN_Stack *stack)
 {
-#if 0
-	// more robust version
-	float v = stack->arr[0];
-
-	int32_t i;
-	for(i=0; i<RPN_STACK_HEIGHT-1; i++)
-		stack->arr[i] = stack->arr[i+1];
-	stack->arr[RPN_STACK_HEIGHT-1] = 0.f;
-	return v;
-#else
-	// more efficient version
+	(stack->ptr)--; // underflow is checked for at compile time
 	float v = *(stack->ptr);
-	(stack->ptr)--; //FIXME check for underflow
 	return v;
-#endif
 }
 
 static inline __always_inline void
 push(RPN_Stack *stack, float v)
 {
-#if 0
-	// more robust version
-	int32_t i;
-	for(i=RPN_STACK_HEIGHT-1; i>0; i--)
-		stack->arr[i] = stack->arr[i-1];
-	stack->arr[0] = v;
-#else
-	// more efficient version
-	(stack->ptr)++; //FIXME check for stack overflow
-	*stack->ptr = v;
-#endif
+	*(stack->ptr) = v;
+	(stack->ptr)++; // overflow is checked for at compile time
 }
 
 static inline __always_inline void
@@ -96,7 +75,7 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			}
 			case RPN_POP_INT32:
 			{
-				int32_t i = pop(stack);
+				volatile int32_t i = pop(stack);
 				buf_ptr = osc_set_int32(buf_ptr, i);
 				break;
 			}
@@ -115,22 +94,14 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 				m[1] = pop(stack);
 				m[0] = pop(stack);
 				break;
-				/* examples
-					m($g 8* $b+ 0x90 3 12* 0.5- $n 18% 6/- $n 3/+ 0x7f)
-					m($g 8* $b+ 0xc0 0x27 $z 0x3fff* 0x7f&)
-					m($g 8* $b+ 0xc0 0x07 $z 0x3fff* 7<<)
-					m($g 8* $b+ $z 0x3fff* 1@ 0xc0 0x27 3@ 0x7f&) m(7>> 0xc0# 0x07#)
-					m($z 0x3fff* $g 8* $b+ @@ 0xc0 0x27 4@ 0x7f&) m(0xc0 0x07 3@ 7>>)
-				*/
 			}
 			case RPN_POP_BLOB:
 			{
 				uint8_t *b;
-				int32_t len = stack->ptr - stack->arr; // pull everything from stack
+				volatile int32_t len = stack->ptr - stack->arr; // pop whole stack
 				buf_ptr = osc_set_blob_inline(buf_ptr, len, (void **)&b);
-				uint_fast8_t i;
-				for(i=len-1; i>=0; i--)
-					b[i] = pop(stack);
+				for(len--; len>=0; len--)
+					b[len] = pop(stack);
 				break;
 			}
 
@@ -233,12 +204,16 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			case RPN_DUPL_AT:
 			{
 				int32_t pos = pop(stack);
+				if(pos > RPN_STACK_HEIGHT)
+					pos = RPN_STACK_HEIGHT;
+				else if(pos < 1)
+					pos = 1;
 				duplicate(stack, pos);
 				break;
 			}
 			case RPN_DUPL_TOP:
 			{
-				duplicate(stack, 0);
+				duplicate(stack, 1);
 				break;
 			}
 			case RPN_LSHIFT:
@@ -359,12 +334,12 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 }
 
 static uint_fast8_t
-rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
+rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 {
 	const char *ptr = str;
 	const char *end = str + len;
 
-	RPN_Instruction *inst = &vm->inst[offset];
+	RPN_Instruction *inst = &vm->inst[compiler->offset];
 
 	while(ptr < end)
 	{
@@ -375,30 +350,44 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case 'f':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_FID;
 						ptr++;
 						break;
 					case 'b':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_SID;
 						ptr++;
 						break;
 					case 'g':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_GID;
 						ptr++;
 						break;
 					case 'p':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_PID;
 						ptr++;
 						break;
 					case 'x':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_X;
 						ptr++;
 						break;
 					case 'z':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_Z;
 						ptr++;
 						break;
 					case 'n':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_PUSH_N;
 						ptr++;
 						break;
@@ -416,34 +405,48 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				break;
 
 			case '+':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_ADD;
 				ptr++;
 				break;
 			case '-':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_SUB;
 				ptr++;
 				break;
 			case '*':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_MUL;
 				ptr++;
 				break;
 			case '/':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_DIV;
 				ptr++;
 				break;
 			case '%':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_MOD;
 				ptr++;
 				break;
 			case '^':
+				if(compiler->pp - 2 < 0) return 0;
+				compiler->pp--;
 				*inst++ = RPN_POW;
 				ptr++;
 				break;
 			case '~':
+				if(compiler->pp - 1 < 0) return 0;
 				*inst++ = RPN_NEG;
 				ptr++;
 				break;
 			case '#':
+				if(compiler->pp - 2 < 0) return 0;
 				*inst++ = RPN_XCHANGE;
 				ptr++;
 				break;
@@ -451,10 +454,13 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '@':
+						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+						compiler->pp++;
 						*inst++ = RPN_DUPL_TOP;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 1 < 0) return 0;
 						*inst++ = RPN_DUPL_AT;
 						break;
 				}
@@ -465,16 +471,21 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '=':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_NOTEQ;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 1 < 0) return 0;
 						*inst++ = RPN_NOT;
 						break;
 				}
 				ptr++;
 				break;
 			case '?':
+				if(compiler->pp - 3 < 0) return 0;
+				compiler->pp -= 2;
 				*inst++ = RPN_COND;
 				ptr++;
 				break;
@@ -482,14 +493,20 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '=':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_LEQ;
 						ptr++;
 						break;
 					case '<':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_LSHIFT;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_LT;
 						break;
 				}
@@ -499,14 +516,20 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '=':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_GEQ;
 						ptr++;
 						break;
 					case '>':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_RSHIFT;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_GT;
 						break;
 				}
@@ -516,6 +539,8 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '=':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_EQ;
 						ptr++;
 						break;
@@ -528,10 +553,14 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '&':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_LOGICAL_AND;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_BITWISE_AND;
 						break;
 				}
@@ -541,10 +570,14 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				switch(ptr[1])
 				{
 					case '|':
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_LOGICAL_OR;
 						ptr++;
 						break;
 					default:
+						if(compiler->pp - 2 < 0) return 0;
+						compiler->pp--;
 						*inst++ = RPN_BITWISE_OR;
 						break;
 				}
@@ -559,6 +592,8 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				{
 					vm->val[inst - vm->inst] = v;
 					*inst++ = RPN_PUSH_VALUE;
+					if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
+					compiler->pp++;
 					ptr = endptr;
 				}
 				else
@@ -567,17 +602,21 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 		}
 	}
 
-	return inst - vm->inst; // new offset
+	compiler->offset = inst - vm->inst;
+	return 1;
 }
 
 uint_fast8_t
 rpn_compile(const char *args, Custom_Item *itm)
 {
 	RPN_VM *vm = &itm->vm;
+	RPN_Compiler compiler = {
+		.offset = 0,
+		.pp = 0
+	};
 
 	const char *ptr = args;
 	const char *end = args + strlen(args);
-	uint_fast8_t offset = 0;
 	uint_fast8_t counter = 0;
 
 	while(ptr < end)
@@ -599,14 +638,14 @@ rpn_compile(const char *args, Custom_Item *itm)
 					if(closing)
 					{
 						size_t size = closing - ptr;
-						offset = rpn_compile_sub(ptr, size, vm, offset);
-						if(offset)
+						if(rpn_compile_sub(ptr, size, vm, &compiler))
 						{
 							ptr += size;
 							ptr++; // skip ')'
 
 							itm->fmt[counter++] = OSC_INT32;
-							vm->inst[offset++] = RPN_POP_INT32;
+							vm->inst[compiler.offset++] = RPN_POP_INT32;
+							compiler.pp--;
 						}
 						else
 							return 0; // parse error
@@ -629,14 +668,14 @@ rpn_compile(const char *args, Custom_Item *itm)
 					if(closing)
 					{
 						size_t size = closing - ptr;
-						offset = rpn_compile_sub(ptr, size, vm, offset);
-						if(offset)
+						if(rpn_compile_sub(ptr, size, vm, &compiler))
 						{
 							ptr += size;
 							ptr++; // skip ')'
 
 							itm->fmt[counter++] = OSC_FLOAT;
-							vm->inst[offset++] = RPN_POP_FLOAT;
+							vm->inst[compiler.offset++] = RPN_POP_FLOAT;
+							compiler.pp--;
 						}
 						else
 							return 0; // parse error
@@ -659,14 +698,14 @@ rpn_compile(const char *args, Custom_Item *itm)
 					if(closing)
 					{
 						size_t size = closing - ptr;
-						offset = rpn_compile_sub(ptr, size, vm, offset);
-						if(offset)
+						if(rpn_compile_sub(ptr, size, vm, &compiler))
 						{
 							ptr += size;
 							ptr++; // skip ')'
 
 							itm->fmt[counter++] = OSC_MIDI;
-							vm->inst[offset++] = RPN_POP_MIDI;
+							vm->inst[compiler.offset++] = RPN_POP_MIDI;
+							compiler.pp -= 4;
 						}
 						else
 							return 0; // parse error
@@ -689,14 +728,14 @@ rpn_compile(const char *args, Custom_Item *itm)
 					if(closing)
 					{
 						size_t size = closing - ptr;
-						offset = rpn_compile_sub(ptr, size, vm, offset);
-						if(offset)
+						if(rpn_compile_sub(ptr, size, vm, &compiler))
 						{
 							ptr += size;
 							ptr++; // skip ')'
 
 							itm->fmt[counter++] = OSC_BLOB;
-							vm->inst[offset++] = RPN_POP_BLOB;
+							vm->inst[compiler.offset++] = RPN_POP_BLOB;
+							compiler.pp -= compiler.pp;
 						}
 						else
 							return 0; // parse error
@@ -723,7 +762,7 @@ rpn_compile(const char *args, Custom_Item *itm)
 		}
 
 	itm->fmt[counter] = '\0'; //TODO check overflow CUTOM_MAX_INST
-	vm->inst[offset] = RPN_TERMINATOR;
+	vm->inst[compiler.offset] = RPN_TERMINATOR;
 
-	return ptr == end;
+	return (ptr == end) && (compiler.pp >= 0);
 }

@@ -29,6 +29,7 @@
 #define RPN_STACK_HEIGHT 16
 
 typedef struct _RPN_Stack RPN_Stack;
+typedef struct _RPN_Compiler RPN_Compiler;
 
 struct _RPN_Stack {
 	uint32_t fid;
@@ -44,6 +45,11 @@ struct _RPN_Stack {
 
 	float arr [RPN_STACK_HEIGHT];
 	float *ptr;
+};
+
+struct _RPN_Compiler {
+	uint_fast8_t offset;
+	int_fast8_t pp;
 };
 
 osc_data_t *rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack);

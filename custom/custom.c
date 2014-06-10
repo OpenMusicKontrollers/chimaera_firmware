@@ -302,12 +302,11 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 					item->dest = i;
 					break;
 				}
-			DEBUG("s", item->fmt);
 			strcpy(item->path, opath); // TODO check for valid path
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
-			size = CONFIG_FAIL("iss", uuid, path, "parse error");
+			size = CONFIG_FAIL("iss", uuid, path, "parse error and/or stack under/overflow");
 	}
 
 	CONFIG_SEND(size);

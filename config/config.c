@@ -708,6 +708,9 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 	config.scsynth.enabled = 0;
 	config.oscmidi.enabled = 0;
 	config.dummy.enabled = 0;
+	config.custom.enabled = 0;
+
+	cmc_engines_update();
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
