@@ -44,12 +44,6 @@ static const char *dummy_set_fmt = "iiiff";
 static osc_data_t *pack;
 static osc_data_t *bndl;
 
-void
-dummy_init()
-{
-	// do nothing
-}
-
 static osc_data_t *
 dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
@@ -147,6 +141,7 @@ dummy_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 }
 
 CMC_Engine dummy_engine = {
+	NULL,
 	dummy_engine_frame_cb,
 	dummy_engine_on_cb,
 	dummy_engine_off_cb,

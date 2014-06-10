@@ -45,6 +45,8 @@ enum _RPN_Instruction {
 	RPN_PUSH_VALUE,
 	RPN_POP_INT32,
 	RPN_POP_FLOAT,
+	RPN_POP_MIDI,
+	RPN_POP_BLOB,
 
 	RPN_PUSH_FID,
 	RPN_PUSH_SID,
@@ -52,6 +54,7 @@ enum _RPN_Instruction {
 	RPN_PUSH_PID,
 	RPN_PUSH_X,
 	RPN_PUSH_Z,
+	RPN_PUSH_N,
 
 	RPN_ADD,
 	RPN_SUB,
@@ -61,6 +64,15 @@ enum _RPN_Instruction {
 	RPN_POW,
 	RPN_NEG,
 	RPN_XCHANGE,
+	RPN_DUPL_AT,
+	RPN_DUPL_TOP,
+	RPN_LSHIFT,
+	RPN_RSHIFT,
+
+	RPN_LOGICAL_AND,
+	RPN_BITWISE_AND,
+	RPN_LOGICAL_OR,
+	RPN_BITWISE_OR,
 
 	RPN_NOT,
 	RPN_NOTEQ,
@@ -96,7 +108,5 @@ struct _Custom_Item {
 
 extern CMC_Engine custom_engine;
 extern const OSC_Query_Item custom_tree [3];
-
-void custom_init();
 
 #endif // _CUSTOM_H_

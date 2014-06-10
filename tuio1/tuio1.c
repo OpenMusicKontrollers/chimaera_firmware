@@ -53,12 +53,6 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 static osc_data_t *pp;
 
-void
-tuio1_init()
-{
-	// do nothing
-}
-
 static osc_data_t *
 tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
@@ -151,6 +145,7 @@ tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 }
 
 CMC_Engine tuio1_engine = {
+	NULL,
 	tuio1_engine_frame_cb,
 	tuio1_engine_token_cb,
 	NULL,

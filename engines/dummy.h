@@ -30,6 +30,4 @@
 extern CMC_Engine dummy_engine;
 extern const OSC_Query_Item dummy_tree [1];
 
-void dummy_init ();
-
 #endif // _DUMMY_H_

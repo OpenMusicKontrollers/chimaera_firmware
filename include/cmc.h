@@ -36,6 +36,7 @@
 #define CMC_SOUTH 0x100
 #define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
 
+typedef void (*CMC_Engine_Init_Cb)(void);
 typedef osc_data_t *(*CMC_Engine_Frame_Cb)(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
 typedef osc_data_t *(*CMC_Engine_Blob_On_Cb)(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 typedef osc_data_t *(*CMC_Engine_Blob_Off_Cb)(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid);
@@ -45,6 +46,7 @@ typedef struct _CMC_Engine CMC_Engine;
 typedef struct _CMC_Group CMC_Group;
 
 struct _CMC_Engine {
+	CMC_Engine_Init_Cb init_cb;
 	CMC_Engine_Frame_Cb frame_cb;
 	CMC_Engine_Blob_On_Cb on_cb;
 	CMC_Engine_Blob_Off_Cb off_cb;
@@ -68,6 +70,7 @@ void cmc_init();
 osc_data_t *cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **engines, osc_data_t *buf);
 
 void cmc_group_clear();
+void cmc_engines_init();
 void cmc_engines_update();
 
 #endif // _CMC_H_

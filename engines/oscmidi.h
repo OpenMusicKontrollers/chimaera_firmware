@@ -30,6 +30,4 @@
 extern CMC_Engine oscmidi_engine;
 extern const OSC_Query_Item oscmidi_tree [4];
 
-void oscmidi_init();
-
 #endif // _OSCMIDI_H_

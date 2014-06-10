@@ -51,6 +51,4 @@ extern SCSynth_Group *scsynth_groups;
 extern CMC_Engine scsynth_engine;
 extern const OSC_Query_Item scsynth_tree [3];
 
-void scsynth_init();
-
 #endif // _SCSYNTH_H_

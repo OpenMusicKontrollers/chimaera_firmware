@@ -56,12 +56,6 @@ static uint_fast8_t late_i = 0;
 static osc_data_t *pack;
 static osc_data_t *bndl;
 
-void
-scsynth_init()
-{
-	// do nothing
-}
-
 static osc_data_t *
 scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
@@ -211,6 +205,7 @@ scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 }
 
 CMC_Engine scsynth_engine = {
+	NULL,
 	scsynth_engine_frame_cb,
 	scsynth_engine_on_cb,
 	scsynth_engine_off_cb,

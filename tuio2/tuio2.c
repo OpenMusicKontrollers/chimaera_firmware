@@ -47,7 +47,7 @@ static int32_t inst;
 static osc_data_t *pack;
 static osc_data_t *bndl;
 
-void
+static void
 tuio2_init()
 {
 	uint_fast8_t i;
@@ -147,6 +147,7 @@ tuio2_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 }
 
 CMC_Engine tuio2_engine = {
+	tuio2_init,
 	tuio2_engine_frame_cb,
 	tuio2_engine_token_cb,
 	NULL,

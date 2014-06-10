@@ -30,6 +30,4 @@
 extern CMC_Engine tuio1_engine;
 extern const OSC_Query_Item tuio1_tree [2];
 
-void tuio1_init();
-
 #endif // _TUIO1_H_

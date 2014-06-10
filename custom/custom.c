@@ -37,12 +37,6 @@ static RPN_Stack stack;
 static osc_data_t *pack;
 static osc_data_t *bndl;
 
-void
-custom_init()
-{
-	// do nothing
-}
-
 static osc_data_t *
 custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
@@ -218,6 +212,7 @@ custom_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 }
 
 CMC_Engine custom_engine = {
+	NULL,
 	custom_engine_frame_cb,
 	custom_engine_on_cb,
 	custom_engine_off_cb,

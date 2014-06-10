@@ -632,7 +632,7 @@ loop()
 				buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl); // node bundle
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
-				buf_ptr = dump_update(buf_ptr, now, offset);
+				buf_ptr = dump_update(buf_ptr, now, offset, sizeof(adc_swap), adc_swap);
 		
 			if(!calibrating && cmc_engines_active) // output engines are disfunctional when calibrating
 			{
@@ -1044,9 +1044,6 @@ setup()
 	if(reset_mode == RESET_MODE_FLASH_SOFT)
 		config_load(); // soft reset: load configuration from EEPROM
 
-	// rebuild engines stack
-	cmc_engines_update();
-
 	// read MAC from MAC EEPROM or use custom one stored in config
 	if(!config.comm.custom_mac)
 		eeprom_bulk_read(eeprom_24AA025E48, 0xfa, config.comm.mac, 6);
@@ -1232,17 +1229,10 @@ setup()
 
 	// set up continuous music controller output engines
 	cmc_init();
-	dump_init(sizeof(adc_swap), adc_swap);
-	dummy_init();
-	oscmidi_init();
-	scsynth_init();
-	tuio2_init();
-	tuio1_init();
-	custom_init();
 
 	pin_write_bit(CHIM_LED_PIN, 1);
 	DEBUG("si", "reset_mode", reset_mode);
-	DEBUG("si", "config_size", sizeof(Config));
+	//DEBUG("si", "config_size", sizeof(Config));
 }
 
 void

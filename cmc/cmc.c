@@ -100,6 +100,12 @@ cmc_init()
 
 	cmc_old = blobs[old];
 	cmc_neu = blobs[neu];
+
+	// initialize output engines
+	cmc_engines_init();
+
+	// update engines stack
+	cmc_engines_update();
 }
 
 osc_data_t *__CCM_TEXT__
@@ -695,6 +701,28 @@ cmc_group_clear()
 		grp->x1 = 1.0;
 		grp->m = CMC_NOSCALE;
 	}
+}
+
+void
+cmc_engines_init()
+{
+	if(oscmidi_engine.init_cb)
+		oscmidi_engine.init_cb();
+
+	if(dummy_engine.init_cb)
+		dummy_engine.init_cb();
+
+	if(scsynth_engine.init_cb)
+		scsynth_engine.init_cb();
+
+	if(tuio2_engine.init_cb)
+		tuio2_engine.init_cb();
+
+	if(tuio1_engine.init_cb)
+		tuio1_engine.init_cb();
+
+	if(custom_engine.init_cb)
+		custom_engine.init_cb();
 }
 
 void

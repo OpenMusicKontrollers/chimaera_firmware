@@ -26,7 +26,7 @@
 
 #include <custom.h>
 
-#define RPN_STACK_HEIGHT	8
+#define RPN_STACK_HEIGHT 16
 
 typedef struct _RPN_Stack RPN_Stack;
 
@@ -43,6 +43,7 @@ struct _RPN_Stack {
 	float z;
 
 	float arr [RPN_STACK_HEIGHT];
+	float *ptr;
 };
 
 osc_data_t *rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack);

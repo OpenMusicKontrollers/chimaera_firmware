@@ -38,7 +38,7 @@ static MIDI_Hash oscmidi_hash [BLOB_MAX];
 static osc_data_t *pack;
 static osc_data_t *bndl;
 
-void
+static void
 oscmidi_init()
 {
 	config.oscmidi.mul =(float)0x2000 / config.oscmidi.range;
@@ -194,6 +194,7 @@ oscmidi_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 }
 
 CMC_Engine oscmidi_engine = {
+	oscmidi_init,
 	oscmidi_engine_frame_cb,
 	oscmidi_engine_on_cb,
 	oscmidi_engine_off_cb,

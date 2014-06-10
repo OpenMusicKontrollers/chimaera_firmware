@@ -25,34 +25,56 @@
 
 #include "custom_private.h"
 
-static float
+static inline __always_inline float
 pop(RPN_Stack *stack)
 {
+#if 0
+	// more robust version
 	float v = stack->arr[0];
 
 	int32_t i;
 	for(i=0; i<RPN_STACK_HEIGHT-1; i++)
 		stack->arr[i] = stack->arr[i+1];
 	stack->arr[RPN_STACK_HEIGHT-1] = 0.f;
-
 	return v;
+#else
+	// more efficient version
+	float v = *(stack->ptr);
+	(stack->ptr)--; //FIXME check for underflow
+	return v;
+#endif
 }
 
-static void
+static inline __always_inline void
 push(RPN_Stack *stack, float v)
 {
+#if 0
+	// more robust version
 	int32_t i;
 	for(i=RPN_STACK_HEIGHT-1; i>0; i--)
 		stack->arr[i] = stack->arr[i-1];
 	stack->arr[0] = v;
+#else
+	// more efficient version
+	(stack->ptr)++; //FIXME check for stack overflow
+	*stack->ptr = v;
+#endif
 }
 
-static void
+static inline __always_inline void
 xchange(RPN_Stack *stack)
 {
-	float v = stack->arr[0];
-	stack->arr[0] = stack->arr[1];
-	stack->arr[1] = v;
+	float b = pop(stack);
+	float a = pop(stack);
+	push(stack, b);
+	push(stack, a);
+}
+
+static inline __always_inline float
+duplicate(RPN_Stack *stack, int32_t pos)
+{
+	float v = *(stack->ptr - pos);
+	push(stack, v);
 }
 
 osc_data_t *
@@ -60,6 +82,8 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 {
 	osc_data_t *buf_ptr = buf;
 	RPN_VM *vm = &itm->vm;
+
+	stack->ptr = stack->arr; // reset stack
 
 	RPN_Instruction *inst;
 	for(inst = vm->inst; *inst != RPN_TERMINATOR; inst++)
@@ -80,6 +104,33 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			{
 				float f = pop(stack);
 				buf_ptr = osc_set_float(buf_ptr, f);
+				break;
+			}
+			case RPN_POP_MIDI:
+			{
+				uint8_t *m;
+				buf_ptr = osc_set_midi_inline(buf_ptr, &m);
+				m[3] = pop(stack);
+				m[2] = pop(stack);
+				m[1] = pop(stack);
+				m[0] = pop(stack);
+				break;
+				/* examples
+					m($g 8* $b+ 0x90 3 12* 0.5- $n 18% 6/- $n 3/+ 0x7f)
+					m($g 8* $b+ 0xc0 0x27 $z 0x3fff* 0x7f&)
+					m($g 8* $b+ 0xc0 0x07 $z 0x3fff* 7<<)
+					m($g 8* $b+ $z 0x3fff* 1@ 0xc0 0x27 3@ 0x7f&) m(7>> 0xc0# 0x07#)
+					m($z 0x3fff* $g 8* $b+ @@ 0xc0 0x27 4@ 0x7f&) m(0xc0 0x07 3@ 7>>)
+				*/
+			}
+			case RPN_POP_BLOB:
+			{
+				uint8_t *b;
+				int32_t len = stack->ptr - stack->arr; // pull everything from stack
+				buf_ptr = osc_set_blob_inline(buf_ptr, len, (void **)&b);
+				uint_fast8_t i;
+				for(i=len-1; i>=0; i--)
+					b[i] = pop(stack);
 				break;
 			}
 
@@ -111,6 +162,11 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			case RPN_PUSH_Z:
 			{
 				push(stack, stack->z);
+				break;
+			}
+			case RPN_PUSH_N:
+			{
+				push(stack, SENSOR_N);
 				break;
 			}
 
@@ -172,6 +228,65 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			case RPN_XCHANGE:
 			{
 				xchange(stack);
+				break;
+			}
+			case RPN_DUPL_AT:
+			{
+				int32_t pos = pop(stack);
+				duplicate(stack, pos);
+				break;
+			}
+			case RPN_DUPL_TOP:
+			{
+				duplicate(stack, 0);
+				break;
+			}
+			case RPN_LSHIFT:
+			{
+				int32_t b = pop(stack);
+				int32_t a = pop(stack);
+				int32_t c = a << b;
+				push(stack, c);
+				break;
+			}
+			case RPN_RSHIFT:
+			{
+				int32_t b = pop(stack);
+				int32_t a = pop(stack);
+				int32_t c = a >> b;
+				push(stack, c);
+				break;
+			}
+			case RPN_LOGICAL_AND:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a && b;
+				push(stack, c);
+				break;
+			}
+			case RPN_BITWISE_AND:
+			{
+				int32_t b = pop(stack);
+				int32_t a = pop(stack);
+				int32_t c = a & b;
+				push(stack, c);
+				break;
+			}
+			case RPN_LOGICAL_OR:
+			{
+				float b = pop(stack);
+				float a = pop(stack);
+				float c = a || b;
+				push(stack, c);
+				break;
+			}
+			case RPN_BITWISE_OR:
+			{
+				int32_t b = pop(stack);
+				int32_t a = pop(stack);
+				int32_t c = a | b;
+				push(stack, c);
 				break;
 			}
 
@@ -283,6 +398,10 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 						*inst++ = RPN_PUSH_Z;
 						ptr++;
 						break;
+					case 'n':
+						*inst++ = RPN_PUSH_N;
+						ptr++;
+						break;
 					default:
 						return 0; // parse error
 				}
@@ -328,6 +447,19 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				*inst++ = RPN_XCHANGE;
 				ptr++;
 				break;
+			case '@':
+				switch(ptr[1])
+				{
+					case '@':
+						*inst++ = RPN_DUPL_TOP;
+						ptr++;
+						break;
+					default:
+						*inst++ = RPN_DUPL_AT;
+						break;
+				}
+				ptr++;
+				break;
 
 			case '!':
 				switch(ptr[1])
@@ -353,6 +485,10 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 						*inst++ = RPN_LEQ;
 						ptr++;
 						break;
+					case '<':
+						*inst++ = RPN_LSHIFT;
+						ptr++;
+						break;
 					default:
 						*inst++ = RPN_LT;
 						break;
@@ -364,6 +500,10 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 				{
 					case '=':
 						*inst++ = RPN_GEQ;
+						ptr++;
+						break;
+					case '>':
+						*inst++ = RPN_RSHIFT;
 						ptr++;
 						break;
 					default:
@@ -381,6 +521,32 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, uint_fast8_t offset)
 						break;
 					default:
 						return 0; // parse error
+				}
+				ptr++;
+				break;
+			case '&':
+				switch(ptr[1])
+				{
+					case '&':
+						*inst++ = RPN_LOGICAL_AND;
+						ptr++;
+						break;
+					default:
+						*inst++ = RPN_BITWISE_AND;
+						break;
+				}
+				ptr++;
+				break;
+			case '|':
+				switch(ptr[1])
+				{
+					case '|':
+						*inst++ = RPN_LOGICAL_OR;
+						ptr++;
+						break;
+					default:
+						*inst++ = RPN_BITWISE_OR;
+						break;
 				}
 				ptr++;
 				break;
@@ -423,7 +589,7 @@ rpn_compile(const char *args, Custom_Item *itm)
 				ptr++;
 				break;
 
-			case 'i':
+			case OSC_INT32:
 			{
 				ptr++; // skip 'i'
 				if(*ptr == '(')
@@ -453,7 +619,7 @@ rpn_compile(const char *args, Custom_Item *itm)
 				break;
 			}
 
-			case 'f':
+			case OSC_FLOAT:
 			{
 				ptr++; // skip 'f'
 				if(*ptr == '(')
@@ -483,11 +649,80 @@ rpn_compile(const char *args, Custom_Item *itm)
 				break;
 			}
 
+			case OSC_MIDI:
+			{
+				ptr++; // skip 'm'
+				if(*ptr == '(')
+				{
+					ptr++; // skip '('
+					char *closing = strchr(ptr, ')');
+					if(closing)
+					{
+						size_t size = closing - ptr;
+						offset = rpn_compile_sub(ptr, size, vm, offset);
+						if(offset)
+						{
+							ptr += size;
+							ptr++; // skip ')'
+
+							itm->fmt[counter++] = OSC_MIDI;
+							vm->inst[offset++] = RPN_POP_MIDI;
+						}
+						else
+							return 0; // parse error
+					}
+					else
+						return 0; // parse error
+				}
+				else
+					return 0; // parse error
+				break;
+			}
+
+			case OSC_BLOB:
+			{
+				ptr++; // skip 'm'
+				if(*ptr == '(')
+				{
+					ptr++; // skip '('
+					char *closing = strchr(ptr, ')');
+					if(closing)
+					{
+						size_t size = closing - ptr;
+						offset = rpn_compile_sub(ptr, size, vm, offset);
+						if(offset)
+						{
+							ptr += size;
+							ptr++; // skip ')'
+
+							itm->fmt[counter++] = OSC_BLOB;
+							vm->inst[offset++] = RPN_POP_BLOB;
+						}
+						else
+							return 0; // parse error
+					}
+					else
+						return 0; // parse error
+				}
+				else
+					return 0; // parse error
+				break;
+			}
+
+			case OSC_TRUE:
+			case OSC_FALSE:
+			case OSC_NIL:
+			case OSC_BANG:
+				itm->fmt[counter++] = *ptr;
+				break;
+
+			//TODO OSC_STRING
+
 			default:
 				return 0; // parse error
 		}
 
-	itm->fmt[counter] = '\0'; //TODO check overflow
+	itm->fmt[counter] = '\0'; //TODO check overflow CUTOM_MAX_INST
 	vm->inst[offset] = RPN_TERMINATOR;
 
 	return ptr == end;
