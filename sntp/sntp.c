@@ -134,6 +134,11 @@ sntp_dispatch(uint8_t *buf, OSC_Timetag t4)
 #if 1
 	DEBUG("stt", "sNTPv4", OO1, DD1);
 #endif
+
+#define OFFSET_DELAY_THRESH 1.0ULLK // 1s
+	if( (OO0 > OFFSET_DELAY_THRESH) )
+		sntp_reset();
+#undef OFFSET_DELAY_THRESH
 }
 
 void __CCM_TEXT__
@@ -159,7 +164,7 @@ _sntp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 {
 	uint_fast8_t ret;
 
-	t0 = 0.0ULLK; // reset
+	sntp_reset();
 	ret = config_socket_enabled(&config.sntp.socket, path, fmt, argc, buf);
 	if(ret && config.sntp.socket.enabled && config.ptp.event.enabled) // automatically disable ptp
 		ptp_enable(0);

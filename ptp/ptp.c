@@ -148,6 +148,14 @@ _ptp_update_offset()
 		OO0 = OO1;
 	}
 
+#define OFFSET_THRESH 1000.f // 1s
+	if(OO0 > OFFSET_THRESH)
+	{
+		timer_pause(ptp_timer);
+		ptp_reset();
+	}
+#undef OFFSET_THRESH
+
 	// schedule delay request
 	if(++sync_counter >= config.ptp.multiplier)
 	{
@@ -206,12 +214,13 @@ _ptp_update_delay_e2e()
 	D0 = D1;
 	DD0 = DD1;
 
-#define DELAY_THRESH 1000.f //TODO make this configurable
+#define DELAY_THRESH 1000.f // 1s
 	if(DD0 > DELAY_THRESH)
 	{
 		timer_pause(ptp_timer);
 		ptp_reset();
 	}
+#undef DELAY_THRESH
 }
 
 #if 0 // we need two more sockets for P2P mode
@@ -484,7 +493,7 @@ _ptp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 {
 	uint_fast8_t ret;
 
-	t0 = 0ULL; // reset
+	ptp_reset();
 	ret = config_socket_enabled(&config.ptp.event, path, fmt, argc, buf);
 	if(ret && config.sntp.socket.enabled && config.ptp.event.enabled) // automatically disable sntp
 		sntp_enable(0);
