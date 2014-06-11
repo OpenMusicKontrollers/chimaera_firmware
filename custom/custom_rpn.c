@@ -95,15 +95,6 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 				m[0] = pop(stack);
 				break;
 			}
-			case RPN_POP_BLOB:
-			{
-				uint8_t *b;
-				volatile int32_t len = stack->ptr - stack->arr; // pop whole stack
-				buf_ptr = osc_set_blob_inline(buf_ptr, len, (void **)&b);
-				for(len--; len>=0; len--)
-					b[len] = pop(stack);
-				break;
-			}
 
 			case RPN_PUSH_FID:
 			{
@@ -334,12 +325,33 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 }
 
 static uint_fast8_t
+rpn_add_inst(RPN_VM *vm, RPN_Compiler *compiler, RPN_Instruction inst, float val, uint_fast8_t pops, uint_fast8_t pushs)
+{
+	//check for stack underflow
+	compiler->pp -= pops;
+	if(compiler->pp < 0)
+		return 0;
+
+	// check for stack overflow
+	compiler->pp += pushs;
+	if(compiler->pp > RPN_STACK_HEIGHT)
+		return 0;
+
+	vm->inst[compiler->offset] = inst;
+	vm->val[compiler->offset] = val;
+
+	if(compiler->offset >= CUSTOM_MAX_INST)
+		return 0;
+	compiler->offset++;
+
+	return 1;
+}
+
+static uint_fast8_t
 rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 {
 	const char *ptr = str;
 	const char *end = str + len;
-
-	RPN_Instruction *inst = &vm->inst[compiler->offset];
 
 	while(ptr < end)
 	{
@@ -350,45 +362,31 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case 'f':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_FID;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_FID, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'b':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_SID;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_SID, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'g':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_GID;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_GID, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'p':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_PID;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_PID, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'x':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_X;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_X, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'z':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_Z;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_Z, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'n':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_PUSH_N;
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_N, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					default:
@@ -405,63 +403,46 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				break;
 
 			case '+':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_ADD;
+				if(!rpn_add_inst(vm, compiler, RPN_ADD, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '-':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_SUB;
+				if(!rpn_add_inst(vm, compiler, RPN_SUB, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '*':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_MUL;
+				if(!rpn_add_inst(vm, compiler, RPN_MUL, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '/':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_DIV;
+				if(!rpn_add_inst(vm, compiler, RPN_DIV, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '%':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_MOD;
+				if(!rpn_add_inst(vm, compiler, RPN_MOD, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '^':
-				if(compiler->pp - 2 < 0) return 0;
-				compiler->pp--;
-				*inst++ = RPN_POW;
+				if(!rpn_add_inst(vm, compiler, RPN_POW, 0.f, 2, 1)) return 0;
 				ptr++;
 				break;
 			case '~':
-				if(compiler->pp - 1 < 0) return 0;
-				*inst++ = RPN_NEG;
+				if(!rpn_add_inst(vm, compiler, RPN_NEG, 0.f, 1, 1)) return 0;
 				ptr++;
 				break;
 			case '#':
-				if(compiler->pp - 2 < 0) return 0;
-				*inst++ = RPN_XCHANGE;
+				if(!rpn_add_inst(vm, compiler, RPN_XCHANGE, 0.f, 2, 2)) return 0;
 				ptr++;
 				break;
 			case '@':
 				switch(ptr[1])
 				{
 					case '@':
-						if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-						compiler->pp++;
-						*inst++ = RPN_DUPL_TOP;
+						if(!rpn_add_inst(vm, compiler, RPN_DUPL_TOP, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 1 < 0) return 0;
-						*inst++ = RPN_DUPL_AT;
+						if(!rpn_add_inst(vm, compiler, RPN_DUPL_AT, 0.f, 1, 1)) return 0;
 						break;
 				}
 				ptr++;
@@ -471,43 +452,32 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case '=':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_NOTEQ;
+						if(!rpn_add_inst(vm, compiler, RPN_NOTEQ, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 1 < 0) return 0;
-						*inst++ = RPN_NOT;
+						if(!rpn_add_inst(vm, compiler, RPN_NOT, 0.f, 1, 1)) return 0;
 						break;
 				}
 				ptr++;
 				break;
 			case '?':
-				if(compiler->pp - 3 < 0) return 0;
-				compiler->pp -= 2;
-				*inst++ = RPN_COND;
+				if(!rpn_add_inst(vm, compiler, RPN_COND, 0.f, 3, 1)) return 0;
 				ptr++;
 				break;
 			case '<':
 				switch(ptr[1])
 				{
 					case '=':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_LEQ;
+						if(!rpn_add_inst(vm, compiler, RPN_LEQ, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					case '<':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_LSHIFT;
+						if(!rpn_add_inst(vm, compiler, RPN_LSHIFT, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_LT;
+						if(!rpn_add_inst(vm, compiler, RPN_LT, 0.f, 2, 1)) return 0;
 						break;
 				}
 				ptr++;
@@ -516,21 +486,15 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case '=':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_GEQ;
+						if(!rpn_add_inst(vm, compiler, RPN_GEQ, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					case '>':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_RSHIFT;
+						if(!rpn_add_inst(vm, compiler, RPN_RSHIFT, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_GT;
+						if(!rpn_add_inst(vm, compiler, RPN_GT, 0.f, 2, 1)) return 0;
 						break;
 				}
 				ptr++;
@@ -539,9 +503,7 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case '=':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_EQ;
+						if(!rpn_add_inst(vm, compiler, RPN_EQ, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
@@ -553,15 +515,11 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case '&':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_LOGICAL_AND;
+						if(!rpn_add_inst(vm, compiler, RPN_LOGICAL_AND, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_BITWISE_AND;
+						if(!rpn_add_inst(vm, compiler, RPN_BITWISE_AND, 0.f, 2, 1)) return 0;
 						break;
 				}
 				ptr++;
@@ -570,15 +528,11 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				switch(ptr[1])
 				{
 					case '|':
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_LOGICAL_OR;
+						if(!rpn_add_inst(vm, compiler, RPN_LOGICAL_OR, 0.f, 2, 1)) return 0;
 						ptr++;
 						break;
 					default:
-						if(compiler->pp - 2 < 0) return 0;
-						compiler->pp--;
-						*inst++ = RPN_BITWISE_OR;
+						if(!rpn_add_inst(vm, compiler, RPN_BITWISE_OR, 0.f, 2, 1)) return 0;
 						break;
 				}
 				ptr++;
@@ -590,10 +544,7 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				float v = strtod(ptr, &endptr);
 				if(ptr != endptr)
 				{
-					vm->val[inst - vm->inst] = v;
-					*inst++ = RPN_PUSH_VALUE;
-					if(compiler->pp + 1 > RPN_STACK_HEIGHT) return 0;
-					compiler->pp++;
+					if(!rpn_add_inst(vm, compiler, RPN_PUSH_VALUE, v, 0, 1)) return 0;
 					ptr = endptr;
 				}
 				else
@@ -602,7 +553,6 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 		}
 	}
 
-	compiler->offset = inst - vm->inst;
 	return 1;
 }
 
@@ -643,9 +593,9 @@ rpn_compile(const char *args, Custom_Item *itm)
 							ptr += size;
 							ptr++; // skip ')'
 
+							if(!rpn_add_inst(vm, &compiler, RPN_POP_INT32, 0.f, 1, 0)) return 0;
+							if(counter >= CUSTOM_FMT_LEN) return 0;
 							itm->fmt[counter++] = OSC_INT32;
-							vm->inst[compiler.offset++] = RPN_POP_INT32;
-							compiler.pp--;
 						}
 						else
 							return 0; // parse error
@@ -673,9 +623,9 @@ rpn_compile(const char *args, Custom_Item *itm)
 							ptr += size;
 							ptr++; // skip ')'
 
+							if(!rpn_add_inst(vm, &compiler, RPN_POP_FLOAT, 0.f, 1, 0)) return 0;
+							if(counter >= CUSTOM_FMT_LEN) return 0;
 							itm->fmt[counter++] = OSC_FLOAT;
-							vm->inst[compiler.offset++] = RPN_POP_FLOAT;
-							compiler.pp--;
 						}
 						else
 							return 0; // parse error
@@ -703,39 +653,9 @@ rpn_compile(const char *args, Custom_Item *itm)
 							ptr += size;
 							ptr++; // skip ')'
 
+							if(!rpn_add_inst(vm, &compiler, RPN_POP_MIDI, 0.f, 4, 0)) return 0;
+							if(counter >= CUSTOM_FMT_LEN) return 0;
 							itm->fmt[counter++] = OSC_MIDI;
-							vm->inst[compiler.offset++] = RPN_POP_MIDI;
-							compiler.pp -= 4;
-						}
-						else
-							return 0; // parse error
-					}
-					else
-						return 0; // parse error
-				}
-				else
-					return 0; // parse error
-				break;
-			}
-
-			case OSC_BLOB:
-			{
-				ptr++; // skip 'm'
-				if(*ptr == '(')
-				{
-					ptr++; // skip '('
-					char *closing = strchr(ptr, ')');
-					if(closing)
-					{
-						size_t size = closing - ptr;
-						if(rpn_compile_sub(ptr, size, vm, &compiler))
-						{
-							ptr += size;
-							ptr++; // skip ')'
-
-							itm->fmt[counter++] = OSC_BLOB;
-							vm->inst[compiler.offset++] = RPN_POP_BLOB;
-							compiler.pp -= compiler.pp;
 						}
 						else
 							return 0; // parse error
@@ -752,6 +672,7 @@ rpn_compile(const char *args, Custom_Item *itm)
 			case OSC_FALSE:
 			case OSC_NIL:
 			case OSC_BANG:
+				if(counter >= CUSTOM_FMT_LEN) return 0;
 				itm->fmt[counter++] = *ptr;
 				break;
 
@@ -761,8 +682,9 @@ rpn_compile(const char *args, Custom_Item *itm)
 				return 0; // parse error
 		}
 
-	itm->fmt[counter] = '\0'; //TODO check overflow CUTOM_MAX_INST
-	vm->inst[compiler.offset] = RPN_TERMINATOR;
+	if(!rpn_add_inst(vm, &compiler, RPN_TERMINATOR, 0.f, 0, 0)) return 0;
+	if(counter >= CUSTOM_FMT_LEN) return 0;
+	itm->fmt[counter++] = '\0';
 
 	return (ptr == end) && (compiler.pp >= 0);
 }

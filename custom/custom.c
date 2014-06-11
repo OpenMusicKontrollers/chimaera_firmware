@@ -51,10 +51,13 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
 	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
+	uint_fast8_t i;
 	Custom_Item *item;
 	if(nblob_old + nblob_new)
 	{
-		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		for(i=0; i<CUSTOM_MAX_EXPR; i++)
+		{
+			item = &items[i];
 			if(item->dest == RPN_FRAME)
 			{
 				buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -68,10 +71,13 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 			}
 			else if(item->dest == RPN_NONE)
 				break;
+		}
 	}
 	else
 	{
-		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		for(i=0; i<CUSTOM_MAX_EXPR; i++)
+		{
+			item = &items[i];
 			if(item->dest == RPN_IDLE)
 			{
 				buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -85,6 +91,7 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 			}
 			else if(item->dest == RPN_NONE)
 				break;
+		}
 	}
 
 	return buf_ptr;
@@ -96,8 +103,11 @@ custom_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
+	uint_fast8_t i;
 	Custom_Item *item;
-	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+	for(i=0; i<CUSTOM_MAX_EXPR; i++)
+	{
+		item = &items[i];
 		if(item->dest == RPN_END)
 		{
 			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -111,6 +121,7 @@ custom_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag
 		}
 		else if(item->dest == RPN_NONE)
 			break;
+	}
 
 	buf_ptr = osc_end_bundle(buf_ptr, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
@@ -131,8 +142,11 @@ custom_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
+	uint_fast8_t i;
 	Custom_Item *item;
-	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+	for(i=0; i<CUSTOM_MAX_EXPR; i++)
+	{
+		item = &items[i];
 		if(item->dest == RPN_ON)
 		{
 			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -146,6 +160,7 @@ custom_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 		}
 		else if(item->dest == RPN_NONE)
 			break;
+	}
 	
 	return buf_ptr;
 }
@@ -161,8 +176,11 @@ custom_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
+	uint_fast8_t i;
 	Custom_Item *item;
-	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+	for(i=0; i<CUSTOM_MAX_EXPR; i++)
+	{
+		item = &items[i];
 		if(item->dest == RPN_OFF)
 		{
 			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -176,6 +194,7 @@ custom_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 		}
 		else if(item->dest == RPN_NONE)
 			break;
+	}
 	
 	return buf_ptr;
 }
@@ -192,8 +211,11 @@ custom_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
+	uint_fast8_t i;
 	Custom_Item *item;
-	for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+	for(i=0; i<CUSTOM_MAX_EXPR; i++)
+	{
+		item = &items[i];
 		if(item->dest == RPN_SET)
 		{
 			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -207,6 +229,7 @@ custom_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 		}
 		else if(item->dest == RPN_NONE)
 			break;
+	}
 	
 	return buf_ptr;
 }
@@ -247,6 +270,7 @@ _custom_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 
 		item->dest = RPN_NONE;
 		item->path[0] = '\0';
+		item->fmt[0] = '\0';
 		item->vm.inst[0] = RPN_TERMINATOR;
 	}
 
@@ -280,10 +304,14 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	}
 	else
 	{
+		uint_fast8_t i;
 		Custom_Item *item;
-		for(item=items; item-items < CUSTOM_MAX_EXPR; item++)
+		for(i=0; i<CUSTOM_MAX_EXPR; i++)
+		{
+			item = &items[i];
 			if(item->dest == RPN_NONE)
 				break;
+		}
 
 		const char *dest;
 		const char *opath;
@@ -293,9 +321,8 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 		buf_ptr = osc_get_string(buf_ptr, &opath);
 		buf_ptr = osc_get_string(buf_ptr, &argv);
 
-		if( (item-items < CUSTOM_MAX_EXPR) && osc_check_path(opath) && rpn_compile(argv, item) )
+		if( (item->dest == RPN_NONE) && osc_check_path(opath) && rpn_compile(argv, item) )
 		{
-			uint_fast8_t i;
 			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(OSC_Query_Value); i++)
 				if(!strcmp(dest, custom_append_destination_args_values[i].s))
 				{

@@ -30,9 +30,9 @@
 #define CUSTOM_MAX_EXPR		12
 #define CUSTOM_MAX_INST		24
 
-#define CUSTOM_PATH_LEN		16
-#define CUSTOM_FMT_LEN		16
-#define CUSTOM_ARGS_LEN		64
+#define CUSTOM_PATH_LEN		24
+#define CUSTOM_FMT_LEN		(CUSTOM_MAX_EXPR / 2)
+#define CUSTOM_ARGS_LEN		128
 
 typedef struct _Custom_Item  Custom_Item;
 typedef enum _RPN_Instruction RPN_Instruction;
@@ -46,7 +46,6 @@ enum _RPN_Instruction {
 	RPN_POP_INT32,
 	RPN_POP_FLOAT,
 	RPN_POP_MIDI,
-	RPN_POP_BLOB,
 
 	RPN_PUSH_FID,
 	RPN_PUSH_SID,

@@ -472,13 +472,8 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf
 	{
 		const char *s;
 		buf_ptr = osc_get_string(buf_ptr, &s);
-		if(strlen(s) < NAME_LENGTH)
-		{
-			strcpy(config.name, s);
-			size = CONFIG_SUCCESS("is", uuid, path);
-		}
-		else
-			size = CONFIG_FAIL("iss", uuid, path, "name is too long");
+		strcpy(config.name, s);
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
 	CONFIG_SEND(size);

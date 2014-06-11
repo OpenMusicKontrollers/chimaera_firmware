@@ -1231,8 +1231,8 @@ setup()
 	cmc_init();
 
 	pin_write_bit(CHIM_LED_PIN, 1);
-	DEBUG("si", "reset_mode", reset_mode);
 	//DEBUG("si", "config_size", sizeof(Config));
+	DEBUG("si", "reset_mode", reset_mode);
 }
 
 void
