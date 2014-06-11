@@ -107,10 +107,15 @@ osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_data_t *buf)
 				if(args[i].values.ptr)
 				{
 					uint_fast8_t j;
+					uint_fast8_t found = 0;
 					for(j=0; j<args[i].values.argc; j++)
 						if(I == args[i].values.ptr[j].i)
-							return 1;
-					return 0;
+						{
+							found = 1;
+							break;
+						}
+					if(!found)
+						return 0;
 				}
 				else if( (I < args[i].range.min.i) || (I > args[i].range.max.i) )
 					return 0;
@@ -123,10 +128,15 @@ osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_data_t *buf)
 				if(args[i].values.ptr)
 				{
 					uint_fast8_t j;
+					uint_fast8_t found = 0;
 					for(j=0; j<args[i].values.argc; j++)
 						if(F == args[i].values.ptr[j].f)
-							return 1;
-					return 0;
+						{
+							found = 1;
+							break;
+						}
+					if(!found)
+						return 0;
 				}
 				else if( (F < args[i].range.min.f) || (F > args[i].range.max.f) )
 					return 0;
@@ -139,12 +149,17 @@ osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_data_t *buf)
 				if(args[i].values.ptr)
 				{
 					uint_fast8_t j;
+					uint_fast8_t found = 0;
 					for(j=0; j<args[i].values.argc; j++)
 						if(!strcmp(S, args[i].values.ptr[j].s))
-							return 1;
-					return 0;
+						{
+							found = 1;
+							break;
+						}
+					if(!found)
+						return 0;
 				}
-				else if(strlen(S) > args[i].range.max.i)
+				else if(strlen(S) > args[i].range.max.i - 1) // including terminating zero
 					return 0;
 				break;
 			}
