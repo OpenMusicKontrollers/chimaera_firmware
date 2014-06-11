@@ -56,6 +56,7 @@ typedef enum _OSC_Type {
 	OSC_FLOAT = 'f',
 	OSC_STRING = 's',
 	OSC_BLOB = 'b',
+	OSC_BLOB_INLINE = 'B',
 
 	OSC_TRUE = 'T',
 	OSC_FALSE = 'F',

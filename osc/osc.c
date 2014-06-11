@@ -298,6 +298,9 @@ osc_varlist_set(osc_data_t *buf, const char *path, const char *fmt, va_list args
 			case OSC_BLOB:
 				buf_ptr = osc_set_blob(buf_ptr, va_arg(args, int32_t), va_arg(args, void *));
 				break;
+			case OSC_BLOB_INLINE:
+				buf_ptr = osc_set_blob_inline(buf_ptr, va_arg(args, int32_t), va_arg(args, void **));
+				break;
 
 			case OSC_INT64:
 				buf_ptr = osc_set_int64(buf_ptr, va_arg(args, int64_t));
