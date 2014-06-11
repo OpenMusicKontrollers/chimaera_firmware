@@ -41,13 +41,13 @@ void dhcpc_timer_reconfigure();
 void mdns_timer_reconfigure();
 void ptp_timer_reconfigure(float sec);
 
-uint_fast8_t output_enable(uint8_t b);
-uint_fast8_t config_enable(uint8_t b);
-uint_fast8_t sntp_enable(uint8_t b);
-uint_fast8_t ptp_enable(uint8_t b);
-uint_fast8_t debug_enable(uint8_t b);
-uint_fast8_t mdns_enable(uint8_t b);
-uint_fast8_t dhcpc_enable(uint8_t b);
+void output_enable(uint8_t b);
+void config_enable(uint8_t b);
+void sntp_enable(uint8_t b);
+void ptp_enable(uint8_t b);
+void debug_enable(uint8_t b);
+void mdns_enable(uint8_t b);
+void dhcpc_enable(uint8_t b);
 
 typedef struct _Stop_Watch Stop_Watch;
 

@@ -40,48 +40,48 @@
 uint_fast8_t
 ip_part_of_subnet(uint8_t *ip)
 {
-	uint32_t *ip32 =(uint32_t *)ip;
-	uint32_t *subnet32 =(uint32_t *)config.comm.subnet;
-	uint32_t *comm32 =(uint32_t *)config.comm.ip;
+	uint32_t *ip32 = (uint32_t *)ip;
+	uint32_t *subnet32 = (uint32_t *)config.comm.subnet;
+	uint32_t *comm32 = (uint32_t *)config.comm.ip;
 
-	return(*ip32 & *subnet32) ==(*comm32 & *subnet32);
+	return (*ip32 & *subnet32) == (*comm32 & *subnet32);
 }
 
 void
 cidr_to_subnet(uint8_t *subnet, uint8_t mask)
 {
-	uint32_t *subnet_ptr =(uint32_t *)subnet;
+	uint32_t *subnet32 = (uint32_t *)subnet;
 	uint32_t subn = 0xffffffff;
 	if(mask == 0)
 		subn = 0x0;
 	else
-		subn &= ~((1UL <<(32-mask)) - 1);
-	*subnet_ptr = htonl(subn);
+		subn &= ~((1UL << (32-mask)) - 1);
+	*subnet32 = htonl(subn);
 }
 
 uint8_t
 subnet_to_cidr(uint8_t *subnet)
 {
-	uint32_t *subnet_ptr =(uint32_t *)subnet;
-	uint32_t subn = htonl(*subnet_ptr);
+	uint32_t *subnet32 = (uint32_t *)subnet;
+	uint32_t subn = htonl(*subnet32);
 	uint8_t mask;
 	if(subn == 0)
 		return 0;
 	for(mask=0; !(subn & 1); mask++)
 		subn = subn >> 1;
-	return 32-mask;
+	return 32 - mask;
 }
 
 void
 broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet)
 {
-	uint32_t *brd_ptr =(uint32_t *)brd;
-	uint32_t *ip_ptr =(uint32_t *)ip;
-	uint32_t *subnet_ptr =(uint32_t *)subnet;
-	*brd_ptr =(*ip_ptr & *subnet_ptr) | (~(*subnet_ptr));
+	uint32_t *brd32 = (uint32_t *)brd;
+	uint32_t *ip32 = (uint32_t *)ip;
+	uint32_t *subnet32 = (uint32_t *)subnet;
+	*brd32 = (*ip32 & *subnet32) | (~(*subnet32));
 }
 
-uint_fast8_t 
+void 
 output_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.output.osc.socket;
@@ -107,10 +107,9 @@ output_enable(uint8_t b)
 			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
 		}
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 config_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.config.osc.socket;
@@ -133,10 +132,9 @@ config_enable(uint8_t b)
 		if(socket->enabled)
 			tcp_begin(socket->sock, socket->port[SRC_PORT], 1); // TCP server
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 ptp_enable(uint8_t b)
 {
 	Socket_Config *event = &config.ptp.event;
@@ -161,10 +159,9 @@ ptp_enable(uint8_t b)
 		udp_begin(general->sock, general->port[SRC_PORT],
 			wiz_is_multicast(general->ip));
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 sntp_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.sntp.socket;
@@ -185,10 +182,9 @@ sntp_enable(uint8_t b)
 
 		timer_resume(sync_timer);
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 debug_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.debug.osc.socket;
@@ -213,10 +209,9 @@ debug_enable(uint8_t b)
 			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
 		}
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 mdns_enable(uint8_t b)
 {
 	Socket_Config *socket = &config.mdns.socket;
@@ -230,15 +225,11 @@ mdns_enable(uint8_t b)
 		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
 	}
-	return 1; //TODO
 }
 
-uint_fast8_t 
+void 
 dhcpc_enable(uint8_t b)
 {
-	//timer_pause(dhcpc_timer); //todo we don't need this
-	//dhcpc_timer_reconfigure(); //TODO we don't need this
-
 	Socket_Config *socket = &config.dhcpc.socket;
 
 	socket->enabled = b;
@@ -249,13 +240,9 @@ dhcpc_enable(uint8_t b)
 		udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
 		udp_begin(socket->sock, socket->port[SRC_PORT],
 			wiz_is_multicast(socket->ip));
-
-		//timer_resume(dhcpc_timer); //TODO we don't need this
 	}
-	return 1; //TODO
 }
 
-/* FIXME
 void
 stop_watch_start(Stop_Watch *sw)
 {
@@ -270,17 +257,12 @@ stop_watch_stop(Stop_Watch *sw)
 
 	if(sw->counter > sw->thresh)
 	{
-		uint16_t size;
-		size = nosc_message_vararg_serialize(BUF_O_OFFSET(buf_o_ptr),
-			config.debug.osc.mode,
-			"/stop_watch", "si", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
-		osc_send(&config.debug.osc, BUF_O_BASE(buf_o_ptr), size);
+		DEBUG("ssi", "stop_watch", sw->id, sw->ticks * SNTP_SYSTICK_US / sw->thresh); // 1 tick = 100 us
 
 		sw->ticks = 0;
 		sw->counter = 0;
 	}
 }
-*/
 
 uint32_t
 uid_seed()
@@ -485,7 +467,7 @@ slip_decode(uint8_t *buf, size_t len, size_t *size)
 			else if(*src == SLIP_ESC_REPLACE)
 				*dst++ = SLIP_ESC;
 			else
-				; //TODO error
+				goto error; // neither END_REPLACE nor ESC_REPLACE, this is invalid slip
 			src++;
 		}
 		else if(*src == SLIP_END)
@@ -505,8 +487,8 @@ slip_decode(uint8_t *buf, size_t len, size_t *size)
 		}
 	}
 
+error:
+
 	*size = 0;
 	return 0;
-	//*size = dst - buf;
-	//return src - buf;
 }

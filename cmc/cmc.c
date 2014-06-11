@@ -75,6 +75,8 @@ static uint8_t va[SENSOR_N+2];
 static CMC_Blob blobs[2][BLOB_MAX];
 static uint8_t pacemaker = 0x0b; // pacemaker rate 2^11=2048
 
+static void cmc_engines_init();
+
 void
 cmc_init()
 {
@@ -90,7 +92,7 @@ cmc_init()
 
 	for(i=0; i<SENSOR_N+2; i++)
 	{
-		vx[i] = d * i - d_2; //TODO caution: sensors[0] and sensors[145] are <0 & >1
+		vx[i] = d * i - d_2; // sensors[0] and sensors[SENSOR_N+1] are <0 and >1
 		vy[i] = 0;
 		vn[i] = 0;
 	}
@@ -108,8 +110,41 @@ cmc_init()
 	cmc_engines_update();
 }
 
+#if 0
+// raw lookup
+static inline __always_inline float
+LOOKUP(float y)
+{
+	uint16_t ii = y*0x7ff;
+	return curve[ii];
+}
+#else
+// linear lookup interpolation
+static inline __always_inline float
+LOOKUP(float y)
+{
+	float f, i;
+	uint16_t ii;
+
+	y *= 0x7ff;
+	f = modff(y, &i); // fractional part
+	ii = i; // integral part
+	return curve[ii] + f*(curve[ii+1] - curve[ii]);
+}
+#endif
+
+#define VABS(A) \
+({ \
+	float X; \
+	asm volatile ("VABS.F32 %[res], %[val1]" \
+		: [res]"=w" (X) \
+		: [val1]"w" (A) \
+	); \
+	(float)X; \
+})
+
 osc_data_t *__CCM_TEXT__
-cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **engines, osc_data_t *buf)
+cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 {
 	osc_data_t *buf_ptr = buf;
 	/*
@@ -122,7 +157,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 		uint_fast8_t newpos = pos+1;
 		int16_t val = rela[pos];
 		uint16_t aval = abs(val);
-		if( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2, FIXME make this configurable!!
+		if( (aval << 1) > range.thresh[pos] ) // aval > thresh / 2?
 		{
 			aoi[n_aoi++] = newpos;
 
@@ -136,7 +171,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 			vy[newpos] = 0.0;
 	}
 
-	uint_fast8_t changed = 1; //TODO actually check for changes
+	uint_fast8_t changed = 1;
 
 	/*
 	 * detect peaks
@@ -161,7 +196,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 		}
 		else // !up
 		{
-			if(vy[p1] > vy[p0]) //TODO what if two peaks are equally high?
+			if(vy[p1] > vy[p0])
 				up = 1;
 			// else up := 0
 		}
@@ -186,47 +221,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
 
 				// lookup distance
-				y1 = curve[(uint16_t)(y1*0x7FF)]; // TODO incorporate *0x7ff into range.u and range.W
+				y1 = LOOKUP(y1);
 
         x = vx[P]; 
         y = y1;
-
-				break;
-			}
-			case INTERPOLATION_LINEAR: // linear interpolation TODO remove this, it's not useful
-			{
-				float x0, y0, a, b;
-
-				float tm1 = vy[P-1];
-				float x1 = vx[P];
-				float y1 = vy[P];
-				float tp1 = vy[P+1];
-
-				if(tm1 >= tp1)
-				{
-					x0 = vx[P-1];
-					y0 = tm1;
-				}
-				else
-				{
-					x0 = vx[P+1];
-					y0 = tp1;
-				}
-
-				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
-				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
-
-				// lookup distance
-				y0 = curve[(uint16_t)(y0*0x7FF)];
-				y1 = curve[(uint16_t)(y1*0x7FF)];
-
-        a =(y1-y0) /(x1-x0);
-        b = y0 - a*x0;
-				if(tm1 >= tp1)
-					x = x1 - d * y0 /(y1+y0);
-				else
-					x = x1 + d * y0 /(y1+y0);
-        y = a*x + b;
 
 				break;
 			}
@@ -240,21 +238,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
 				y2 = y2 < 0.f ? 0.f :(y2 > 1.f ? 1.f : y2);
 
-//TODO use this linear lookup interpolation
-// e.g. y0 = LOOKUP(y0);
-#define LOOKUP(y) \
-({ \
-	float _y =(float)(y)*0x7ff; \
-	float _b; \
-	float _r = modff(_y, &_b); \
-	uint32_t _bb =(uint32_t)_b; \
-	(float)(curve[_bb] + _r*(curve[_bb+1] - curve[_bb])); \
-})
-
 				// lookup distance
-				//y0 = curve[(uint16_t)(y0*0x7FF)];
-				//y1 = curve[(uint16_t)(y1*0x7FF)];
-				//y2 = curve[(uint16_t)(y2*0x7FF)];
 				y0 = LOOKUP(y0);
 				y1 = LOOKUP(y1);
 				y2 = LOOKUP(y2);
@@ -277,7 +261,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				}
 				break;
 			}
-			case INTERPOLATION_CUBIC: // cubic interpolation: Catmull-Rom splines
+			case INTERPOLATION_CATMULL: // cubic interpolation: Catmull-Rom splines
 			{
 				float y0, y1, y2, y3, x1;
 
@@ -288,7 +272,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				if(tm1 >= tp1)
 				{
 					x1 = vx[P-1];
-					y0 = vy[P-2]; //FIXME caution
+					//y0 = vy[P-2];
+					y0 = P >= 2 ? vy[P-2] : vy[P-1]; // check for underflow
 					y1 = tm1;
 					y2 = thi;
 					y3 = tp1;
@@ -299,7 +284,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 					y0 = tm1;
 					y1 = thi;
 					y2 = tp1;
-					y3 = vy[P+2]; //FIXME caution
+					//y3 = vy[P+2];
+					y3 = P <= (SENSOR_N) ? vy[P+2] : vy[P+1]; // check for overflow
 				}
 
 				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
@@ -308,10 +294,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				y3 = y3 < 0.f ? 0.f :(y3 > 1.f ? 1.f : y3);
 
 				// lookup distance
-				y0 = curve[(uint16_t)(y0*0x7FF)];
-				y1 = curve[(uint16_t)(y1*0x7FF)];
-				y2 = curve[(uint16_t)(y2*0x7FF)];
-				y3 = curve[(uint16_t)(y3*0x7FF)];
+				y0 = LOOKUP(y0);
+				y1 = LOOKUP(y1);
+				y2 = LOOKUP(y2);
+				y3 = LOOKUP(y3);
 
 				// simple cubic splines
 				//float a0 = y3 - y2 - y0 + y1;
@@ -335,7 +321,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
         {
           mu = 0.f; // TODO what to do here? fall back to quadratic?
         }
-        else // A != 0.0
+        else // A != 0.f
         {
           if(C == 0.f)
             mu = -B / A;
@@ -346,7 +332,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
             if(D < 0.f) // bad, this'd give an imaginary solution
               D = 0.f;
             else
-              D = sqrtf(D); // TODO use a lookup table?
+              D = sqrtf(D);
             mu =(-B - D) / A2;
           }
         }
@@ -357,7 +343,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 
 				break;
 			}
-			case INTERPOLATION_SPLINE: // cubic interpolation: Lagrange Poylnomial
+			case INTERPOLATION_LAGRANGE: // cubic interpolation: Lagrange Poylnomial
 			{
 				float y0, y1, y2, y3, x1;
 
@@ -369,7 +355,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				y0 = vy[P-1];
 				y1 = vy[P];
 				y2 = vy[P+1];
-				y3 = vy[P+2]; // FIXME caution
+				//y3 = vy[P+2];
+				y3 = P <= (SENSOR_N) ? vy[P+2] : vy[P+1]; // check for overflow
 
 				y0 = y0 < 0.f ? 0.f :(y0 > 1.f ? 1.f : y0);
 				y1 = y1 < 0.f ? 0.f :(y1 > 1.f ? 1.f : y1);
@@ -377,10 +364,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 				y3 = y3 < 0.f ? 0.f :(y3 > 1.f ? 1.f : y3);
 
 				// lookup distance
-				y0 = curve[(uint16_t)(y0*0x7FF)];
-				y1 = curve[(uint16_t)(y1*0x7FF)];
-				y2 = curve[(uint16_t)(y2*0x7FF)];
-				y3 = curve[(uint16_t)(y3*0x7FF)];
+				y0 = LOOKUP(y0);
+				y1 = LOOKUP(y1);
+				y2 = LOOKUP(y2);
+				y3 = LOOKUP(y3);
 
 				float d2 = d * d;
 				float d3 = d2 * d;
@@ -449,8 +436,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 
 					if(n_less)
 					{
-						diff0 = fabs(cmc_neu[j].x - cmc_old[i].x); //TODO use assembly for fabs?
-						diff1 = fabs(cmc_neu[j].x - cmc_old[i+1].x);
+						diff0 = VABS(cmc_neu[j].x - cmc_old[i].x);
+						diff1 = VABS(cmc_neu[j].x - cmc_old[i+1].x);
 					}
 
 					if( n_less && (diff1 < diff0) )
@@ -501,8 +488,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 					
 					if(n_more) // only calculate differences when there are still new blobs to be found
 					{
-						diff0 = fabs(cmc_neu[j].x - cmc_old[i].x);
-						diff1 = fabs(cmc_neu[j+1].x - cmc_old[i].x);
+						diff0 = VABS(cmc_neu[j].x - cmc_old[i].x);
+						diff1 = VABS(cmc_neu[j+1].x - cmc_old[i].x);
 					}
 
 					if( n_more && (diff1 < diff0) ) // cmc_neu[j] is the new blob
@@ -575,7 +562,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 			{
 				CMC_Group *ptr = &cmc_groups[gid];
 
-				if( ((tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) ) //TODO inclusive/exclusive?
+				if( ((tar->pid & ptr->pid) == tar->pid) && (tar->x >= ptr->x0) && (tar->x <= ptr->x1) )
 				{
 					if(tar->group && (tar->group != ptr) ) // give it a new sid when group has changed since last step
 					{
@@ -627,7 +614,6 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, CMC_Engine **eng
 
 	/*
 	 * handle output engines
-	 * TODO check loop structure for efficiency
 	 */
 	uint_fast8_t res = changed || idle;
 	if(res)
@@ -703,7 +689,7 @@ cmc_group_clear()
 	}
 }
 
-void
+static void
 cmc_engines_init()
 {
 	if(oscmidi_engine.init_cb)

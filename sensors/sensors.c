@@ -95,10 +95,9 @@ uint8_t adc_order [ADC_LENGTH] = { 9, 5, 8, 4, 7, 3, 6, 2, 1, 0};
 
 static const OSC_Query_Value interpolation_mode_args_values [] = {
 	[INTERPOLATION_NONE]			= { .s = "none" },
-	[INTERPOLATION_LINEAR]		= { .s = "linear" },
 	[INTERPOLATION_QUADRATIC]	= { .s = "quadratic" },
-	[INTERPOLATION_CUBIC]			= { .s = "cubic" },
-	[INTERPOLATION_SPLINE]		= { .s = "spline" },
+	[INTERPOLATION_CATMULL]		= { .s = "catmullrom" },
+	[INTERPOLATION_LAGRANGE]	= { .s = "lagrange" },
 };
 
 static uint_fast8_t

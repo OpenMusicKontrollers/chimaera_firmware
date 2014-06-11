@@ -95,8 +95,6 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define BLOB_MAX 8
 
-#define OSC_ARGS_MAX 12
-
 #define CHIMAERA_BUFSIZE 0x500
 
 #define ADC_DMA_PRIORITY 0x2
@@ -107,8 +105,6 @@ extern const stm32_pin_info PIN_MAP [];
 #define CONFIG_TIMER_PRIORITY 0x7
 #define DHCPC_TIMER_PRIORITY 0x8
 #define MDNS_TIMER_PRIORITY 0x9
-
-#define ENGINE_MAX 6 // tuio1, tuio2, scsynth, oscmidi, dummy, custom
 
 #define BOOT_MODE_REG 0xF
 

@@ -639,7 +639,7 @@ loop()
 #ifdef BENCHMARK
 				stop_watch_start(&sw_tuio_process);
 #endif
-				buf_ptr = cmc_process(now, offset, adc_rela, engines, buf_ptr); // touch recognition of current cycle
+				buf_ptr = cmc_process(now, offset, adc_rela, buf_ptr); // touch recognition of current cycle
 			}
 			
 			if(cmc_engines_active + config.dump.enabled > 1)

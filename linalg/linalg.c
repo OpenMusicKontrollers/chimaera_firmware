@@ -119,9 +119,9 @@ linalg_solve_cubic(float y1, float B1, float y2, float B2, float *c0, float *c1,
 void
 linalg_least_squares_quadratic(double x1, double y1, double x2, double y2, double x3, double y3, double *C0, double *C1)
 {
-	double a = sqrt(x1);
-	double b = sqrt(x2);
-	double c = sqrt(x3);
+	double a = sqrtf(x1);
+	double b = sqrtf(x2);
+	double c = sqrtf(x3);
 
 	double a4 = x1*x1;	// = a*a*a*a;
 	double a3 = x1*a;		// = a*a*a;

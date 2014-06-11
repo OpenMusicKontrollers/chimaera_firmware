@@ -36,7 +36,7 @@
 #define DST_PORT 1
 #define NAME_LENGTH 32
 
-typedef uint_fast8_t(*Socket_Enable_Cb)(uint8_t flag);
+typedef void (*Socket_Enable_Cb)(uint8_t flag);
 typedef struct _Firmware_Version Firmware_Version;
 typedef struct _Socket_Config Socket_Config;
 typedef struct _OSC_Config OSC_Config;

@@ -671,10 +671,8 @@ config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, 
 		Socket_Enable_Cb cb = socket_callbacks[socket->sock];
 		int32_t i;
 		buf_ptr = osc_get_int32(buf_ptr, &i);
-		if(cb(i))
-			size = CONFIG_SUCCESS("is", uuid, path);
-		else
-			size = CONFIG_FAIL("iss", uuid, path, "socket could not be enabled");
+		cb(i);
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
 	CONFIG_SEND(size);

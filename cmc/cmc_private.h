@@ -29,6 +29,8 @@
 #define POLE_NORTH 1
 #define POLE_SOUTH 0
 
+#define ENGINE_MAX 6 // tuio1, tuio2, scsynth, oscmidi, dummy, custom
+
 typedef enum {
 	CMC_BLOB_INVALID,
 	CMC_BLOB_EXISTED,
