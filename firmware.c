@@ -620,6 +620,8 @@ loop()
 				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
 			else if(config.ptp.event.enabled)
 				ptp_timestamp_refresh(ptp_uptime(), &now, &offset);
+			else // neither sNTP nor PTP active
+				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
 
 			// initiate OSC bundle
 			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);

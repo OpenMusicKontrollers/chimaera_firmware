@@ -37,7 +37,7 @@ fix_s31_32_t O0, O1, OO0, OO1;
 
 #define JAN_1970 2208988800UL
 
-static OSC_Timetag t0 = 0ULLK;
+static OSC_Timetag t0 = 0.0ULLK;
 
 void
 sntp_reset()
@@ -143,7 +143,7 @@ sntp_timestamp_refresh(uint32_t tick, OSC_Timetag *now, OSC_Timetag *offset)
 
 	if(offset)
 	{
-		if( (config.output.offset > 0ULLK) && (t0 != 0ULLK) )
+		if( (config.output.offset > 0ULLK) && (t0 != 0.0ULLK) )
 			*offset = *now + config.output.offset;
 		else
 			*offset = OSC_IMMEDIATE;
@@ -157,7 +157,14 @@ sntp_timestamp_refresh(uint32_t tick, OSC_Timetag *now, OSC_Timetag *offset)
 static uint_fast8_t
 _sntp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.sntp.socket, path, fmt, argc, buf);
+	uint_fast8_t ret;
+
+	t0 = 0.0ULLK; // reset
+	ret = config_socket_enabled(&config.sntp.socket, path, fmt, argc, buf);
+	if(ret && config.sntp.socket.enabled && config.ptp.event.enabled) // automatically disable ptp
+		ptp_enable(0);
+
+	return ret;
 }
 
 static uint_fast8_t

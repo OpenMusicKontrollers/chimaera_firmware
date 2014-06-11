@@ -482,7 +482,14 @@ ptp_dispatch(uint8_t *buf, int64_t tick)
 static uint_fast8_t
 _ptp_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	return config_socket_enabled(&config.ptp.event, path, fmt, argc, buf);
+	uint_fast8_t ret;
+
+	t0 = 0ULL; // reset
+	ret = config_socket_enabled(&config.ptp.event, path, fmt, argc, buf);
+	if(ret && config.sntp.socket.enabled && config.ptp.event.enabled) // automatically disable sntp
+		sntp_enable(0);
+
+	return ret;
 }
 
 static uint_fast8_t
