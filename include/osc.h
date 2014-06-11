@@ -220,7 +220,7 @@ osc_get_double(osc_data_t *buf, double *d)
 }
 
 extern inline osc_data_t *
-osc_get_timetag(osc_data_t *buf, uint64_t *t)
+osc_get_timetag(osc_data_t *buf, OSC_Timetag *t)
 {
 	swap64_t *s0 = (swap64_t *)buf;
 	swap64_t s1;

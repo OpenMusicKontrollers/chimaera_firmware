@@ -309,7 +309,7 @@ osc_varlist_set(osc_data_t *buf, const char *path, const char *fmt, va_list args
 				buf_ptr = osc_set_double(buf_ptr, va_arg(args, double));
 				break;
 			case OSC_TIMETAG:
-				buf_ptr = osc_set_timetag(buf_ptr, va_arg(args, uint64_t));
+				buf_ptr = osc_set_timetag(buf_ptr, va_arg(args, OSC_Timetag));
 				break;
 
 			case OSC_TRUE:
