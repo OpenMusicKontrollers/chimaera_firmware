@@ -113,7 +113,7 @@ _wiz_rx_irq()
 	uint8_t spi_sr = WIZ_SPI_BAS->SR;
 	uint_fast8_t rx_err = 0;
 	
-	if(isr_rx == 0) //FIXME why is this needed?
+	if(isr_rx == 0) //XXX why is this needed?
 		isr_rx = DMA_ISR_TCIF;
 
 	// check for errors in DMA and SPI status registers
@@ -155,7 +155,7 @@ _wiz_tx_irq()
 	uint8_t spi_sr = WIZ_SPI_BAS->SR;
 	uint_fast8_t tx_err = 0;
 	
-	if(isr_tx == 0) //FIXME why is this needed?
+	if(isr_tx == 0) //XXX why is this needed?
 		isr_tx = DMA_ISR_TCIF;
 
 	// check for errors in DMA and SPI status registers
@@ -712,8 +712,6 @@ tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
 
 	uint8_t ip [4];
 	uint16_t port;
-
-	udp_get_remote(sock, ip, &port); // TODO only to this once right after client connect
 
 	if(!slip)
 	{

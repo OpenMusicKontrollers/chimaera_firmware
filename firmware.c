@@ -702,6 +702,7 @@ loop()
 			if(config_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{
 				wiz_socket_state[SOCK_CONFIG] = WIZ_SOCKET_STATE_OPEN;
+				udp_get_remote(SOCK_CONFIG, config.config.osc.socket.ip, &config.config.osc.socket.port[DST_PORT]);
 				udp_update_read_write_pointers(SOCK_CONFIG);
 				debug_str("config connect");
 			}
@@ -723,6 +724,7 @@ loop()
 			if(output_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{
 				wiz_socket_state[SOCK_OUTPUT] = WIZ_SOCKET_STATE_OPEN;
+				udp_get_remote(SOCK_OUTPUT, config.output.osc.socket.ip, &config.output.osc.socket.port[DST_PORT]);
 				udp_update_read_write_pointers(SOCK_OUTPUT);
 				debug_str("output connect");
 			}
@@ -741,6 +743,7 @@ loop()
 			if(debug_should_listen & WIZ_Sn_IR_CON) // TCP only
 			{
 				wiz_socket_state[SOCK_DEBUG] = WIZ_SOCKET_STATE_OPEN;
+				udp_get_remote(SOCK_DEBUG, config.debug.osc.socket.ip, &config.debug.osc.socket.port[DST_PORT]);
 				udp_update_read_write_pointers(SOCK_DEBUG);
 			}
 			if( (debug_should_listen & WIZ_Sn_IR_TIMEOUT) || (debug_should_listen & WIZ_Sn_IR_DISCON) ) {

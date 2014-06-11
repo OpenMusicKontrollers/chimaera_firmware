@@ -128,7 +128,6 @@ udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len)
 	return 1;
 }
 
-//FIXME implement for W5200, too
 void __CCM_TEXT__
 udp_peek(uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
@@ -144,7 +143,6 @@ udp_peek(uint8_t sock, uint8_t *i_buf, uint16_t len)
 	wiz_job_run_block();
 }
 
-//FIXME implement for W5200, too
 void __CCM_TEXT__
 udp_skip(uint8_t sock, uint16_t len)
 {
