@@ -41,8 +41,9 @@ static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 static int32_t alv_ids [BLOB_MAX];
 static uint_fast8_t counter;
 
-static int32_t addr;
-static int32_t inst;
+static const uint32_t *addr = (uint32_t *)config.comm.ip;
+static const uint16_t *inst = &config.output.osc.socket.port[SRC_PORT];
+static const uint32_t dim = (SENSOR_N << 16) | 1;
 
 static osc_data_t *pack;
 static osc_data_t *bndl;
@@ -50,20 +51,11 @@ static osc_data_t *bndl;
 static void
 tuio2_init()
 {
-	uint_fast8_t i;
-	uint_fast8_t long_header = config.tuio2.long_header;
-
-	// initialize long frame
-	uint8_t *mac = config.comm.mac; //FIXME this should be when MAC is changed
-	addr =(mac[2] << 24) | (mac[3] << 16) | (mac[4] << 8) | mac[5]; // MAC[2:5] last four bytes
-	inst = uid_seed(); // 32 bit conglomerate of unique ID
 }
 
 static osc_data_t *
 tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
-	uint_fast8_t long_header = config.tuio2.long_header;
-
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -74,16 +66,16 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, frm_str);
-		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt[long_header]);
+		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt[config.tuio2.long_header]);
 
 		buf_ptr = osc_set_int32(buf_ptr, fid);
 		buf_ptr = osc_set_timetag(buf_ptr, now);
-		if(long_header)
+		if(config.tuio2.long_header)
 		{
 			buf_ptr = osc_set_string(buf_ptr, config.name);
-			buf_ptr = osc_set_int32(buf_ptr, addr);
-			buf_ptr = osc_set_int32(buf_ptr, inst);
-			buf_ptr = osc_set_int32(buf_ptr, (SENSOR_N << 16) | 1);
+			buf_ptr = osc_set_int32(buf_ptr, *addr);
+			buf_ptr = osc_set_int32(buf_ptr, *inst);
+			buf_ptr = osc_set_int32(buf_ptr, dim);
 		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
