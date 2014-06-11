@@ -21,14 +21,12 @@
  *     distribution.
  */
 
-#include "config_private.h"
-#include "../cmc/cmc_private.h"
-
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
 
 #include <chimaera.h>
+#include <config.h>
 #include <chimutil.h>
 #include <wiz.h>
 #include <eeprom.h>
@@ -751,11 +749,12 @@ _config_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t
 	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, buf);
 }
 
+#define ADDRESS_CB_LEN 32
 typedef struct _Address_Cb Address_Cb;
 
 struct _Address_Cb {
 	int32_t uuid;
-	char path [32];
+	char path [ADDRESS_CB_LEN];
 	Socket_Config *socket;
 	uint16_t port;
 };
@@ -809,7 +808,7 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 		uint8_t ip[4];
 
 		address_cb.uuid = uuid;
-		strcpy(address_cb.path, path); //TODO check length
+		strncpy(address_cb.path, path, ADDRESS_CB_LEN-1);
 		address_cb.socket = socket;
 
 		if(str2addr(hostname, ip, &port))
@@ -938,7 +937,7 @@ _comm_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 	buf_ptr = osc_get_string(buf_ptr, &hostname);
 
 	address_cb.uuid = uuid;
-	strcpy(address_cb.path, path); //TODO check length
+	strncpy(address_cb.path, path, ADDRESS_CB_LEN-1);
 
 	uint8_t ip[4];
 	if(str2ip(hostname, ip)) // an IPv4 was given in string format
@@ -1094,6 +1093,7 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 
 static uint_fast8_t _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 
+// globals
 const OSC_Method config_serv [] = {
 	{NULL, NULL, _query},
 	{NULL, NULL, NULL} // terminator
@@ -1115,10 +1115,10 @@ const OSC_Query_Argument config_boolean_args [] = {
 };
 
 const OSC_Query_Argument config_address_args [] = {
-	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain with colon and port", OSC_QUERY_MODE_RW, 32)
+	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain with colon and port", OSC_QUERY_MODE_RW, 64)
 };
 
-// locals arguments
+// locals
 static const OSC_Query_Argument comm_mac_args [] = {
 	OSC_QUERY_ARGUMENT_STRING("EUI-48 hexadecimal colon", OSC_QUERY_MODE_RW, 17)
 };
@@ -1128,11 +1128,11 @@ static const OSC_Query_Argument comm_ip_args [] = {
 };
 
 static const OSC_Query_Argument comm_gateway_args [] = {
-	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", OSC_QUERY_MODE_RW, 32)
+	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", OSC_QUERY_MODE_RW, 64)
 };
 
 static const OSC_Query_Argument comm_address_args [] = {
-	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", OSC_QUERY_MODE_W, 32)
+	OSC_QUERY_ARGUMENT_STRING("32-bit decimal dotted or mDNS .local domain", OSC_QUERY_MODE_W, 64)
 };
 
 const OSC_Query_Item comm_tree [] = {
@@ -1157,7 +1157,7 @@ const OSC_Query_Item reset_tree [] = {
 };
 
 static const OSC_Query_Argument info_version_args [] = {
-	OSC_QUERY_ARGUMENT_STRING("{Major}.{Minor}.{Patch level} Rev{Board revision}", OSC_QUERY_MODE_R, 32)
+	OSC_QUERY_ARGUMENT_STRING("{Major}.{Minor}.{Patch level}-{Board revision}", OSC_QUERY_MODE_R, 32)
 };
 
 static const OSC_Query_Argument info_uid_args [] = {
