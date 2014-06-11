@@ -145,7 +145,7 @@ range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3
 			range.qui[i] += rela[i];
 		}
 
-		// TODO is this the best way to get a mean of min and max?
+		// XXX is this the best way to get a mean of min and max?
 		if(rela[i] >(avg = arr->arr[POLE_SOUTH][i] >> 4) )
 		{
 			arr->arr[POLE_SOUTH][i] -= avg;
@@ -178,7 +178,7 @@ range_init()
 }
 
 // calibrate quiescent current
-void
+static void
 range_update_quiescent()
 {
 	uint_fast8_t i;
@@ -194,7 +194,7 @@ range_update_quiescent()
 }
 
 // calibrate threshold
-uint_fast8_t
+static uint_fast8_t
 range_update_b0()
 {
 	uint_fast8_t i;
@@ -228,11 +228,12 @@ range_update_b0()
 }
 
 // calibrate distance-magnetic flux relationship curve
-void
+static uint_fast8_t
 range_update_b1(float y)
 {
 	uint_fast8_t i;
 	uint16_t b_s, b_n;
+	uint_fast8_t ret = 0;
 
 	i = point.i;
 	{
@@ -245,16 +246,22 @@ range_update_b1(float y)
 		switch(point.state)
 		{
 			case 1:
+				if(y <= 0.f) // check for increasing y
+					goto exit;
 				point.y1 = y;
 				point.B1 =(b_s + b_n) / 2.f;
 				point.state++;
 				break;
 			case 2:
+				if(y <= point.y1) // check for increasing y
+					goto exit;
 				point.y2 = y;
 				point.B2 =(b_s + b_n) / 2.f;
 				point.state++;
 				break;
 			case 3:
+				if(y <= point.y2) // check for increasing y
+					goto exit;
 				point.y3 = y;
 				point.B3 =(b_s + b_n) / 2.f;
 				point.state++;
@@ -262,22 +269,29 @@ range_update_b1(float y)
 		}
 	}
 
+	ret = 1;
+
+exit:
+
 	for(i=0; i<SENSOR_N; i++)
 	{
 		// reset arr to quiescent values
 		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
 		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
+
+	return ret;
 }
 
 // calibrate amplification and sensitivity
-void
+static uint_fast8_t
 range_update_b2()
 {
-	uint_fast8_t i;
+	uint_fast8_t i = point.i;
 	uint16_t b_s, b_n;
+	uint_fast8_t ret = 0;
 
-	i = point.i;
+	if(point.state == 4)
 	{
 		arr->arr[POLE_SOUTH][i] >>= 4; // average over 16 samples
 		arr->arr[POLE_NORTH][i] >>= 4;
@@ -287,43 +301,21 @@ range_update_b2()
 		
 		float Br =(b_s + b_n)/2.f - point.B0;
 
-		//TODO remove unnecessary code
-		switch(point.state)
-		{
-			case 2: // quadratic curve fit
-			{
-				point.B1 =(point.B1 - point.B0) / Br;
-					DEBUG("ff", point.y1, point.B1);
-				linalg_solve_quadratic(point.y1, point.B1, &range.C[0], &range.C[1]);
-					DEBUG("ff", range.C[0], range.C[1]);
-				break;
-			}
-			case 3: // cubic curve fit
-			{
-				point.B1 =(point.B1 - point.B0) / Br;
-				point.B2 =(point.B2 - point.B0) / Br;
-					DEBUG("ffff", point.y1, point.B1, point.y2, point.B2);
-				linalg_solve_cubic(point.y1, point.B1, point.y2, point.B1, &range.C[0], &range.C[1], &range.C[2]);
-					DEBUG("fff", range.C[0], range.C[1], range.C[2]);
-				break;
-			}
-			case 4: // least square fit
-			{
-				point.B1 =(point.B1 - point.B0) / Br;
-				point.B2 =(point.B2 - point.B0) / Br;
-				point.B3 =(point.B3 - point.B0) / Br;
+		point.B1 =(point.B1 - point.B0) / Br;
+		point.B2 =(point.B2 - point.B0) / Br;
+		point.B3 =(point.B3 - point.B0) / Br;
 
-				double C [3];
-					DEBUG("ffffff", point.B1, point.y1, point.B2, point.y2, point.B3, point.y3);
-				linalg_least_squares_quadratic(point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1]);
-					DEBUG("dd", C[0], C[1]);
-				linalg_least_squares_cubic(point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1], &C[2]);
-					DEBUG("ddd", C[0], C[1], C[2]);
-				range.C[0] =(float)C[0];
-				range.C[1] =(float)C[1];
-				range.C[2] =(float)C[2];
-			}
-		}
+		double C [3];
+		//DEBUG("ffffff", point.B1, point.y1, point.B2, point.y2, point.B3, point.y3);
+		//linalg_least_squares_quadratic(point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1]);
+		//DEBUG("dd", C[0], C[1]);
+		linalg_least_squares_cubic(point.B1, point.y1, point.B2, point.y2, point.B3, point.y3, &C[0], &C[1], &C[2]);
+		//DEBUG("ddd", C[0], C[1], C[2]);
+		range.C[0] =(float)C[0];
+		range.C[1] =(float)C[1];
+		range.C[2] =(float)C[2];
+
+		ret = 1;
 	}
 
 	for(i=0; i<SENSOR_N; i++)
@@ -332,10 +324,12 @@ range_update_b2()
 		arr->arr[POLE_SOUTH][i] = range.qui[i] << 4;
 		arr->arr[POLE_NORTH][i] = range.qui[i] << 4;
 	}
+
+	return ret;
 }
 
 // calibrate amplification and sensitivity
-void
+static void
 range_update_b3(float y)
 {
 	uint_fast8_t i;
@@ -453,7 +447,7 @@ _calibration_min(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 	if(calibrating)
 	{
 		// update new range
-		uint_fast8_t si = range_update_b0();
+		int32_t si = range_update_b0();
 		size = CONFIG_SUCCESS("isi", uuid, path, si);
 	}
 	else
@@ -478,11 +472,11 @@ _calibration_mid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 		float y;
 		buf_ptr = osc_get_float(buf_ptr, &y);
 
-		// FIXME check for increasing y, or do sorting along x afterwards?
-
 		// update mid range
-		range_update_b1(y);
-		size = CONFIG_SUCCESS("is", uuid, path);
+		if(range_update_b1(y))
+			size = CONFIG_SUCCESS("is", uuid, path);
+		else
+			size = CONFIG_FAIL("iss", uuid, path, "vicinity must be increasing for five-point curve-fit");
 	}
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");
@@ -504,9 +498,10 @@ _calibration_max(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 	if(calibrating)
 	{
 		// update max range
-		range_update_b2();
-
-		size = CONFIG_SUCCESS("is", uuid, path);
+		if(range_update_b2())
+			size = CONFIG_SUCCESS("is", uuid, path);
+		else
+			size = CONFIG_FAIL("iss", uuid, path, "not all points given for five-point curve-fit");
 	}
 	else
 		size = CONFIG_FAIL("iss", uuid, path, "not in calibration mode");

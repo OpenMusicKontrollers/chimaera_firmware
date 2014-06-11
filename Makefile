@@ -1,11 +1,11 @@
 # Note: LIB_MAPLE_HOME needs to be defined in your environment 
 
 # set number of sensors: 16, 32, 48, 64, 80, 96, 112, 128, 144, 160
-export SENSORS ?= 160
+export SENSORS ?= 128
 
 # set firmware version
 export VERSION_MAJOR ?= 0
-export VERSION_MINOR ?= 3
+export VERSION_MINOR ?= 4
 export VERSION_PATCH ?= 0
 
 # set revision of board design: 3, 4

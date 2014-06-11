@@ -49,10 +49,5 @@ void range_curve_update();
 
 void range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
 void range_init();
-void range_update_quiescent();
-uint_fast8_t range_update_b0();
-void range_update_b1(float y);
-void range_update_b2();
-void range_update_b3(float y);
 
 #endif // _CALIBRATION_H_
