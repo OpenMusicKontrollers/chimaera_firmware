@@ -68,6 +68,7 @@ extern const OSC_Query_Value config_mode_args_values [3];
 struct _OSC_Config {
 	Socket_Config socket;
 	uint8_t mode;
+	uint8_t server;
 };
 
 enum {

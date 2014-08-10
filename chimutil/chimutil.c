@@ -104,7 +104,7 @@ output_enable(uint8_t b)
 		if(socket->enabled)
 		{
 			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
+			tcp_begin(socket->sock, socket->port[SRC_PORT], config.output.osc.server); // TCP client or server?
 		}
 	}
 }
@@ -130,7 +130,10 @@ config_enable(uint8_t b)
 	{
 		tcp_end(socket->sock);
 		if(socket->enabled)
-			tcp_begin(socket->sock, socket->port[SRC_PORT], 1); // TCP server
+		{
+			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+			tcp_begin(socket->sock, socket->port[SRC_PORT], config.config.osc.server); // TCP client or server?
+		}
 	}
 }
 
@@ -206,7 +209,7 @@ debug_enable(uint8_t b)
 		if(socket->enabled)
 		{
 			udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
-			tcp_begin(socket->sock, socket->port[SRC_PORT], 0); // TCP client
+			tcp_begin(socket->sock, socket->port[SRC_PORT], config.debug.osc.server); // TCP client or server?
 		}
 	}
 }

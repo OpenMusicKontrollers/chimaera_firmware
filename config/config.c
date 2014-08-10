@@ -132,7 +132,8 @@ Config config = {
 				.port = {3333, 3333},
 				.ip = IP_BROADCAST
 			},
-			.mode = OSC_MODE_UDP
+			.mode = OSC_MODE_UDP,
+			.server = 0
 		},
 		.offset = 0.002ULLK, // := 2ms offset
 		.invert = {
@@ -150,7 +151,8 @@ Config config = {
 				.port = {4444, 4444},
 				.ip = IP_BROADCAST
 			},
-			.mode = OSC_MODE_UDP
+			.mode = OSC_MODE_UDP,
+			.server = 1
 		}
 	},
 
@@ -190,7 +192,8 @@ Config config = {
 				.port = {6666, 6666},
 				.ip = IP_BROADCAST
 			},
-			.mode = OSC_MODE_UDP
+			.mode = OSC_MODE_UDP,
+			.server = 0
 		}
 	},
 
@@ -744,6 +747,13 @@ _output_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 }
 
 static uint_fast8_t
+_output_server(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	// needs to proceed _output_mode
+	return config_check_uint8(path, fmt, argc, buf, &config.output.osc.server);
+}
+
+static uint_fast8_t
 _config_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	return config_socket_enabled(&config.config.osc.socket, path, fmt, argc, buf);
@@ -1192,6 +1202,7 @@ static const OSC_Query_Item engines_tree [] = {
 	OSC_QUERY_ITEM_METHOD("parallel", "Parallel processing", _output_parallel, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
 	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _output_mode, config_mode_args),
+	OSC_QUERY_ITEM_METHOD("server", "Enable/disable TCP server mode", _output_server, config_boolean_args),
 
 	// engines
 	OSC_QUERY_ITEM_NODE("dump/", "Dump output engine", dump_tree),

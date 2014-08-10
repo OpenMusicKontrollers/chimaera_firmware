@@ -710,7 +710,7 @@ loop()
 			{
 				uint8_t enabled = config.config.osc.socket.enabled;
 				config_enable(0);
-				if(config.config.osc.mode && enabled)
+				if(config.config.osc.mode && config.config.osc.server && enabled)
 					config_enable(1);
 				debug_str("config ARPto or TCP disconect");
 			}
@@ -730,7 +730,10 @@ loop()
 			}
 			if( (output_should_listen & WIZ_Sn_IR_TIMEOUT) || (output_should_listen & WIZ_Sn_IR_DISCON) )
 			{
+				uint8_t enabled = config.output.osc.socket.enabled;
 				output_enable(0);
+				if(config.output.osc.mode && config.output.osc.server && enabled)
+					output_enable(1);
 				debug_str("output ARPto or TCP disconect");
 			}
 			else if( (output_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_OUTPUT] == WIZ_SOCKET_STATE_OPEN) )
@@ -746,8 +749,12 @@ loop()
 				udp_get_remote(SOCK_DEBUG, config.debug.osc.socket.ip, &config.debug.osc.socket.port[DST_PORT]);
 				udp_update_read_write_pointers(SOCK_DEBUG);
 			}
-			if( (debug_should_listen & WIZ_Sn_IR_TIMEOUT) || (debug_should_listen & WIZ_Sn_IR_DISCON) ) {
+			if( (debug_should_listen & WIZ_Sn_IR_TIMEOUT) || (debug_should_listen & WIZ_Sn_IR_DISCON) )
+			{
+				uint8_t enabled = config.debug.osc.socket.enabled;
 				debug_enable(0);
+				if(config.debug.osc.mode && config.debug.osc.server && enabled)
+					debug_enable(1);
 			}
 			else if( (debug_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_DEBUG] == WIZ_SOCKET_STATE_OPEN) )
 				osc_ignore(config.debug.osc.socket.sock);
