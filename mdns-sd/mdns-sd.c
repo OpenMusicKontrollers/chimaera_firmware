@@ -45,10 +45,10 @@ static DNS_Resolve resolve;
 // dns-sd PTR methods prototype definitions
 static void _hook_services(DNS_Query *);
 static void _hook_osc(DNS_Query *);
-static void _hook_chimaera(DNS_Query *);
+static void _hook_instance(DNS_Query *);
 static void _hook_arpa(DNS_Query *);
 
-enum {HOOK_SERVICES=0, HOOK_OSC=1, HOOK_CHIMAERA=2, HOOK_ARPA=3};
+enum {HOOK_SERVICES=0, HOOK_OSC=1, HOOK_INSTANCE=2, HOOK_ARPA=3};
 
 // self query name for DNS lookup
 static int len_self;
@@ -58,11 +58,16 @@ static char hook_self [32];
 static int len_arpa;
 static char hook_arpa [32];
 
+// self instance name for DNS-SD
+static int len_instance;
+static char hook_instance_udp [32];
+static char hook_instance_tcp [32];
+
 // dns-sd PTR methods array
 static DNS_PTR_Method hooks_udp [] = {
 	[HOOK_SERVICES]	= {"\011_services\007_dns-sd\004_udp\005local", _hook_services},
 	[HOOK_OSC]			= {"\004_osc\004_udp\005local", _hook_osc},
-	[HOOK_CHIMAERA]	= {"\010chimaera\004_osc\004_udp\005local", _hook_chimaera},
+	[HOOK_INSTANCE]	= {hook_instance_udp, _hook_instance},
 	[HOOK_ARPA]			= {hook_arpa, _hook_arpa},
 	{NULL, NULL}
 };
@@ -70,7 +75,7 @@ static DNS_PTR_Method hooks_udp [] = {
 static DNS_PTR_Method hooks_tcp [] = {
 	[HOOK_SERVICES]	= {"\011_services\007_dns-sd\004_udp\005local", _hook_services},
 	[HOOK_OSC]			= {"\004_osc\004_tcp\005local", _hook_osc},
-	[HOOK_CHIMAERA]	= {"\010chimaera\004_osc\004_tcp\005local", _hook_chimaera},
+	[HOOK_INSTANCE]	= {hook_instance_tcp, _hook_instance},
 	[HOOK_ARPA]			= {hook_arpa, _hook_arpa},
 	{NULL, NULL}
 };
@@ -209,7 +214,7 @@ _serialize_PTR_osc(uint8_t *buf)
 	else
 		hooks = hooks_tcp;
 
-	qname = hooks[HOOK_CHIMAERA].name;
+	qname = hooks[HOOK_INSTANCE].name;
 	len = strlen(qname) + 1;
 
 	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_OSC].name, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
@@ -221,7 +226,7 @@ _serialize_PTR_osc(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_TXT_chimaera(uint8_t *buf)
+_serialize_TXT_instance(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 	uint16_t len;
@@ -233,7 +238,7 @@ _serialize_TXT_chimaera(uint8_t *buf)
 		hooks = hooks_tcp;
 
 	len = strlen(TXT_COMMON) + (config.config.osc.mode == OSC_MODE_SLIP ? strlen(TXT_SLIP) : 0);
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
 
 	memcpy(buf_ptr, TXT_COMMON, strlen(TXT_COMMON));
 	buf_ptr += strlen(TXT_COMMON);
@@ -248,7 +253,7 @@ _serialize_TXT_chimaera(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_SRV_chimaera(uint8_t *buf)
+_serialize_SRV_instance(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -258,7 +263,7 @@ _serialize_SRV_chimaera(uint8_t *buf)
 	else
 		hooks = hooks_tcp;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_CHIMAERA].name, MDNS_TYPE_SRV, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 6 + len_self);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_SRV, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 6 + len_self);
 
 	*buf_ptr++ = 0x0; // priority MSB
 	*buf_ptr++ = 0x0; // priority LSB
@@ -277,7 +282,7 @@ _serialize_SRV_chimaera(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_A_chimaera(uint8_t *buf)
+_serialize_A_instance(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -313,9 +318,9 @@ _hook_services(DNS_Query *query)
 	// recommended by rfc6763
 	tail = _serialize_PTR_services(tail); 
 	tail = _serialize_PTR_osc(tail);
-	tail = _serialize_TXT_chimaera(tail);
-	tail = _serialize_SRV_chimaera(tail);
-	tail = _serialize_A_chimaera(tail);
+	tail = _serialize_TXT_instance(tail);
+	tail = _serialize_SRV_instance(tail);
+	tail = _serialize_A_instance(tail);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -330,15 +335,15 @@ _hook_osc(DNS_Query *query)
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 4, 0, 0);
 	// recommended by rfc6763
 	tail = _serialize_PTR_osc(tail);
-	tail = _serialize_TXT_chimaera(tail);
-	tail = _serialize_SRV_chimaera(tail);
-	tail = _serialize_A_chimaera(tail);
+	tail = _serialize_TXT_instance(tail);
+	tail = _serialize_SRV_instance(tail);
+	tail = _serialize_A_instance(tail);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
 
 static void
-_hook_chimaera(DNS_Query *query)
+_hook_instance(DNS_Query *query)
 {
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
@@ -346,9 +351,9 @@ _hook_chimaera(DNS_Query *query)
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 3, 0, 0);
 	// recommended by rfc6763
-	tail = _serialize_TXT_chimaera(tail);
-	tail = _serialize_SRV_chimaera(tail);
-	tail = _serialize_A_chimaera(tail);
+	tail = _serialize_TXT_instance(tail);
+	tail = _serialize_SRV_instance(tail);
+	tail = _serialize_A_instance(tail);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -386,6 +391,44 @@ _update_hook_self(char *name)
 	*ptr = 0x0; // trailing zero
 	
 	return strlen(hook_self) + 1;
+}
+
+static uint16_t
+_update_hook_instance(char *name)
+{
+	int len;
+
+	// UDP
+	char *ptr = hook_instance_udp;
+	const char *instance_postfix = hooks_udp[HOOK_OSC].name;
+
+	len = strlen(name);
+	*ptr++ = len;
+	memcpy(ptr, name, len);
+	ptr += len;
+
+	len = strlen(instance_postfix);
+	memcpy(ptr, instance_postfix, len);
+	ptr += len;
+
+	*ptr = 0x0; // trailing zero
+
+	// TCP
+	ptr = hook_instance_tcp;
+	instance_postfix = hooks_tcp[HOOK_OSC].name;
+
+	len = strlen(name);
+	*ptr++ = len;
+	memcpy(ptr, name, len);
+	ptr += len;
+
+	len = strlen(instance_postfix);
+	memcpy(ptr, instance_postfix, len);
+	ptr += len;
+
+	*ptr = 0x0; // trailing zero
+	
+	return strlen(hook_instance_tcp) + 1;
 }
 
 static uint16_t
@@ -529,6 +572,7 @@ mdns_dispatch(uint8_t *buf, uint16_t len)
 {
 	// update qname labels corresponding to self
 	len_self = _update_hook_self(config.name);
+	len_instance = _update_hook_instance(config.name);
 	len_arpa = _update_hook_arpa(config.comm.ip);
 
 	uint8_t *buf_ptr = buf;
@@ -575,6 +619,8 @@ mdns_dispatch(uint8_t *buf, uint16_t len)
 void mdns_announce()
 {
 	len_self = _update_hook_self(config.name);
+	len_instance = _update_hook_instance(config.name);
+	len_arpa = _update_hook_arpa(config.comm.ip);
 
 	int i;
 	for(i=0; i<2; i++)
@@ -592,9 +638,9 @@ void mdns_announce()
 		// append dns-sd services here, too
 		tail = _serialize_PTR_services(tail); 
 		tail = _serialize_PTR_osc(tail);
-		tail = _serialize_TXT_chimaera(tail);
-		tail = _serialize_SRV_chimaera(tail);
-		tail = _serialize_A_chimaera(tail);
+		tail = _serialize_TXT_instance(tail);
+		tail = _serialize_SRV_instance(tail);
+		tail = _serialize_A_instance(tail);
 		
 		udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 
