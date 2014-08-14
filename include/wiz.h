@@ -68,7 +68,8 @@ enum _Wiz_Socket_State {
 
 extern Wiz_Socket_State wiz_socket_state [];
 
-void wiz_init(gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
+void wiz_init(gpio_dev *dev, uint8_t bit);
+void wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
 uint_fast8_t wiz_link_up();
 
 void wiz_mac_set(uint8_t *mac);

@@ -1088,14 +1088,15 @@ setup()
 		[SOCK_DEBUG]	= 1,
 		[SOCK_MDNS]		= 1,
 	};
-	wiz_init(PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem);
-	wiz_mac_set(config.comm.mac);
+
+	wiz_init(PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit);
 
 	// wait for link up before proceeding
 	while(!wiz_link_up()) // TODO monitor this and go to sleep mode when link is down
 		;
 
-	wiz_init(PIN_MAP[UDP_SS].gpio_device, PIN_MAP[UDP_SS].gpio_bit, tx_mem, rx_mem); //TODO solve this differently
+	wiz_sockets_set(tx_mem, rx_mem);
+	wiz_mac_set(config.comm.mac);
 	
 	// choose DHCP, IPv4LL or static IP
 	uint_fast8_t claimed = 0;

@@ -50,8 +50,6 @@ void wiz_job_run_single();
 void wiz_job_run_nonblocking();
 void wiz_job_run_block();
 
-void wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
-
 #define WIZ_MAX_JOB_NUM 8
 
 extern Wiz_Job wiz_jobs [WIZ_MAX_JOB_NUM];

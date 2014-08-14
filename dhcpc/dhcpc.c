@@ -40,13 +40,13 @@ DHCPC dhcpc = {
 static uint32_t xid = 0x3903F326; // TODO make this random or based on uid?
 static const uint8_t dhcp_message_type_discover [1] = {DHCPDISCOVER};
 static uint8_t client_identifier [7] = {1, 0, 0, 0, 0, 0, 0};
-static const uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
+//static const uint8_t host_name [8] = {'c', 'h', 'i', 'm', 'a', 'e', 'r', 'a'};
 static const uint8_t parameter_request_list [2] = {OPTION_SUBNET_MASK, OPTION_ROUTER};
 
 static BOOTP_Option dhcp_discover_options [] = {
 	BOOTP_OPTION(OPTION_DHCP_MESSAGE_TYPE, 1,(uint8_t *)dhcp_message_type_discover),
 	BOOTP_OPTION(OPTION_CLIENT_IDENTIFIER, 7, client_identifier),
-	BOOTP_OPTION(OPTION_HOST_NAME, 8,(uint8_t *)host_name),
+	//BOOTP_OPTION(OPTION_HOST_NAME, 8,(uint8_t *)host_name),
 	BOOTP_OPTION(OPTION_PARAMETER_REQUEST_LIST, 2,(uint8_t *)parameter_request_list),
 	BOOTP_OPTION_END
 };

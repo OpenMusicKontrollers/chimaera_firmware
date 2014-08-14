@@ -336,7 +336,7 @@ wiz_job_run_block()
 }
 
 void
-wiz_init(gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM])
+wiz_init(gpio_dev *dev, uint8_t bit)
 {
 	int status;
 
@@ -369,8 +369,6 @@ wiz_init(gpio_dev *dev, uint8_t bit, uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t r
 	do {
 		_dma_read(WIZ_MR, 0, &flag, 1);
 	} while(flag & WIZ_MR_RST);
-
-	wiz_sockets_set(tx_mem, rx_mem);
 }
 
 uint_fast8_t
