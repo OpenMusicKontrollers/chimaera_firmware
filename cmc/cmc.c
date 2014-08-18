@@ -652,7 +652,12 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 				{
 					CMC_Blob *tar = &cmc_old[i];
 					if(tar->state == CMC_BLOB_DISAPPEARED)
+					{
+						float zero = config.output.invert.z ? 1.f : 0.f;
+						if(tar->p != zero)
+							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, zero);
 						buf_ptr = engine->off_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid);
+					}
 				}
 
 			if(engine->end_cb)
