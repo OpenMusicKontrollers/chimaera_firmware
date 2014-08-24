@@ -142,9 +142,9 @@ sntp_dispatch(uint8_t *buf, OSC_Timetag t4)
 }
 
 void __CCM_TEXT__
-sntp_timestamp_refresh(uint32_t tick, OSC_Timetag *now, OSC_Timetag *offset)
+sntp_timestamp_refresh(int64_t tick, OSC_Timetag *now, OSC_Timetag *offset)
 {
-	*now = t0 + tick*SNTP_SYSTICK_DURATION;
+	*now = t0 + tick*1e-6;
 
 	if(offset)
 	{

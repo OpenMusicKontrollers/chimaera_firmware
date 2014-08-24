@@ -107,7 +107,6 @@ static volatile uint_fast8_t dhcpc_should_listen = 0;
 static volatile uint_fast8_t dhcpc_needs_refresh = 0;
 static volatile uint_fast8_t mdns_timeout = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
-static volatile uint32_t wiz_irq_tick;
 static volatile int64_t wiz_ptp_tick;
 
 static OSC_Timetag now;
@@ -151,7 +150,6 @@ wiz_irq()
 {
 	//TODO substract 12 cycles interrupt latency for ARM Cortex M4?
 	wiz_ptp_tick = ptp_uptime();
-	wiz_irq_tick = systick_uptime();
 	wiz_needs_attention = 1;
 }
 
@@ -365,7 +363,7 @@ config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void __CCM_TEXT__
 sntp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
-	sntp_timestamp_refresh(wiz_irq_tick, &now, NULL);
+	sntp_timestamp_refresh(wiz_ptp_tick, &now, NULL);
 	sntp_dispatch(buf, now);
 }
 
@@ -617,11 +615,11 @@ loop()
 			adc_fill(adc_raw_ptr);
 
 			if(config.sntp.socket.enabled)
-				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
+				sntp_timestamp_refresh(ptp_uptime(), &now, &offset);
 			else if(config.ptp.event.enabled)
 				ptp_timestamp_refresh(ptp_uptime(), &now, &offset);
 			else // neither sNTP nor PTP active
-				sntp_timestamp_refresh(systick_uptime(), &now, &offset);
+				sntp_timestamp_refresh(ptp_uptime(), &now, &offset);
 
 			// initiate OSC bundle
 			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
@@ -779,7 +777,7 @@ loop()
 			// send sntp request
 			if(sync_should_request)
 			{
-				sntp_timestamp_refresh(systick_uptime(), &now, NULL);
+				sntp_timestamp_refresh(ptp_uptime(), &now, NULL);
 				len = sntp_request(BUF_O_OFFSET(buf_o_ptr), now);
 				udp_send(config.sntp.socket.sock, BUF_O_BASE(buf_o_ptr), len);
 				sync_should_request = 0;
