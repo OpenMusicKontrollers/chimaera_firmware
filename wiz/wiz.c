@@ -551,18 +551,24 @@ udp_send_block(uint8_t sock)
 
 	uint8_t ir;
 	uint8_t flag;
-	do
+	while(1)
 	{
 		_dma_read_sock(sock, WIZ_Sn_IR, &ir, 1);
-		if(ir & WIZ_Sn_IR_TIMEOUT) // ARPto occured, SEND failed
-		{
-			flag = WIZ_Sn_IR_SEND_OK | WIZ_Sn_IR_TIMEOUT; // set SEND_OK flag and clear TIMEOUT flag
-			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
-		}
-	} while( (ir & WIZ_Sn_IR_SEND_OK) != WIZ_Sn_IR_SEND_OK);
 
-	flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
-	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+		if(ir & WIZ_Sn_IR_SEND_OK)
+		{
+			flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
+			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+			break;
+		}
+		else if(ir & WIZ_Sn_IR_TIMEOUT)
+		{
+			// TODO should we not clear any IR flags here, as they need to be handled by the backend?
+			flag = WIZ_Sn_IR_TIMEOUT; // clear timeout flag 
+			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+			break;
+		}
+	}
 }
 
 inline __always_inline void
@@ -686,21 +692,23 @@ tcp_send_block(uint8_t sock)
 	wiz_job_run_block();
 
 	uint8_t ir;
-	uint8_t sr;
 	uint8_t flag;
-	do
+	while(1)
 	{
 		_dma_read_sock(sock, WIZ_Sn_IR, &ir, 1);
-		_dma_read_sock(sock, WIZ_Sn_SR, &sr, 1);
-		if(sr & WIZ_Sn_SR_CLOSED) // DISCON occured, SEND failed
-		{
-			flag = WIZ_Sn_IR_SEND_OK; // set SEND_OK flag
-			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
-		} //TODO test this
-	} while( (ir & WIZ_Sn_IR_SEND_OK) != WIZ_Sn_IR_SEND_OK);
 
-	flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
-	_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+		if(ir & WIZ_Sn_IR_SEND_OK)
+		{
+			flag = WIZ_Sn_IR_SEND_OK; // clear SEND_OK flag
+			_dma_write_sock(sock, WIZ_Sn_IR, &flag, 1);
+			break;
+		}
+		else if( (ir & WIZ_Sn_IR_TIMEOUT) || (ir & WIZ_Sn_IR_DISCON) )
+		{
+			// we do not clear any IR flags here, as they need to be handled by the backend
+			break;
+		}
+	}
 }
 
 void //__CCM_TEXT__
