@@ -132,6 +132,26 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 				break;
 			}
 
+			case RPN_PUSH_REG:
+			{
+				int32_t pos = pop(stack);
+				float c = pop(stack);
+				if(pos < RPN_REG_HEIGHT)
+					stack->reg[pos] = c;
+				else
+					; //TODO warn
+				break;
+			}
+			case RPN_POP_REG:
+			{
+				int32_t pos = pop(stack);
+				if(pos < RPN_REG_HEIGHT)
+					push(stack, stack->reg[pos]);
+				else // TODO warn
+					push(stack, NAN);
+				break;
+			}
+
 			// standard operators
 			case RPN_ADD:
 			{
@@ -395,6 +415,15 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 				ptr++;
 				break;
 			}
+
+			case '[':
+				if(!rpn_add_inst(vm, compiler, RPN_PUSH_REG, 0.f, 2, 0)) return 0;
+				ptr++;
+				break;
+			case ']':
+				if(!rpn_add_inst(vm, compiler, RPN_POP_REG, 0.f, 1, 1)) return 0;
+				ptr++;
+				break;
 
 			case ' ':
 			case '\t':

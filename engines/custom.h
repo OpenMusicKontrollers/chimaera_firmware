@@ -30,7 +30,7 @@
 #define CUSTOM_MAX_EXPR		12
 #define CUSTOM_MAX_INST		24
 
-#define CUSTOM_PATH_LEN		24
+#define CUSTOM_PATH_LEN		64
 #define CUSTOM_FMT_LEN		(CUSTOM_MAX_EXPR / 2)
 #define CUSTOM_ARGS_LEN		128
 
@@ -54,6 +54,9 @@ enum _RPN_Instruction {
 	RPN_PUSH_X,
 	RPN_PUSH_Z,
 	RPN_PUSH_N,
+
+	RPN_PUSH_REG,
+	RPN_POP_REG,
 
 	RPN_ADD,
 	RPN_SUB,

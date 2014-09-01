@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 /*
  * libmaple headers
@@ -1050,9 +1051,12 @@ setup()
 	eeprom_slave_init(eeprom_24LC64, EEPROM_DEV, 0b000);
 	eeprom_slave_init(eeprom_24AA025E48, EEPROM_DEV, 0b001);
 
-	// load config or use factory settings?
-	if(reset_mode == RESET_MODE_FLASH_SOFT)
-		config_load(); // soft reset: load configuration from EEPROM
+	if(EEPROM_CONFIG_OFFSET + sizeof(Config) < EEPROM_RANGE_OFFSET) //FIXME solve differently with a compile time check
+	{
+		// load config or use factory settings?
+		if(reset_mode == RESET_MODE_FLASH_SOFT)
+			config_load(); // soft reset: load configuration from EEPROM
+	}
 
 	// read MAC from MAC EEPROM or use custom one stored in config
 	if(!config.comm.custom_mac)
@@ -1242,7 +1246,7 @@ setup()
 	cmc_init();
 
 	pin_write_bit(CHIM_LED_PIN, 1);
-	//DEBUG("si", "config_size", sizeof(Config));
+	DEBUG("si", "config_size", sizeof(Config));
 	DEBUG("si", "reset_mode", reset_mode);
 }
 

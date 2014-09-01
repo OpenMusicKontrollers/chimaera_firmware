@@ -27,6 +27,7 @@
 #include <custom.h>
 
 #define RPN_STACK_HEIGHT 16
+#define RPN_REG_HEIGHT 8
 
 typedef struct _RPN_Stack RPN_Stack;
 typedef struct _RPN_Compiler RPN_Compiler;
@@ -43,6 +44,7 @@ struct _RPN_Stack {
 	float x;
 	float z;
 
+	float reg [RPN_REG_HEIGHT]; //FIXME use MAX_BLOB instead?
 	float arr [RPN_STACK_HEIGHT];
 	float *ptr;
 };
