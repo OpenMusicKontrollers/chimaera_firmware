@@ -27,11 +27,11 @@
 #include <cmc.h>
 #include <oscquery.h>
 
-#define CUSTOM_MAX_EXPR		12
-#define CUSTOM_MAX_INST		24
+#define CUSTOM_MAX_EXPR		8
+#define CUSTOM_MAX_INST		32
 
 #define CUSTOM_PATH_LEN		64
-#define CUSTOM_FMT_LEN		(CUSTOM_MAX_EXPR / 2)
+#define CUSTOM_FMT_LEN		12
 #define CUSTOM_ARGS_LEN		128
 
 typedef struct _Custom_Item  Custom_Item;
