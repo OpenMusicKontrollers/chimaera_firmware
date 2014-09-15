@@ -1,4 +1,4 @@
-# Note: LIB_MAPLE_HOME needs to be defined in your environment 
+export LIB_MAPLE_HOME := ./libmaple_F3
 
 # set number of sensors: 16, 32, 48, 64, 80, 96, 112, 128, 144, 160
 export SENSORS ?= 160
