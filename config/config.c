@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include <math.h>
 
+#include <libmaple/bkp.h> // backup register
+
 #include <chimaera.h>
 #include <config.h>
 #include <chimutil.h>
@@ -274,7 +276,7 @@ CONFIG_SUCCESS(const char *fmt, ...)
 {
 	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
 	osc_data_t *buf_ptr = buf;
-	osc_data_t *preamble;
+	osc_data_t *preamble = NULL;
 
 	if(config.config.osc.mode == OSC_MODE_TCP)
 		buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
@@ -299,7 +301,7 @@ CONFIG_FAIL(const char *fmt, ...)
 {
 	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
 	osc_data_t *buf_ptr = buf;
-	osc_data_t *preamble;
+	osc_data_t *preamble = NULL;
 
 	if(config.config.osc.mode == OSC_MODE_TCP)
 		buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
@@ -316,6 +318,12 @@ CONFIG_FAIL(const char *fmt, ...)
 		size = slip_encode(buf, size);
 
 	return size;
+}
+
+void
+CONFIG_SEND(uint16_t size)
+{
+	osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size);
 }
 
 uint_fast8_t
@@ -351,8 +359,9 @@ config_save()
 }
 
 uint_fast8_t
-config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *boolean)
+config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *booly)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -360,12 +369,12 @@ config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
 	if(argc == 1) // query
-		size = CONFIG_SUCCESS("isi", uuid, path, *boolean ? 1 : 0);
+		size = CONFIG_SUCCESS("isi", uuid, path, *booly ? 1 : 0);
 	else
 	{
 		int32_t i;
 		buf_ptr = osc_get_int32(buf_ptr, &i);
-		*boolean = i != 0 ? 1 : 0;
+		*booly = i != 0 ? 1 : 0;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
@@ -377,6 +386,7 @@ config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 uint_fast8_t
 config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *val)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -401,6 +411,7 @@ config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 uint_fast8_t
 config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -425,6 +436,8 @@ config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 static uint_fast8_t
 _info_version(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -445,6 +458,8 @@ _info_version(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 static uint_fast8_t
 _info_uid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -461,6 +476,7 @@ _info_uid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 static uint_fast8_t
 _info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -485,6 +501,8 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf
 static uint_fast8_t
 _config_load(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -504,6 +522,8 @@ _config_load(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 static uint_fast8_t
 _config_save(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -523,6 +543,7 @@ _config_save(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 static uint_fast8_t
 _comm_mac(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -556,6 +577,7 @@ _comm_mac(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 static uint_fast8_t
 _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -627,6 +649,7 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 static uint_fast8_t
 _comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -659,6 +682,7 @@ _comm_gateway(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 uint_fast8_t
 config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -690,6 +714,8 @@ _output_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t
 static uint_fast8_t
 _output_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -715,6 +741,7 @@ _output_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 static uint_fast8_t
 _output_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -798,6 +825,7 @@ _address_dns_cb(uint8_t *ip, void *data)
 uint_fast8_t
 config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	static Address_Cb address_cb;
 	uint16_t size = 0;
@@ -852,6 +880,7 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 static uint_fast8_t
 _config_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -937,6 +966,8 @@ _host_address_dns_cb(uint8_t *ip, void *data)
 static uint_fast8_t
 _comm_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	static Address_Cb address_cb;
 	uint16_t size = 0;
@@ -972,6 +1003,7 @@ _comm_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 static uint_fast8_t
 _output_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -999,6 +1031,7 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 static uint_fast8_t
 _output_invert(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -1035,12 +1068,13 @@ _output_parallel(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
@@ -1058,12 +1092,13 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 static uint_fast8_t
 _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
@@ -1081,12 +1116,13 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 static uint_fast8_t
 _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	int32_t sec;
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
@@ -1261,17 +1297,17 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				size -= 4;
 
 				// wind back to beginning of empty string on buffer
-				uint8_t *response = BUF_O_OFFSET(buf_o_ptr) + size;
+				char *response = (char *)(BUF_O_OFFSET(buf_o_ptr) + size);
 
 				// serialize query response directly to buffer
 				osc_query_response(response, item, path);
 
 				// calculate new message size
-				uint8_t *ptr = response;
+				char *ptr = response;
 				uint16_t len = strlen(response) + 1;
 				ptr +=  len;
 				uint16_t rem;
-				if(rem=len%4)
+				if((rem=len%4))
 				{
 					memset(ptr, '\0', 4-rem);
 					ptr += 4-rem;

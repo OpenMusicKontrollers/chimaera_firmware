@@ -24,6 +24,7 @@
 #include <string.h>
 #include <math.h> // floor
 
+#include <config.h>
 #include <midi.h>
 #include <oscmidi.h>
 
@@ -39,7 +40,7 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 
 static void
-oscmidi_init()
+oscmidi_init(void)
 {
 	config.oscmidi.mul =(float)0x2000 / config.oscmidi.range;
 }
@@ -47,6 +48,10 @@ oscmidi_init()
 static osc_data_t *
 oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
@@ -59,6 +64,11 @@ oscmidi_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Time
 static osc_data_t *
 oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)offset;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, bndl);
@@ -71,6 +81,7 @@ oscmidi_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 static osc_data_t *
 oscmidi_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -125,6 +136,7 @@ oscmidi_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 static osc_data_t * 
 oscmidi_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -150,6 +162,7 @@ oscmidi_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 static osc_data_t *
 oscmidi_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);

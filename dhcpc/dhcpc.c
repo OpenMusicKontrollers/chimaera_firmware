@@ -31,6 +31,7 @@
 #include <config.h>
 #include <sntp.h>
 #include <chimutil.h>
+#include <arp.h>
 
 // global
 DHCPC dhcpc = {
@@ -170,10 +171,11 @@ dhcpc_decline(uint8_t *buf, uint16_t secs)
 static void
 dhcpc_dispatch(uint8_t *buf, uint16_t size)
 {
+	(void)size;
 	DHCP_Packet_Unpacked *recv =(DHCP_Packet_Unpacked *)buf;
 
 	// check for magic_cookie
-	if(strncmp(recv->magic_cookie, dhcp_packet.magic_cookie, 4))
+	if(memcmp(recv->magic_cookie, dhcp_packet.magic_cookie, 4))
 		return;
 
 	recv->bootp.xid = htonl(recv->bootp.xid);
@@ -253,6 +255,8 @@ dhcpc_dispatch(uint8_t *buf, uint16_t size)
 static void
 dhcpc_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	(void)ip;
+	(void)port;
 	dhcpc_dispatch(buf, len);
 }
 
@@ -361,6 +365,10 @@ dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to AS
 					memcpy(config.debug.osc.socket.ip, brd, 4);
 				}
 				break;
+			case TIMEOUT:
+			case CLAIMED:
+				// never reached
+				break;
 		}
 
 	if(dhcpc.state == TIMEOUT)
@@ -441,6 +449,12 @@ dhcpc_refresh()
 					dhcpc_timer_reconfigure();
 					timer_resume(dhcpc_timer);
 				}
+				break;
+			case DISCOVER:
+			case OFFER:
+			case TIMEOUT:
+			case CLAIMED:
+				// never reached
 				break;
 		}
 

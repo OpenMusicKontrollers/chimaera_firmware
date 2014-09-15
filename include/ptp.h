@@ -31,10 +31,10 @@
 
 extern const OSC_Query_Item ptp_tree [6];
 
-void ptp_reset();
-int64_t ptp_uptime();
+void ptp_reset(void);
+int64_t ptp_uptime(void);
 void ptp_timestamp_refresh(int64_t tick, OSC_Timetag *now, OSC_Timetag *offset);
-void ptp_request();
+void ptp_request(void);
 void ptp_dispatch(uint8_t *buf, int64_t tick);
 
 #endif // _PTP_H_

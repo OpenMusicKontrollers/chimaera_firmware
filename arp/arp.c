@@ -85,6 +85,7 @@ _arp_fill_announce(uint8_t *mac, uint8_t *ip)
 static void
 arp_reply_cb(uint8_t *buf, uint16_t len, void *data)
 {
+	(void)len;
 	uint8_t *ip = data;
 
 	MACRAW_Header *mac_header =(MACRAW_Header *)buf;
@@ -104,11 +105,11 @@ arp_reply_cb(uint8_t *buf, uint16_t len, void *data)
 		return;
 
 	// check whether the ARP is for us
-	if(strncmp(arp_reply->tha, config.comm.mac, 6))
+	if(memcmp(arp_reply->tha, config.comm.mac, 6))
 		return;
 
 	// check whether the ARP has our requested IP as source -> then there is an ARP probe collision
-	if(!strncmp(arp_reply->spa, ip, 4))
+	if(!memcmp(arp_reply->spa, ip, 4))
 		arp_collision = 1;
 }
 

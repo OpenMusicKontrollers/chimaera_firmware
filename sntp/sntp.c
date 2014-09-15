@@ -30,6 +30,7 @@
 #include <chimaera.h>
 #include <chimutil.h>
 #include <config.h>
+#include <debug.h>
 
 // globals
 fix_s31_32_t D0, D1, DD0 = 0.0002LLK, DD1 = 0.0002LLK;
@@ -187,6 +188,8 @@ _sntp_tau(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 static uint_fast8_t
 _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -204,6 +207,8 @@ _sntp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 static uint_fast8_t
 _sntp_delay(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

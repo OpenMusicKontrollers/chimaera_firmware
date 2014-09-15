@@ -33,9 +33,6 @@ extern const stm32_pin_info PIN_MAP [];
 
 #define GROUP_MAX 8
 
-#include <config.h>
-#include <wiz.h>
-
 #define pin_set_mode(PIN, MODE)(gpio_set_mode(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE)))
 #define pin_set_modef(PIN, MODE, FLAGS)(gpio_set_modef(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE),(FLAGS)))
 #define pin_set_af(PIN, AF)(gpio_set_af(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(AF)))
@@ -205,6 +202,6 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define mdns_timer TIMER3
 #define ptp_timer TIMER15
 
-void cpp_setup();
+void cpp_setup(void);
 
 #endif // _CHIMIAERA_H_

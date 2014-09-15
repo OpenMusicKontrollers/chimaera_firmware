@@ -34,9 +34,10 @@ static uint32_t frame = 0;
 osc_data_t *
 dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset, int32_t len, int16_t *swap)
 {
+	(void)now;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
-	osc_data_t *pack;
+	osc_data_t *pack = NULL;
 	osc_data_t *bndl;
 
 	if(cmc_engines_active + config.dump.enabled > 1)

@@ -28,17 +28,15 @@
 
 #include <libmaple/adc.h>
 
-#include <wiz.h>
-
 uint_fast8_t ip_part_of_subnet(uint8_t *ip);
 void cidr_to_subnet(uint8_t *subnet, uint8_t mask);
 uint8_t subnet_to_cidr(uint8_t *subnet);
 void broadcast_address(uint8_t *brd, uint8_t *ip, uint8_t *subnet);
 
-void adc_timer_reconfigure();
-void sync_timer_reconfigure();
-void dhcpc_timer_reconfigure();
-void mdns_timer_reconfigure();
+void adc_timer_reconfigure(void);
+void sync_timer_reconfigure(void);
+void dhcpc_timer_reconfigure(void);
+void mdns_timer_reconfigure(void);
 void ptp_timer_reconfigure(float sec);
 
 void output_enable(uint8_t b);
@@ -62,7 +60,7 @@ struct _Stop_Watch {
 void stop_watch_start(Stop_Watch *sw);
 void stop_watch_stop(Stop_Watch *sw);
 
-uint32_t uid_seed();
+uint32_t uid_seed(void);
 void uid_str(char *str);
 
 /*

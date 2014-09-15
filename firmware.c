@@ -61,7 +61,7 @@
 #include <wiz.h>
 #include <calibration.h>
 #include <sensors.h>
-#include <osc.h>
+//#include <osc.h>
 
 static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
@@ -113,33 +113,33 @@ static volatile int64_t wiz_ptp_tick;
 static OSC_Timetag now;
 
 static void __CCM_TEXT__
-adc_timer_irq()
+adc_timer_irq(void)
 {
 	adc_time_up = 1;
 	timer_pause(adc_timer);
 }
 
 static void __CCM_TEXT__
-sync_timer_irq()
+sync_timer_irq(void)
 {
 	sync_should_request = 1;
 }
 
 static void __CCM_TEXT__
-dhcpc_timer_irq()
+dhcpc_timer_irq(void)
 {
 	dhcpc_needs_refresh = 1;
 }
 
 static void __CCM_TEXT__
-mdns_timer_irq()
+mdns_timer_irq(void)
 {
 	mdns_timeout = 1;
 	timer_pause(mdns_timer);
 }
 
 static void
-soft_irq()
+soft_irq(void)
 {
 	bkp_enable_writes();
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT); // set soft reset flag
@@ -147,7 +147,7 @@ soft_irq()
 }
 
 static void __CCM_TEXT__
-wiz_irq()
+wiz_irq(void)
 {
 	//TODO substract 12 cycles interrupt latency for ARM Cortex M4?
 	wiz_ptp_tick = ptp_uptime();
@@ -185,7 +185,7 @@ wiz_sntp_irq(uint8_t isr)
 }
 
 static void __CCM_TEXT__
-ptp_timer_irq()
+ptp_timer_irq(void)
 {
 	ptp_should_request = 1;
 	timer_pause(ptp_timer);
@@ -203,14 +203,16 @@ wiz_ptp_general_irq(uint8_t isr)
 	ptp_general_should_listen = isr;
 }
 
+#if 0
 static void __CCM_TEXT__
 wiz_dhcpc_irq(uint8_t isr)
 {
 	dhcpc_should_listen = isr;
 }
+#endif
 
 static inline __always_inline void
-_counter_inc()
+_counter_inc(void)
 {
 #if REVISION == 3
 	pin_write_bit(mux_sequence[0], mux_counter & 0b0001);
@@ -236,7 +238,7 @@ _counter_inc()
 }
 
 static inline __always_inline void
-_irq_adc_block()
+_irq_adc_block(void)
 {
 #if(ADC_DUAL_LENGTH > 0)
 # if(ADC_SING_LENGTH > 0)
@@ -273,8 +275,9 @@ _irq_adc_block()
 #endif
 }
 
+void __irq_adc1_2(void);
 void __CCM_TEXT__
-__irq_adc1_2()
+__irq_adc1_2(void)
 //adc1_2_irq(adc_callback_data *data)
 {
 	ADC1->regs->ISR |= ADC_ISR_EOS;
@@ -286,8 +289,9 @@ __irq_adc1_2()
 	_irq_adc_block();
 }
 
+void __irq_adc3(void);
 void __CCM_TEXT__
-__irq_adc3()
+__irq_adc3(void)
 //adc3_irq(adc_callback_data *data)
 {
 	ADC3->regs->ISR |= ADC_ISR_EOS;
@@ -300,7 +304,7 @@ __irq_adc3()
 }
 
 static void __CCM_TEXT__
-adc12_dma_irq()
+adc12_dma_irq(void)
 {
 	uint8_t isr = dma_get_isr_bits(DMA1, DMA_CH1);
 	dma_clear_isr_bits(DMA1, DMA_CH1);
@@ -312,7 +316,7 @@ adc12_dma_irq()
 }
 
 static void __CCM_TEXT__
-adc3_dma_irq()
+adc3_dma_irq(void)
 {
 	uint8_t isr = dma_get_isr_bits(DMA2, DMA_CH5);
 	dma_clear_isr_bits(DMA2, DMA_CH5);
@@ -324,7 +328,7 @@ adc3_dma_irq()
 }
 
 static inline __always_inline void
-adc_dma_run()
+adc_dma_run(void)
 {
 	adc12_dma_done = 0;
 	adc3_dma_done = 0;
@@ -337,7 +341,7 @@ adc_dma_run()
 }
 
 static inline __always_inline void
-adc_dma_block()
+adc_dma_block(void)
 { 
 #if(ADC_DUAL_LENGTH  > 0)
 #	if(ADC_SING_LENGTH > 0)
@@ -355,6 +359,8 @@ adc_dma_block()
 static void __CCM_TEXT__
 config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	(void)ip;
+	(void)port;
 	if(osc_packet_check(buf, len))
 		osc_method_dispatch(buf, len, config_serv);
 	else
@@ -364,6 +370,9 @@ config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void __CCM_TEXT__
 sntp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	(void)ip;
+	(void)port;
+	(void)len;
 	sntp_timestamp_refresh(wiz_ptp_tick, &now, NULL);
 	sntp_dispatch(buf, now);
 }
@@ -371,12 +380,17 @@ sntp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 static void __CCM_TEXT__
 ptp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	(void)ip;
+	(void)port;
+	(void)len;
 	ptp_dispatch(buf, wiz_ptp_tick);
 }
 
 static void __CCM_TEXT__
 mdns_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
+	(void)ip;
+	(void)port;
 	mdns_dispatch(buf, len);
 }
 
@@ -388,7 +402,6 @@ adc_fill(uint_fast8_t raw_ptr)
 	uint_fast8_t pos;
 	int16_t *raw12 = adc12_raw[raw_ptr];
 	int16_t *raw3 = adc3_raw[raw_ptr];
-	uint16_t *qui = range.qui;
 	uint32_t *rela_vec32 =(uint32_t *)adc_rela;
 	uint32_t *sum_vec32 =(uint32_t *)adc_sum;
 	uint32_t *qui_vec32 =(uint32_t *)range.qui;
@@ -524,8 +537,9 @@ adc_fill(uint_fast8_t raw_ptr)
 	}
 }
 
+void loop(void);
 void
-loop()
+loop(void)
 {
 	uint_fast8_t cmc_stat;
 	uint_fast8_t cmc_job = 0;
@@ -608,6 +622,8 @@ loop()
 #endif
 			if(config.output.parallel && cmc_job) // start nonblocking sending of last cycles output
 				cmc_stat = osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
+			else
+				cmc_stat = 0;
 
 		// fill adc_rela
 #ifdef BENCHMARK
@@ -625,8 +641,8 @@ loop()
 			// initiate OSC bundle
 			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
 			osc_data_t *buf_ptr = buf;
-			osc_data_t *preamble;
-			osc_data_t *bndl;
+			osc_data_t *preamble = NULL;
+			osc_data_t *bndl = NULL;
 			if(config.output.osc.mode == OSC_MODE_TCP)
 				buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
 			if(cmc_engines_active + config.dump.enabled > 1)
@@ -858,7 +874,7 @@ loop()
 }
 
 void
-adc_timer_reconfigure()
+adc_timer_reconfigure(void)
 {
 	// this scheme is good for rates in the range of 20-2000+
 	uint16_t prescaler = 50-1;
@@ -876,7 +892,7 @@ adc_timer_reconfigure()
 }
 
 void 
-sync_timer_reconfigure()
+sync_timer_reconfigure(void)
 {
 	uint16_t prescaler = 0xffff; 
 	uint16_t reload = 72e6 / 0xffff * config.sntp.tau;
@@ -910,7 +926,7 @@ ptp_timer_reconfigure(float sec)
 }
 
 void 
-dhcpc_timer_reconfigure()
+dhcpc_timer_reconfigure(void)
 {
 	uint16_t prescaler = 0xffff; 
 	uint16_t reload = 72e6 / 0xffff * dhcpc.leastime;
@@ -927,7 +943,7 @@ dhcpc_timer_reconfigure()
 }
 
 void 
-mdns_timer_reconfigure()
+mdns_timer_reconfigure(void)
 {
 	uint16_t prescaler = 0xffff; 
 	uint16_t reload = 72e6 / 0xffff * 2; // timeout after 2 seconds
@@ -943,8 +959,9 @@ mdns_timer_reconfigure()
 	nvic_irq_set_priority(NVIC_TIMER3, MDNS_TIMER_PRIORITY);
 }
 
+void setup(void);
 void
-setup()
+setup(void)
 {
 	uint_fast8_t i;
 	uint_fast8_t p;
@@ -1250,10 +1267,11 @@ setup()
 	DEBUG("si", "reset_mode", reset_mode);
 }
 
-void
-main()
+int
+main(void)
 {
 	cpp_setup();
   setup();
 	loop();
+	return 0;
 }

@@ -34,10 +34,10 @@ typedef void(*mDNS_Resolve_Cb)(uint8_t *ip, void *data);
 
 void mdns_dispatch(uint8_t *buf, uint16_t len);
 
-void mdns_announce();
+void mdns_announce(void);
 
 //TODO allow multiple concurrent resolvings
-void mdns_resolve_timeout();
+void mdns_resolve_timeout(void);
 uint_fast8_t mdns_resolve(const char *name, mDNS_Resolve_Cb cb, void *data);
 
 #endif // _MDNS_H_

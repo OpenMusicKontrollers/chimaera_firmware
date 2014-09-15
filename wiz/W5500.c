@@ -27,7 +27,6 @@
 
 #include <tube.h>
 #include <netdef.h>
-#include <chimaera.h>
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
@@ -35,9 +34,9 @@
 
 #define W5500_SOCKET_SEL_ENTRY(s) \
 	[s] = { \
-		.reg =(s*4)+1 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.tx_buf =(s*4)+2 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
-		.rx_buf =(s*4)+3 << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.reg = ((s*4)+1) << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.tx_buf = ((s*4)+2) << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
+		.rx_buf = ((s*4)+3) << W5500_CNTRL_PHASE_BLOCK_SEL_SHIFT, \
 	}
 
 static const W5500_Socket_Sel W5500_socket_sel [8] = {

@@ -47,6 +47,8 @@ static osc_data_t *bndl;
 static osc_data_t *
 dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -70,6 +72,11 @@ dummy_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 static osc_data_t *
 dummy_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)offset;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, bndl);

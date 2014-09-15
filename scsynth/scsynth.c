@@ -59,6 +59,10 @@ static osc_data_t *bndl;
 static osc_data_t *
 scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)nblob_old;
+	(void)nblob_new;
 	tt = offset;
 	early_i = 0;
 	late_i = 0;
@@ -75,6 +79,11 @@ scsynth_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Time
 static osc_data_t *
 scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)offset;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, bndl);
@@ -87,6 +96,7 @@ scsynth_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 static osc_data_t *
 scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -150,6 +160,7 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 static osc_data_t *
 scsynth_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -262,6 +273,7 @@ _scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	uint16_t gid;
@@ -321,6 +333,8 @@ _scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_da
 static uint_fast8_t
 _scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

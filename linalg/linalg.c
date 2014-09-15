@@ -170,13 +170,13 @@ linalg_least_squares_cubic(double x1, double y1, double x2, double y2, double x3
 	double a12= pow(x1, 12.0/6.0);
 	double a9 = pow(x1, 9.0/6.0);
 	double a8 = pow(x1, 8.0/6.0);
-	double a7 = pow(x1, 7.0/6.0);
+	//double a7 = pow(x1, 7.0/6.0);
 	double a6 = pow(x1, 6.0/6.0);
 	double a5 = pow(x1, 5.0/6.0);
 	double a4 = pow(x1, 4.0/6.0);
 	double a3 = pow(x1, 3.0/6.0);
 	double a2 = pow(x1, 2.0/6.0);
-	double a  = pow(x1, 1.0/6.0);
+	//double a  = pow(x1, 1.0/6.0);
 
 	double b12= pow(x2, 12.0/6.0);
 	double b9 = pow(x2, 9.0/6.0);

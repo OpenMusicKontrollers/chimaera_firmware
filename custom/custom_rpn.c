@@ -49,7 +49,7 @@ xchange(RPN_Stack *stack)
 	push(stack, a);
 }
 
-static inline __always_inline float
+static inline __always_inline void
 duplicate(RPN_Stack *stack, int32_t pos)
 {
 	float v = *(stack->ptr - pos);
@@ -139,7 +139,9 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 				if(pos < RPN_REG_HEIGHT)
 					stack->reg[pos] = c;
 				else
+				{
 					; //TODO warn
+				}
 				break;
 			}
 			case RPN_POP_REG:
@@ -339,6 +341,9 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 				push(stack, c);
 				break;
 			}
+			case RPN_TERMINATOR:
+				// never reached
+				break;
 		}
 	
 	return buf_ptr;

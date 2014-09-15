@@ -25,8 +25,10 @@
 #include <string.h>
 
 #include <chimaera.h>
+#include <chimutil.h>
 #include <ipv4ll.h>
 #include <config.h>
+#include <arp.h>
 
 static const uint8_t link_local_gateway [] = {169, 254, 0, 0};
 static const uint8_t link_local_subnet [] = {255, 255, 0, 0};

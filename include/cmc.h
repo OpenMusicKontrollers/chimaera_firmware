@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <osc.h>
 #include <oscquery.h>
 
 #define CMC_NOSCALE 0.0f
@@ -64,10 +63,10 @@ struct _CMC_Group {
 extern CMC_Group *cmc_groups;
 extern uint_fast8_t cmc_engines_active;
 
-void cmc_init();
+void cmc_init(void);
 osc_data_t *cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf);
 
-void cmc_group_clear();
-void cmc_engines_update();
+void cmc_group_clear(void);
+void cmc_engines_update(void);
 
 #endif // _CMC_H_

@@ -23,6 +23,7 @@
 
 #include <debug.h>
 #include <chimaera.h>
+#include <chimutil.h>
 #include <config.h>
 
 void
@@ -32,7 +33,7 @@ DEBUG(const char *fmt, ...)
 	{
 		osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
 		osc_data_t *buf_ptr = buf;
-		osc_data_t *preamble;
+		osc_data_t *preamble = NULL;
 
 		if(config.debug.osc.mode == OSC_MODE_TCP)
 			buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
@@ -72,6 +73,7 @@ _debug_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 static uint_fast8_t
 _debug_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

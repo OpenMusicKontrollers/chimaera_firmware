@@ -45,10 +45,10 @@ struct _Wiz_Job {
 };
 
 void wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmode, uint8_t rw);
-void wiz_job_set_frame();
-void wiz_job_run_single();
-void wiz_job_run_nonblocking();
-void wiz_job_run_block();
+void wiz_job_set_frame(void);
+void wiz_job_run_single(void);
+void wiz_job_run_nonblocking(void);
+void wiz_job_run_block(void);
 
 #define WIZ_MAX_JOB_NUM 8
 

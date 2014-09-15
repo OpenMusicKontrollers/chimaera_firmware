@@ -75,10 +75,10 @@ static uint8_t va[SENSOR_N+2];
 static CMC_Blob blobs[2][BLOB_MAX];
 static uint8_t pacemaker = 0x0b; // pacemaker rate 2^11=2048
 
-static void cmc_engines_init();
+static void cmc_engines_init(void);
 
 void
-cmc_init()
+cmc_init(void)
 {
 	uint_fast8_t i;
 
@@ -347,10 +347,6 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 			{
 				float y0, y1, y2, y3, x1;
 
-				float tm1 = vy[P-1];
-				float thi = vy[P];
-				float tp1 = vy[P+1];
-
 				x1 = vx[P];
 				y0 = vy[P-1];
 				y1 = vy[P];
@@ -392,6 +388,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 
 				y = -(-6.f*d3*y1 + d2*X1*(2.f*y0 + 3.f*y1 - 6.f*y2 + y3) - 3.f*d*X2*s1 + X3*s2) /(6.f*d3);
 			}
+			default:
+				x = 0.f;
+				y = 0.f;
+				break;
 		}
 
 		//TODO check for NaN
@@ -679,7 +679,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 }
 
 void 
-cmc_group_clear()
+cmc_group_clear(void)
 {
 	uint16_t gid;
 	for(gid=0; gid<GROUP_MAX; gid++)
@@ -695,7 +695,7 @@ cmc_group_clear()
 }
 
 static void
-cmc_engines_init()
+cmc_engines_init(void)
 {
 	if(oscmidi_engine.init_cb)
 		oscmidi_engine.init_cb();
@@ -717,7 +717,7 @@ cmc_engines_init()
 }
 
 void
-cmc_engines_update()
+cmc_engines_update(void)
 {
 	cmc_engines_active = 0;
 

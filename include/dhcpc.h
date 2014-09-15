@@ -24,7 +24,7 @@
 #ifndef _DHCPC_H_
 #define _DHCPC_H_
 
-#include <chimaera.h>
+#include <oscquery.h>
 
 typedef enum _DHCPC_State {
 	DISCOVER, OFFER, REQUEST, ACK, LEASE, TIMEOUT, CLAIMED, DECLINE
@@ -45,7 +45,7 @@ struct _DHCPC {
 };
 
 uint_fast8_t dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet);
-uint_fast8_t dhcpc_refresh();
+uint_fast8_t dhcpc_refresh(void);
 
 extern DHCPC dhcpc;
 extern const OSC_Query_Item dhcpc_tree [1];

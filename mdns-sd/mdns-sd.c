@@ -84,14 +84,14 @@ const char *TXT_COMMON = "\011txtvers=1\013version=1.1\056uri=http://open-music-
 const char *TXT_SLIP = "\014framing=slip";
 
 // unrolled query name label
-static uint8_t qname_unrolled [32]; //TODO big enough?
+static char qname_unrolled [32]; //TODO big enough?
 
 // unroll query name
 static uint8_t *
 _unroll_qname(DNS_Query *query, uint8_t *buf, char **qname)
 {
 	uint8_t *buf_ptr;
-	uint8_t *ref = qname_unrolled;
+	char *ref = qname_unrolled;
 
 	*qname = ref;
 
@@ -99,7 +99,7 @@ _unroll_qname(DNS_Query *query, uint8_t *buf, char **qname)
 		if( (buf_ptr[0] & 0xc0) == 0xc0) // it's a pointer at the beginning/end of the label
 		{
 			uint16_t offset =((buf_ptr[0] & 0x3f) << 8) | (buf_ptr[1] & 0xff); // get offset of label
-			uint8_t *ptr =(uint8_t *)query + offset; // label
+			char *ptr = (char *)query + offset; // label
 			memcpy(ref, ptr, strlen(ptr) + 1); // trailing zero
 			buf_ptr += 2; // skip pointer
 
@@ -544,7 +544,7 @@ _dns_answer(DNS_Query *query, uint8_t *buf)
 			if(!resolve.cb || strcmp(qname, resolve.name))
 				break;
 
-			uint8_t *ip = buf_ptr; 
+			uint8_t *ip = (uint8_t *)buf_ptr; 
 			if(ip_part_of_subnet(ip)) // check IP for same subnet TODO make this configurable
 			{
 				timer_pause(mdns_timer); // stop timeout timer
@@ -570,6 +570,7 @@ _dns_answer(DNS_Query *query, uint8_t *buf)
 void 
 mdns_dispatch(uint8_t *buf, uint16_t len)
 {
+	(void)len;
 	// update qname labels corresponding to self
 	len_self = _update_hook_self(config.name);
 	len_instance = _update_hook_instance(config.name);
@@ -608,7 +609,7 @@ mdns_dispatch(uint8_t *buf, uint16_t len)
 			break;
 		case 0x1: // mDNS Query Answer
 			for(i=0; i<query->QDCOUNT; i++) // skip all questions
-				buf_ptr += strlen(buf_ptr) + 1 + sizeof(DNS_Question);
+				buf_ptr += strlen((char *)buf_ptr) + 1 + sizeof(DNS_Question);
 
 			for(i=0; i<query->ANCOUNT; i++) // walk all answers
 				buf_ptr = _dns_answer(query, buf_ptr);
@@ -670,10 +671,10 @@ mdns_resolve(const char *name, mDNS_Resolve_Cb cb, void *data)
 		return 0;
 
 	// construct DNS label from mDNS name
-	uint8_t *ref = resolve.name;
-	const uint8_t *s0 = name;
-	uint8_t *s1;
-	uint8_t len;
+	char *ref = resolve.name;
+	const char *s0 = name;
+	char *s1;
+	char len;
 	while( (s1 = strchr(s0, '.')) )
 	{
 		len = s1 - s0;

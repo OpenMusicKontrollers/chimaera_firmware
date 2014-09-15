@@ -58,6 +58,10 @@ CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 # We'll also want our local include directory
 CFLAGS_$(d) += -I$(EXAMPLE_INCLUDE_DIR)
 CFLAGS_$(d) += -I$(d)/engines
+CFLAGS_$(d) += -std=gnu11
+CFLAGS_$(d) += -Wall -Wextra
+CFLAGS_$(d) += -Wshadow -Wimplicit-function-declaration
+CFLAGS_$(d) += -Wmissing-prototypes -Wstrict-prototypes
 
 # set WIZnet chip version based on board revision: 5200, 5500
 ifeq ($(REVISION), 3)

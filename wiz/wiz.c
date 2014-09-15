@@ -31,7 +31,7 @@
 
 #include <tube.h>
 #include <netdef.h>
-#include <chimaera.h>
+#include <chimutil.h>
 
 #include <libmaple/dma.h>
 #include <libmaple/spi.h>
@@ -105,7 +105,7 @@ _dma_read_sock_16(int8_t sock, uint16_t addr, uint16_t *dat)
 }
 
 static void __CCM_TEXT__
-_wiz_rx_irq()
+_wiz_rx_irq(void)
 {
 	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
 	uint8_t isr_rx = dma_get_isr_bits(WIZ_SPI_RX_DMA_DEV, WIZ_SPI_RX_DMA_TUB);
@@ -148,9 +148,8 @@ _wiz_rx_irq()
 }
 
 static void __CCM_TEXT__
-_wiz_tx_irq()
+_wiz_tx_irq(void)
 {
-	Wiz_Job *job = &wiz_jobs[wiz_jobs_done];
 	uint8_t isr_tx = dma_get_isr_bits(WIZ_SPI_TX_DMA_DEV, WIZ_SPI_TX_DMA_TUB);
 	uint8_t spi_sr = WIZ_SPI_BAS->SR;
 	uint_fast8_t tx_err = 0;
@@ -208,7 +207,7 @@ wiz_job_add(uint16_t addr, uint16_t len, uint8_t *tx, uint8_t *rx, uint8_t opmod
 }
 
 void __CCM_TEXT__
-wiz_job_run_single()
+wiz_job_run_single(void)
 {
 	static uint8_t dummy_byte = 0xff;
 	uint8_t *frm_rx = NULL;
@@ -321,7 +320,7 @@ wiz_job_run_single()
 }
 
 inline __always_inline void
-wiz_job_run_nonblocking()
+wiz_job_run_nonblocking(void)
 {
 	wiz_jobs_done = 0;
 	if(wiz_jobs_done < wiz_jobs_todo)
@@ -329,7 +328,7 @@ wiz_job_run_nonblocking()
 }
 
 inline __always_inline void
-wiz_job_run_block()
+wiz_job_run_block(void)
 {
 	while(wiz_jobs_todo)
 		; // wait until all jobs are done
@@ -372,7 +371,7 @@ wiz_init(gpio_dev *dev, uint8_t bit)
 }
 
 uint_fast8_t
-wiz_link_up()
+wiz_link_up(void)
 {
 	uint8_t physr;
 	_dma_read(WIZ_PHYCFGR, 0, &physr, 1);
@@ -541,6 +540,7 @@ udp_set_remote_har(uint8_t sock, uint8_t *har)
 void __CCM_TEXT__
 udp_receive_block(uint8_t sock)
 {
+	(void)sock;
 	wiz_job_run_block();
 }
 
@@ -712,12 +712,9 @@ tcp_send_block(uint8_t sock)
 }
 
 void //__CCM_TEXT__
-tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
+tcp_dispatch(uint8_t sock, uint8_t *ip, uint16_t port, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip)
 {
 	uint16_t len;
-
-	uint8_t ip [4];
-	uint16_t port;
 
 	if(!slip)
 	{
@@ -793,7 +790,8 @@ void __CCM_TEXT__
 osc_dispatch(OSC_Config *osc, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb)
 {
 	if(osc->mode)
-		tcp_dispatch(osc->socket.sock, i_buf, cb, osc->mode == OSC_MODE_SLIP);
+		tcp_dispatch(osc->socket.sock, osc->socket.ip, osc->socket.port[DST_PORT],
+			i_buf, cb, osc->mode == OSC_MODE_SLIP);
 	else
 		udp_dispatch(osc->socket.sock, i_buf, cb);
 }
@@ -893,7 +891,7 @@ wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask)
 }
 
 void
-wiz_irq_unset()
+wiz_irq_unset(void)
 {
 	irq_cb = NULL;
 

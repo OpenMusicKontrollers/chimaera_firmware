@@ -25,6 +25,7 @@
 
 #include <sensors.h>
 #include <config.h>
+#include <chimutil.h>
 #include <cmc.h>
 
 #if SENSOR_N == 16
@@ -103,6 +104,8 @@ static const OSC_Query_Value interpolation_mode_args_values [] = {
 static uint_fast8_t
 _sensors_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -118,6 +121,7 @@ _sensors_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t
 static uint_fast8_t
 _sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -152,6 +156,7 @@ _sensors_rate(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 static uint_fast8_t
 _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -195,6 +200,7 @@ _sensors_movingaverage(const char *path, const char *fmt, uint_fast8_t argc, osc
 static uint_fast8_t
 _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	uint8_t *interpolation = &config.sensors.interpolation_mode;
@@ -219,11 +225,15 @@ _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, osc
 	}
 
 	CONFIG_SEND(size);
+
+	return 1;
 }
 
 static uint_fast8_t
 _group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -241,6 +251,7 @@ _group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 static uint_fast8_t
 _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	uint16_t gid;
@@ -287,6 +298,8 @@ _group_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 static uint_fast8_t
 _group_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

@@ -44,8 +44,8 @@ extern fix_s31_32_t clock_offset;
 extern fix_32_32_t roundtrip_delay;
 extern const OSC_Query_Item sntp_tree [5];
 
-void sntp_reset();
-uint32_t sntp_uptime();
+void sntp_reset(void);
+uint32_t sntp_uptime(void);
 void sntp_timestamp_refresh(int64_t tick, OSC_Timetag *now, OSC_Timetag *offset);
 uint16_t sntp_request(uint8_t *buf, OSC_Timetag t3);
 void sntp_dispatch(uint8_t *buf, OSC_Timetag t4);

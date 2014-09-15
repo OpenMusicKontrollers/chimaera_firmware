@@ -40,6 +40,7 @@ static osc_data_t *bndl;
 static osc_data_t *
 custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)now;
 	stack.fid = fid;
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
@@ -100,6 +101,11 @@ custom_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timet
 static osc_data_t *
 custom_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)offset;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -257,6 +263,8 @@ _custom_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t
 static uint_fast8_t
 _custom_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -291,8 +299,9 @@ static const OSC_Query_Value custom_append_destination_args_values [] = {
 static uint_fast8_t
 _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
 	osc_data_t *buf_ptr = buf;
-	uint16_t size;
+	uint16_t size = 0;
 	int32_t uuid;
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);

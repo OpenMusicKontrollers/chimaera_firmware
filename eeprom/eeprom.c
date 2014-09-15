@@ -84,6 +84,7 @@ _eeprom_check_res(i2c_dev *dev, int32_t res)
 static inline void
 _eeprom_ack_poll(EEPROM_24xx *eeprom)
 {
+	(void)eeprom;
 	//delay_us(eeprom->page_write_time*1e3);
 	delay_us(10e3);
 }
@@ -112,13 +113,13 @@ eeprom_slave_init(EEPROM_24xx *eeprom, i2c_dev *dev, uint16_t slave_addr)
 }
 
 void
-eeprom_byte_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t byte)
+eeprom_byte_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t byt)
 {
-	if(addr + 1 > eeprom->storage_size)
+	if( (addr + 1U) > eeprom->storage_size)
 		return;
 
 	_set_address(eeprom, addr);
-	write_msg_data[eeprom->address_size] = byte;
+	write_msg_data[eeprom->address_size] = byt;
 	write_msg.length = eeprom->address_size + 1;
 
 	int32_t res;
@@ -167,16 +168,16 @@ eeprom_bulk_write(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *bulk, uint16_t le
 }
 
 void
-eeprom_byte_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byte)
+eeprom_byte_read(EEPROM_24xx *eeprom, uint16_t addr, uint8_t *byt)
 {
-	if(addr + 1 > eeprom->storage_size)
+	if( (addr + 1U) > eeprom->storage_size)
 		return;
 
 	_set_address(eeprom, addr);
 	write_msg.length = eeprom->address_size;
 
 	read_msg.length = 1;
-	read_msg.data = byte;
+	read_msg.data = byt;
 
 	int32_t res;
 	res = i2c_master_xfer(eeprom->dev, &write_msg, 1, TIMEOUT);

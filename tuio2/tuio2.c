@@ -49,13 +49,15 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 
 static void
-tuio2_init()
+tuio2_init(void)
 {
 }
 
 static osc_data_t *
 tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -88,6 +90,11 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 static osc_data_t *
 tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
+	(void)fid;
+	(void)now;
+	(void)offset;
+	(void)nblob_old;
+	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 

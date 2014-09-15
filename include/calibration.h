@@ -42,12 +42,12 @@ extern float curve [0x800]; // lookup table for distance-magnetic-flux relations
 extern const OSC_Query_Item calibration_tree [14];
 
 uint_fast8_t range_load(uint_fast8_t pos);
-uint_fast8_t range_reset();
+uint_fast8_t range_reset(void);
 uint_fast8_t range_save(uint_fast8_t pos);
 
-void range_curve_update();
+void range_curve_update(void);
 
 void range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela);
-void range_init();
+void range_init(void);
 
 #endif // _CALIBRATION_H_

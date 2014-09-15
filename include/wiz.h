@@ -28,7 +28,6 @@
 
 #include <libmaple/gpio.h>
 
-#include <oscquery.h>
 #include <config.h>
 
 extern const uint8_t wiz_broadcast_ip [];
@@ -70,7 +69,7 @@ extern Wiz_Socket_State wiz_socket_state [];
 
 void wiz_init(gpio_dev *dev, uint8_t bit);
 void wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NUM]);
-uint_fast8_t wiz_link_up();
+uint_fast8_t wiz_link_up(void);
 
 void wiz_mac_set(uint8_t *mac);
 void wiz_ip_set(uint8_t *ip);
@@ -83,7 +82,7 @@ uint_fast8_t wiz_is_multicast(uint8_t *ip);
 
 void wiz_irq_handle(void);
 void wiz_irq_set(Wiz_IRQ_Cb cb, uint8_t mask);
-void wiz_irq_unset();
+void wiz_irq_unset(void);
 
 void wiz_socket_irq_set(uint8_t socket, Wiz_IRQ_Cb cb, uint8_t mask);
 void wiz_socket_irq_unset(uint8_t socket);
@@ -132,7 +131,7 @@ void tcp_send_block(uint8_t sock);
 #define tcp_receive udp_receive
 #define tcp_peek udp_peek
 #define tcp_available udp_available
-void tcp_dispatch(uint8_t sock, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip);
+void tcp_dispatch(uint8_t sock, uint8_t *ip, uint16_t port, uint8_t *i_buf, Wiz_UDP_Dispatch_Cb cb, uint8_t slip);
 
 #define tcp_skip udp_skip
 #define tcp_ignore udp_ignore

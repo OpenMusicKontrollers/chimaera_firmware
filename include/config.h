@@ -193,17 +193,17 @@ struct _Config {
 extern Config config;
 extern const OSC_Method config_serv [];
 
-uint_fast8_t version_match();
+uint_fast8_t version_match(void);
 
-uint_fast8_t config_load();
-uint_fast8_t config_save();
+uint_fast8_t config_load(void);
+uint_fast8_t config_save(void);
 
-uint_fast8_t groups_load();
-uint_fast8_t groups_save();
+uint_fast8_t groups_load(void);
+uint_fast8_t groups_save(void);
 
 uint16_t CONFIG_SUCCESS(const char *fmt, ...);
 uint16_t CONFIG_FAIL(const char *fmt, ...);
-#define CONFIG_SEND(size)(osc_send(&config.config.osc, BUF_O_BASE(buf_o_ptr), size))
+void CONFIG_SEND(uint16_t size);
 
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);

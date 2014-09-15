@@ -90,7 +90,7 @@ struct _OSC_Query_Item {
 };
 
 const OSC_Query_Item *osc_query_find(const OSC_Query_Item *item, const char *path, int_fast8_t argc);
-void osc_query_response(uint8_t *buf, const OSC_Query_Item *item, const char *path);
+void osc_query_response(char *buf, const OSC_Query_Item *item, const char *path);
 uint_fast8_t osc_query_format(const OSC_Query_Item *item, const char *fmt);
 uint_fast8_t osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_data_t *buf);
 
@@ -99,8 +99,10 @@ uint_fast8_t osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_da
 	.path =(PATH), \
 	.description =(DESCRIPTION), \
 	.type = OSC_QUERY_NODE, \
-	.item.node.tree =(TREE), \
-	.item.node.argc = sizeof((TREE)) / sizeof(OSC_Query_Item) \
+	.item.node = { \
+		.tree =(TREE), \
+		.argc = sizeof((TREE)) / sizeof(OSC_Query_Item) \
+	} \
 }
 
 #define OSC_QUERY_ITEM_ARRAY(PATH, DESCRIPTION, TREE, SIZE) \
@@ -108,8 +110,10 @@ uint_fast8_t osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_da
 	.path =(PATH), \
 	.description =(DESCRIPTION), \
 	.type = OSC_QUERY_ARRAY, \
-	.item.node.tree =(TREE), \
-	.item.node.argc = (SIZE) \
+	.item.node = { \
+		.tree =(TREE), \
+		.argc = (SIZE) \
+	} \
 }
 
 #define OSC_QUERY_ITEM_METHOD(PATH, DESCRIPTION, CB, ARGS) \
@@ -117,9 +121,11 @@ uint_fast8_t osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_da
 	.path =(PATH), \
 	.description =(DESCRIPTION), \
 	.type = OSC_QUERY_METHOD, \
-	.item.method.cb =(CB), \
-	.item.method.args =(ARGS), \
-	.item.method.argc = sizeof((ARGS)) / sizeof(OSC_Query_Argument) \
+	.item.method = { \
+		.cb =(CB), \
+		.args =(ARGS), \
+		.argc = sizeof((ARGS)) / sizeof(OSC_Query_Argument) \
+	} \
 }
 
 #define OSC_QUERY_ARGUMENT(TYPE, DESCRIPTION, MODE) \

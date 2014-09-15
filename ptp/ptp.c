@@ -52,9 +52,9 @@ static uint_fast8_t ptp_timescale = 0;
 static uint16_t utc_offset;
 static uint64_t master_clock_id;
 static uint16_t sync_seq_id;
-static uint16_t resp_seq_id;
+//static uint16_t resp_seq_id;
 static uint16_t req_seq_id = 0;
-static uint16_t pdelay_req_seq_id = 0;
+//static uint16_t pdelay_req_seq_id = 0;
 static uint_fast8_t sync_counter = 0;
 
 void
@@ -125,7 +125,7 @@ ptp_uptime()
 }
 
 static void
-_ptp_update_offset()
+_ptp_update_offset(void)
 {
 	// offset = t2 - t1 - delay - correction1 - correction2
 
@@ -194,7 +194,7 @@ ptp_request()
 }
 
 static void
-_ptp_update_delay_e2e()
+_ptp_update_delay_e2e(void)
 {
 	int64_t a = t4 - t1;
 	int64_t b = t3 - t2;
@@ -433,7 +433,7 @@ ptp_dispatch(uint8_t *buf, int64_t tick)
 	ptp_request_ntoh(msg);
 
 	// check for PTP version 2
-	if(msg->version & 0xf != PTP_VERSION_2)
+	if( (msg->version & 0xf) != PTP_VERSION_2)
 		return;
 
 	// byte swap extended message part
@@ -526,6 +526,8 @@ _ptp_delay_stiffness(const char *path, const char *fmt, uint_fast8_t argc, osc_d
 static uint_fast8_t
 _ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -543,6 +545,8 @@ _ptp_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 static uint_fast8_t
 _ptp_delay(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

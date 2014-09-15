@@ -23,6 +23,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h> // isprint
 
 #include <osc.h>
 
@@ -54,7 +55,7 @@ osc_check_path(const char *path)
 		return 0;
 
 	for(ptr=path+1; *ptr!='\0'; ptr++)
-		if( (isprint(*ptr) == 0) || (strchr(invalid_path_chars, *ptr) != NULL) )
+		if( (isprint((int)*ptr) == 0) || (strchr(invalid_path_chars, *ptr) != NULL) )
 			return 0;
 
 	return 1;
@@ -90,8 +91,8 @@ osc_method_match(OSC_Method *methods, const char *path, const char *fmt)
 static void
 _osc_method_dispatch_message(osc_data_t *buf, size_t size, const OSC_Method *methods)
 {
+	(void)size;
 	osc_data_t *ptr = buf;
-	osc_data_t *end = buf + size;
 
 	const char *path;
 	const char *fmt;
@@ -256,6 +257,50 @@ osc_packet_check(osc_data_t *buf, size_t size)
 
 	return 1;
 }
+
+// OSC object lengths
+extern inline size_t osc_strlen(const char *buf);
+extern inline size_t osc_fmtlen(const char *buf);
+extern inline size_t osc_bloblen(osc_data_t *buf);
+extern inline size_t osc_blobsize(osc_data_t *buf);
+
+// get OSC arguments from raw buffer
+extern inline osc_data_t * osc_get_path(osc_data_t *buf, const char **path);
+extern inline osc_data_t * osc_get_fmt(osc_data_t *buf, const char **fmt);
+extern inline osc_data_t * osc_get_int32(osc_data_t *buf, int32_t *i);
+extern inline osc_data_t * osc_get_float(osc_data_t *buf, float *f);
+extern inline osc_data_t * osc_get_string(osc_data_t *buf, const char **s);
+extern inline osc_data_t * osc_get_blob(osc_data_t *buf, OSC_Blob *b);
+extern inline osc_data_t * osc_get_int64(osc_data_t *buf, int64_t *h);
+extern inline osc_data_t * osc_get_double(osc_data_t *buf, double *d);
+extern inline osc_data_t * osc_get_timetag(osc_data_t *buf, OSC_Timetag *t);
+extern inline osc_data_t * osc_get_symbol(osc_data_t *buf, const char **S);
+extern inline osc_data_t * osc_get_char(osc_data_t *buf, char *c);
+extern inline osc_data_t * osc_get_midi(osc_data_t *buf, uint8_t **m);
+
+// write OSC argument to raw buffer
+extern inline osc_data_t * osc_set_path(osc_data_t *buf, const char *path);
+extern inline osc_data_t * osc_set_fmt(osc_data_t *buf, const char *fmt);
+extern inline osc_data_t * osc_set_int32(osc_data_t *buf, int32_t i);
+extern inline osc_data_t * osc_set_float(osc_data_t *buf, float f);
+extern inline osc_data_t * osc_set_string(osc_data_t *buf, const char *s);
+extern inline osc_data_t * osc_set_blob(osc_data_t *buf, int32_t size, void *payload);
+extern inline osc_data_t * osc_set_blob_inline(osc_data_t *buf, int32_t size, void **payload);
+extern inline osc_data_t * osc_set_int64(osc_data_t *buf, int64_t h);
+extern inline osc_data_t * osc_set_double(osc_data_t *buf, double d);
+extern inline osc_data_t * osc_set_timetag(osc_data_t *buf, OSC_Timetag t);
+extern inline osc_data_t * osc_set_symbol(osc_data_t *buf, const char *S);
+extern inline osc_data_t * osc_set_char(osc_data_t *buf, char c);
+extern inline osc_data_t * osc_set_midi(osc_data_t *buf, uint8_t *m);
+extern inline osc_data_t * osc_set_midi_inline(osc_data_t *buf, uint8_t **m);
+
+// create bundle
+extern inline osc_data_t * osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag, osc_data_t **bndl);
+extern inline osc_data_t * osc_end_bundle(osc_data_t *buf, osc_data_t *bndl);
+
+// create item
+extern inline osc_data_t * osc_start_bundle_item(osc_data_t *buf, osc_data_t **itm);
+extern inline osc_data_t * osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm);
 
 osc_data_t *
 osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...)

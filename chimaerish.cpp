@@ -39,13 +39,13 @@ usb_debug_int(uint32_t i)
 }
 
 __attribute__((constructor)) void
-premain()
+premain(void)
 {
   init(); // board init
 }
 
 extern "C" void
-cpp_setup()
+cpp_setup(void)
 {
 	// we don't need USB communication, so we disable it
 	//SerialUSB.begin();

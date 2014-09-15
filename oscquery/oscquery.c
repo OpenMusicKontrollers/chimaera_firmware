@@ -159,7 +159,7 @@ osc_query_check(const OSC_Query_Item *item, const char *fmt, osc_data_t *buf)
 					if(!found)
 						return 0;
 				}
-				else if(strlen(S) > args[i].range.max.i - 1) // including terminating zero
+				else if((int32_t)strlen(S) > (args[i].range.max.i - 1) ) // including terminating zero
 					return 0;
 				break;
 			}
@@ -193,7 +193,7 @@ _serialize_float(char *str, float f)
 }
 
 void
-osc_query_response(uint8_t *buf, const OSC_Query_Item *item, const char *path)
+osc_query_response(char *buf, const OSC_Query_Item *item, const char *path)
 {
 	*buf++ = '{';
 
@@ -277,7 +277,7 @@ osc_query_response(uint8_t *buf, const OSC_Query_Item *item, const char *path)
 						uint_fast8_t j;
 						for(j=0; j<arg->values.argc; j++)
 						{
-							sprintf(buf, "%i,", arg->values.ptr[j].i);
+							sprintf(buf, "%li,", arg->values.ptr[j].i);
 							buf += strlen(buf);
 						}
 						buf--;
@@ -285,7 +285,7 @@ osc_query_response(uint8_t *buf, const OSC_Query_Item *item, const char *path)
 					}
 					else // !values
 					{
-						sprintf(buf, ",\"range\":[%i,%i,%i]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
+						sprintf(buf, ",\"range\":[%li,%li,%li]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
 						buf += strlen(buf);
 					}
 					break;
@@ -343,7 +343,7 @@ osc_query_response(uint8_t *buf, const OSC_Query_Item *item, const char *path)
 					}
 					else // !values
 					{
-						sprintf(buf, ",\"range\":[%i,%i,%i]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
+						sprintf(buf, ",\"range\":[%li,%li,%li]", arg->range.min.i, arg->range.max.i, arg->range.step.i);
 						buf += strlen(buf);
 					}
 					break;

@@ -72,7 +72,7 @@ range_load(uint_fast8_t pos)
 }
 
 uint_fast8_t
-range_reset()
+range_reset(void)
 {
 	uint_fast8_t i;
 	for(i=0; i<SENSOR_N; i++)
@@ -99,7 +99,7 @@ range_save(uint_fast8_t pos)
 }
 
 void
-range_curve_update()
+range_curve_update(void)
 {
 	uint32_t i;
 
@@ -115,6 +115,7 @@ range_curve_update()
 void
 range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3, int16_t *sum, int16_t *rela)
 {
+	(void)sum;
 	uint_fast8_t i;
 	uint_fast8_t pos;
 	
@@ -162,7 +163,7 @@ range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3
 
 // initialize sensor range
 void
-range_init()
+range_init(void)
 {
 	uint_fast8_t i;
 	for(i=0; i<SENSOR_N; i++)
@@ -179,7 +180,7 @@ range_init()
 
 // calibrate quiescent current
 static void
-range_update_quiescent()
+range_update_quiescent(void)
 {
 	uint_fast8_t i;
 	for(i=0; i<SENSOR_N; i++)
@@ -195,7 +196,7 @@ range_update_quiescent()
 
 // calibrate threshold
 static uint_fast8_t
-range_update_b0()
+range_update_b0(void)
 {
 	uint_fast8_t i;
 	uint16_t thresh_s, thresh_n;
@@ -285,7 +286,7 @@ exit:
 
 // calibrate amplification and sensitivity
 static uint_fast8_t
-range_update_b2()
+range_update_b2(void)
 {
 	uint_fast8_t i = point.i;
 	uint16_t b_s, b_n;
@@ -393,6 +394,8 @@ range_update_b3(float y)
 static uint_fast8_t
 _calibration_start(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -414,6 +417,8 @@ _calibration_start(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 static uint_fast8_t
 _calibration_zero(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -438,6 +443,8 @@ _calibration_zero(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 static uint_fast8_t
 _calibration_min(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -461,6 +468,8 @@ _calibration_min(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _calibration_mid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -489,6 +498,8 @@ _calibration_mid(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _calibration_max(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -514,6 +525,8 @@ _calibration_max(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _calibration_end(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -545,6 +558,8 @@ _calibration_end(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 static uint_fast8_t
 _calibration_quiescent(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -567,6 +582,8 @@ _calibration_quiescent(const char *path, const char *fmt, uint_fast8_t argc, osc
 static uint_fast8_t
 _calibration_threshold(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -589,6 +606,8 @@ _calibration_threshold(const char *path, const char *fmt, uint_fast8_t argc, osc
 static uint_fast8_t
 _calibration_amplification(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -615,6 +634,8 @@ _calibration_amplification(const char *path, const char *fmt, uint_fast8_t argc,
 static uint_fast8_t
 _calibration_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -630,6 +651,8 @@ _calibration_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_da
 static uint_fast8_t
 _calibration_curve(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -645,6 +668,8 @@ _calibration_curve(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 static uint_fast8_t
 _calibration_save(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -663,6 +688,8 @@ _calibration_save(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 static uint_fast8_t
 _calibration_load(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;
@@ -681,6 +708,8 @@ _calibration_load(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 static uint_fast8_t
 _calibration_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
 	int32_t uuid;

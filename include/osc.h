@@ -92,7 +92,7 @@ union _swap64_t {
 
 struct _OSC_Blob {
 	int32_t size;
-	uint8_t *payload;
+	void *payload;
 };
 
 struct _OSC_Method {
@@ -120,20 +120,27 @@ int osc_message_check(osc_data_t *buf, size_t size);
 int osc_bundle_check(osc_data_t *buf, size_t size);
 int osc_packet_check(osc_data_t *buf, size_t size);
 
+/* Suppress GCC's bogus "no previous prototype for 'FOO'"
+   and "no previous declaration for 'FOO'"  diagnostics,
+   when FOO is an inline function in the header; see
+   <http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54113>.  */
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wmissing-prototypes\"")
+
 // OSC object lengths
-extern inline size_t
+inline size_t
 osc_strlen(const char *buf)
 {
 	return round_to_four_bytes(strlen(buf) + 1);
 }
 
-extern inline size_t
+inline size_t
 osc_fmtlen(const char *buf)
 {
 	return round_to_four_bytes(strlen(buf) + 2) - 1;
 }
 
-extern inline size_t
+inline size_t
 osc_bloblen(osc_data_t *buf)
 {
 	swap32_t s = {.u = *(uint32_t *)buf}; 
@@ -141,7 +148,7 @@ osc_bloblen(osc_data_t *buf)
 	return 4 + round_to_four_bytes(s.i);
 }
 
-extern inline size_t
+inline size_t
 osc_blobsize(osc_data_t *buf)
 {
 	swap32_t s = {.u = *(uint32_t *)buf}; 
@@ -150,21 +157,21 @@ osc_blobsize(osc_data_t *buf)
 }
 
 // get OSC arguments from raw buffer
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_path(osc_data_t *buf, const char **path)
 {
 	*path = (const char *)buf;
 	return buf + osc_strlen(*path);
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_fmt(osc_data_t *buf, const char **fmt)
 {
 	*fmt = (const char *)buf;
 	return buf + osc_strlen(*fmt);
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_int32(osc_data_t *buf, int32_t *i)
 {
 	swap32_t s = {.u = *(uint32_t *)buf};
@@ -173,7 +180,7 @@ osc_get_int32(osc_data_t *buf, int32_t *i)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_float(osc_data_t *buf, float *f)
 {
 	swap32_t s = {.u = *(uint32_t *)buf};
@@ -182,14 +189,14 @@ osc_get_float(osc_data_t *buf, float *f)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_string(osc_data_t *buf, const char **s)
 {
 	*s = (const char *)buf;
 	return buf + osc_strlen(*s);
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_blob(osc_data_t *buf, OSC_Blob *b)
 {
 	b->size = osc_blobsize(buf);
@@ -197,7 +204,7 @@ osc_get_blob(osc_data_t *buf, OSC_Blob *b)
 	return buf + 4 + round_to_four_bytes(b->size);
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_int64(osc_data_t *buf, int64_t *h)
 {
 	swap64_t *s0 = (swap64_t *)buf;
@@ -208,7 +215,7 @@ osc_get_int64(osc_data_t *buf, int64_t *h)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_double(osc_data_t *buf, double *d)
 {
 	swap64_t *s0 = (swap64_t *)buf;
@@ -219,7 +226,7 @@ osc_get_double(osc_data_t *buf, double *d)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_timetag(osc_data_t *buf, OSC_Timetag *t)
 {
 	swap64_t *s0 = (swap64_t *)buf;
@@ -230,14 +237,14 @@ osc_get_timetag(osc_data_t *buf, OSC_Timetag *t)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_symbol(osc_data_t *buf, const char **S)
 {
 	*S = (const char *)buf;
 	return buf + osc_strlen(*S);
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_char(osc_data_t *buf, char *c)
 {
 	swap32_t s = {.u = *(uint32_t *)buf};
@@ -246,7 +253,7 @@ osc_get_char(osc_data_t *buf, char *c)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_get_midi(osc_data_t *buf, uint8_t **m)
 {
 	*m = (uint8_t *)buf;
@@ -254,7 +261,7 @@ osc_get_midi(osc_data_t *buf, uint8_t **m)
 }
 
 // write OSC argument to raw buffer
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_path(osc_data_t *buf, const char *path)
 {
 	size_t len = osc_strlen(path);
@@ -262,7 +269,7 @@ osc_set_path(osc_data_t *buf, const char *path)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_fmt(osc_data_t *buf, const char *fmt)
 {
 	size_t len = osc_fmtlen(fmt);
@@ -271,7 +278,7 @@ osc_set_fmt(osc_data_t *buf, const char *fmt)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_int32(osc_data_t *buf, int32_t i)
 {
 	swap32_t *s = (swap32_t *)buf;
@@ -280,7 +287,7 @@ osc_set_int32(osc_data_t *buf, int32_t i)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_float(osc_data_t *buf, float f)
 {
 	swap32_t *s = (swap32_t *)buf;
@@ -289,7 +296,7 @@ osc_set_float(osc_data_t *buf, float f)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_string(osc_data_t *buf, const char *s)
 {
 	size_t len = osc_strlen(s);
@@ -297,7 +304,7 @@ osc_set_string(osc_data_t *buf, const char *s)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_blob(osc_data_t *buf, int32_t size, void *payload)
 {
 	size_t len = round_to_four_bytes(size);
@@ -310,7 +317,7 @@ osc_set_blob(osc_data_t *buf, int32_t size, void *payload)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_blob_inline(osc_data_t *buf, int32_t size, void **payload)
 {
 	size_t len = round_to_four_bytes(size);
@@ -323,7 +330,7 @@ osc_set_blob_inline(osc_data_t *buf, int32_t size, void **payload)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_int64(osc_data_t *buf, int64_t h)
 {
 	swap64_t s0 = { .h = h };
@@ -333,7 +340,7 @@ osc_set_int64(osc_data_t *buf, int64_t h)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_double(osc_data_t *buf, double d)
 {
 	swap64_t s0 = { .d = d };
@@ -343,7 +350,7 @@ osc_set_double(osc_data_t *buf, double d)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_timetag(osc_data_t *buf, OSC_Timetag t)
 {
 	swap64_t s0 = { .t = t };
@@ -353,7 +360,7 @@ osc_set_timetag(osc_data_t *buf, OSC_Timetag t)
 	return buf + 8;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_symbol(osc_data_t *buf, const char *S)
 {
 	size_t len = osc_strlen(S);
@@ -361,7 +368,7 @@ osc_set_symbol(osc_data_t *buf, const char *S)
 	return buf + len;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_char(osc_data_t *buf, char c)
 {
 	swap32_t *s = (swap32_t *)buf;
@@ -370,7 +377,7 @@ osc_set_char(osc_data_t *buf, char c)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_midi(osc_data_t *buf, uint8_t *m)
 {
 	buf[0] = m[0];
@@ -380,7 +387,7 @@ osc_set_midi(osc_data_t *buf, uint8_t *m)
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_set_midi_inline(osc_data_t *buf, uint8_t **m)
 {
 	*m = (uint8_t *)buf;
@@ -388,16 +395,16 @@ osc_set_midi_inline(osc_data_t *buf, uint8_t **m)
 }
 
 // create bundle
-extern inline osc_data_t *
+inline osc_data_t *
 osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag, osc_data_t **bndl)
 {
 	*bndl = buf;
-	strncpy(buf, "#bundle", 8);
+	strncpy((char *)buf, "#bundle", 8);
 	osc_set_timetag(buf + 8, timetag);
 	return buf + 16;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_end_bundle(osc_data_t *buf, osc_data_t *bndl)
 {
 	size_t len = buf - (bndl + 16);
@@ -408,14 +415,14 @@ osc_end_bundle(osc_data_t *buf, osc_data_t *bndl)
 }
 
 // create item
-extern inline osc_data_t *
+inline osc_data_t *
 osc_start_bundle_item(osc_data_t *buf, osc_data_t **itm)
 {
 	*itm = buf;
 	return buf + 4;
 }
 
-extern inline osc_data_t *
+inline osc_data_t *
 osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm)
 {
 	size_t len = buf - (itm + 4);
@@ -427,6 +434,8 @@ osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm)
 	else // empty item
 		return itm;
 }
+
+_Pragma("GCC diagnostic pop")
 
 osc_data_t *osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...);
 osc_data_t *osc_varlist_set(osc_data_t *buf, const char *path, const char *fmt, va_list args);

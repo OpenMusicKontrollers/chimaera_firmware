@@ -36,6 +36,8 @@
 #include <config.h>
 #include <wiz.h>
 #include <sntp.h>
+#include <ptp.h>
+#include <debug.h>
 
 uint_fast8_t
 ip_part_of_subnet(uint8_t *ip)
@@ -431,7 +433,7 @@ slip_encode(uint8_t *buf, size_t len)
 	dst = end + count;
 	*dst-- = SLIP_END;
 
-	while( (src >= 0) && (src != dst) )
+	while( (src >= buf) && (src != dst) )
 	{
 		if(*src == SLIP_END)
 		{
