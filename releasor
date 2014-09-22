@@ -1,8 +1,8 @@
 #!/bin/bash
 
-release=0x0001
+release=0x0004
 major=0
-minor=4
+minor=5
 patch=0
 version="${major}.${minor}.${patch}"
 
