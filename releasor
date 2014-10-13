@@ -3,7 +3,7 @@
 release=0x0004
 major=0
 minor=5
-patch=0
+patch=1
 version="${major}.${minor}.${patch}"
 
 mkdir -p image

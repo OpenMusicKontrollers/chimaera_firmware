@@ -68,9 +68,9 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
 
 	uint_fast8_t i;
-	for(i=0; i<counter; i++)
+	for(i=0; i<nblob_new; i++)
 		alv_fmt[i+1] = OSC_INT32;
-	alv_fmt[counter+1] = '\0';
+	alv_fmt[nblob_new+1] = '\0';
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
@@ -99,7 +99,7 @@ tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 	osc_data_t *itm;
 
 	uint_fast8_t i;
-	for(i=0; i<counter; i++)
+	for(i=0; i<nblob_new; i++)
 		pp = osc_set_int32(pp, alv_ids[i]);
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
