@@ -171,8 +171,6 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 			vy[newpos] = 0.0;
 	}
 
-	uint_fast8_t changed = 1;
-
 	/*
 	 * detect peaks
 	 */
@@ -408,12 +406,14 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 		blob->pid = vn[P] == POLE_NORTH ? CMC_NORTH : CMC_SOUTH; // for the A1302, south-polarity(+B) magnetic fields increase the output voltage, north-polaritiy(-B) decrease it
 		blob->group = NULL;
 		blob->x = x;
-		blob->p = y;
+		blob->y = y;
 		blob->above_thresh = va[P];
 		blob->state = CMC_BLOB_INVALID;
 
 		J++;
 	} // 50us per blob
+
+	uint_fast8_t changed = 0;
 
 	/*
 	 * relate new to old blobs
@@ -421,10 +421,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 	uint_fast8_t i, j;
 	if(I || J)
 	{
-		idle_word = 0;
-		idle_bit = 0;
-
-		switch((J > I) -(J < I) ) // == signum(J-I)
+		switch((J > I) - (J < I) ) // == signum(J-I)
 		{
 			case -1: // old blobs have disappeared
 			{
@@ -452,7 +449,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					{
 						cmc_neu[j].sid = cmc_old[i].sid;
 						cmc_neu[j].group = cmc_old[i].group;
-						cmc_neu[j].state = CMC_BLOB_EXISTED;
+						cmc_neu[j].state = (cmc_old[i].x == cmc_neu[j].x) && (cmc_old[i].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
 
 						i++;
 						j++;
@@ -462,6 +459,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 				// if(n_less)
 				for(i=I - n_less; i<I; i++)
 					cmc_old[i].state = CMC_BLOB_DISAPPEARED;
+						
+				changed = changed || 1;
 
 				break;
 			}
@@ -472,7 +471,9 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 				{
 					cmc_neu[j].sid = cmc_old[j].sid;
 					cmc_neu[j].group = cmc_old[j].group;
-					cmc_neu[j].state = CMC_BLOB_EXISTED;
+					cmc_neu[j].state = (cmc_old[j].x == cmc_neu[j].x) && (cmc_old[j].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
+
+					changed = changed || (cmc_neu[j].state == CMC_BLOB_EXISTED_DIRTY);
 				}
 
 				break;
@@ -499,6 +500,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 							cmc_neu[j].sid = ++(sid); // this is a new blob
 							cmc_neu[j].group = NULL;
 							cmc_neu[j].state = CMC_BLOB_APPEARED;
+
+							changed = changed || 1;
 						}
 						else
 							cmc_neu[j].state = CMC_BLOB_IGNORED;
@@ -511,7 +514,9 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					{
 						cmc_neu[j].sid = cmc_old[i].sid;
 						cmc_neu[j].group = cmc_old[i].group;
-						cmc_neu[j].state = CMC_BLOB_EXISTED;
+						cmc_neu[j].state = (cmc_old[i].x == cmc_neu[j].x) && (cmc_old[i].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
+
+						changed = changed || (cmc_neu[j].state == CMC_BLOB_EXISTED_DIRTY);
 						j++;
 						i++;
 					}
@@ -525,6 +530,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 						cmc_neu[j].sid = ++(sid); // this is a new blob
 						cmc_neu[j].group = NULL;
 						cmc_neu[j].state = CMC_BLOB_APPEARED;
+
+						changed = changed || 1;
 					}
 					else
 						cmc_neu[j].state = CMC_BLOB_IGNORED;
@@ -577,6 +584,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 						// mark new blob as APPEARED and give it a new sid
 						tar->sid = ++(sid);
 						tar->state = CMC_BLOB_APPEARED;
+
+						changed = changed || 1;
 					}
 
 					tar->group = ptr;
@@ -588,26 +597,31 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 				}
 			}
 		}
+
+		if(changed)
+		{
+			idle_bit = 0;
+			idle_word = 0;
+		}
+		else
+			idle_word++;
 	}
 	else // I == J == 0
-	{
-		changed = 0;
 		idle_word++;
-	}
 
 	/*
-	 *(not)advance idle counters
+	 * (not)advance idle counters
 	 */
-	uint8_t idle = 0;
+	uint_fast8_t idle = 0;
 	if(idle_bit < pacemaker)
 	{
-		idle = idle_word ==(1 << idle_bit);
+		idle = idle_word == (1 << idle_bit);
 		if(idle)
 			idle_bit++;
 	}
 	else // handle pacemaker
 	{
-		idle = idle_word ==(1 << idle_bit);
+		idle = idle_word == (1 << idle_bit);
 		if(idle)
 			idle_word = 0;
 	}
@@ -638,12 +652,12 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					if(tar->state == CMC_BLOB_APPEARED)
 					{
 						if(engine->on_cb)
-							buf_ptr = engine->on_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+							buf_ptr = engine->on_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
 					}
-					else // tar->state == CMC_BLOB_EXISTED
+					else // (tar->state == CMC_BLOB_EXISTED_DIRTY) || (tar->state == CMC_BLOB_EXISTED_STILLA)
 					{
 						if(engine->set_cb)
-							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->p);
+							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
 					}
 				}
 
@@ -654,7 +668,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					if(tar->state == CMC_BLOB_DISAPPEARED)
 					{
 						float zero = config.output.invert.z ? 1.f : 0.f;
-						if(tar->p != zero)
+						if(tar->y != zero)
 							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, zero);
 						buf_ptr = engine->off_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid);
 					}

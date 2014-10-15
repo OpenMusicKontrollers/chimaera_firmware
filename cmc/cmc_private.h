@@ -33,7 +33,8 @@
 
 typedef enum {
 	CMC_BLOB_INVALID,
-	CMC_BLOB_EXISTED,
+	CMC_BLOB_EXISTED_STILL,
+	CMC_BLOB_EXISTED_DIRTY,
 	CMC_BLOB_IGNORED,
 	CMC_BLOB_APPEARED,
 	CMC_BLOB_DISAPPEARED
@@ -44,7 +45,7 @@ typedef struct _CMC_Blob CMC_Blob;
 struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
-	float x, p;
+	float x, y;
 	uint16_t pid;
 	uint8_t above_thresh;
 	CMC_Blob_State state;
