@@ -63,9 +63,14 @@
 #include <sensors.h>
 //#include <osc.h>
 
+#if(ADC_DUAL_LENGTH > 0)
 static uint8_t adc1_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
 static uint8_t adc2_raw_sequence [ADC_DUAL_LENGTH]; // ^corresponding raw ADC channels
+#endif
+
+#if(ADC_SING_LENGTH > 0)
 static uint8_t adc3_raw_sequence [ADC_SING_LENGTH];
+#endif
 
 static int16_t adc12_raw[2][MUX_MAX*ADC_DUAL_LENGTH*2] __attribute__((aligned(4))); // the dma temporary data array.
 static int16_t adc3_raw[2][MUX_MAX*ADC_SING_LENGTH] __attribute__((aligned(4)));
@@ -275,31 +280,16 @@ _irq_adc_block(void)
 #endif
 }
 
+#if(ADC_DUAL_LENGTH > 0)
 void __irq_adc1_2(void);
 void __CCM_TEXT__
 __irq_adc1_2(void)
-//adc1_2_irq(adc_callback_data *data)
 {
 	ADC1->regs->ISR |= ADC_ISR_EOS;
-	//ADC1->regs->ISR |= data->irq_flags; // clear flags
 
-#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
+#	if(ADC_SING_LENGTH > 0)
 	adc12_eos = 1;
-#endif
-	_irq_adc_block();
-}
-
-void __irq_adc3(void);
-void __CCM_TEXT__
-__irq_adc3(void)
-//adc3_irq(adc_callback_data *data)
-{
-	ADC3->regs->ISR |= ADC_ISR_EOS;
-	//ADC3->regs->ISR |= data->irq_flags; // clear flags
-
-#if( (ADC_DUAL_LENGTH > 0) && (ADC_SING_LENGTH > 0) )
-	adc3_eos = 1;
-#endif
+#	endif
 	_irq_adc_block();
 }
 
@@ -314,6 +304,20 @@ adc12_dma_irq(void)
 
 	adc12_dma_done = 1;
 }
+#endif
+
+#if(ADC_SING_LENGTH > 0)
+void __irq_adc3(void);
+void __CCM_TEXT__
+__irq_adc3(void)
+{
+	ADC3->regs->ISR |= ADC_ISR_EOS;
+
+#	if(ADC_DUAL_LENGTH > 0)
+	adc3_eos = 1;
+#	endif
+	_irq_adc_block();
+}
 
 static void __CCM_TEXT__
 adc3_dma_irq(void)
@@ -326,6 +330,7 @@ adc3_dma_irq(void)
 
 	adc3_dma_done = 1;
 }
+#endif
 
 static inline __always_inline void
 adc_dma_run(void)
@@ -400,8 +405,6 @@ adc_fill(uint_fast8_t raw_ptr)
 {
 	uint_fast8_t i;
 	uint_fast8_t pos;
-	int16_t *raw12 = adc12_raw[raw_ptr];
-	int16_t *raw3 = adc3_raw[raw_ptr];
 	uint32_t *rela_vec32 =(uint32_t *)adc_rela;
 	uint32_t *sum_vec32 =(uint32_t *)adc_sum;
 	uint32_t *qui_vec32 =(uint32_t *)range.qui;
@@ -413,6 +416,7 @@ adc_fill(uint_fast8_t raw_ptr)
 	uint_fast8_t bitshift = config.sensors.movingaverage_bitshift; // local copy
 
 #if(ADC_DUAL_LENGTH > 0)
+	int16_t *raw12 = adc12_raw[raw_ptr];
 	for(i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
 		pos = order12[i];
@@ -421,6 +425,7 @@ adc_fill(uint_fast8_t raw_ptr)
 #endif
 
 #if(ADC_SING_LENGTH > 0)
+	int16_t *raw3 = adc3_raw[raw_ptr];
 	for(i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
 	{
 		pos = order3[i];
@@ -965,6 +970,7 @@ setup(void)
 {
 	uint_fast8_t i;
 	uint_fast8_t p;
+	int status;
 
 	// determine power vs factory reset
 	bkp_init();
@@ -1014,17 +1020,6 @@ setup(void)
 	pin_write_bit(mux_sequence[0], 1); // MR
 	pin_write_bit(mux_sequence[1], 0); // CP
 #endif
-
-	// setup analog input pins
-	for(i=0; i<ADC_DUAL_LENGTH; i++)
-	{
-		pin_set_modef(adc1_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
-		pin_set_modef(adc2_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
-	}
-	for(i=0; i<ADC_SING_LENGTH; i++)
-		pin_set_modef(adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
-	for(i=0; i<ADC_UNUSED_LENGTH; i++)
-		pin_set_modef(adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD); // pull-down unused analog ins
 
 	// SPI for W5200/W5500
 	spi_init(WIZ_SPI_DEV);
@@ -1187,39 +1182,44 @@ setup(void)
 	adc_set_sample_rate(ADC2, ADC_SMPR_181_5);
 	adc_set_sample_rate(ADC3, ADC_SMPR_181_5);
 
+#if(ADC_UNUSED_LENGTH > 0)
+	// setup analog input pins
+	for(i=0; i<ADC_UNUSED_LENGTH; i++)
+		pin_set_modef(adc_unused[i], GPIO_MODE_INPUT, GPIO_MODEF_PUPD_PD); // pull-down unused analog ins
+#endif
+
+#if(ADC_DUAL_LENGTH > 0)
+	// setup analog input pins
+	for(i=0; i<ADC_DUAL_LENGTH; i++)
+	{
+		pin_set_modef(adc1_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+		pin_set_modef(adc2_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+	}
+
 	// fill raw sequence array with corresponding ADC channels
 	for(i=0; i<ADC_DUAL_LENGTH; i++)
 	{
 		adc1_raw_sequence[i] = PIN_MAP[adc1_sequence[i]].adc_channel;
 		adc2_raw_sequence[i] = PIN_MAP[adc2_sequence[i]].adc_channel;
 	}
-	for(i=0; i<ADC_SING_LENGTH; i++)
-		adc3_raw_sequence[i] = PIN_MAP[adc3_sequence[i]].adc_channel;
 
 	for(p=0; p<MUX_MAX; p++)
 		for(i=0; i<ADC_DUAL_LENGTH*2; i++)
 			order12[p*ADC_DUAL_LENGTH*2 + i] = mux_order[p] + adc_order[i]*MUX_MAX;
 
-	for(p=0; p<MUX_MAX; p++)
-		for(i=0; i<ADC_SING_LENGTH; i++)
-			order3[p*ADC_SING_LENGTH + i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
-
-	// set up ADC DMA tubes
-	int status;
-
 	// set channels in register
-#if(ADC_DUAL_LENGTH > 0)
 	adc_set_conv_seq(ADC1, adc1_raw_sequence, ADC_DUAL_LENGTH);
 	adc_set_conv_seq(ADC2, adc2_raw_sequence, ADC_DUAL_LENGTH);
 
 	ADC1->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
 	nvic_irq_enable(NVIC_ADC1_2);
-	//adc_attach_interrupt(ADC1, ADC_IER_EOS, adc1_2_irq, NULL);
 
+	// set up ADC in DMA mode
 	ADC12_BASE->CCR |= ADC_MDMA_MODE_ENABLE_12_10_BIT; // enable ADC DMA in 12-bit dual mode
 	ADC12_BASE->CCR |= ADC_CCR_DMACFG; // enable ADC circular mode for use with DMA
 	ADC12_BASE->CCR |= ADC_MODE_DUAL_REGULAR_ONLY; // set DMA dual mode to regular channels only
 
+	// enabled ADC
 	adc_enable(ADC1);
 	adc_enable(ADC2);
 
@@ -1236,15 +1236,29 @@ setup(void)
 #endif
 
 #if(ADC_SING_LENGTH > 0)
+	// setup analog input pins
+	for(i=0; i<ADC_SING_LENGTH; i++)
+		pin_set_modef(adc3_sequence[i], GPIO_MODE_ANALOG, GPIO_MODEF_PUPD_NONE);
+
+	// fill raw sequence array with corresponding ADC channels
+	for(i=0; i<ADC_SING_LENGTH; i++)
+		adc3_raw_sequence[i] = PIN_MAP[adc3_sequence[i]].adc_channel;
+
+	for(p=0; p<MUX_MAX; p++)
+		for(i=0; i<ADC_SING_LENGTH; i++)
+			order3[p*ADC_SING_LENGTH + i] = mux_order[p] + adc_order[ADC_DUAL_LENGTH*2+i]*MUX_MAX;
+
+	// set channels in register
 	adc_set_conv_seq(ADC3, adc3_raw_sequence, ADC_SING_LENGTH);
 
+	// set up ADC in DMA mode
 	ADC3->regs->IER |= ADC_IER_EOS; // enable end-of-sequence interrupt
 	nvic_irq_enable(NVIC_ADC3);
-	//adc_attach_interrupt(ADC3, ADC_IER_EOS, adc3_irq, NULL);
 
 	ADC3->regs->CFGR |= ADC_CFGR_DMAEN; // enable DMA request
 	ADC3->regs->CFGR |= ADC_CFGR_DMACFG, // enable ADC circular mode for use with DMA
 
+	// enable ADC
 	adc_enable(ADC3);
 
 	// set up DMA tube

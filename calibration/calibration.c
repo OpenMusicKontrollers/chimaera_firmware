@@ -120,11 +120,16 @@ range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3
 	uint_fast8_t pos;
 	
 	// fill rela vector from raw vector
+#if(ADC_DUAL_LENGTH > 0)
 	for(i=0; i<MUX_MAX*ADC_DUAL_LENGTH*2; i++)
 	{
 		pos = order12[i];
 		rela[pos] = raw12[i];
 	}
+#else
+	(void)raw12;
+	(void)order12;
+#endif
 
 #if(ADC_SING_LENGTH > 0)
 	for(i=0; i<MUX_MAX*ADC_SING_LENGTH; i++)
@@ -132,6 +137,9 @@ range_calibrate(int16_t *raw12, int16_t *raw3, uint8_t *order12, uint8_t *order3
 		pos = order3[i];
 		rela[pos] = raw3[i];
 	}
+#else
+	(void)raw3;
+	(void)order3;
 #endif
 
 	// do the calibration
