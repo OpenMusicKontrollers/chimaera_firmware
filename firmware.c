@@ -991,6 +991,11 @@ setup(void)
 			syscfg_set_mem_mode(SYSCFG_MEM_MODE_FLASH);
 			break;
 		case RESET_MODE_SYSTEM_FLASH:
+			// hard-reset after a flash update
+			bkp_enable_writes();
+			bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
+			bkp_disable_writes();
+
 			syscfg_set_mem_mode(SYSCFG_MEM_MODE_SYSTEM_FLASH);
 			// jump to system memory, aka DfuSe boot loader
 			asm volatile(
