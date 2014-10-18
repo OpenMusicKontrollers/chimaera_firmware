@@ -5,8 +5,8 @@ export SENSORS ?= 160
 
 # set firmware version
 export VERSION_MAJOR ?= 0
-export VERSION_MINOR ?= 5
-export VERSION_PATCH ?= 2
+export VERSION_MINOR ?= 6
+export VERSION_PATCH ?= 0
 
 # set revision of board design: 3, 4
 export REVISION ?= 4

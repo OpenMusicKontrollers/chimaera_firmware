@@ -31,6 +31,7 @@
 
 #include <scsynth.h>
 #include <custom.h>
+#include <oscmidi.h>
 
 #define SRC_PORT 0
 #define DST_PORT 1
@@ -122,10 +123,9 @@ struct _Config {
 
 	struct _oscmidi {
 		uint8_t enabled;
-		uint8_t effect;
-		float offset;
-		float range;
-		float mul;
+		uint8_t multi;
+		uint8_t format;
+		char path [64];
 	} oscmidi;
 
 	struct _dummy {
@@ -188,6 +188,7 @@ struct _Config {
 
 	CMC_Group groups [GROUP_MAX];
 	SCSynth_Group scsynth_groups [GROUP_MAX];
+	OSC_MIDI_Group oscmidi_groups [GROUP_MAX];
 };
 
 extern Config config;

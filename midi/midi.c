@@ -33,6 +33,7 @@ midi_add_key(MIDI_Hash *hash, uint32_t sid, uint8_t key)
 		{
 			hash[k].sid = sid;
 			hash[k].key = key;
+			hash[k].pos = 0; //FIXME
 			break;
 		}
 }

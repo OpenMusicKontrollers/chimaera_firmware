@@ -31,8 +31,10 @@
 enum _MIDI_COMMAND {
 	MIDI_STATUS_NOTE_OFF 							= 0x80,
 	MIDI_STATUS_NOTE_ON								= 0x90,
-	MIDI_STATUS_AFTER_TOUCH						= 0xa0,
+	MIDI_STATUS_NOTE_PRESSURE					= 0xa0,
 	MIDI_STATUS_CONTROL_CHANGE				= 0xb0,
+
+	MIDI_STATUS_CHANNEL_PRESSURE			= 0xd0,
 	MIDI_STATUS_PITCH_BEND						= 0xe0,
 	
 	MIDI_CONTROLLER_MODULATION				= 0x01,
@@ -54,6 +56,7 @@ typedef struct _MIDI_Hash MIDI_Hash;
 struct _MIDI_Hash {
 	uint32_t sid;
 	uint8_t key;
+	uint8_t pos;
 };
 
 void midi_add_key(MIDI_Hash *hash, uint32_t sid, uint8_t key);

@@ -102,10 +102,9 @@ Config config = {
 
 	.oscmidi = {
 		.enabled = 0,
-		.offset = MIDI_BOT,
-		.range = MIDI_RANGE,
-		.mul = 0x2000 / MIDI_RANGE,
-		.effect = MIDI_CONTROLLER_VOLUME
+		.multi = 1,
+		.format = OSC_MIDI_FORMAT_MIDI,
+		.path = {'/', 'm', 'i', 'd', 'i', '\0'}
 	},
 
 	.dummy = {
@@ -267,6 +266,21 @@ Config config = {
 			.gate = 1,
 			.add_action = SCSYNTH_ADD_TO_HEAD,
 			.is_group = 0
+		}
+	},
+
+	.oscmidi_groups = {
+		[0] = {
+			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE,
+			.control = 0x07,
+			.offset = MIDI_BOT,
+			.range = MIDI_RANGE
+		},
+		[1] = {
+			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE,
+			.control = 0x07,
+			.offset = MIDI_BOT,
+			.range = MIDI_RANGE
 		}
 	}
 };
@@ -1290,6 +1304,7 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 		{
 			*query = '\0';
 			const OSC_Query_Item *item = osc_query_find(&root, path, -1);
+			*query = '!';
 			if(item)
 			{
 				// serialize empty string
@@ -1300,6 +1315,7 @@ _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				char *response = (char *)(BUF_O_OFFSET(buf_o_ptr) + size);
 
 				// serialize query response directly to buffer
+				*query = '\0';
 				osc_query_response(response, item, path);
 
 				// calculate new message size

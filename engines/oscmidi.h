@@ -27,7 +27,30 @@
 #include <cmc.h>
 #include <oscquery.h>
 
+typedef enum _OSC_MIDI_Mapping OSC_MIDI_Mapping;
+typedef enum _OSC_MIDI_Format OSC_MIDI_Format;
+typedef struct _OSC_MIDI_Group OSC_MIDI_Group;
+
+enum _OSC_MIDI_Mapping {
+	OSC_MIDI_MAPPING_NOTE_PRESSURE,
+	OSC_MIDI_MAPPING_CHANNEL_PRESSURE,
+	OSC_MIDI_MAPPING_CONTROL_CHANGE
+};
+
+enum _OSC_MIDI_Format {
+	OSC_MIDI_FORMAT_MIDI,
+	OSC_MIDI_FORMAT_INT32
+};
+
+struct _OSC_MIDI_Group {
+	uint8_t mapping;
+	uint8_t control;
+	float offset;
+	float range;
+};
+
+extern OSC_MIDI_Group *oscmidi_groups;
 extern CMC_Engine oscmidi_engine;
-extern const OSC_Query_Item oscmidi_tree [4];
+extern const OSC_Query_Item oscmidi_tree [6];
 
 #endif // _OSCMIDI_H_
