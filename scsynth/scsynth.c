@@ -44,7 +44,7 @@ static const char *set_str = "/n_set";
 static const char *on_fmt = "siiisisi";
 static const char *on_set_fmt = "iififiisi";
 static const char *off_fmt = "isi";
-static const char *set_fmt = "iififii";
+static const char *set_fmt = "iifif";
 
 static const char *default_fmt = "group%02i";
 
@@ -105,35 +105,27 @@ scsynth_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, 
 	
 	id = group->is_group ? group->group : group->sid + sid;
 
-	// message to create synth(sent early, e.g immediately)
+	// message to create synth
 	if(group->alloc)
 	{
 		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 		{
-			//osc_data_t *sub;
-			//osc_data_t *s;
-			//buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &s);
-			//buf_ptr = osc_start_bundle_item(buf_ptr, &sub);
-			//{
-				buf_ptr = osc_set_path(buf_ptr, on_str);
-				buf_ptr = osc_set_fmt(buf_ptr, on_fmt);
+			buf_ptr = osc_set_path(buf_ptr, on_str);
+			buf_ptr = osc_set_fmt(buf_ptr, on_fmt);
 
-				buf_ptr = osc_set_string(buf_ptr, group->name); // synthdef name 
-				buf_ptr = osc_set_int32(buf_ptr, id);
-				buf_ptr = osc_set_int32(buf_ptr, group->add_action);
-				buf_ptr = osc_set_int32(buf_ptr, group->group); // group id
-				buf_ptr = osc_set_string(buf_ptr,(char *)gate_str);
-				buf_ptr = osc_set_int32(buf_ptr, 0); // do not start synth yet
-				buf_ptr = osc_set_string(buf_ptr,(char *)out_str);
-				buf_ptr = osc_set_int32(buf_ptr, group->out);
-			//}
-			//buf_ptr = osc_end_bundle_item(buf_ptr, sub);
-			//buf_ptr = osc_end_bundle(buf_ptr, s);
+			buf_ptr = osc_set_string(buf_ptr, group->name); // synthdef name 
+			buf_ptr = osc_set_int32(buf_ptr, id);
+			buf_ptr = osc_set_int32(buf_ptr, group->add_action);
+			buf_ptr = osc_set_int32(buf_ptr, group->group); // group id
+			buf_ptr = osc_set_string(buf_ptr,(char *)gate_str);
+			buf_ptr = osc_set_int32(buf_ptr, 0); // do not start synth yet
+			buf_ptr = osc_set_string(buf_ptr,(char *)out_str);
+			buf_ptr = osc_set_int32(buf_ptr, group->out);
 		}
 		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 	}
 
-	// message to start synth(sent late, e.g. with lag)
+	// message to start synth
 	if(group->gate)
 	{
 		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
@@ -189,6 +181,7 @@ scsynth_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 static osc_data_t *
 scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
+	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -207,8 +200,6 @@ scsynth_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 		buf_ptr = osc_set_float(buf_ptr, x);
 		buf_ptr = osc_set_int32(buf_ptr, group->arg + 1);
 		buf_ptr = osc_set_float(buf_ptr, y);
-		buf_ptr = osc_set_int32(buf_ptr, group->arg + 2);
-		buf_ptr = osc_set_int32(buf_ptr, pid);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 

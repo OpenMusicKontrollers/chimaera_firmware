@@ -38,8 +38,14 @@ static const char *dummy_set_str ="/set";
 
 static const char *dummy_idle_fmt = "";
 static const char *dummy_on_fmt = "iiiff";
-static const char *dummy_off_fmt = "iii";
-static const char *dummy_set_fmt = "iiiff";
+static const char *dummy_off_fmt [] = {
+	[0] = "i",			// !redundancy
+	[1] = "iii"			// redundancy
+};
+static const char *dummy_set_fmt [] = {
+	[0] = "iff",		// !redundancy
+	[1] = "iiiff"		// redundancy
+};
 
 static osc_data_t *pack;
 static osc_data_t *bndl;
@@ -112,14 +118,18 @@ dummy_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
+	uint_fast8_t redundancy = config.dummy.redundancy;
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, dummy_off_str);
-		buf_ptr = osc_set_fmt(buf_ptr, dummy_off_fmt);
+		buf_ptr = osc_set_fmt(buf_ptr, dummy_off_fmt[redundancy]);
 		buf_ptr = osc_set_int32(buf_ptr, sid);
-		buf_ptr = osc_set_int32(buf_ptr, gid);
-		buf_ptr = osc_set_int32(buf_ptr, pid);
+		if(redundancy)
+		{
+			buf_ptr = osc_set_int32(buf_ptr, gid);
+			buf_ptr = osc_set_int32(buf_ptr, pid);
+		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
 
@@ -131,14 +141,18 @@ dummy_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
+	uint_fast8_t redundancy = config.dummy.redundancy;
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, dummy_set_str);
-		buf_ptr = osc_set_fmt(buf_ptr, dummy_set_fmt);
+		buf_ptr = osc_set_fmt(buf_ptr, dummy_set_fmt[redundancy]);
 		buf_ptr = osc_set_int32(buf_ptr, sid);
-		buf_ptr = osc_set_int32(buf_ptr, gid);
-		buf_ptr = osc_set_int32(buf_ptr, pid);
+		if(redundancy)
+		{
+			buf_ptr = osc_set_int32(buf_ptr, gid);
+			buf_ptr = osc_set_int32(buf_ptr, pid);
+		}
 		buf_ptr = osc_set_float(buf_ptr, x);
 		buf_ptr = osc_set_float(buf_ptr, y);
 	}
@@ -167,10 +181,17 @@ _dummy_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	return res;
 }
 
+static uint_fast8_t
+_dummy_redundancy(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return config_check_bool(path, fmt, argc, buf, &config.dummy.redundancy);
+}
+
 /*
  * Query
  */
 
 const OSC_Query_Item dummy_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dummy_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("redundancy", "Send redundant data", _dummy_redundancy, config_boolean_args),
 };

@@ -109,6 +109,7 @@ Config config = {
 
 	.dummy = {
 		.enabled = 0,
+		.redundancy = 0
 	},
 
 	.custom = {

@@ -130,6 +130,7 @@ struct _Config {
 
 	struct _dummy {
 		uint8_t enabled;
+		uint8_t redundancy;
 	} dummy;
 
 	struct _custom {

@@ -28,6 +28,6 @@
 #include <oscquery.h>
 
 extern CMC_Engine dummy_engine;
-extern const OSC_Query_Item dummy_tree [1];
+extern const OSC_Query_Item dummy_tree [2];
 
 #endif // _DUMMY_H_
