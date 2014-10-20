@@ -442,7 +442,7 @@ udp_begin(uint8_t sock, uint16_t port, uint_fast8_t multicast)
 
 	// set socket mode to UDP
 	if(multicast)
-		flag = WIZ_Sn_MR_UDP | WIZ_Sn_MR_MULTI;
+		flag = WIZ_Sn_MR_UDP | WIZ_Sn_MR_MULTI | WIZ_Sn_MR_UCASTB;
 	else
 		flag = WIZ_Sn_MR_UDP;
 	_dma_write_sock(sock, WIZ_Sn_MR, &flag, 1);
@@ -492,7 +492,7 @@ wiz_is_broadcast(uint8_t *ip)
 uint_fast8_t
 wiz_is_multicast(uint8_t *ip)
 {
-	return(ip[0] & 0b11110000) == 0b11100000; // is it of the form: 0b1110xxxx?
+	return (ip[0] & 0xf0) == 0xe0;
 }
 
 void

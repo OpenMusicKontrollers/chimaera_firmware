@@ -927,7 +927,7 @@ ptp_timer_reconfigure(float sec)
 	timer_attach_interrupt(ptp_timer, TIMER_CH1, ptp_timer_irq);
 	timer_generate_update(ptp_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER1_BRK_TIMER15, SYNC_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_TIMER8_CC, SYNC_TIMER_PRIORITY);
 }
 
 void 

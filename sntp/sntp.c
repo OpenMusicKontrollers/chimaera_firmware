@@ -101,10 +101,9 @@ sntp_dispatch(uint8_t *buf, OSC_Timetag t4)
 	//The delay d and local clock offset t are defined as
 	//d = ( (T4 - T1) - (T3 - T2) ) / 2     t = ( (T2 - T1) + (T3 - T4) ) / 2.
 
-	//const fix_s31_32_t Ds = 0.015625LLK; // 1/64
-	//const fix_s31_32_t Os = 0.015625LLK; // 1/64
-	const fix_s31_32_t Ds = 0.25LLK; // 1/4
-	const fix_s31_32_t Os = 0.25LLK; // 1/4
+	//FIXME make this configurable
+	const fix_s31_32_t Ds = 0.0625LLK; // 1/16
+	const fix_s31_32_t Os = 0.0625LLK; // 1/16
 
 	if(t0 == 0.0ULLK) // first sync
 		t0 = t3.fix + DD1 - t4;
@@ -133,7 +132,10 @@ sntp_dispatch(uint8_t *buf, OSC_Timetag t4)
 	OO0 = OO1;
 
 #if 1
-	DEBUG("stt", "sNTPv4", OO1, DD1);
+	double _OO1, _DD1;
+	_OO1 = OO1 * 1e6;
+	_DD1 = DD1 * 1e6;
+	DEBUG("sdd", "sNTPv4", _OO1, _DD1);
 #endif
 
 #define OFFSET_DELAY_THRESH 1.0ULLK // 1s

@@ -198,9 +198,9 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 
 #define adc_timer TIMER1
 #define sync_timer TIMER2
-#define dhcpc_timer TIMER4
 #define mdns_timer TIMER3
-#define ptp_timer TIMER15
+#define dhcpc_timer TIMER4
+#define ptp_timer TIMER8
 
 void cpp_setup(void);
 

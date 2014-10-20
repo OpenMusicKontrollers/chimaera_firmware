@@ -113,8 +113,8 @@ ptp_uptime()
 	volatile uint32_t cycle_cnt;
 
 	do {
-		cycle_cnt = systick_get_count();
 		ticks = systick_uptime();
+		cycle_cnt = systick_get_count();
 	} while (ticks != systick_uptime());
 
 	int64_t uptime;
