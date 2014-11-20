@@ -37,8 +37,7 @@
  * Definitions
  */
 
-#define quads(size) (((((size_t)size-1) & ~0x3) >> 2) + 1)
-#define round_to_four_bytes(size) (quads((size_t)size) << 2)
+#define osc_padded_size(size) ( ( (size_t)(size) + 3 ) & ( ~3 ) )
 
 typedef union _swap32_t swap32_t;
 typedef union _swap64_t swap64_t;
@@ -114,11 +113,11 @@ struct _OSC_Method {
 int osc_check_path(const char *path);
 int osc_check_fmt(const char *format, int offset);
 
-int osc_method_match(OSC_Method *methods, const char *path, const char *fmt);
-void osc_method_dispatch(osc_data_t *buf, size_t size, const OSC_Method *methods);
-int osc_message_check(osc_data_t *buf, size_t size);
-int osc_bundle_check(osc_data_t *buf, size_t size);
-int osc_packet_check(osc_data_t *buf, size_t size);
+int osc_match_method(OSC_Method *methods, const char *path, const char *fmt);
+void osc_dispatch_method(osc_data_t *buf, size_t size, const OSC_Method *methods);
+int osc_check_message(osc_data_t *buf, size_t size);
+int osc_check_bundle(osc_data_t *buf, size_t size);
+int osc_check_packet(osc_data_t *buf, size_t size);
 
 /* Suppress GCC's bogus "no previous prototype for 'FOO'"
    and "no previous declaration for 'FOO'"  diagnostics,
@@ -131,13 +130,13 @@ _Pragma("GCC diagnostic ignored \"-Wmissing-prototypes\"")
 inline size_t
 osc_strlen(const char *buf)
 {
-	return round_to_four_bytes(strlen(buf) + 1);
+	return osc_padded_size(strlen(buf) + 1);
 }
 
 inline size_t
 osc_fmtlen(const char *buf)
 {
-	return round_to_four_bytes(strlen(buf) + 2) - 1;
+	return osc_padded_size(strlen(buf) + 2) - 1;
 }
 
 inline size_t
@@ -145,7 +144,7 @@ osc_bloblen(osc_data_t *buf)
 {
 	swap32_t s = {.u = *(uint32_t *)buf}; 
 	s.u = ntohl(s.u);
-	return 4 + round_to_four_bytes(s.i);
+	return 4 + osc_padded_size(s.i);
 }
 
 inline size_t
@@ -201,7 +200,7 @@ osc_get_blob(osc_data_t *buf, OSC_Blob *b)
 {
 	b->size = osc_blobsize(buf);
 	b->payload = buf + 4;
-	return buf + 4 + round_to_four_bytes(b->size);
+	return buf + 4 + osc_padded_size(b->size);
 }
 
 inline osc_data_t *
@@ -307,7 +306,7 @@ osc_set_string(osc_data_t *buf, const char *s)
 inline osc_data_t *
 osc_set_blob(osc_data_t *buf, int32_t size, void *payload)
 {
-	size_t len = round_to_four_bytes(size);
+	size_t len = osc_padded_size(size);
 	swap32_t *s = (swap32_t *)buf;
 	s->i = size;
 	s->u = htonl(s->u);
@@ -320,7 +319,7 @@ osc_set_blob(osc_data_t *buf, int32_t size, void *payload)
 inline osc_data_t *
 osc_set_blob_inline(osc_data_t *buf, int32_t size, void **payload)
 {
-	size_t len = round_to_four_bytes(size);
+	size_t len = osc_padded_size(size);
 	swap32_t *s = (swap32_t *)buf;
 	s->i = size;
 	s->u = htonl(s->u);
@@ -437,7 +436,7 @@ osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm)
 
 _Pragma("GCC diagnostic pop")
 
-osc_data_t *osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...);
-osc_data_t *osc_varlist_set(osc_data_t *buf, const char *path, const char *fmt, va_list args);
+osc_data_t *osc_set_vararg(osc_data_t *buf, const char *path, const char *fmt, ...);
+osc_data_t *osc_set_varlist(osc_data_t *buf, const char *path, const char *fmt, va_list args);
 
 #endif // _POSC_H_

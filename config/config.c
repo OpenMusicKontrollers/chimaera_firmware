@@ -298,7 +298,7 @@ CONFIG_SUCCESS(const char *fmt, ...)
 
   va_list args;
   va_start(args, fmt);
-	buf_ptr = osc_varlist_set(buf_ptr, success_str, fmt, args);
+	buf_ptr = osc_set_varlist(buf_ptr, success_str, fmt, args);
   va_end(args);
 	
 	if(config.config.osc.mode == OSC_MODE_TCP)
@@ -323,7 +323,7 @@ CONFIG_FAIL(const char *fmt, ...)
 
   va_list args;
   va_start(args, fmt);
-	buf_ptr = osc_varlist_set(buf_ptr, fail_str, fmt, args);
+	buf_ptr = osc_set_varlist(buf_ptr, fail_str, fmt, args);
   va_end(args);
 
 	uint16_t size = buf_ptr - buf;

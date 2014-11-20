@@ -366,8 +366,8 @@ config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	(void)ip;
 	(void)port;
-	if(osc_packet_check(buf, len))
-		osc_method_dispatch(buf, len, config_serv);
+	if(osc_check_packet(buf, len))
+		osc_dispatch_method(buf, len, config_serv);
 	else
 		DEBUG("s", "invalid OSC packet");
 }

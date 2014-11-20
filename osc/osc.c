@@ -79,7 +79,7 @@ osc_check_fmt(const char *format, int offset)
 }
 
 int
-osc_method_match(OSC_Method *methods, const char *path, const char *fmt)
+osc_match_method(OSC_Method *methods, const char *path, const char *fmt)
 {
 	OSC_Method *meth;
 	for(meth=methods; meth->cb; meth++)
@@ -89,7 +89,7 @@ osc_method_match(OSC_Method *methods, const char *path, const char *fmt)
 }
 
 static void
-_osc_method_dispatch_message(osc_data_t *buf, size_t size, const OSC_Method *methods)
+_osc_dispatch_method_message(osc_data_t *buf, size_t size, const OSC_Method *methods)
 {
 	(void)size;
 	osc_data_t *ptr = buf;
@@ -108,7 +108,7 @@ _osc_method_dispatch_message(osc_data_t *buf, size_t size, const OSC_Method *met
 }
 
 static void
-_osc_method_dispatch_bundle(osc_data_t *buf, size_t size, const OSC_Method *methods)
+_osc_dispatch_method_bundle(osc_data_t *buf, size_t size, const OSC_Method *methods)
 {
 	osc_data_t *ptr = buf;
 	osc_data_t *end = buf + size;
@@ -122,10 +122,10 @@ _osc_method_dispatch_bundle(osc_data_t *buf, size_t size, const OSC_Method *meth
 		switch(*ptr)
 		{
 			case '#':
-				_osc_method_dispatch_bundle(ptr, len, methods);
+				_osc_dispatch_method_bundle(ptr, len, methods);
 				break;
 			case '/':
-				_osc_method_dispatch_message(ptr, len, methods);
+				_osc_dispatch_method_message(ptr, len, methods);
 				break;
 		}
 		ptr += len;
@@ -133,21 +133,21 @@ _osc_method_dispatch_bundle(osc_data_t *buf, size_t size, const OSC_Method *meth
 }
 
 void
-osc_method_dispatch(osc_data_t *buf, size_t size, const OSC_Method *methods)
+osc_dispatch_method(osc_data_t *buf, size_t size, const OSC_Method *methods)
 {
 	switch(*buf)
 	{
 		case '#':
-			_osc_method_dispatch_bundle(buf, size, methods);
+			_osc_dispatch_method_bundle(buf, size, methods);
 			break;
 		case '/':
-			_osc_method_dispatch_message(buf, size, methods);
+			_osc_dispatch_method_message(buf, size, methods);
 			break;
 	}
 }
 
 int
-osc_message_check(osc_data_t *buf, size_t size)
+osc_check_message(osc_data_t *buf, size_t size)
 {
 	osc_data_t *ptr = buf;
 	osc_data_t *end = buf + size;
@@ -202,7 +202,7 @@ osc_message_check(osc_data_t *buf, size_t size)
 }
 
 int
-osc_bundle_check(osc_data_t *buf, size_t size)
+osc_check_bundle(osc_data_t *buf, size_t size)
 {
 	osc_data_t *ptr = buf;
 	osc_data_t *end = buf + size;
@@ -220,11 +220,11 @@ osc_bundle_check(osc_data_t *buf, size_t size)
 		switch(*ptr)
 		{
 			case '#':
-				if(!osc_bundle_check(ptr, hlen))
+				if(!osc_check_bundle(ptr, hlen))
 					return 0;
 				break;
 			case '/':
-				if(!osc_message_check(ptr, hlen))
+				if(!osc_check_message(ptr, hlen))
 					return 0;
 				break;
 			default:
@@ -237,18 +237,18 @@ osc_bundle_check(osc_data_t *buf, size_t size)
 }
 
 int
-osc_packet_check(osc_data_t *buf, size_t size)
+osc_check_packet(osc_data_t *buf, size_t size)
 {
 	osc_data_t *ptr = buf;
 	
 	switch(*ptr)
 	{
 		case '#':
-			if(!osc_bundle_check(ptr, size))
+			if(!osc_check_bundle(ptr, size))
 				return 0;
 			break;
 		case '/':
-			if(!osc_message_check(ptr, size))
+			if(!osc_check_message(ptr, size))
 				return 0;
 			break;
 		default:
@@ -303,14 +303,14 @@ extern inline osc_data_t * osc_start_bundle_item(osc_data_t *buf, osc_data_t **i
 extern inline osc_data_t * osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm);
 
 osc_data_t *
-osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...)
+osc_set_vararg(osc_data_t *buf, const char *path, const char *fmt, ...)
 {
 	osc_data_t *buf_ptr = buf;
 
   va_list args;
 
   va_start(args, fmt);
-	buf_ptr = osc_varlist_set(buf_ptr, path, fmt, args);
+	buf_ptr = osc_set_varlist(buf_ptr, path, fmt, args);
 
   va_end(args);
 
@@ -318,7 +318,7 @@ osc_vararg_set(osc_data_t *buf, const char *path, const char *fmt, ...)
 }
 
 osc_data_t *
-osc_varlist_set(osc_data_t *buf, const char *path, const char *fmt, va_list args)
+osc_set_varlist(osc_data_t *buf, const char *path, const char *fmt, va_list args)
 {
 	osc_data_t *buf_ptr = buf;
 

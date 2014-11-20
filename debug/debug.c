@@ -40,7 +40,7 @@ DEBUG(const char *fmt, ...)
 
 		va_list args;
 		va_start(args, fmt);
-		buf_ptr = osc_varlist_set(buf_ptr, "/debug", fmt, args);
+		buf_ptr = osc_set_varlist(buf_ptr, "/debug", fmt, args);
 		va_end(args);
 
 		if(config.debug.osc.mode == OSC_MODE_TCP)

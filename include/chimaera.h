@@ -196,6 +196,8 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define BUF_O_OFFSET(ptr)(buf_o[ptr] + WIZ_SEND_OFFSET)
 #define BUF_I_OFFSET(ptr)(buf_i[ptr] + WIZ_SEND_OFFSET)
 
+#define BUF_O_MAX(ptr)(buf_o[ptr] + CHIMAERA_BUFSIZE - 2*WIZ_SEND_OFFSET) 
+
 #define adc_timer TIMER1
 #define sync_timer TIMER2
 #define mdns_timer TIMER3
