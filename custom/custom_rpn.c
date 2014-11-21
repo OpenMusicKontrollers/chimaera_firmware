@@ -89,10 +89,13 @@ rpn_run(osc_data_t *buf, osc_data_t *end, Custom_Item *itm, RPN_Stack *stack)
 			{
 				uint8_t *m;
 				buf_ptr = osc_set_midi_inline(buf_ptr, end, &m);
-				m[3] = pop(stack);
-				m[2] = pop(stack);
-				m[1] = pop(stack);
-				m[0] = pop(stack);
+				if(buf_ptr)
+				{
+					m[3] = pop(stack);
+					m[2] = pop(stack);
+					m[1] = pop(stack);
+					m[0] = pop(stack);
+				}
 				break;
 			}
 

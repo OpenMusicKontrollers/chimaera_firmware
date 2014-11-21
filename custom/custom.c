@@ -38,10 +38,9 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 
 static osc_data_t *
-custom_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+custom_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)now;
-	stack.fid = fid;
+	stack.fid = fev->fid;
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
 
@@ -50,11 +49,11 @@ custom_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timet
 
 	if(cmc_engines_active + config.dump.enabled > 1)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
+	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
 	uint_fast8_t i;
 	Custom_Item *item;
-	if(nblob_old + nblob_new)
+	if(fev->nblob_old + fev->nblob_new)
 	{
 		for(i=0; i<CUSTOM_MAX_EXPR; i++)
 		{
@@ -99,13 +98,9 @@ custom_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timet
 }
 
 static osc_data_t *
-custom_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+custom_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)offset;
-	(void)nblob_old;
-	(void)nblob_new;
+	(void)fev;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
@@ -137,13 +132,13 @@ custom_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag
 }
 
 static osc_data_t *
-custom_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+custom_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	stack.sid = sid;
-	stack.gid = gid;
-	stack.pid = pid;
-	stack.x = x;
-	stack.z = y;
+	stack.sid = bev->sid;
+	stack.gid = bev->gid;
+	stack.pid = bev->pid;
+	stack.x = bev->x;
+	stack.z = bev->y;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -172,11 +167,11 @@ custom_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid
 }
 
 static osc_data_t *
-custom_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
+custom_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	stack.sid = sid;
-	stack.gid = gid;
-	stack.pid = pid;
+	stack.sid = bev->sid;
+	stack.gid = bev->gid;
+	stack.pid = bev->pid;
 	stack.x = stack.z = 0.f;
 
 	osc_data_t *buf_ptr = buf;
@@ -206,13 +201,13 @@ custom_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gi
 }
 
 static osc_data_t *
-custom_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+custom_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	stack.sid = sid;
-	stack.gid = gid;
-	stack.pid = pid;
-	stack.x = x;
-	stack.z = y;
+	stack.sid = bev->sid;
+	stack.gid = bev->gid;
+	stack.pid = bev->pid;
+	stack.x = bev->x;
+	stack.z = bev->y;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;

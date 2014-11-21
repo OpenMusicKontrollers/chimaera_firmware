@@ -57,13 +57,9 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 
 static osc_data_t *
-scsynth_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)nblob_old;
-	(void)nblob_new;
-	tt = offset;
+	tt = fev->offset;
 	early_i = 0;
 	late_i = 0;
 
@@ -71,19 +67,15 @@ scsynth_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Time
 
 	if(cmc_engines_active + config.dump.enabled > 1)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
+	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-scsynth_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+scsynth_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)offset;
-	(void)nblob_old;
-	(void)nblob_new;
+	(void)fev;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
@@ -94,16 +86,15 @@ scsynth_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timeta
 }
 
 static osc_data_t *
-scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	uint32_t id;
-	SCSynth_Group *group = &scsynth_groups[gid];
+	SCSynth_Group *group = &scsynth_groups[bev->gid];
 	
-	id = group->is_group ? group->group : group->sid + sid;
+	id = group->is_group ? group->group : group->sid + bev->sid;
 
 	// message to create synth
 	if(group->alloc)
@@ -135,11 +126,11 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gi
 
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
-			buf_ptr = osc_set_float(buf_ptr, end, x);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->x);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 1);
-			buf_ptr = osc_set_float(buf_ptr, end, y);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->y);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 2);
-			buf_ptr = osc_set_int32(buf_ptr, end, pid);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
 			buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
 			buf_ptr = osc_set_int32(buf_ptr, end, 1);
 		}
@@ -150,16 +141,15 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gi
 }
 
 static osc_data_t *
-scsynth_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
+scsynth_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	uint32_t id;
-	SCSynth_Group *group = &scsynth_groups[gid];
+	SCSynth_Group *group = &scsynth_groups[bev->gid];
 
-	id = group->is_group ? group->group : group->sid + sid;
+	id = group->is_group ? group->group : group->sid + bev->sid;
 
 	if(group->gate)
 	{
@@ -179,16 +169,15 @@ scsynth_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 }
 
 static osc_data_t *
-scsynth_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+scsynth_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	uint32_t id;
-	SCSynth_Group *group = &scsynth_groups[gid];
+	SCSynth_Group *group = &scsynth_groups[bev->gid];
 
-	id = group->is_group ? group->group : group->sid + sid;
+	id = group->is_group ? group->group : group->sid + bev->sid;
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
@@ -197,9 +186,9 @@ scsynth_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 
 		buf_ptr = osc_set_int32(buf_ptr, end, id);
 		buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
-		buf_ptr = osc_set_float(buf_ptr, end, x);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
 		buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 1);
-		buf_ptr = osc_set_float(buf_ptr, end, y);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 

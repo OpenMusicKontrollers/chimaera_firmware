@@ -592,7 +592,6 @@ loop(void)
 	}
 #endif
 
-//#define BENCHMARK
 #ifdef BENCHMARK
 	Stop_Watch sw_output_send = {.id = "output_send", .thresh=3000};
 	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=3000};
@@ -705,6 +704,7 @@ loop(void)
 			stop_watch_stop(&sw_output_send);
 			stop_watch_stop(&sw_adc_fill);
 			stop_watch_stop(&sw_blob_process);
+			stop_watch_stop(&sw_engine_process);
 			stop_watch_stop(&sw_output_block);
 #endif
 		}

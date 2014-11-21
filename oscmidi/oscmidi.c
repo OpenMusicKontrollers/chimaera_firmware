@@ -84,10 +84,13 @@ oscmidi_serialize(osc_data_t *buf, osc_data_t *end, OSC_MIDI_Format format, uint
 		{
 			uint8_t *M;
 			buf_ptr = osc_set_midi_inline(buf_ptr, end, &M);
-			M[0] = 0;
-			M[1] = channel | status;
-			M[2] = dat1;
-			M[3] = dat2;
+			if(buf_ptr)
+			{
+				M[0] = 0;
+				M[1] = channel | status;
+				M[2] = dat1;
+				M[3] = dat2;
+			}
 			break;
 		}
 		case OSC_MIDI_FORMAT_INT32:
@@ -104,29 +107,21 @@ oscmidi_serialize(osc_data_t *buf, osc_data_t *end, OSC_MIDI_Format format, uint
 }
 
 static osc_data_t *
-oscmidi_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)nblob_old;
-	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
+	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-oscmidi_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+oscmidi_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)offset;
-	(void)nblob_old;
-	(void)nblob_new;
+	(void)fev;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
@@ -137,14 +132,13 @@ oscmidi_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timeta
 }
 
 static osc_data_t *
-oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm = NULL;
 	OSC_MIDI_Format format = config.oscmidi.format;
 	uint_fast8_t multi = config.oscmidi.multi;
-	OSC_MIDI_Group *group = &oscmidi_groups[gid];
+	OSC_MIDI_Group *group = &oscmidi_groups[bev->gid];
 	OSC_MIDI_Mapping mapping = group->mapping;
 
 	if(multi)
@@ -157,13 +151,13 @@ oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gi
 			buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_3[format]);
 	}
 
-	uint8_t ch = gid % 0xf;
-	float X = group->offset + x*group->range;
+	uint8_t ch = bev->gid % 0xf;
+	float X = group->offset + bev->x*group->range;
 	uint8_t key = floor(X);
-	midi_add_key(oscmidi_hash, sid, key);
+	midi_add_key(oscmidi_hash, bev->sid, key);
 
-	uint16_t bend =(X - key)*mul[gid] + 0x1fff;
-	uint16_t eff = y * 0x3fff;
+	uint16_t bend =(X - key)*mul[bev->gid] + 0x1fff;
+	uint16_t eff = bev->y * 0x3fff;
 
 	// serialize
 	buf_ptr = oscmidi_serialize(buf_ptr, end, format, ch, MIDI_STATUS_NOTE_ON, key, 0x7f);
@@ -190,9 +184,8 @@ oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gi
 }
 
 static osc_data_t * 
-oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
+oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm = NULL;
 	OSC_MIDI_Format format = config.oscmidi.format;
@@ -205,8 +198,8 @@ oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 		buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_1[format]);
 	}
 
-	uint8_t ch = gid % 0xf;
-	uint8_t key = midi_rem_key(oscmidi_hash, sid);
+	uint8_t ch = bev->gid % 0xf;
+	uint8_t key = midi_rem_key(oscmidi_hash, bev->sid);
 
 	// serialize
 	buf_ptr = oscmidi_serialize(buf_ptr, end, format, ch, MIDI_STATUS_NOTE_OFF, key, 0x7f);
@@ -218,14 +211,13 @@ oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 }
 
 static osc_data_t *
-oscmidi_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+oscmidi_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)pid;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm = NULL;
 	OSC_MIDI_Format format = config.oscmidi.format;
 	uint_fast8_t multi = config.oscmidi.multi;
-	OSC_MIDI_Group *group = &oscmidi_groups[gid];
+	OSC_MIDI_Group *group = &oscmidi_groups[bev->gid];
 	OSC_MIDI_Mapping mapping = group->mapping;
 
 	if(multi)
@@ -238,11 +230,11 @@ oscmidi_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 			buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_2[format]);
 	}
 
-	uint8_t ch = gid % 0xf;
-	float X = group->offset + x*group->range;
-	uint8_t key = midi_get_key(oscmidi_hash, sid);
-	uint16_t bend =(X - key)*mul[gid] + 0x1fff;
-	uint16_t eff = y * 0x3fff;
+	uint8_t ch = bev->gid % 0xf;
+	float X = group->offset + bev->x*group->range;
+	uint8_t key = midi_get_key(oscmidi_hash, bev->sid);
+	uint16_t bend =(X - key)*mul[bev->gid] + 0x1fff;
+	uint16_t eff = bev->y * 0x3fff;
 
 	// serialize
 	buf_ptr = oscmidi_serialize(buf_ptr, end, format, ch, MIDI_STATUS_PITCH_BEND, bend & 0x7f, bend >> 7);

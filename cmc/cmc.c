@@ -47,6 +47,10 @@ CMC_Engine *engines [ENGINE_MAX+1];
 uint_fast8_t cmc_engines_active = 0;
 CMC_Group *cmc_groups = config.groups;
 
+#ifdef BENCHMARK
+Stop_Watch sw_engine_process = {.id = "engine_process", .thresh=3000};
+#endif
+
 // locals
 static uint16_t idle_word = 0;
 static uint8_t idle_bit = 0;
@@ -633,7 +637,11 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 	if(res)
 	{
 		++(fid);
+#ifdef BENCHMARK
+		stop_watch_start(&sw_engine_process);
+#endif
 
+		float zero = config.output.invert.z ? 1.f : 0.f;
 		uint_fast8_t e;
 		for(e=0; e<ENGINE_MAX; e++)
 		{
@@ -642,22 +650,38 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 			if( !(engine = engines[e]) ) // terminator reached
 				break;
 
+			CMC_Frame_Event fev = {
+				.fid = fid,
+				.now = now,
+				.offset = offset,
+				.nblob_old = I,
+				.nblob_new = J
+			};
+
 			if(engine->frame_cb)
-				buf_ptr = engine->frame_cb(buf_ptr, end, fid, now, offset, I, J);
+				buf_ptr = engine->frame_cb(buf_ptr, end, &fev);
 
 			if(engine->on_cb || engine->set_cb)
 				for(j=0; j<J; j++)
 				{
 					CMC_Blob *tar = &cmc_neu[j];
+					CMC_Blob_Event bev = {
+						.sid = tar->sid,
+						.gid = tar->group->gid,
+						.pid = tar->pid,
+						.x = tar->x,
+						.y = tar->y
+					};
+
 					if(tar->state == CMC_BLOB_APPEARED)
 					{
 						if(engine->on_cb)
-							buf_ptr = engine->on_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
+							buf_ptr = engine->on_cb(buf_ptr, end, &bev);
 					}
 					else // (tar->state == CMC_BLOB_EXISTED_DIRTY) || (tar->state == CMC_BLOB_EXISTED_STILLA)
 					{
 						if(engine->set_cb)
-							buf_ptr = engine->set_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
+							buf_ptr = engine->set_cb(buf_ptr, end, &bev);
 					}
 				}
 
@@ -665,17 +689,24 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 				for(i=0; i<I; i++)
 				{
 					CMC_Blob *tar = &cmc_old[i];
+					CMC_Blob_Event bev = {
+						.sid = tar->sid,
+						.gid = tar->group->gid,
+						.pid = tar->pid,
+						.x = tar->x,
+						.y = zero
+					};
+
 					if(tar->state == CMC_BLOB_DISAPPEARED)
 					{
-						float zero = config.output.invert.z ? 1.f : 0.f;
 						if(tar->y != zero)
-							buf_ptr = engine->set_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, zero);
-						buf_ptr = engine->off_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid);
+							buf_ptr = engine->set_cb(buf_ptr, end, &bev);
+						buf_ptr = engine->off_cb(buf_ptr, end, &bev);
 					}
 				}
 
 			if(engine->end_cb)
-				buf_ptr = engine->end_cb(buf_ptr, end, fid, now, offset, I, J);
+				buf_ptr = engine->end_cb(buf_ptr, end, &fev);
 		}
 	}
 

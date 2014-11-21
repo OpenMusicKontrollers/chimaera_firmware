@@ -31,6 +31,8 @@
 extern const stm32_pin_info PIN_MAP [];
 #include <board/board.h>
 
+//#define BENCHMARK
+
 #define GROUP_MAX 8
 
 #define pin_set_mode(PIN, MODE)(gpio_set_mode(PIN_MAP[(PIN)].gpio_device, PIN_MAP[(PIN)].gpio_bit,(MODE)))

@@ -161,134 +161,45 @@ osc_blobsize(osc_data_t *buf)
 	return s.i;
 }
 
-// get OSC arguments from raw buffer
-inline osc_data_t *
-osc_get_path(osc_data_t *buf, const char **path)
-{
-	*path = (const char *)buf;
-	return buf + osc_strlen(*path);
-}
-
-inline osc_data_t *
-osc_get_fmt(osc_data_t *buf, const char **fmt)
-{
-	*fmt = (const char *)buf;
-	return buf + osc_strlen(*fmt);
-}
-
-inline osc_data_t *
-osc_get_int32(osc_data_t *buf, int32_t *i)
-{
-	swap32_t s = {.u = *(uint32_t *)buf};
-	s.u = ntohl(s.u);
-	*i = s.i;
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_get_float(osc_data_t *buf, float *f)
-{
-	swap32_t s = {.u = *(uint32_t *)buf};
-	s.u = ntohl(s.u);
-	*f = s.f;
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_get_string(osc_data_t *buf, const char **s)
-{
-	*s = (const char *)buf;
-	return buf + osc_strlen(*s);
-}
-
-inline osc_data_t *
-osc_get_blob(osc_data_t *buf, OSC_Blob *b)
-{
-	b->size = osc_blobsize(buf);
-	b->payload = buf + 4;
-	return buf + 4 + osc_padded_size(b->size);
-}
-
-inline osc_data_t *
-osc_get_int64(osc_data_t *buf, int64_t *h)
-{
-	swap64_t *s0 = (swap64_t *)buf;
-	swap64_t s1;
-	s1.u.lower = ntohl(s0->u.upper);
-	s1.u.upper = ntohl(s0->u.lower);
-	*h = s1.h;
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_get_double(osc_data_t *buf, double *d)
-{
-	swap64_t *s0 = (swap64_t *)buf;
-	swap64_t s1;
-	s1.u.lower = ntohl(s0->u.upper);
-	s1.u.upper = ntohl(s0->u.lower);
-	*d = s1.d;
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_get_timetag(osc_data_t *buf, OSC_Timetag *t)
-{
-	swap64_t *s0 = (swap64_t *)buf;
-	swap64_t s1;
-	s1.u.lower = ntohl(s0->u.upper);
-	s1.u.upper = ntohl(s0->u.lower);
-	*t = s1.t;
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_get_symbol(osc_data_t *buf, const char **S)
-{
-	*S = (const char *)buf;
-	return buf + osc_strlen(*S);
-}
-
-inline osc_data_t *
-osc_get_char(osc_data_t *buf, char *c)
-{
-	swap32_t s = {.u = *(uint32_t *)buf};
-	s.u = ntohl(s.u);
-	*c = s.i & 0xff;
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_get_midi(osc_data_t *buf, uint8_t **m)
-{
-	*m = (uint8_t *)buf;
-	return buf + 4;
-}
-
 _Pragma("GCC diagnostic pop")
 
-osc_data_t * osc_set_path(osc_data_t *buf, osc_data_t *end, const char *path);
-osc_data_t * osc_set_fmt(osc_data_t *buf, osc_data_t *end, const char *fmt);
-osc_data_t * osc_set_int32(osc_data_t *buf, osc_data_t *end, int32_t i);
-osc_data_t * osc_set_float(osc_data_t *buf, osc_data_t *end, float f);
-osc_data_t * osc_set_string(osc_data_t *buf, osc_data_t *end, const char *s);
-osc_data_t * osc_set_blob(osc_data_t *buf, osc_data_t *end, int32_t size, void *payload);
-osc_data_t * osc_set_blob_inline(osc_data_t *buf, osc_data_t *end, int32_t size, void **payload);
-osc_data_t * osc_set_int64(osc_data_t *buf, osc_data_t *end, int64_t h);
-osc_data_t * osc_set_double(osc_data_t *buf, osc_data_t *end, double d);
-osc_data_t * osc_set_timetag(osc_data_t *buf, osc_data_t *end, OSC_Timetag t);
-osc_data_t * osc_set_symbol(osc_data_t *buf, osc_data_t *end, const char *S);
-osc_data_t * osc_set_char(osc_data_t *buf, osc_data_t *end, char c);
-osc_data_t * osc_set_midi(osc_data_t *buf, osc_data_t *end, uint8_t *m);
-osc_data_t * osc_set_midi_inline(osc_data_t *buf, osc_data_t *end, uint8_t **m);
+osc_data_t *osc_get_path(osc_data_t *buf, const char **path);
+osc_data_t *osc_get_fmt(osc_data_t *buf, const char **fmt);
+osc_data_t *osc_get_int32(osc_data_t *buf, int32_t *i);
+osc_data_t *osc_get_float(osc_data_t *buf, float *f);
+osc_data_t *osc_get_string(osc_data_t *buf, const char **s);
+osc_data_t *osc_get_blob(osc_data_t *buf, OSC_Blob *b);
+osc_data_t *osc_get_int64(osc_data_t *buf, int64_t *h);
+osc_data_t *osc_get_double(osc_data_t *buf, double *d);
+osc_data_t *osc_get_timetag(osc_data_t *buf, OSC_Timetag *t);
+osc_data_t *osc_get_symbol(osc_data_t *buf, const char **S);
+osc_data_t *osc_get_char(osc_data_t *buf, char *c);
+osc_data_t *osc_get_midi(osc_data_t *buf, uint8_t **m);
 
-osc_data_t * osc_start_bundle(osc_data_t *buf, osc_data_t *end, OSC_Timetag timetag, osc_data_t **bndl);
-osc_data_t * osc_end_bundle(osc_data_t *buf, osc_data_t *end, osc_data_t *bndl);
+osc_data_t *osc_set_path(osc_data_t *buf, osc_data_t *end, const char *path);
+osc_data_t *osc_set_fmt(osc_data_t *buf, osc_data_t *end, const char *fmt);
+osc_data_t *osc_set_int32(osc_data_t *buf, osc_data_t *end, int32_t i);
+osc_data_t *osc_set_float(osc_data_t *buf, osc_data_t *end, float f);
+osc_data_t *osc_set_string(osc_data_t *buf, osc_data_t *end, const char *s);
+osc_data_t *osc_set_blob(osc_data_t *buf, osc_data_t *end, int32_t size, void *payload);
+osc_data_t *osc_set_blob_inline(osc_data_t *buf, osc_data_t *end, int32_t size, void **payload);
+osc_data_t *osc_set_int64(osc_data_t *buf, osc_data_t *end, int64_t h);
+osc_data_t *osc_set_double(osc_data_t *buf, osc_data_t *end, double d);
+osc_data_t *osc_set_timetag(osc_data_t *buf, osc_data_t *end, OSC_Timetag t);
+osc_data_t *osc_set_symbol(osc_data_t *buf, osc_data_t *end, const char *S);
+osc_data_t *osc_set_char(osc_data_t *buf, osc_data_t *end, char c);
+osc_data_t *osc_set_midi(osc_data_t *buf, osc_data_t *end, uint8_t *m);
+osc_data_t *osc_set_midi_inline(osc_data_t *buf, osc_data_t *end, uint8_t **m);
+
+// create bundle
+osc_data_t *osc_start_bundle(osc_data_t *buf, osc_data_t *end, OSC_Timetag timetag, osc_data_t **bndl);
+osc_data_t *osc_end_bundle(osc_data_t *buf, osc_data_t *end, osc_data_t *bndl);
 
 // create item
-osc_data_t * osc_start_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t **itm);
-osc_data_t * osc_end_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t *itm);
+osc_data_t *osc_start_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t **itm);
+osc_data_t *osc_end_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t *itm);
 
+// create vararg
 osc_data_t *osc_set_vararg(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, ...);
 osc_data_t *osc_set_varlist(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, va_list args);
 

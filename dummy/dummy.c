@@ -51,18 +51,16 @@ static osc_data_t *pack;
 static osc_data_t *bndl;
 
 static osc_data_t *
-dummy_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
+	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
-	if(!(nblob_old + nblob_new))
+	if(!(fev->nblob_old + fev->nblob_new))
 	{
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 		{
@@ -76,13 +74,9 @@ dummy_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timeta
 }
 
 static osc_data_t *
-dummy_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+dummy_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)offset;
-	(void)nblob_old;
-	(void)nblob_new;
+	(void)fev;
 	osc_data_t *buf_ptr = buf;
 
 	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
@@ -93,7 +87,7 @@ dummy_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag 
 }
 
 static osc_data_t *
-dummy_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+dummy_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -102,11 +96,11 @@ dummy_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid,
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, dummy_on_str);
 		buf_ptr = osc_set_fmt(buf_ptr, end, dummy_on_fmt);
-		buf_ptr = osc_set_int32(buf_ptr, end, sid);
-		buf_ptr = osc_set_int32(buf_ptr, end, gid);
-		buf_ptr = osc_set_int32(buf_ptr, end, pid);
-		buf_ptr = osc_set_float(buf_ptr, end, x);
-		buf_ptr = osc_set_float(buf_ptr, end, y);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->gid);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -114,7 +108,7 @@ dummy_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid,
 }
 
 static osc_data_t *
-dummy_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
+dummy_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -124,11 +118,11 @@ dummy_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, dummy_off_str);
 		buf_ptr = osc_set_fmt(buf_ptr, end, dummy_off_fmt[redundancy]);
-		buf_ptr = osc_set_int32(buf_ptr, end, sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
 		if(redundancy)
 		{
-			buf_ptr = osc_set_int32(buf_ptr, end, gid);
-			buf_ptr = osc_set_int32(buf_ptr, end, pid);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->gid);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
 		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
@@ -137,7 +131,7 @@ dummy_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid
 }
 
 static osc_data_t *
-dummy_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+dummy_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -147,14 +141,14 @@ dummy_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, dummy_set_str);
 		buf_ptr = osc_set_fmt(buf_ptr, end, dummy_set_fmt[redundancy]);
-		buf_ptr = osc_set_int32(buf_ptr, end, sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
 		if(redundancy)
 		{
-			buf_ptr = osc_set_int32(buf_ptr, end, gid);
-			buf_ptr = osc_set_int32(buf_ptr, end, pid);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->gid);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
 		}
-		buf_ptr = osc_set_float(buf_ptr, end, x);
-		buf_ptr = osc_set_float(buf_ptr, end, y);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 

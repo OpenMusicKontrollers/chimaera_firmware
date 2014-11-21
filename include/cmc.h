@@ -35,21 +35,26 @@
 #define CMC_SOUTH 0x100
 #define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
 
-typedef void (*CMC_Engine_Init_Cb)(void);
-typedef osc_data_t *(*CMC_Engine_Frame_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
-typedef osc_data_t *(*CMC_Engine_Blob_On_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
-typedef osc_data_t *(*CMC_Engine_Blob_Off_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid);
-typedef osc_data_t *(*CMC_Engine_Blob_Set_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
-
 typedef struct _CMC_Engine CMC_Engine;
 typedef struct _CMC_Group CMC_Group;
+typedef struct _CMC_Frame_Event CMC_Frame_Event;
+typedef struct _CMC_Blob_Event CMC_Blob_Event;
+
+typedef void (*CMC_Engine_Init_Cb)(void);
+typedef osc_data_t *(*CMC_Engine_Frame_Cb)(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev);
+typedef osc_data_t *(*CMC_Engine_Blob_Cb)(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev);
+
+#ifdef BENCHMARK
+#	include <chimutil.h>
+extern Stop_Watch sw_engine_process;
+#endif
 
 struct _CMC_Engine {
 	CMC_Engine_Init_Cb init_cb;
 	CMC_Engine_Frame_Cb frame_cb;
-	CMC_Engine_Blob_On_Cb on_cb;
-	CMC_Engine_Blob_Off_Cb off_cb;
-	CMC_Engine_Blob_Set_Cb set_cb;
+	CMC_Engine_Blob_Cb on_cb;
+	CMC_Engine_Blob_Cb off_cb;
+	CMC_Engine_Blob_Cb set_cb;
 	CMC_Engine_Frame_Cb end_cb;
 };
 
@@ -58,6 +63,22 @@ struct _CMC_Group {
 	float m;
 	uint16_t gid;
 	uint16_t pid;
+};
+
+struct _CMC_Frame_Event {
+	uint32_t fid;
+	OSC_Timetag now;
+	OSC_Timetag offset;
+	uint_fast8_t nblob_old;
+	uint_fast8_t nblob_new;
+};
+
+struct _CMC_Blob_Event {
+	uint32_t sid;
+	uint16_t gid;
+	uint16_t pid;
+	float x;
+	float y;
 };
 
 extern CMC_Group *cmc_groups;

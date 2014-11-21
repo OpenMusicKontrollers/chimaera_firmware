@@ -38,6 +38,9 @@ struct _Tuio1_Blob {
 	float last_x;
 	float last_y;
 	float last_v;
+	float vx;
+	float vy;
+	float m;
 };
 
 static Tuio1_Blob blobs [BLOB_MAX];
@@ -89,22 +92,19 @@ _blob_get(uint32_t sid)
 }
 
 static osc_data_t *
-tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)fid;
-	(void)now;
-	(void)nblob_old;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
+	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
 	uint_fast8_t i;
-	for(i=0; i<nblob_new; i++)
+	for(i=0; i<fev->nblob_new; i++)
 		alv_fmt[i+1] = OSC_INT32;
-	alv_fmt[nblob_new+1] = '\0';
+	alv_fmt[fev->nblob_new+1] = '\0';
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
@@ -113,32 +113,28 @@ tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timeta
 
 		buf_ptr = osc_set_string(buf_ptr, end, alive_str);
 		pp = buf_ptr;
-		buf_ptr += nblob_new * 4;
+		buf_ptr += fev->nblob_new * 4;
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
 	if(last > 0)
-		_r = 1.f / (now - last);
+		_r = 1.f / (fev->now - last);
 	else
 		_r = config.sensors.rate;
-	last = now;
+	last = fev->now;
 	counter = 0; // reset token pointer
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 {
-	(void)now;
-	(void)offset;
-	(void)nblob_old;
-	(void)nblob_new;
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
 	uint_fast8_t i;
-	for(i=0; i<nblob_new; i++)
+	for(i=0; i<fev->nblob_new; i++)
 		pp = osc_set_int32(pp, end, alv_ids[i]);
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
@@ -147,7 +143,7 @@ tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag 
 		buf_ptr = osc_set_fmt(buf_ptr, end, frm_fmt);
 
 		buf_ptr = osc_set_string(buf_ptr, end, fseq_str);
-		buf_ptr = osc_set_int32(buf_ptr, end, fid);
+		buf_ptr = osc_set_int32(buf_ptr, end, fev->fid);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -159,7 +155,7 @@ tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag 
 }
 
 static osc_data_t *
-tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y, float vx, float vy, float m)
+tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev, Tuio1_Blob *tb)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -170,50 +166,48 @@ tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t g
 		buf_ptr = osc_set_fmt(buf_ptr, end, tok_fmt[config.tuio1.custom_profile]);
 
 		buf_ptr = osc_set_string(buf_ptr, end, set_str);
-		buf_ptr = osc_set_int32(buf_ptr, end, sid);
-		buf_ptr = osc_set_int32(buf_ptr, end, gid);
-		buf_ptr = osc_set_float(buf_ptr, end, x);
-		buf_ptr = osc_set_float(buf_ptr, end, y);
-		buf_ptr = osc_set_float(buf_ptr, end, pid == CMC_NORTH ? 0.f : M_PI);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, bev->gid);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->pid == CMC_NORTH ? 0.f : M_PI);
 		if(!config.tuio1.custom_profile)
 		{
-			buf_ptr = osc_set_float(buf_ptr, end, vx); // X
-			buf_ptr = osc_set_float(buf_ptr, end, vy); // Y
+			buf_ptr = osc_set_float(buf_ptr, end, tb->vx); // X
+			buf_ptr = osc_set_float(buf_ptr, end, tb->vy); // Y
 			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // A
-			buf_ptr = osc_set_float(buf_ptr, end, m); // m
+			buf_ptr = osc_set_float(buf_ptr, end, tb->m); // m
 			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // r
 		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
-	alv_ids[counter++] = sid;
+	alv_ids[counter++] = bev->sid;
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-tuio1_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio1_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
 	Tuio1_Blob *blob = _blob_add();
 	if(!blob) // stack overflow
 		return buf;
 
-	blob->sid = sid;
+	blob->sid = bev->sid;
 	blob->last_x = 0.f;
 	blob->last_y = 0.f;
 	blob->last_v = 0.f;
 
-	return tuio1_engine_token_cb(buf, end, sid, gid, pid, x, y, 0.f, 0.f, 0.f);
+	return tuio1_engine_token_cb(buf, end, bev, blob);
 }
 
 static osc_data_t *
-tuio1_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
+tuio1_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	(void)gid;
-	(void)pid;
 	(void)end;
 
-	Tuio1_Blob *blob = _blob_get(sid);
+	Tuio1_Blob *blob = _blob_get(bev->sid);
 	if(blob) // found
 		blob->sid = 0;
 
@@ -221,29 +215,29 @@ tuio1_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid
 }
 
 static osc_data_t *
-tuio1_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio1_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
-	Tuio1_Blob *blob = _blob_get(sid);
+	Tuio1_Blob *blob = _blob_get(bev->sid);
 	if(!blob) // not found
 		return buf;
 
 	// update velocity and acceleration signals
-	float dx = x - blob->last_x;
-	float dy = y - blob->last_y;
+	float dx = bev->x - blob->last_x;
+	float dy = bev->y - blob->last_y;
 	float di = sqrtf(dx*dx + dy*dy);
 
-	float vx = dx * _r;
-	float vy = dy * _r;
+	blob->vx = dx * _r;
+	blob->vy = dy * _r;
 	float v = di * _r;
 
 	float dv =  v - blob->last_v;
-	float m = dv * _r;
+	blob->m = dv * _r;
 
-	blob->last_x = x;
-	blob->last_y = y;
+	blob->last_x = bev->x;
+	blob->last_y = bev->y;
 	blob->last_v = v;
 
-	return tuio1_engine_token_cb(buf, end, sid, gid, pid, x, y, vx, vy, m);
+	return tuio1_engine_token_cb(buf, end, bev, blob);
 }
 
 CMC_Engine tuio1_engine = {
