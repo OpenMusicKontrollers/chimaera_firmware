@@ -32,7 +32,7 @@ static const char *dump_fmt = "ib";
 static uint32_t frame = 0;
 
 osc_data_t *
-dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset, int32_t len, int16_t *swap)
+dump_update(osc_data_t *buf, osc_data_t *end, OSC_Timetag now, OSC_Timetag offset, int32_t len, int16_t *swap)
 {
 	(void)now;
 	osc_data_t *buf_ptr = buf;
@@ -41,21 +41,21 @@ dump_update(osc_data_t *buf, OSC_Timetag now, OSC_Timetag offset, int32_t len, i
 	osc_data_t *bndl;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, dump_str);
-		buf_ptr = osc_set_fmt(buf_ptr, dump_fmt);
-		buf_ptr = osc_set_int32(buf_ptr, ++frame);
-		buf_ptr = osc_set_blob(buf_ptr, len, swap);
+		buf_ptr = osc_set_path(buf_ptr, end, dump_str);
+		buf_ptr = osc_set_fmt(buf_ptr, end, dump_fmt);
+		buf_ptr = osc_set_int32(buf_ptr, end, ++frame);
+		buf_ptr = osc_set_blob(buf_ptr, end, len, swap);
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
-	buf_ptr = osc_end_bundle(buf_ptr, bndl);
+	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, pack);
 
 	return buf_ptr;
 }

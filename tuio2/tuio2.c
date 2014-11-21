@@ -54,7 +54,7 @@ tuio2_init(void)
 }
 
 static osc_data_t *
-tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio2_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	(void)nblob_old;
 	(void)nblob_new;
@@ -62,25 +62,25 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, frm_str);
-		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt[config.tuio2.long_header]);
+		buf_ptr = osc_set_path(buf_ptr, end, frm_str);
+		buf_ptr = osc_set_fmt(buf_ptr, end, frm_fmt[config.tuio2.long_header]);
 
-		buf_ptr = osc_set_int32(buf_ptr, fid);
-		buf_ptr = osc_set_timetag(buf_ptr, now);
+		buf_ptr = osc_set_int32(buf_ptr, end, fid);
+		buf_ptr = osc_set_timetag(buf_ptr, end, now);
 		if(config.tuio2.long_header)
 		{
-			buf_ptr = osc_set_string(buf_ptr, config.name);
-			buf_ptr = osc_set_int32(buf_ptr, *addr);
-			buf_ptr = osc_set_int32(buf_ptr, *inst);
-			buf_ptr = osc_set_int32(buf_ptr, dim);
+			buf_ptr = osc_set_string(buf_ptr, end, config.name);
+			buf_ptr = osc_set_int32(buf_ptr, end, *addr);
+			buf_ptr = osc_set_int32(buf_ptr, end, *inst);
+			buf_ptr = osc_set_int32(buf_ptr, end, dim);
 		}
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
 	counter = 0; // reset token pointer
 
@@ -88,7 +88,7 @@ tuio2_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 }
 
 static osc_data_t *
-tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio2_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	(void)fid;
 	(void)now;
@@ -103,42 +103,42 @@ tuio2_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 		alv_fmt[i] = OSC_INT32;
 	alv_fmt[counter] = '\0';
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, alv_str);
-		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
+		buf_ptr = osc_set_path(buf_ptr, end, alv_str);
+		buf_ptr = osc_set_fmt(buf_ptr, end, alv_fmt);
 
 		for(i=0; i<counter; i++)
-			buf_ptr = osc_set_int32(buf_ptr, alv_ids[i]);
+			buf_ptr = osc_set_int32(buf_ptr, end, alv_ids[i]);
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
-	buf_ptr = osc_end_bundle(buf_ptr, bndl);
+	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, pack);
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-tuio2_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio2_engine_token_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, tok_str);
-		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt);
+		buf_ptr = osc_set_path(buf_ptr, end, tok_str);
+		buf_ptr = osc_set_fmt(buf_ptr, end, tok_fmt);
 
-		buf_ptr = osc_set_int32(buf_ptr, sid);
-		buf_ptr = osc_set_int32(buf_ptr, pid);
-		buf_ptr = osc_set_int32(buf_ptr, gid);
-		buf_ptr = osc_set_float(buf_ptr, x);
-		buf_ptr = osc_set_float(buf_ptr, y);
-		buf_ptr = osc_set_float(buf_ptr, pid == CMC_NORTH ? 0.f : M_PI);
+		buf_ptr = osc_set_int32(buf_ptr, end, sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, pid);
+		buf_ptr = osc_set_int32(buf_ptr, end, gid);
+		buf_ptr = osc_set_float(buf_ptr, end, x);
+		buf_ptr = osc_set_float(buf_ptr, end, y);
+		buf_ptr = osc_set_float(buf_ptr, end, pid == CMC_NORTH ? 0.f : M_PI);
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
 	alv_ids[counter++] = sid;
 

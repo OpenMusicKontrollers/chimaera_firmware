@@ -559,30 +559,33 @@ loop(void)
 	osc_data_t *bndl;
 	osc_data_t *itm;
 	osc_data_t *buf_ptr;
+	osc_data_t *end;
 	
 	buf_ptr = BUF_O_OFFSET(!buf_o_ptr);
-	buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl);
-		buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
-			buf_ptr = osc_set_path(buf_ptr, "/osc");
-			buf_ptr = osc_set_fmt(buf_ptr, "b");
-			buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
-		buf_ptr = osc_end_bundle_item(buf_ptr, itm);
-	buf_ptr = osc_end_bundle(buf_ptr, bndl);
-	cmc_len = buf_ptr - BUF_O_OFFSET(!buf_o_ptr);
+	end = BUF_O_MAX(!buf_o_ptr);
+	buf_ptr = osc_start_bundle(buf_ptr, end, OSC_IMMEDIATE, &bndl);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
+			buf_ptr = osc_set_path(buf_ptr, end, "/osc");
+			buf_ptr = osc_set_fmt(buf_ptr, end, "b");
+			buf_ptr = osc_set_blob(buf_ptr, end, 1024, adc12_raw);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
+	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
+	cmc_len = osc_len(buf_ptr, BUF_O_OFFSET(!buf_o_ptr));
 
 	while(1)
 	{
 		osc_send_nonblocking(&config.output.osc, BUF_O_BASE(!buf_o_ptr), cmc_len);
 
 		buf_ptr = BUF_O_OFFSET(buf_o_ptr);
-		buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl);
-			buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
-				buf_ptr = osc_set_path(buf_ptr, "/osc");
-				buf_ptr = osc_set_fmt(buf_ptr, "b");
-				buf_ptr = osc_set_blob(buf_ptr, 1024, adc12_raw);
-			buf_ptr = osc_end_bundle_item(buf_ptr, itm);
-		buf_ptr = osc_end_bundle(buf_ptr, bndl);
-		cmc_len = buf_ptr - BUF_O_OFFSET(buf_o_ptr);
+		end = BUF_O_MAX(buf_o_ptr);
+		buf_ptr = osc_start_bundle(buf_ptr, end, OSC_IMMEDIATE, &bndl);
+			buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
+				buf_ptr = osc_set_path(buf_ptr, end, "/osc");
+				buf_ptr = osc_set_fmt(buf_ptr, end, "b");
+				buf_ptr = osc_set_blob(buf_ptr, end, 1024, adc12_raw);
+			buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
+		buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
+		cmc_len = osc_len(buf_ptr, BUF_O_OFFSET(buf_o_ptr));
 
 		osc_send_block(&config.output.osc);
 		buf_o_ptr ^= 1;
@@ -591,11 +594,10 @@ loop(void)
 
 //#define BENCHMARK
 #ifdef BENCHMARK
-	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=2000};
-	Stop_Watch sw_output_send = {.id = "output_send", .thresh=2000};
-	Stop_Watch sw_tuio_process = {.id = "tuio_process", .thresh=2000};
-	Stop_Watch sw_output_serialize = {.id = "output_serialize", .thresh=2000};
-	Stop_Watch sw_output_block = {.id = "output_block", .thresh=2000};
+	Stop_Watch sw_output_send = {.id = "output_send", .thresh=3000};
+	Stop_Watch sw_adc_fill = {.id = "adc_fill", .thresh=3000};
+	Stop_Watch sw_blob_process = {.id = "blob_process", .thresh=3000};
+	Stop_Watch sw_output_block = {.id = "output_block", .thresh=3000};
 #endif // BENCHMARK
 
 	while(1) // endless loop
@@ -645,31 +647,32 @@ loop(void)
 
 			// initiate OSC bundle
 			osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+			osc_data_t *end = BUF_O_MAX(buf_o_ptr);
 			osc_data_t *buf_ptr = buf;
 			osc_data_t *preamble = NULL;
 			osc_data_t *bndl = NULL;
 			if(config.output.osc.mode == OSC_MODE_TCP)
-				buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
+				buf_ptr = osc_start_bundle_item(buf_ptr, end, &preamble);
 			if(cmc_engines_active + config.dump.enabled > 1)
-				buf_ptr = osc_start_bundle(buf_ptr, OSC_IMMEDIATE, &bndl); // node bundle
+				buf_ptr = osc_start_bundle(buf_ptr, end, OSC_IMMEDIATE, &bndl); // node bundle
 
 			if(config.dump.enabled) // dump output is functional even when calibrating
-				buf_ptr = dump_update(buf_ptr, now, offset, sizeof(adc_swap), adc_swap);
+				buf_ptr = dump_update(buf_ptr, end, now, offset, sizeof(adc_swap), adc_swap);
 		
 			if(!calibrating && cmc_engines_active) // output engines are disfunctional when calibrating
 			{
 #ifdef BENCHMARK
-				stop_watch_start(&sw_tuio_process);
+				stop_watch_start(&sw_blob_process);
 #endif
-				buf_ptr = cmc_process(now, offset, adc_rela, buf_ptr); // touch recognition of current cycle
+				buf_ptr = cmc_process(now, offset, adc_rela, buf_ptr, end); // touch recognition of current cycle
 			}
 			
 			if(cmc_engines_active + config.dump.enabled > 1)
-				buf_ptr = osc_end_bundle(buf_ptr, bndl); // node bundle
+				buf_ptr = osc_end_bundle(buf_ptr, end, bndl); // node bundle
 			if(config.output.osc.mode == OSC_MODE_TCP)
-				buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
+				buf_ptr = osc_end_bundle_item(buf_ptr, end, preamble);
 
-			cmc_len = buf_ptr - buf;
+			cmc_len = osc_len(buf_ptr, buf);
 			if(cmc_len > 0) // is there anything after OSC bundle header?
 			{
 				job = 1;
@@ -701,8 +704,7 @@ loop(void)
 #ifdef BENCHMARK
 			stop_watch_stop(&sw_output_send);
 			stop_watch_stop(&sw_adc_fill);
-			stop_watch_stop(&sw_tuio_process);
-			stop_watch_stop(&sw_output_serialize);
+			stop_watch_stop(&sw_blob_process);
 			stop_watch_stop(&sw_output_block);
 #endif
 		}

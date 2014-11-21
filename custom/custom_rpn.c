@@ -57,7 +57,7 @@ duplicate(RPN_Stack *stack, int32_t pos)
 }
 
 osc_data_t *
-rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
+rpn_run(osc_data_t *buf, osc_data_t *end, Custom_Item *itm, RPN_Stack *stack)
 {
 	osc_data_t *buf_ptr = buf;
 	RPN_VM *vm = &itm->vm;
@@ -76,19 +76,19 @@ rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack)
 			case RPN_POP_INT32:
 			{
 				volatile int32_t i = pop(stack);
-				buf_ptr = osc_set_int32(buf_ptr, i);
+				buf_ptr = osc_set_int32(buf_ptr, end, i);
 				break;
 			}
 			case RPN_POP_FLOAT:
 			{
 				float f = pop(stack);
-				buf_ptr = osc_set_float(buf_ptr, f);
+				buf_ptr = osc_set_float(buf_ptr, end, f);
 				break;
 			}
 			case RPN_POP_MIDI:
 			{
 				uint8_t *m;
-				buf_ptr = osc_set_midi_inline(buf_ptr, &m);
+				buf_ptr = osc_set_midi_inline(buf_ptr, end, &m);
 				m[3] = pop(stack);
 				m[2] = pop(stack);
 				m[1] = pop(stack);

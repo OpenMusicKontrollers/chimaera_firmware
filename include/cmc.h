@@ -36,10 +36,10 @@
 #define CMC_BOTH (CMC_NORTH | CMC_SOUTH)
 
 typedef void (*CMC_Engine_Init_Cb)(void);
-typedef osc_data_t *(*CMC_Engine_Frame_Cb)(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
-typedef osc_data_t *(*CMC_Engine_Blob_On_Cb)(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
-typedef osc_data_t *(*CMC_Engine_Blob_Off_Cb)(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid);
-typedef osc_data_t *(*CMC_Engine_Blob_Set_Cb)(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
+typedef osc_data_t *(*CMC_Engine_Frame_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nbob_new);
+typedef osc_data_t *(*CMC_Engine_Blob_On_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
+typedef osc_data_t *(*CMC_Engine_Blob_Off_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid);
+typedef osc_data_t *(*CMC_Engine_Blob_Set_Cb)(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y);
 
 typedef struct _CMC_Engine CMC_Engine;
 typedef struct _CMC_Group CMC_Group;
@@ -64,7 +64,7 @@ extern CMC_Group *cmc_groups;
 extern uint_fast8_t cmc_engines_active;
 
 void cmc_init(void);
-osc_data_t *cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf);
+osc_data_t *cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf, osc_data_t *end);
 
 void cmc_group_clear(void);
 void cmc_engines_update(void);

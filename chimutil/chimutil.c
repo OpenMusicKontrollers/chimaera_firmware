@@ -420,6 +420,9 @@ addr2str(uint8_t *ip, uint16_t port, char *str)
 size_t
 slip_encode(uint8_t *buf, size_t len)
 {
+	if(!len)
+		return 0;
+
 	uint8_t *src;
 	uint8_t *end = buf + len;
 	uint8_t *dst;
@@ -458,6 +461,9 @@ slip_encode(uint8_t *buf, size_t len)
 size_t
 slip_decode(uint8_t *buf, size_t len, size_t *size)
 {
+	if(!len)
+		return 0;
+
 	uint8_t *src = buf;
 	uint8_t *end = buf + len;
 	uint8_t *dst = buf;

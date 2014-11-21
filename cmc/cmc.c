@@ -144,7 +144,7 @@ LOOKUP(float y)
 })
 
 osc_data_t *__CCM_TEXT__
-cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
+cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf, osc_data_t *end)
 {
 	osc_data_t *buf_ptr = buf;
 	/*
@@ -643,7 +643,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 				break;
 
 			if(engine->frame_cb)
-				buf_ptr = engine->frame_cb(buf_ptr, fid, now, offset, I, J);
+				buf_ptr = engine->frame_cb(buf_ptr, end, fid, now, offset, I, J);
 
 			if(engine->on_cb || engine->set_cb)
 				for(j=0; j<J; j++)
@@ -652,12 +652,12 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					if(tar->state == CMC_BLOB_APPEARED)
 					{
 						if(engine->on_cb)
-							buf_ptr = engine->on_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
+							buf_ptr = engine->on_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
 					}
 					else // (tar->state == CMC_BLOB_EXISTED_DIRTY) || (tar->state == CMC_BLOB_EXISTED_STILLA)
 					{
 						if(engine->set_cb)
-							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
+							buf_ptr = engine->set_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, tar->y);
 					}
 				}
 
@@ -669,13 +669,13 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf)
 					{
 						float zero = config.output.invert.z ? 1.f : 0.f;
 						if(tar->y != zero)
-							buf_ptr = engine->set_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid, tar->x, zero);
-						buf_ptr = engine->off_cb(buf_ptr, tar->sid, tar->group->gid, tar->pid);
+							buf_ptr = engine->set_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid, tar->x, zero);
+						buf_ptr = engine->off_cb(buf_ptr, end, tar->sid, tar->group->gid, tar->pid);
 					}
 				}
 
 			if(engine->end_cb)
-				buf_ptr = engine->end_cb(buf_ptr, fid, now, offset, I, J);
+				buf_ptr = engine->end_cb(buf_ptr, end, fid, now, offset, I, J);
 		}
 	}
 

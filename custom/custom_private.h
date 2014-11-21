@@ -54,7 +54,7 @@ struct _RPN_Compiler {
 	int_fast8_t pp;
 };
 
-osc_data_t *rpn_run(osc_data_t *buf, Custom_Item *itm, RPN_Stack *stack);
+osc_data_t *rpn_run(osc_data_t *buf, osc_data_t *end, Custom_Item *itm, RPN_Stack *stack);
 uint_fast8_t rpn_compile(const char *args, Custom_Item *itm);
 
 #endif // _CUSTOM_PRIVATE_H_

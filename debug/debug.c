@@ -32,21 +32,22 @@ DEBUG(const char *fmt, ...)
 	if(config.debug.osc.socket.enabled && (wiz_socket_state[SOCK_DEBUG] == WIZ_SOCKET_STATE_OPEN) )
 	{
 		osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+		osc_data_t *end = BUF_O_MAX(buf_o_ptr);
 		osc_data_t *buf_ptr = buf;
 		osc_data_t *preamble = NULL;
 
 		if(config.debug.osc.mode == OSC_MODE_TCP)
-			buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
+			buf_ptr = osc_start_bundle_item(buf_ptr, end, &preamble);
 
 		va_list args;
 		va_start(args, fmt);
-		buf_ptr = osc_set_varlist(buf_ptr, "/debug", fmt, args);
+		buf_ptr = osc_set_varlist(buf_ptr, end, "/debug", fmt, args);
 		va_end(args);
 
 		if(config.debug.osc.mode == OSC_MODE_TCP)
-			buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
+			buf_ptr = osc_end_bundle_item(buf_ptr, end, preamble);
 		
-		uint16_t size = buf_ptr - buf;
+		uint16_t size = osc_len(buf_ptr, buf);
 		if(config.debug.osc.mode == OSC_MODE_SLIP)
 			size = slip_encode(buf, size);
 

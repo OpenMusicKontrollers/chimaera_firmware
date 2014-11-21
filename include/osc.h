@@ -126,6 +126,12 @@ int osc_check_packet(osc_data_t *buf, size_t size);
 _Pragma("GCC diagnostic push")
 _Pragma("GCC diagnostic ignored \"-Wmissing-prototypes\"")
 
+inline size_t
+osc_len(osc_data_t *buf, osc_data_t *base)
+{
+	return buf ? buf - base : 0;
+}
+
 // OSC object lengths
 inline size_t
 osc_strlen(const char *buf)
@@ -259,184 +265,31 @@ osc_get_midi(osc_data_t *buf, uint8_t **m)
 	return buf + 4;
 }
 
-// write OSC argument to raw buffer
-inline osc_data_t *
-osc_set_path(osc_data_t *buf, const char *path)
-{
-	size_t len = osc_strlen(path);
-	strncpy((char *)buf, path, len);
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_fmt(osc_data_t *buf, const char *fmt)
-{
-	size_t len = osc_fmtlen(fmt);
-	*buf++ = ',';
-	strncpy((char *)buf, fmt, len);
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_int32(osc_data_t *buf, int32_t i)
-{
-	swap32_t *s = (swap32_t *)buf;
-	s->i = i;
-	s->u = htonl(s->u);
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_set_float(osc_data_t *buf, float f)
-{
-	swap32_t *s = (swap32_t *)buf;
-	s->f = f;
-	s->u = htonl(s->u);
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_set_string(osc_data_t *buf, const char *s)
-{
-	size_t len = osc_strlen(s);
-	strncpy((char *)buf, s, len);
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_blob(osc_data_t *buf, int32_t size, void *payload)
-{
-	size_t len = osc_padded_size(size);
-	swap32_t *s = (swap32_t *)buf;
-	s->i = size;
-	s->u = htonl(s->u);
-	buf += 4;
-	memcpy(buf, payload, size);
-	memset(buf+size, '\0', len-size); // zero padding
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_blob_inline(osc_data_t *buf, int32_t size, void **payload)
-{
-	size_t len = osc_padded_size(size);
-	swap32_t *s = (swap32_t *)buf;
-	s->i = size;
-	s->u = htonl(s->u);
-	buf += 4;
-	*payload = buf;
-	memset(buf+size, '\0', len-size); // zero padding
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_int64(osc_data_t *buf, int64_t h)
-{
-	swap64_t s0 = { .h = h };
-	swap64_t *s1 = (swap64_t *)buf;
-	s1->u.upper = htonl(s0.u.lower);
-	s1->u.lower = htonl(s0.u.upper);
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_set_double(osc_data_t *buf, double d)
-{
-	swap64_t s0 = { .d = d };
-	swap64_t *s1 = (swap64_t *)buf;
-	s1->u.upper = htonl(s0.u.lower);
-	s1->u.lower = htonl(s0.u.upper);
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_set_timetag(osc_data_t *buf, OSC_Timetag t)
-{
-	swap64_t s0 = { .t = t };
-	swap64_t *s1 = (swap64_t *)buf;
-	s1->u.upper = htonl(s0.u.lower);
-	s1->u.lower = htonl(s0.u.upper);
-	return buf + 8;
-}
-
-inline osc_data_t *
-osc_set_symbol(osc_data_t *buf, const char *S)
-{
-	size_t len = osc_strlen(S);
-	strncpy((char *)buf, S, len);
-	return buf + len;
-}
-
-inline osc_data_t *
-osc_set_char(osc_data_t *buf, char c)
-{
-	swap32_t *s = (swap32_t *)buf;
-	s->i = c;
-	s->u = htonl(s->u);
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_set_midi(osc_data_t *buf, uint8_t *m)
-{
-	buf[0] = m[0];
-	buf[1] = m[1];
-	buf[2] = m[2];
-	buf[3] = m[3];
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_set_midi_inline(osc_data_t *buf, uint8_t **m)
-{
-	*m = (uint8_t *)buf;
-	return buf + 4;
-}
-
-// create bundle
-inline osc_data_t *
-osc_start_bundle(osc_data_t *buf, OSC_Timetag timetag, osc_data_t **bndl)
-{
-	*bndl = buf;
-	strncpy((char *)buf, "#bundle", 8);
-	osc_set_timetag(buf + 8, timetag);
-	return buf + 16;
-}
-
-inline osc_data_t *
-osc_end_bundle(osc_data_t *buf, osc_data_t *bndl)
-{
-	size_t len = buf - (bndl + 16);
-	if(len > 0)
-		return buf;
-	else // empty bundle
-		return bndl;
-}
-
-// create item
-inline osc_data_t *
-osc_start_bundle_item(osc_data_t *buf, osc_data_t **itm)
-{
-	*itm = buf;
-	return buf + 4;
-}
-
-inline osc_data_t *
-osc_end_bundle_item(osc_data_t *buf, osc_data_t *itm)
-{
-	size_t len = buf - (itm + 4);
-	if(len > 0)
-	{
-		osc_set_int32(itm, len);
-		return buf;
-	}
-	else // empty item
-		return itm;
-}
-
 _Pragma("GCC diagnostic pop")
 
-osc_data_t *osc_set_vararg(osc_data_t *buf, const char *path, const char *fmt, ...);
-osc_data_t *osc_set_varlist(osc_data_t *buf, const char *path, const char *fmt, va_list args);
+osc_data_t * osc_set_path(osc_data_t *buf, osc_data_t *end, const char *path);
+osc_data_t * osc_set_fmt(osc_data_t *buf, osc_data_t *end, const char *fmt);
+osc_data_t * osc_set_int32(osc_data_t *buf, osc_data_t *end, int32_t i);
+osc_data_t * osc_set_float(osc_data_t *buf, osc_data_t *end, float f);
+osc_data_t * osc_set_string(osc_data_t *buf, osc_data_t *end, const char *s);
+osc_data_t * osc_set_blob(osc_data_t *buf, osc_data_t *end, int32_t size, void *payload);
+osc_data_t * osc_set_blob_inline(osc_data_t *buf, osc_data_t *end, int32_t size, void **payload);
+osc_data_t * osc_set_int64(osc_data_t *buf, osc_data_t *end, int64_t h);
+osc_data_t * osc_set_double(osc_data_t *buf, osc_data_t *end, double d);
+osc_data_t * osc_set_timetag(osc_data_t *buf, osc_data_t *end, OSC_Timetag t);
+osc_data_t * osc_set_symbol(osc_data_t *buf, osc_data_t *end, const char *S);
+osc_data_t * osc_set_char(osc_data_t *buf, osc_data_t *end, char c);
+osc_data_t * osc_set_midi(osc_data_t *buf, osc_data_t *end, uint8_t *m);
+osc_data_t * osc_set_midi_inline(osc_data_t *buf, osc_data_t *end, uint8_t **m);
+
+osc_data_t * osc_start_bundle(osc_data_t *buf, osc_data_t *end, OSC_Timetag timetag, osc_data_t **bndl);
+osc_data_t * osc_end_bundle(osc_data_t *buf, osc_data_t *end, osc_data_t *bndl);
+
+// create item
+osc_data_t * osc_start_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t **itm);
+osc_data_t * osc_end_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t *itm);
+
+osc_data_t *osc_set_vararg(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, ...);
+osc_data_t *osc_set_varlist(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, va_list args);
 
 #endif // _POSC_H_

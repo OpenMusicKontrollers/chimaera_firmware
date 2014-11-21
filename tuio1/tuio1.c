@@ -89,7 +89,7 @@ _blob_get(uint32_t sid)
 }
 
 static osc_data_t *
-tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	(void)fid;
 	(void)now;
@@ -98,24 +98,24 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 	osc_data_t *itm;
 
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_start_bundle_item(buf_ptr, &pack);
-	buf_ptr = osc_start_bundle(buf_ptr, offset, &bndl);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
+	buf_ptr = osc_start_bundle(buf_ptr, end, offset, &bndl);
 
 	uint_fast8_t i;
 	for(i=0; i<nblob_new; i++)
 		alv_fmt[i+1] = OSC_INT32;
 	alv_fmt[nblob_new+1] = '\0';
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
-		buf_ptr = osc_set_fmt(buf_ptr, alv_fmt);
+		buf_ptr = osc_set_path(buf_ptr, end, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, end, alv_fmt);
 
-		buf_ptr = osc_set_string(buf_ptr, alive_str);
+		buf_ptr = osc_set_string(buf_ptr, end, alive_str);
 		pp = buf_ptr;
 		buf_ptr += nblob_new * 4;
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
 	if(last > 0)
 		_r = 1.f / (now - last);
@@ -128,7 +128,7 @@ tuio1_engine_frame_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timeta
 }
 
 static osc_data_t *
-tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
+tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, uint32_t fid, OSC_Timetag now, OSC_Timetag offset, uint_fast8_t nblob_old, uint_fast8_t nblob_new)
 {
 	(void)now;
 	(void)offset;
@@ -139,52 +139,52 @@ tuio1_engine_end_cb(osc_data_t *buf, uint32_t fid, OSC_Timetag now, OSC_Timetag 
 
 	uint_fast8_t i;
 	for(i=0; i<nblob_new; i++)
-		pp = osc_set_int32(pp, alv_ids[i]);
+		pp = osc_set_int32(pp, end, alv_ids[i]);
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
-		buf_ptr = osc_set_fmt(buf_ptr, frm_fmt);
+		buf_ptr = osc_set_path(buf_ptr, end, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, end, frm_fmt);
 
-		buf_ptr = osc_set_string(buf_ptr, fseq_str);
-		buf_ptr = osc_set_int32(buf_ptr, fid);
+		buf_ptr = osc_set_string(buf_ptr, end, fseq_str);
+		buf_ptr = osc_set_int32(buf_ptr, end, fid);
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
-	buf_ptr = osc_end_bundle(buf_ptr, bndl);
+	buf_ptr = osc_end_bundle(buf_ptr, end, bndl);
 	if(cmc_engines_active + config.dump.enabled > 1)
-		buf_ptr = osc_end_bundle_item(buf_ptr, pack);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, pack);
 
 	return buf_ptr;
 }
 
 static osc_data_t *
-tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y, float vx, float vy, float m)
+tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y, float vx, float vy, float m)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 
-	buf_ptr = osc_start_bundle_item(buf_ptr, &itm);
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
-		buf_ptr = osc_set_path(buf_ptr, profile_str[config.tuio1.custom_profile]);
-		buf_ptr = osc_set_fmt(buf_ptr, tok_fmt[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_path(buf_ptr, end, profile_str[config.tuio1.custom_profile]);
+		buf_ptr = osc_set_fmt(buf_ptr, end, tok_fmt[config.tuio1.custom_profile]);
 
-		buf_ptr = osc_set_string(buf_ptr, set_str);
-		buf_ptr = osc_set_int32(buf_ptr, sid);
-		buf_ptr = osc_set_int32(buf_ptr, gid);
-		buf_ptr = osc_set_float(buf_ptr, x);
-		buf_ptr = osc_set_float(buf_ptr, y);
-		buf_ptr = osc_set_float(buf_ptr, pid == CMC_NORTH ? 0.f : M_PI);
+		buf_ptr = osc_set_string(buf_ptr, end, set_str);
+		buf_ptr = osc_set_int32(buf_ptr, end, sid);
+		buf_ptr = osc_set_int32(buf_ptr, end, gid);
+		buf_ptr = osc_set_float(buf_ptr, end, x);
+		buf_ptr = osc_set_float(buf_ptr, end, y);
+		buf_ptr = osc_set_float(buf_ptr, end, pid == CMC_NORTH ? 0.f : M_PI);
 		if(!config.tuio1.custom_profile)
 		{
-			buf_ptr = osc_set_float(buf_ptr, vx); // X
-			buf_ptr = osc_set_float(buf_ptr, vy); // Y
-			buf_ptr = osc_set_float(buf_ptr, 0.f); // A
-			buf_ptr = osc_set_float(buf_ptr, m); // m
-			buf_ptr = osc_set_float(buf_ptr, 0.f); // r
+			buf_ptr = osc_set_float(buf_ptr, end, vx); // X
+			buf_ptr = osc_set_float(buf_ptr, end, vy); // Y
+			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // A
+			buf_ptr = osc_set_float(buf_ptr, end, m); // m
+			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // r
 		}
 	}
-	buf_ptr = osc_end_bundle_item(buf_ptr, itm);
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
 	alv_ids[counter++] = sid;
 
@@ -192,7 +192,7 @@ tuio1_engine_token_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid,
 }
 
 static osc_data_t *
-tuio1_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio1_engine_on_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	Tuio1_Blob *blob = _blob_add();
 	if(!blob) // stack overflow
@@ -203,14 +203,15 @@ tuio1_engine_on_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, fl
 	blob->last_y = 0.f;
 	blob->last_v = 0.f;
 
-	return tuio1_engine_token_cb(buf, sid, gid, pid, x, y, 0.f, 0.f, 0.f);
+	return tuio1_engine_token_cb(buf, end, sid, gid, pid, x, y, 0.f, 0.f, 0.f);
 }
 
 static osc_data_t *
-tuio1_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
+tuio1_engine_off_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid)
 {
 	(void)gid;
 	(void)pid;
+	(void)end;
 
 	Tuio1_Blob *blob = _blob_get(sid);
 	if(blob) // found
@@ -220,7 +221,7 @@ tuio1_engine_off_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid)
 }
 
 static osc_data_t *
-tuio1_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
+tuio1_engine_set_cb(osc_data_t *buf, osc_data_t *end, uint32_t sid, uint16_t gid, uint16_t pid, float x, float y)
 {
 	Tuio1_Blob *blob = _blob_get(sid);
 	if(!blob) // not found
@@ -242,7 +243,7 @@ tuio1_engine_set_cb(osc_data_t *buf, uint32_t sid, uint16_t gid, uint16_t pid, f
 	blob->last_y = y;
 	blob->last_v = v;
 
-	return tuio1_engine_token_cb(buf, sid, gid, pid, x, y, vx, vy, m);
+	return tuio1_engine_token_cb(buf, end, sid, gid, pid, x, y, vx, vy, m);
 }
 
 CMC_Engine tuio1_engine = {

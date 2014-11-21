@@ -290,47 +290,49 @@ uint16_t
 CONFIG_SUCCESS(const char *fmt, ...)
 {
 	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+	osc_data_t *end = BUF_O_MAX(buf_o_ptr);
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *preamble = NULL;
 
 	if(config.config.osc.mode == OSC_MODE_TCP)
-		buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &preamble);
 
   va_list args;
   va_start(args, fmt);
-	buf_ptr = osc_set_varlist(buf_ptr, success_str, fmt, args);
+	buf_ptr = osc_set_varlist(buf_ptr, end, success_str, fmt, args);
   va_end(args);
 	
 	if(config.config.osc.mode == OSC_MODE_TCP)
-		buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, preamble);
 
-	uint16_t size = buf_ptr - buf;
+	uint16_t size = osc_len(buf_ptr, buf);
 	if(config.config.osc.mode == OSC_MODE_SLIP)
 		size = slip_encode(buf, size);
 
-	return buf_ptr - buf;
+	return size;
 }
 
 uint16_t
 CONFIG_FAIL(const char *fmt, ...)
 {
 	osc_data_t *buf = BUF_O_OFFSET(buf_o_ptr);
+	osc_data_t *end = BUF_O_MAX(buf_o_ptr);
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *preamble = NULL;
 
 	if(config.config.osc.mode == OSC_MODE_TCP)
-		buf_ptr = osc_start_bundle_item(buf_ptr, &preamble);
+		buf_ptr = osc_start_bundle_item(buf_ptr, end, &preamble);
 
   va_list args;
   va_start(args, fmt);
-	buf_ptr = osc_set_varlist(buf_ptr, fail_str, fmt, args);
+	buf_ptr = osc_set_varlist(buf_ptr, end, fail_str, fmt, args);
   va_end(args);
 
-	uint16_t size = buf_ptr - buf;
+	uint16_t size = osc_len(buf_ptr, buf);
 	if(config.config.osc.mode == OSC_MODE_TCP)
-		buf_ptr = osc_end_bundle_item(buf_ptr, preamble);
+		buf_ptr = osc_end_bundle_item(buf_ptr, end, preamble);
 	else if(config.config.osc.mode == OSC_MODE_SLIP)
-		size = slip_encode(buf, size);
+		size = slip_encode(buf, size); //FIXME overflow
 
 	return size;
 }

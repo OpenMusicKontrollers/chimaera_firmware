@@ -99,7 +99,7 @@ wiz_sockets_set(uint8_t tx_mem[WIZ_MAX_SOCK_NUM], uint8_t rx_mem[WIZ_MAX_SOCK_NU
 uint_fast8_t __CCM_TEXT__
 udp_receive_nonblocking(uint8_t sock, uint8_t *i_buf, uint16_t len)
 {
-	if( (len == 0) || (len > CHIMAERA_BUFSIZE + WIZ_SEND_OFFSET + 3) )
+	if( (len == 0) || (len > CHIMAERA_BUFSIZE - (WIZ_SEND_OFFSET + 3) ) )
 		return 0;
 
 	uint8_t *tmp_buf_o = buf_o2 + WIZ_SEND_OFFSET;
