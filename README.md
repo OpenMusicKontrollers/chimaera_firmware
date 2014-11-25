@@ -1,6 +1,8 @@
 # Chimaera
 
-## a polymagnetophonic theremin
+## A Polymagnetophonic Theremin - An Open Expressive Music Controller
+
+### About 
 
 The general idea was to develop an expressive music controller. The general characteristics that had to be fulfilled were:
 
@@ -16,5 +18,11 @@ The general idea was to develop an expressive music controller. The general char
 The outcome was a device that is best described as a polyphonic theremin, based on magnetic distance sensing to permanent magnets atttached to fingers relative to an array of high accuracy linear hall effect sensors. An open source prototyping board with an ARM Cortex M4 MCU acts as the central computing unit, reading out the sensors, computing multi touch recognition and sending output via Ethernet.
 
 The device therefore features two continuous dimensions. The X-dimension tells about the fingers position in the sensor array and most of the time will correspond to pitch. The P-dimension tells about finger proximity to the sensor array and may correspond to amplitude, filter cutoff frequency, modulation, etc.
+
+### Build Status
+
+[![Build Status](https://travis-ci.org/OpenMusicKontrollers/chimaera_firmware.svg?branch=master)](https://travis-ci.org/OpenMusicKontrollers/chimaera_firmware)
+
+### Reference
 
 <http://open-music-kontrollers.ch/chimaera/about/>
