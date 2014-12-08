@@ -52,7 +52,7 @@ enum {HOOK_SERVICES=0, HOOK_OSC=1, HOOK_INSTANCE=2, HOOK_ARPA=3};
 
 // self query name for DNS lookup
 static int len_self;
-static char hook_self [32];
+static char hook_self [NAME_LENGTH+8];
 
 // self query name for DNS revers-lookup
 static int len_arpa;
@@ -60,8 +60,8 @@ static char hook_arpa [32];
 
 // self instance name for DNS-SD
 static int len_instance;
-static char hook_instance_udp [32];
-static char hook_instance_tcp [32];
+static char hook_instance_udp [NAME_LENGTH+20];
+static char hook_instance_tcp [NAME_LENGTH+20];
 
 // dns-sd PTR methods array
 static DNS_PTR_Method hooks_udp [] = {

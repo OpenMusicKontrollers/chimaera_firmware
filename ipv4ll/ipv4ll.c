@@ -61,9 +61,9 @@ IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 	uint8_t brd [4];
 	broadcast_address(brd, ip, subnet);
 	memcpy(config.output.osc.socket.ip, brd, 4);
-	memcpy(config.config.osc.socket.ip, brd, 4);
+	//memcpy(config.config.osc.socket.ip, brd, 4); //FIXME remove
 	memcpy(config.sntp.socket.ip, brd, 4);
-	memcpy(config.debug.osc.socket.ip, brd, 4);
+	//memcpy(config.debug.osc.socket.ip, brd, 4); //FIXME remove
 }
 
 /*

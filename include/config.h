@@ -178,6 +178,7 @@ struct _Config {
 	} mdns;
 
 	struct _dhcpc {
+		uint8_t enabled;
 		Socket_Config socket;
 	} dhcpc;
 

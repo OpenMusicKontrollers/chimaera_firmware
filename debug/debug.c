@@ -112,6 +112,6 @@ _debug_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 
 const OSC_Query_Item debug_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _debug_enabled, config_boolean_args),
-	OSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args),
-	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _debug_mode, config_mode_args)
+	//OSC_QUERY_ITEM_METHOD("address", "Single remote address", _debug_address, config_address_args), //FIXME remove
+	//OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _debug_mode, config_mode_args) //FIXME remove
 };

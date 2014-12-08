@@ -360,9 +360,9 @@ dhcpc_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet) //TODO migrate to AS
 					uint8_t brd [4];
 					broadcast_address(brd, ip, subnet);
 					memcpy(config.output.osc.socket.ip, brd, 4);
-					memcpy(config.config.osc.socket.ip, brd, 4);
+					//memcpy(config.config.osc.socket.ip, brd, 4); //FIXME remove
 					memcpy(config.sntp.socket.ip, brd, 4);
-					memcpy(config.debug.osc.socket.ip, brd, 4);
+					//memcpy(config.debug.osc.socket.ip, brd, 4); //FIXME remove
 				}
 				break;
 			case TIMEOUT:
@@ -469,7 +469,7 @@ static uint_fast8_t
 _dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	// needs a config save and reboot to take action
-	return config_check_bool(path, fmt, argc, buf, &config.dhcpc.socket.enabled);
+	return config_check_bool(path, fmt, argc, buf, &config.dhcpc.enabled);
 }
 
 /*

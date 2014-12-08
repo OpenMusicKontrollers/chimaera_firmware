@@ -575,7 +575,7 @@ osc_end_bundle_item(osc_data_t *buf, osc_data_t *end, osc_data_t *itm)
 		return itm;
 }
 
-osc_data_t * __CCM_TEXT__
+osc_data_t *
 osc_set_vararg(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, ...)
 {
 	osc_data_t *buf_ptr = buf;
@@ -590,7 +590,7 @@ osc_set_vararg(osc_data_t *buf, osc_data_t *end, const char *path, const char *f
 	return buf_ptr;
 }
 
-osc_data_t * __CCM_TEXT__
+osc_data_t *
 osc_set_varlist(osc_data_t *buf, osc_data_t *end, const char *path, const char *fmt, va_list args)
 {
 	osc_data_t *buf_ptr = buf;

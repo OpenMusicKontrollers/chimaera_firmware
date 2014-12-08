@@ -113,6 +113,8 @@ typedef enum _Reset_Mode {
 	RESET_MODE_FLASH_HARD		= 1,
 	RESET_MODE_SYSTEM_FLASH	= 2,
 } Reset_Mode;
+	
+extern Reset_Mode reset_mode;
 
 #define EEPROM_SIZE 0x2000
 #define EEPROM_CONFIG_OFFSET 0x0000

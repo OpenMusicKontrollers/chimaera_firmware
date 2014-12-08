@@ -115,6 +115,8 @@ static volatile uint_fast8_t mdns_timeout = 0;
 static volatile uint_fast8_t wiz_needs_attention = 0;
 static volatile int64_t wiz_ptp_tick;
 
+Reset_Mode reset_mode;
+
 static OSC_Timetag now;
 
 static void __CCM_TEXT__
@@ -366,6 +368,21 @@ config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	(void)ip;
 	(void)port;
+	Socket_Config *socket = &config.config.osc.socket;
+
+	// is IP part of our subnet?
+	const uint8_t *dst_ip;
+	if(ip_part_of_subnet(ip))
+		dst_ip = ip; // then we can reply to proper IP
+	else
+		dst_ip = wiz_broadcast_ip; // else we need to reply bia broadcast
+
+	// reply to requesting IP or broadcast
+	memcpy(socket->ip, dst_ip, 4);
+	socket->port[DST_PORT] = port;
+	udp_set_remote(socket->sock, socket->ip, socket->port[DST_PORT]);
+
+	// dispatch OSC request
 	if(osc_check_packet(buf, len))
 		osc_dispatch_method(buf, len, config_serv);
 	else
@@ -978,7 +995,7 @@ setup(void)
 	bkp_init();
 
 	// get reset mode
-	Reset_Mode reset_mode = bkp_read(RESET_MODE_REG);
+	reset_mode = bkp_read(RESET_MODE_REG);
 	
 	// set hard reset mode by default for next boot
 	bkp_enable_writes();
@@ -1075,6 +1092,8 @@ setup(void)
 		// load config or use factory settings?
 		if(reset_mode == RESET_MODE_FLASH_SOFT)
 			config_load(); // soft reset: load configuration from EEPROM
+		else
+			uid_str(config.name); // set name to UID upon hard reset
 	}
 
 	// read MAC from MAC EEPROM or use custom one stored in config
@@ -1121,7 +1140,7 @@ setup(void)
 	
 	// choose DHCP, IPv4LL or static IP
 	uint_fast8_t claimed = 0;
-	if(config.dhcpc.socket.enabled)
+	if(config.dhcpc.enabled)
 	{
 		dhcpc_enable(1);
 		claimed = dhcpc_claim(config.comm.ip, config.comm.gateway, config.comm.subnet);

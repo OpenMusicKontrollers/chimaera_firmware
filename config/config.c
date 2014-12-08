@@ -45,6 +45,7 @@
 #include <sensors.h>
 
 static char string_buf [64];
+static char string_buf2 [64];
 const char *success_str = "/success";
 const char *fail_str = "/fail";
 static const char *local_str = ".local";
@@ -200,7 +201,7 @@ Config config = {
 	},
 
 	.ipv4ll = {
-		.enabled = 0
+		.enabled = 1
 	},
 
 	.mdns = {
@@ -644,9 +645,11 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				wiz_gateway_set(config.comm.gateway);
 			}
 
+			/* FIXME remove
 			uint8_t brd [4];
 			broadcast_address(brd, config.comm.ip, config.comm.subnet);
 			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
+			*/
 
 			//FIXME disrupts PTP
 			if(config.mdns.socket.enabled)
@@ -1154,10 +1157,34 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	return 1;
 }
 
+static uint_fast8_t
+_chimaera_discover(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	(void)fmt;
+	(void)argc;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	uid_str(string_buf);
+	uint8_t mask = subnet_to_cidr(config.comm.subnet);
+	ip2strCIDR(config.comm.ip, mask, string_buf2);
+
+	size = CONFIG_SUCCESS("issssss", uuid, path, config.name, string_buf, string_buf2,
+		config.dhcpc.enabled ? "dhcp" : (config.ipv4ll.enabled ? "ipv4ll" : "static"),
+		reset_mode == RESET_MODE_FLASH_SOFT ? "soft" : "hard");
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
 static uint_fast8_t _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 
 // globals
 const OSC_Method config_serv [] = {
+	{"/chimaera/discover", "i", _chimaera_discover},
 	{NULL, NULL, _query},
 	{NULL, NULL, NULL} // terminator
 };
@@ -1202,14 +1229,14 @@ const OSC_Query_Item comm_tree [] = {
 	OSC_QUERY_ITEM_METHOD("mac", "Hardware MAC address", _comm_mac, comm_mac_args),
 	OSC_QUERY_ITEM_METHOD("ip", "IPv4 client address", _comm_ip, comm_ip_args),
 	OSC_QUERY_ITEM_METHOD("gateway", "IPv4 gateway address", _comm_gateway, comm_gateway_args),
-	OSC_QUERY_ITEM_METHOD("address", "Shared remote IPv4 address", _comm_address, comm_address_args),
+	//OSC_QUERY_ITEM_METHOD("address", "Shared remote IPv4 address", _comm_address, comm_address_args), //FIXME remove
 };
 
 const OSC_Query_Item config_tree [] = {
 	OSC_QUERY_ITEM_METHOD("save", "Save to EEPROM", _config_save, NULL),
 	OSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
-	OSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args),
+	//OSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args), //FIXME remove
 	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _config_mode, config_mode_args)
 };
 
@@ -1231,7 +1258,7 @@ static const OSC_Query_Argument info_name_args [] = {
 	OSC_QUERY_ARGUMENT_STRING("ASCII", OSC_QUERY_MODE_RW, NAME_LENGTH)
 };
 
-static const OSC_Query_Item info_tree [] = {
+static const OSC_Query_Item info_tree [] = { //FIXME merge with comm?
 	OSC_QUERY_ITEM_METHOD("version", "Firmware version", _info_version, info_version_args),
 	OSC_QUERY_ITEM_METHOD("uid", "96-bit universal device identifier", _info_uid, info_uid_args),
 
@@ -1289,6 +1316,7 @@ static const OSC_Query_Item root_tree [] = {
 
 static const OSC_Query_Item root = OSC_QUERY_ITEM_NODE("/", "Root node", root_tree);
 
+//FIXME check for overflows
 static uint_fast8_t
 _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
