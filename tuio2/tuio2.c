@@ -22,6 +22,7 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 
 #include <chimaera.h>
@@ -34,16 +35,15 @@ static const char *frm_str = "/tuio2/frm";
 static const char *tok_str = "/tuio2/tok";
 static const char *alv_str = "/tuio2/alv";
 
-static const char *frm_fmt [2] = { "it", "itsiii" };
+static const char *frm_fmt [2] = { "it", "itis" };
 static const char *tok_fmt = "iiifff";
 static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
 static int32_t alv_ids [BLOB_MAX];
 static uint_fast8_t counter;
 
-static const uint32_t *addr = (uint32_t *)config.comm.ip;
-static const uint16_t *inst = &config.output.osc.socket.port[SRC_PORT];
 static const uint32_t dim = (SENSOR_N << 16) | 1;
+static char source [NAME_LENGTH + 9];
 
 static osc_data_t *pack;
 static osc_data_t *bndl;
@@ -51,6 +51,8 @@ static osc_data_t *bndl;
 static void
 tuio2_init(void)
 {
+	sprintf(source, "%s:0@0x%02x%02x%02x%02x", config.name,
+		config.comm.ip[0], config.comm.ip[1], config.comm.ip[2], config.comm.ip[3]); //FIXME this needs to be updated
 }
 
 static osc_data_t *
@@ -72,10 +74,8 @@ tuio2_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 		buf_ptr = osc_set_timetag(buf_ptr, end, fev->now);
 		if(config.tuio2.long_header)
 		{
-			buf_ptr = osc_set_string(buf_ptr, end, config.name);
-			buf_ptr = osc_set_int32(buf_ptr, end, *addr);
-			buf_ptr = osc_set_int32(buf_ptr, end, *inst);
 			buf_ptr = osc_set_int32(buf_ptr, end, dim);
+			buf_ptr = osc_set_string(buf_ptr, end, source);
 		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
