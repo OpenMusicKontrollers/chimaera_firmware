@@ -749,9 +749,9 @@ loop(void)
 			{
 				uint8_t enabled = config.config.osc.socket.enabled;
 				config_enable(0);
-				if(config.config.osc.mode && config.config.osc.server && enabled)
+				if(enabled) // restart when enabled
 					config_enable(1);
-				debug_str("config ARPto or TCP disconect");
+				debug_str("config ARPto or TCP disconnect");
 			}
 			else if( (config_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_CONFIG] == WIZ_SOCKET_STATE_OPEN) )
 				osc_dispatch(&config.config.osc, BUF_I_BASE(buf_i_ptr), config_cb);
@@ -773,7 +773,7 @@ loop(void)
 				output_enable(0);
 				if(config.output.osc.mode && config.output.osc.server && enabled)
 					output_enable(1);
-				debug_str("output ARPto or TCP disconect");
+				debug_str("output ARPto or TCP disconnect");
 			}
 			else if( (output_should_listen & WIZ_Sn_IR_RECV) && (wiz_socket_state[SOCK_OUTPUT] == WIZ_SOCKET_STATE_OPEN) )
 				osc_ignore(config.output.osc.socket.sock);
