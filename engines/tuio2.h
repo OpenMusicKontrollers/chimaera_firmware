@@ -28,6 +28,6 @@
 #include <oscquery.h>
 
 extern CMC_Engine tuio2_engine;
-extern const OSC_Query_Item tuio2_tree [2];
+extern const OSC_Query_Item tuio2_tree [1];
 
 #endif // _TUIO2_H_

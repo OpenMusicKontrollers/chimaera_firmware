@@ -109,7 +109,6 @@ struct _Config {
 
 	struct _tuio2 {
 		uint8_t enabled;
-		uint8_t long_header;
 	} tuio2;
 
 	struct _tuio1 {

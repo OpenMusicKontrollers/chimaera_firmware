@@ -35,7 +35,7 @@ static const char *frm_str = "/tuio2/frm";
 static const char *tok_str = "/tuio2/tok";
 static const char *alv_str = "/tuio2/alv";
 
-static const char *frm_fmt [2] = { "it", "itis" };
+static const char *frm_fmt = "itis";
 static const char *tok_fmt = "iiifff";
 static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
@@ -68,15 +68,12 @@ tuio2_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, frm_str);
-		buf_ptr = osc_set_fmt(buf_ptr, end, frm_fmt[config.tuio2.long_header]);
+		buf_ptr = osc_set_fmt(buf_ptr, end, frm_fmt);
 
 		buf_ptr = osc_set_int32(buf_ptr, end, fev->fid);
 		buf_ptr = osc_set_timetag(buf_ptr, end, fev->now);
-		if(config.tuio2.long_header)
-		{
-			buf_ptr = osc_set_int32(buf_ptr, end, dim);
-			buf_ptr = osc_set_string(buf_ptr, end, source);
-		}
+		buf_ptr = osc_set_int32(buf_ptr, end, dim);
+		buf_ptr = osc_set_string(buf_ptr, end, source);
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -152,12 +149,6 @@ CMC_Engine tuio2_engine = {
  * Config
  */
 static uint_fast8_t
-_tuio2_long_header(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
-{
-	return config_check_bool(path, fmt, argc, buf, &config.tuio2.long_header);
-}
-
-static uint_fast8_t
 _tuio2_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.tuio2.enabled);
@@ -170,6 +161,5 @@ _tuio2_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
  */
 
 const OSC_Query_Item tuio2_tree [] = {
-	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio2_enabled, config_boolean_args),
-	OSC_QUERY_ITEM_METHOD("long_header", "Enalbe/disable frame long header", _tuio2_long_header, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio2_enabled, config_boolean_args)
 };

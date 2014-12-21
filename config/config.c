@@ -84,8 +84,7 @@ Config config = {
 	},
 
 	.tuio2 = {
-		.enabled = 0,
-		.long_header = 0
+		.enabled = 0
 	},
 
 	.tuio1 = {
