@@ -52,8 +52,6 @@ static const char *local_str = ".local";
 
 #define IP_BROADCAST {255, 255, 255, 255}
 
-static void _host_address_dns_cb(uint8_t *ip, void *data); // forwared declaration
-
 static const Socket_Enable_Cb socket_callbacks [WIZ_MAX_SOCK_NUM] = {
 	[SOCK_DHCPC]	= NULL, // = SOCK_ARP
 	[SOCK_SNTP]		= sntp_enable,
@@ -648,12 +646,6 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				wiz_gateway_set(config.comm.gateway);
 			}
 
-			/* FIXME remove
-			uint8_t brd [4];
-			broadcast_address(brd, config.comm.ip, config.comm.subnet);
-			_host_address_dns_cb(brd, NULL); //TODO maybe we want to reset all sockets here instead of changing to broadcast?
-			*/
-
 			//FIXME disrupts PTP
 			if(config.mdns.socket.enabled)
 				mdns_announce(); // announce new IP
@@ -949,81 +941,6 @@ _output_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t
 }
 
 static uint_fast8_t
-_config_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
-{
-	return config_address(&config.config.osc.socket, path, fmt, argc, buf);
-}
-
-static void
-_host_address_dns_cb(uint8_t *ip, void *data)
-{
-	uint16_t size;
-
-	Address_Cb *address_cb = data;
-
-	if(ip)
-	{
-		memcpy(config.output.osc.socket.ip, ip, 4);
-		memcpy(config.config.osc.socket.ip, ip, 4);
-		memcpy(config.sntp.socket.ip, ip, 4);
-		memcpy(config.debug.osc.socket.ip, ip, 4);
-
-		output_enable(config.output.osc.socket.enabled);
-		config_enable(config.config.osc.socket.enabled);
-		sntp_enable(config.sntp.socket.enabled);
-		debug_enable(config.debug.osc.socket.enabled);
-
-		ip2str(ip, string_buf);
-		DEBUG("ss", "_host_address_dns_cb", string_buf);
-
-		if(address_cb)
-			size = CONFIG_SUCCESS("is", address_cb->uuid, address_cb->path);
-	}
-	else // timeout occured
-		size = CONFIG_FAIL("iss", address_cb->uuid, address_cb->path, "mDNS resolve timed out");
-
-	if(address_cb)
-		CONFIG_SEND(size);
-}
-
-static uint_fast8_t
-_comm_address(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
-{
-	(void)fmt;
-	(void)argc;
-	osc_data_t *buf_ptr = buf;
-	static Address_Cb address_cb;
-	uint16_t size = 0;
-	int32_t uuid;
-	const char *hostname;
-
-	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	buf_ptr = osc_get_string(buf_ptr, &hostname);
-
-	address_cb.uuid = uuid;
-	strncpy(address_cb.path, path, ADDRESS_CB_LEN-1);
-
-	uint8_t ip[4];
-	if(str2ip(hostname, ip)) // an IPv4 was given in string format
-		_host_address_dns_cb(ip, &address_cb);
-	else
-	{
-		if(strstr(hostname, local_str)) // resolve via mDNS
-		{
-			if(!mdns_resolve(hostname, _host_address_dns_cb, &address_cb))
-				size = CONFIG_FAIL("iss", uuid, path, "there is a mDNS request already ongoing");
-		}
-		else // resolve via unicast DNS
-			size = CONFIG_FAIL("iss", uuid, path, "can only resolve raw IP and mDNS addresses");
-	}
-
-	if(size > 0)
-		CONFIG_SEND(size);
-
-	return 1;
-}
-
-static uint_fast8_t
 _output_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
@@ -1232,14 +1149,12 @@ const OSC_Query_Item comm_tree [] = {
 	OSC_QUERY_ITEM_METHOD("mac", "Hardware MAC address", _comm_mac, comm_mac_args),
 	OSC_QUERY_ITEM_METHOD("ip", "IPv4 client address", _comm_ip, comm_ip_args),
 	OSC_QUERY_ITEM_METHOD("gateway", "IPv4 gateway address", _comm_gateway, comm_gateway_args),
-	//OSC_QUERY_ITEM_METHOD("address", "Shared remote IPv4 address", _comm_address, comm_address_args), //FIXME remove
 };
 
 const OSC_Query_Item config_tree [] = {
 	OSC_QUERY_ITEM_METHOD("save", "Save to EEPROM", _config_save, NULL),
 	OSC_QUERY_ITEM_METHOD("load", "Load from EEPROM", _config_load, NULL),
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable socket", _config_enabled, config_boolean_args),
-	//OSC_QUERY_ITEM_METHOD("address", "Single remote IPv4 address", _config_address, config_address_args), //FIXME remove
 	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _config_mode, config_mode_args)
 };
 
