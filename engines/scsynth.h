@@ -49,6 +49,6 @@ struct _SCSynth_Group {
 
 extern SCSynth_Group *scsynth_groups;
 extern CMC_Engine scsynth_engine;
-extern const OSC_Query_Item scsynth_tree [3];
+extern const OSC_Query_Item scsynth_tree [4];
 
 #endif // _SCSYNTH_H_

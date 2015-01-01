@@ -43,6 +43,8 @@ struct _RPN_Stack {
 	uint16_t pid;
 	float x;
 	float z;
+	float vx;
+	float vz;
 
 	float reg [RPN_REG_HEIGHT]; //FIXME use MAX_BLOB instead?
 	float arr [RPN_STACK_HEIGHT];

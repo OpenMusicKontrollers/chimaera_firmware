@@ -43,6 +43,7 @@ custom_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 	stack.fid = fev->fid;
 	stack.sid = stack.gid = stack.pid = 0;
 	stack.x = stack.z = 0.f;
+	stack.vx = stack.vz = 0.f;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -139,6 +140,8 @@ custom_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	stack.pid = bev->pid;
 	stack.x = bev->x;
 	stack.z = bev->y;
+	stack.vx = bev->vx;
+	stack.vz = bev->vy;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -173,6 +176,7 @@ custom_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	stack.gid = bev->gid;
 	stack.pid = bev->pid;
 	stack.x = stack.z = 0.f;
+	stack.vx = stack.vz = 0.f;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -208,6 +212,8 @@ custom_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	stack.pid = bev->pid;
 	stack.x = bev->x;
 	stack.z = bev->y;
+	stack.vx = bev->vx;
+	stack.vz = bev->vy;
 
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;

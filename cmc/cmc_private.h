@@ -40,12 +40,20 @@ typedef enum {
 	CMC_BLOB_DISAPPEARED
 } CMC_Blob_State;
 
+typedef struct _CMC_Filt CMC_Filt;
 typedef struct _CMC_Blob CMC_Blob;
+
+struct _CMC_Filt {
+	float f1;
+	float f11;
+};
 
 struct _CMC_Blob {
 	uint32_t sid;
 	CMC_Group *group;
 	float x, y;
+	CMC_Filt vx, vy;
+	float v, m;
 	uint16_t pid;
 	uint8_t above_thresh;
 	CMC_Blob_State state;

@@ -84,7 +84,8 @@ Config config = {
 	},
 
 	.tuio2 = {
-		.enabled = 0
+		.enabled = 0,
+		.derivatives = 0
 	},
 
 	.tuio1 = {
@@ -97,7 +98,8 @@ Config config = {
 	},
 
 	.scsynth = {
-		.enabled = 0
+		.enabled = 0,
+		.derivatives = 0
 	},
 
 	.oscmidi = {
@@ -109,7 +111,8 @@ Config config = {
 
 	.dummy = {
 		.enabled = 0,
-		.redundancy = 0
+		.redundancy = 0,
+		.derivatives = 0
 	},
 
 	.custom = {
@@ -224,6 +227,7 @@ Config config = {
 	.sensors = {
 		.movingaverage_bitshift = 3,
 		.interpolation_mode = INTERPOLATION_QUADRATIC,
+		.velocity_stiffness = 32,
 		.rate = 2000
 	},
 

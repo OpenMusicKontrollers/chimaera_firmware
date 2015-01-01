@@ -53,6 +53,8 @@ enum _RPN_Instruction {
 	RPN_PUSH_PID,
 	RPN_PUSH_X,
 	RPN_PUSH_Z,
+	RPN_PUSH_VX,
+	RPN_PUSH_VZ,
 	RPN_PUSH_N,
 
 	RPN_PUSH_REG,

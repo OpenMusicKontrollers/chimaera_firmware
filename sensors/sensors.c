@@ -230,6 +230,14 @@ _sensors_interpolation(const char *path, const char *fmt, uint_fast8_t argc, osc
 }
 
 static uint_fast8_t
+_sensors_velocity_stiffness(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	uint_fast8_t res = config_check_uint8(path, fmt, argc, buf, &config.sensors.velocity_stiffness);
+	cmc_velocity_stiffness_update(config.sensors.velocity_stiffness);
+	return res;
+}
+
+static uint_fast8_t
 _group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
@@ -361,11 +369,16 @@ static const OSC_Query_Argument sensors_interpolation_args [] = {
 	OSC_QUERY_ARGUMENT_STRING_VALUES("Order", OSC_QUERY_MODE_RW, interpolation_mode_args_values)
 };
 
+static const OSC_Query_Argument sensors_velocity_stiffness_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Stiffness", OSC_QUERY_MODE_RW, 1, 128, 1)
+};
+
 const OSC_Query_Item sensors_tree [] = {
 	OSC_QUERY_ITEM_NODE("group/", "Group", group_tree),
 
 	OSC_QUERY_ITEM_METHOD("movingaverage", "Movingaverager", _sensors_movingaverage, sensors_movingaverage_args),
 	OSC_QUERY_ITEM_METHOD("interpolation", "Interpolation", _sensors_interpolation, sensors_interpolation_args),
+	OSC_QUERY_ITEM_METHOD("velocity_stiffness", "Stiffness of velocity filter", _sensors_velocity_stiffness, sensors_velocity_stiffness_args),
 	OSC_QUERY_ITEM_METHOD("rate", "Update rate", _sensors_rate, sensors_rate_args),
 
 	OSC_QUERY_ITEM_METHOD("number", "Sensor number", _sensors_number, sensors_number_args),

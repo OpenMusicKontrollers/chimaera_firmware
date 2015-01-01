@@ -32,7 +32,7 @@ extern uint8_t adc2_sequence [ADC_DUAL_LENGTH]; // analog input pins read out by
 extern uint8_t adc3_sequence [ADC_SING_LENGTH]; // analog input pins read out by the ADC3
 extern uint8_t adc_unused [ADC_UNUSED_LENGTH];
 extern uint8_t adc_order [ADC_LENGTH];
-extern const OSC_Query_Item sensors_tree [5];
+extern const OSC_Query_Item sensors_tree [6];
 
 enum Interpolation_Mode {
 	INTERPOLATION_NONE,

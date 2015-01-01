@@ -32,19 +32,6 @@
 
 typedef struct _Tuio1_Blob Tuio1_Blob;
 
-struct _Tuio1_Blob {
-	uint32_t sid;
-	OSC_Timetag last_time;
-	float last_x;
-	float last_y;
-	float last_v;
-	float vx;
-	float vy;
-	float m;
-};
-
-static Tuio1_Blob blobs [BLOB_MAX];
-
 static const char *profile_str [2] = {
 	"/tuio/2Dobj",
 	"/tuio/_sixya"
@@ -65,31 +52,9 @@ static char alv_fmt [BLOB_MAX+2] = {
 static int32_t alv_ids [BLOB_MAX];
 static uint_fast8_t counter;
 
-static OSC_Timetag last; // timestamp of last loop
-static float _r; // actual rate
 static osc_data_t *pack;
 static osc_data_t *bndl;
 static osc_data_t *pp;
-
-static inline Tuio1_Blob *
-_blob_add(void)
-{
-	uint_fast8_t i;
-	for(i=0; i<BLOB_MAX; i++)
-		if(blobs[i].sid == 0)
-			return &blobs[i];
-	return NULL; // no space
-}
-
-static inline Tuio1_Blob *
-_blob_get(uint32_t sid)
-{
-	uint_fast8_t i;
-	for(i=0; i<BLOB_MAX; i++)
-		if(blobs[i].sid == sid)
-			return &blobs[i];
-	return NULL; // nof found
-}
 
 static osc_data_t *
 tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
@@ -117,11 +82,6 @@ tuio1_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
-	if(last > 0)
-		_r = 1.f / (fev->now - last);
-	else
-		_r = config.sensors.rate;
-	last = fev->now;
 	counter = 0; // reset token pointer
 
 	return buf_ptr;
@@ -155,7 +115,7 @@ tuio1_engine_end_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 }
 
 static osc_data_t *
-tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev, Tuio1_Blob *tb)
+tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 {
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
@@ -173,10 +133,10 @@ tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev, Tui
 		buf_ptr = osc_set_float(buf_ptr, end, bev->pid == CMC_NORTH ? 0.f : M_PI);
 		if(!config.tuio1.custom_profile)
 		{
-			buf_ptr = osc_set_float(buf_ptr, end, tb->vx); // X
-			buf_ptr = osc_set_float(buf_ptr, end, tb->vy); // Y
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vx); // X
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vy); // Y
 			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // A
-			buf_ptr = osc_set_float(buf_ptr, end, tb->m); // m
+			buf_ptr = osc_set_float(buf_ptr, end, bev->m); // m
 			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // r
 		}
 	}
@@ -187,65 +147,12 @@ tuio1_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev, Tui
 	return buf_ptr;
 }
 
-static osc_data_t *
-tuio1_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
-{
-	Tuio1_Blob *blob = _blob_add();
-	if(!blob) // stack overflow
-		return buf;
-
-	blob->sid = bev->sid;
-	blob->last_x = 0.f;
-	blob->last_y = 0.f;
-	blob->last_v = 0.f;
-
-	return tuio1_engine_token_cb(buf, end, bev, blob);
-}
-
-static osc_data_t *
-tuio1_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
-{
-	(void)end;
-
-	Tuio1_Blob *blob = _blob_get(bev->sid);
-	if(blob) // found
-		blob->sid = 0;
-
-	return buf;
-}
-
-static osc_data_t *
-tuio1_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
-{
-	Tuio1_Blob *blob = _blob_get(bev->sid);
-	if(!blob) // not found
-		return buf;
-
-	// update velocity and acceleration signals
-	float dx = bev->x - blob->last_x;
-	float dy = bev->y - blob->last_y;
-	float di = sqrtf(dx*dx + dy*dy);
-
-	blob->vx = dx * _r;
-	blob->vy = dy * _r;
-	float v = di * _r;
-
-	float dv =  v - blob->last_v;
-	blob->m = dv * _r;
-
-	blob->last_x = bev->x;
-	blob->last_y = bev->y;
-	blob->last_v = v;
-
-	return tuio1_engine_token_cb(buf, end, bev, blob);
-}
-
 CMC_Engine tuio1_engine = {
 	NULL,
 	tuio1_engine_frame_cb,
-	tuio1_engine_on_cb,
-	tuio1_engine_off_cb,
-	tuio1_engine_set_cb,
+	tuio1_engine_token_cb,
+	NULL,
+	tuio1_engine_token_cb,
 	tuio1_engine_end_cb
 };
 

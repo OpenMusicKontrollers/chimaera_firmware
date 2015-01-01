@@ -33,6 +33,12 @@
 #include <debug.h>
 #include <sntp.h>
 
+/*
+ * implementation is based on:
+ * Design considerations for software only implementations of the IEEE 1588 precision time protocol
+ * K Correll, N Barendt, M Branicky - Conference on IEEE, 2005 - dora.cwru.edu
+ */
+
 static int64_t t0 = 0ULL; // us since epoch
 
 static int64_t t1, t2, t3, t4;

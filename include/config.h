@@ -109,6 +109,7 @@ struct _Config {
 
 	struct _tuio2 {
 		uint8_t enabled;
+		uint8_t derivatives;
 	} tuio2;
 
 	struct _tuio1 {
@@ -118,6 +119,7 @@ struct _Config {
 
 	struct _scsynth {
 		uint8_t enabled;
+		uint8_t derivatives;
 	} scsynth;
 
 	struct _oscmidi {
@@ -130,6 +132,7 @@ struct _Config {
 	struct _dummy {
 		uint8_t enabled;
 		uint8_t redundancy;
+		uint8_t derivatives;
 	} dummy;
 
 	struct _custom {
@@ -184,6 +187,7 @@ struct _Config {
 	struct _sensors {
 		uint8_t movingaverage_bitshift;
 		uint8_t interpolation_mode;
+		uint8_t velocity_stiffness;
 		uint16_t rate; // the maximal update rate the chimaera should run at
 	} sensors;
 

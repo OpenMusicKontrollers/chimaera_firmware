@@ -39,12 +39,15 @@ static const char *gate_str = "gate";
 static const char *out_str = "out";
 
 static const char *on_str = "/s_new";
-static const char *set_str = "/n_set";
+static const char *set_str = "/n_setn";
+static const char *off_str = "/n_set";
 
-static const char *on_fmt = "siiisisi";
-static const char *on_set_fmt = "iififiisi";
+static const char *on_fmt = "siiiiisisi";
 static const char *off_fmt = "isi";
-static const char *set_fmt = "iifif";
+static const char *set_fmt [2] = {
+	[0] = "iiiff",	// !derivatives
+	[1] = "iiiffff"	// derivatives
+};
 
 static const char *default_fmt = "group%02i";
 
@@ -108,8 +111,10 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->add_action);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->group); // group id
+			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 4);
+			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
 			buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
-			buf_ptr = osc_set_int32(buf_ptr, end, 0); // do not start synth yet
+			buf_ptr = osc_set_int32(buf_ptr, end, 1);
 			buf_ptr = osc_set_string(buf_ptr, end, (char *)out_str);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->out);
 		}
@@ -122,17 +127,18 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 		{
 			buf_ptr = osc_set_path(buf_ptr, end, set_str);
-			buf_ptr = osc_set_fmt(buf_ptr, end, on_set_fmt);
+			buf_ptr = osc_set_fmt(buf_ptr, end, set_fmt[config.scsynth.derivatives]);
 
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
+			buf_ptr = osc_set_int32(buf_ptr, end, config.scsynth.derivatives ? 4 : 2);
 			buf_ptr = osc_set_float(buf_ptr, end, bev->x);
-			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 1);
 			buf_ptr = osc_set_float(buf_ptr, end, bev->y);
-			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 2);
-			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
-			buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
-			buf_ptr = osc_set_int32(buf_ptr, end, 1);
+			if(config.scsynth.derivatives)
+			{
+				buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
+				buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
+			}
 		}
 		buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 	}
@@ -155,7 +161,7 @@ scsynth_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	{
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 		{
-			buf_ptr = osc_set_path(buf_ptr, end, set_str);
+			buf_ptr = osc_set_path(buf_ptr, end, off_str);
 			buf_ptr = osc_set_fmt(buf_ptr, end, off_fmt);
 
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
@@ -182,13 +188,18 @@ scsynth_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, set_str);
-		buf_ptr = osc_set_fmt(buf_ptr, end, set_fmt);
+		buf_ptr = osc_set_fmt(buf_ptr, end, set_fmt[config.scsynth.derivatives]);
 
 		buf_ptr = osc_set_int32(buf_ptr, end, id);
 		buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
+		buf_ptr = osc_set_int32(buf_ptr, end, config.scsynth.derivatives ? 4 : 2);
 		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
-		buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 1);
 		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
+		if(config.scsynth.derivatives)
+		{
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
+		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -248,6 +259,12 @@ _scsynth_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_
 	uint_fast8_t res = config_check_bool(path, fmt, argc, buf, &config.scsynth.enabled);
 	cmc_engines_update();
 	return res;
+}
+
+static uint_fast8_t
+_scsynth_derivatives(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return config_check_bool(path, fmt, argc, buf, &config.scsynth.derivatives);
 }
 
 static uint_fast8_t
@@ -364,6 +381,7 @@ static const OSC_Query_Item scsynth_attribute_tree [] = {
 
 const OSC_Query_Item scsynth_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("derivatives", "Calculate derivatives", _scsynth_derivatives, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _scsynth_reset, NULL),
 	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
 };

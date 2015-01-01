@@ -129,6 +129,16 @@ rpn_run(osc_data_t *buf, osc_data_t *end, Custom_Item *itm, RPN_Stack *stack)
 				push(stack, stack->z);
 				break;
 			}
+			case RPN_PUSH_VX:
+			{
+				push(stack, stack->vx);
+				break;
+			}
+			case RPN_PUSH_VZ:
+			{
+				push(stack, stack->vz);
+				break;
+			}
 			case RPN_PUSH_N:
 			{
 				push(stack, SENSOR_N);
@@ -411,6 +421,14 @@ rpn_compile_sub(const char *str, size_t len, RPN_VM *vm, RPN_Compiler *compiler)
 						break;
 					case 'z':
 						if(!rpn_add_inst(vm, compiler, RPN_PUSH_Z, 0.f, 0, 1)) return 0;
+						ptr++;
+						break;
+					case 'X':
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_VX, 0.f, 0, 1)) return 0;
+						ptr++;
+						break;
+					case 'Z':
+						if(!rpn_add_inst(vm, compiler, RPN_PUSH_VZ, 0.f, 0, 1)) return 0;
 						ptr++;
 						break;
 					case 'n':

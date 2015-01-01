@@ -36,7 +36,10 @@ static const char *tok_str = "/tuio2/tok";
 static const char *alv_str = "/tuio2/alv";
 
 static const char *frm_fmt = "itis";
-static const char *tok_fmt = "iiifff";
+static const char *tok_fmt [2] = {
+	[0] = "iiifff",					// !derivatives
+	[1] = "iiiffffffff"			// derivatives
+};
 static char alv_fmt [BLOB_MAX+1]; // this has a variable string len
 
 static int32_t alv_ids [BLOB_MAX];
@@ -120,7 +123,7 @@ tuio2_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, tok_str);
-		buf_ptr = osc_set_fmt(buf_ptr, end, tok_fmt);
+		buf_ptr = osc_set_fmt(buf_ptr, end, tok_fmt[config.tuio2.derivatives]);
 
 		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
 		buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
@@ -128,6 +131,15 @@ tuio2_engine_token_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
 		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
 		buf_ptr = osc_set_float(buf_ptr, end, bev->pid == CMC_NORTH ? 0.f : M_PI);
+
+		if(config.tuio2.derivatives)
+		{
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
+			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // angular velocity
+			buf_ptr = osc_set_float(buf_ptr, end, bev->m); // acceleration
+			buf_ptr = osc_set_float(buf_ptr, end, 0.f); // angular acceleration
+		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -156,10 +168,17 @@ _tuio2_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	return res;
 }
 
+static uint_fast8_t
+_tuio2_derivatives(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return config_check_bool(path, fmt, argc, buf, &config.tuio2.derivatives);
+}
+
 /*
  * Query
  */
 
 const OSC_Query_Item tuio2_tree [] = {
-	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio2_enabled, config_boolean_args)
+	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _tuio2_enabled, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("derivatives", "Calculate derivatives", _tuio2_derivatives, config_boolean_args),
 };

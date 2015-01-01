@@ -38,13 +38,19 @@ static const char *dummy_set_str ="/set";
 
 static const char *dummy_idle_fmt = "";
 static const char *dummy_on_fmt = "iiiff";
-static const char *dummy_off_fmt [] = {
+static const char *dummy_off_fmt [2] = {
 	[0] = "i",			// !redundancy
 	[1] = "iii"			// redundancy
 };
-static const char *dummy_set_fmt [] = {
-	[0] = "iff",		// !redundancy
-	[1] = "iiiff"		// redundancy
+static const char *dummy_set_fmt [2][2] = {
+	[0] = {					// !redundancy
+		[0] = "iff",		// !derivatives
+		[1] = "iffff" 	// derivatives
+	},
+	[1] = {					// redundancy
+		[0] = "iiiff",	// !derivatives
+		[1] = "iiiffff"	// derivatives
+	}
 };
 
 static osc_data_t *pack;
@@ -136,11 +142,12 @@ dummy_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	osc_data_t *buf_ptr = buf;
 	osc_data_t *itm;
 	uint_fast8_t redundancy = config.dummy.redundancy;
+	uint_fast8_t derivatives = config.dummy.derivatives;
 
 	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 	{
 		buf_ptr = osc_set_path(buf_ptr, end, dummy_set_str);
-		buf_ptr = osc_set_fmt(buf_ptr, end, dummy_set_fmt[redundancy]);
+		buf_ptr = osc_set_fmt(buf_ptr, end, dummy_set_fmt[redundancy][derivatives]);
 		buf_ptr = osc_set_int32(buf_ptr, end, bev->sid);
 		if(redundancy)
 		{
@@ -149,6 +156,11 @@ dummy_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 		}
 		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
 		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
+		if(derivatives)
+		{
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
+		}
 	}
 	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 
@@ -181,6 +193,12 @@ _dummy_redundancy(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 	return config_check_bool(path, fmt, argc, buf, &config.dummy.redundancy);
 }
 
+static uint_fast8_t
+_dummy_derivatives(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return config_check_bool(path, fmt, argc, buf, &config.dummy.derivatives);
+}
+
 /*
  * Query
  */
@@ -188,4 +206,5 @@ _dummy_redundancy(const char *path, const char *fmt, uint_fast8_t argc, osc_data
 const OSC_Query_Item dummy_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _dummy_enabled, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("redundancy", "Send redundant data", _dummy_redundancy, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("derivatives", "Calculate derivatives", _dummy_derivatives, config_boolean_args)
 };

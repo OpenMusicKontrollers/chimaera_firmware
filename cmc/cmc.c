@@ -71,6 +71,8 @@ static uint32_t fid, sid;
 
 static float d, d_2;
 
+static float s, sm1; // filter stiffness, (1-stiffness)
+
 static float vx[SENSOR_N+2];
 static float vy[SENSOR_N+2];
 static uint8_t vn[SENSOR_N+2];
@@ -80,6 +82,14 @@ static CMC_Blob blobs[2][BLOB_MAX];
 static uint8_t pacemaker = 0x0b; // pacemaker rate 2^11=2048
 
 static void cmc_engines_init(void);
+
+void
+cmc_velocity_stiffness_update(uint8_t stiffness)
+{
+	s = 1.f / (float)stiffness;
+	sm1 = 1.f - s;
+	s *= 0.5;
+}
 
 void
 cmc_init(void)
@@ -112,6 +122,7 @@ cmc_init(void)
 
 	// update engines stack
 	cmc_engines_update();
+	cmc_velocity_stiffness_update(config.sensors.velocity_stiffness);
 }
 
 #if 0
@@ -137,6 +148,27 @@ LOOKUP(float y)
 }
 #endif
 
+// derive velocity and acceleration signals
+//static inline __always_inline void
+static void __CCM_TEXT__ //FIXME
+VEL_ACCEL(CMC_Blob *_old, CMC_Blob *_neu, float rate)
+{
+	float dx = _neu->x - _old->x;
+	_neu->vx.f1 = dx * rate;
+
+	float dy = _neu->y - _old->y;
+	_neu->vy.f1 = dy * rate;
+
+	// first-order IIR filter
+	_neu->vx.f11 = s*(_neu->vx.f1 + _old->vx.f1) + _old->vx.f11*sm1;
+	_neu->vy.f11 = s*(_neu->vy.f1 + _old->vy.f1) + _old->vy.f11*sm1;
+
+	_neu->v = sqrtf(_neu->vx.f11 * _neu->vx.f11 + _neu->vy.f11 * _neu->vy.f11);
+
+	float dv =  _neu->v - _old->v;
+	_neu->m = dv * rate;
+}
+
 #define VABS(A) \
 ({ \
 	float X; \
@@ -147,9 +179,21 @@ LOOKUP(float y)
 	(float)X; \
 })
 
+static OSC_Timetag last; // timestamp of last loop
+
 osc_data_t *__CCM_TEXT__
 cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf, osc_data_t *end)
 {
+	/*
+	 * derive REAL update rate for velocity and acceleration calculations
+	 */
+	float rate;
+	if(last > 0ULLK)
+		rate = 1.f / (now - last);
+	else
+		rate = config.sensors.rate;
+	last = now;
+
 	osc_data_t *buf_ptr = buf;
 	/*
 	 * find areas of interest
@@ -411,6 +455,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 		blob->group = NULL;
 		blob->x = x;
 		blob->y = y;
+		memset(&blob->vx, 0, sizeof(CMC_Filt));
+		memset(&blob->vy, 0, sizeof(CMC_Filt));
+		blob->v = 0.f;
+		blob->m = 0.f;
 		blob->above_thresh = va[P];
 		blob->state = CMC_BLOB_INVALID;
 
@@ -454,6 +502,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 						cmc_neu[j].sid = cmc_old[i].sid;
 						cmc_neu[j].group = cmc_old[i].group;
 						cmc_neu[j].state = (cmc_old[i].x == cmc_neu[j].x) && (cmc_old[i].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
+						VEL_ACCEL(&cmc_old[i], &cmc_neu[j], rate);
 
 						i++;
 						j++;
@@ -476,6 +525,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 					cmc_neu[j].sid = cmc_old[j].sid;
 					cmc_neu[j].group = cmc_old[j].group;
 					cmc_neu[j].state = (cmc_old[j].x == cmc_neu[j].x) && (cmc_old[j].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
+					VEL_ACCEL(&cmc_old[j], &cmc_neu[j], rate);
 
 					changed = changed || (cmc_neu[j].state == CMC_BLOB_EXISTED_DIRTY);
 				}
@@ -519,6 +569,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 						cmc_neu[j].sid = cmc_old[i].sid;
 						cmc_neu[j].group = cmc_old[i].group;
 						cmc_neu[j].state = (cmc_old[i].x == cmc_neu[j].x) && (cmc_old[i].y == cmc_neu[j].y) ? CMC_BLOB_EXISTED_STILL : CMC_BLOB_EXISTED_DIRTY;
+						VEL_ACCEL(&cmc_old[i], &cmc_neu[j], rate);
 
 						changed = changed || (cmc_neu[j].state == CMC_BLOB_EXISTED_DIRTY);
 						j++;
@@ -670,7 +721,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 						.gid = tar->group->gid,
 						.pid = tar->pid,
 						.x = tar->x,
-						.y = tar->y
+						.y = tar->y,
+						.vx = tar->vx.f11,
+						.vy = tar->vy.f11,
+						.m = tar->m
 					};
 
 					if(tar->state == CMC_BLOB_APPEARED)
@@ -694,7 +748,10 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 						.gid = tar->group->gid,
 						.pid = tar->pid,
 						.x = tar->x,
-						.y = zero
+						.y = zero,
+						.vx = 0.f, //FIXME
+						.vy = 0.f, //FIXME
+						.m = 0.f //FIXME
 					};
 
 					if(tar->state == CMC_BLOB_DISAPPEARED)

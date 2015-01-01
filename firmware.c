@@ -363,7 +363,7 @@ adc_dma_block(void)
 	adc_raw_ptr ^= 1;
 }
 
-static void __CCM_TEXT__
+static void //__CCM_TEXT__
 config_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	(void)ip;
@@ -408,7 +408,7 @@ ptp_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 	ptp_dispatch(buf, wiz_ptp_tick);
 }
 
-static void __CCM_TEXT__
+static void //__CCM_TEXT__
 mdns_cb(uint8_t *ip, uint16_t port, uint8_t *buf, uint16_t len)
 {
 	(void)ip;
