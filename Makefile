@@ -43,7 +43,7 @@ $(DFU): $(BIN)
 		-f 0x0001 \
 		-v $(USB_VENDOR) \
 		-p $(USB_PRODUCT) \
-			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'. Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under zlib/libpng License. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
+			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'. Copyright (c) 2015 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under Artistic License 2.0. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
 			-m 0x08000000 -i $< \
 			-a 0
 

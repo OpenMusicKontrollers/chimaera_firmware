@@ -29,7 +29,7 @@ do
 			-o image/chimaera_S${sensors}-${version}-${revision}.dfu \
 			-f ${release} \
 				-m 0x08000000 -i build/F303CB.bin \
-				-n 'Chimaera S'${sensors}' '${version}'-'${revision}'. Copyright (c) 2014 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under zlib/libpng License. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
+				-n 'Chimaera S'${sensors}' '${version}'-'${revision}'. Copyright (c) 2015 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under Artistic License 2.0. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
 				-a 0
 	done
 done

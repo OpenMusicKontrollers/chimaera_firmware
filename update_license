@@ -1,0 +1,5 @@
+#!/bin/bash
+
+find ./ -path ./libmaple_F3 -prune -o -name '*.h' -exec sed -i -f license.script {} +
+find ./ -path ./libmaple_F3 -prune -o -name '*.c' -exec sed -i -f license.script {} +
+find ./ -path ./libmaple_F3 -prune -o -name '*.cpp' -exec sed -i -f license.script {} +
