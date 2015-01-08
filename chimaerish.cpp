@@ -20,18 +20,6 @@
  */
 #include <wirish/wirish.h>
 
-extern "C" void
-usb_debug_str(const char * str)
-{
-	SerialUSB.println(str);
-}
-
-extern "C" void
-usb_debug_int(uint32_t i)
-{
-	SerialUSB.println(i);
-}
-
 __attribute__((constructor)) void
 premain(void)
 {
@@ -41,7 +29,4 @@ premain(void)
 extern "C" void
 cpp_setup(void)
 {
-	// we don't need USB communication, so we disable it
-	//SerialUSB.begin();
-	SerialUSB.end();
 }
