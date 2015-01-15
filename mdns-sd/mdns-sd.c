@@ -74,9 +74,6 @@ static DNS_PTR_Method hooks_tcp [] = {
 	{NULL, NULL}
 };
 
-const char *TXT_COMMON = "\011txtvers=1\013version=1.1\056uri=http://open-music-kontrollers.ch/chimaera/\017types=ifsbhdtSm";
-const char *TXT_SLIP = "\014framing=slip";
-
 // unrolled query name label
 static char qname_unrolled [32]; //TODO big enough?
 
@@ -132,7 +129,7 @@ _serialize_query(uint8_t *buf, uint16_t id, uint16_t flags, uint16_t qdcount, ui
 }
 
 static uint8_t *
-_serialize_answer(uint8_t *buf, char *qname, uint16_t rtype, uint16_t rclass, uint32_t ttl, uint16_t rlen)
+_serialize_answer_inline(uint8_t *buf, char *qname, uint16_t rtype, uint16_t rclass, uint32_t ttl, uint16_t **rlen)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -144,10 +141,22 @@ _serialize_answer(uint8_t *buf, char *qname, uint16_t rtype, uint16_t rclass, ui
 	a.RTYPE = hton(rtype);
 	a.RCLASS = hton(rclass);
 	a.TTL = htonl(ttl);
-	a.RLEN = hton(rlen);
+	a.RLEN = 0;
+	
+	*rlen = (uint16_t *)(buf_ptr + offsetof(DNS_Answer, RLEN));
 
 	memcpy(buf_ptr, &a, sizeof(DNS_Answer));
 	buf_ptr += sizeof(DNS_Answer);
+
+	return buf_ptr;
+}
+
+static uint8_t *
+_serialize_answer(uint8_t *buf, char *qname, uint16_t rtype, uint16_t rclass, uint32_t ttl, uint16_t rlen)
+{
+	uint16_t *len = NULL;
+	uint8_t *buf_ptr = _serialize_answer_inline(buf, qname, rtype, rclass, ttl, &len);
+	*len = hton(rlen);
 
 	return buf_ptr;
 }
@@ -219,11 +228,42 @@ _serialize_PTR_osc(uint8_t *buf)
 	return buf_ptr;
 }
 
+const char *TXT_TXTVERSION = "txtvers=1";
+const char *TXT_VERSION = "version=1.1";
+const char *TXT_URI = "uri=http://open-music-kontrollers.ch/chimaera";
+const char *TXT_TYPES = "type=ifsbhdtTFNISmc";
+const char *TXT_FRAMING = "framing=slip";
+
+const char *TXT_RESET [] = {
+	[RESET_MODE_FLASH_SOFT] = "reset=soft",
+	[RESET_MODE_FLASH_HARD] = "reset=hard",
+};
+const char *TXT_STATIC = "static=1";
+const char *TXT_DHCP = "dhcp=1";
+const char *TXT_IPV4LL = "ipv4ll=1";
+
+static uint8_t *
+_serialize_TXT_record(uint8_t *buf, const char *record)
+{
+	uint8_t *buf_ptr = buf;
+
+	uint8_t len = strlen(record);
+
+	if(len > 0)
+	{
+		*buf_ptr++ = len;
+		memcpy(buf_ptr, record, len);
+		buf_ptr += len;
+	}
+
+	return buf_ptr;
+}
+
 static uint8_t *
 _serialize_TXT_instance(uint8_t *buf)
 {
 	uint8_t *buf_ptr = buf;
-	uint16_t len;
+	uint16_t *len = NULL;
 
 	DNS_PTR_Method *hooks = NULL;
 	if(config.config.osc.mode == OSC_MODE_UDP)
@@ -231,17 +271,28 @@ _serialize_TXT_instance(uint8_t *buf)
 	else
 		hooks = hooks_tcp;
 
-	len = strlen(TXT_COMMON) + (config.config.osc.mode == OSC_MODE_SLIP ? strlen(TXT_SLIP) : 0);
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer_inline(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, &len);
 
-	memcpy(buf_ptr, TXT_COMMON, strlen(TXT_COMMON));
-	buf_ptr += strlen(TXT_COMMON);
+	uint8_t *txt = buf_ptr;
+	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_TXTVERSION);
+	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_VERSION);
+	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_URI);
+	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_TYPES);
 	if(config.config.osc.mode == OSC_MODE_SLIP)
+		buf_ptr = _serialize_TXT_record(buf_ptr, TXT_FRAMING);
+	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_RESET[reset_mode]);
+	if(config.dhcpc.enabled || config.ipv4ll.enabled)
 	{
-		memcpy(buf_ptr, TXT_SLIP, strlen(TXT_SLIP));
-		buf_ptr += strlen(TXT_SLIP);
+		if(config.dhcpc.enabled)
+			buf_ptr = _serialize_TXT_record(buf_ptr, TXT_DHCP);
+		if(config.ipv4ll.enabled)
+			buf_ptr = _serialize_TXT_record(buf_ptr, TXT_IPV4LL);
 	}
-	//*buf_ptr++ = 0x0; // text length
+	else
+		buf_ptr = _serialize_TXT_record(buf_ptr, TXT_STATIC);
+	//TODO send UID?
+
+	*len = hton(buf_ptr - txt);
 
 	return buf_ptr;
 }

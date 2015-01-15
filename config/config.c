@@ -39,7 +39,6 @@
 #include <sensors.h>
 
 static char string_buf [64];
-static char string_buf2 [64];
 const char *success_str = "/success";
 const char *fail_str = "/fail";
 static const char *local_str = ".local";
@@ -1071,34 +1070,10 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	return 1;
 }
 
-static uint_fast8_t
-_chimaera_discover(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
-{
-	(void)fmt;
-	(void)argc;
-	osc_data_t *buf_ptr = buf;
-	uint16_t size;
-	int32_t uuid;
-
-	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-
-	uid_str(string_buf);
-	uint8_t mask = subnet_to_cidr(config.comm.subnet);
-	ip2strCIDR(config.comm.ip, mask, string_buf2);
-
-	size = CONFIG_SUCCESS("issssss", uuid, path, config.name, string_buf, string_buf2,
-		config.dhcpc.enabled ? "dhcp" : (config.ipv4ll.enabled ? "ipv4ll" : "static"),
-		reset_mode == RESET_MODE_FLASH_SOFT ? "soft" : "hard");
-	CONFIG_SEND(size);
-
-	return 1;
-}
-
 static uint_fast8_t _query(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 
 // globals
 const OSC_Method config_serv [] = {
-	{"/chimaera/discover", "i", _chimaera_discover},
 	{NULL, NULL, _query},
 	{NULL, NULL, NULL} // terminator
 };
