@@ -857,7 +857,16 @@ config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fa
 		strncpy(address_cb.path, path, ADDRESS_CB_LEN-1);
 		address_cb.socket = socket;
 
-		if(str2addr(hostname, ip, &port))
+		if(!strncmp(hostname, "this", 4)) // set IP to requesting IP
+		{
+			if(sscanf(hostname, "this:%hu", &port) == 1) // set port manually
+				address_cb.port = port;
+			else
+				address_cb.port = config.config.osc.socket.port[DST_PORT]; // set port to requesting port
+			memcpy(ip, config.config.osc.socket.ip, 4);
+			_address_dns_cb(ip, &address_cb);
+		}
+		else if(str2addr(hostname, ip, &port))
 		{
 			address_cb.port = port;
 			_address_dns_cb(ip, &address_cb);
