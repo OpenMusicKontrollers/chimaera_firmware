@@ -181,7 +181,7 @@ _serialize_question(uint8_t *buf, char *qname, uint16_t qtype, uint16_t qclass)
 }
 
 static uint8_t *
-_serialize_PTR_services(uint8_t *buf)
+_serialize_PTR_services(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	char *qname;
 	uint16_t len;
@@ -196,7 +196,7 @@ _serialize_PTR_services(uint8_t *buf)
 	qname = hooks[HOOK_OSC].name;
 	len = strlen(qname) + 1;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_SERVICES].name, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_SERVICES].name, MDNS_TYPE_PTR, rclass, ttl, len);
 
 	memcpy(buf_ptr, qname, len);
 	buf_ptr += len;
@@ -205,7 +205,7 @@ _serialize_PTR_services(uint8_t *buf)
 }
 
 static uint8_t * 
-_serialize_PTR_osc(uint8_t *buf)
+_serialize_PTR_osc(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	char *qname;
 	uint16_t len;
@@ -220,7 +220,7 @@ _serialize_PTR_osc(uint8_t *buf)
 	qname = hooks[HOOK_INSTANCE].name;
 	len = strlen(qname) + 1;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_OSC].name, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_OSC].name, MDNS_TYPE_PTR, rclass, ttl, len);
 
 	memcpy(buf_ptr, qname, len);
 	buf_ptr += len;
@@ -260,7 +260,7 @@ _serialize_TXT_record(uint8_t *buf, const char *record)
 }
 
 static uint8_t *
-_serialize_TXT_instance(uint8_t *buf)
+_serialize_TXT_instance(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	uint8_t *buf_ptr = buf;
 	uint16_t *len = NULL;
@@ -271,7 +271,7 @@ _serialize_TXT_instance(uint8_t *buf)
 	else
 		hooks = hooks_tcp;
 
-	buf_ptr = _serialize_answer_inline(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_TXT, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, &len);
+	buf_ptr = _serialize_answer_inline(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_TXT, rclass, ttl, &len);
 
 	uint8_t *txt = buf_ptr;
 	buf_ptr = _serialize_TXT_record(buf_ptr, TXT_TXTVERSION);
@@ -298,7 +298,7 @@ _serialize_TXT_instance(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_SRV_instance(uint8_t *buf)
+_serialize_SRV_instance(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	uint8_t *buf_ptr = buf;
 
@@ -308,7 +308,7 @@ _serialize_SRV_instance(uint8_t *buf)
 	else
 		hooks = hooks_tcp;
 
-	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_SRV, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 6 + len_self);
+	buf_ptr = _serialize_answer(buf_ptr, hooks[HOOK_INSTANCE].name, MDNS_TYPE_SRV, rclass, ttl, 6 + len_self);
 
 	*buf_ptr++ = 0x0; // priority MSB
 	*buf_ptr++ = 0x0; // priority LSB
@@ -327,11 +327,11 @@ _serialize_SRV_instance(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_A_instance(uint8_t *buf)
+_serialize_A_instance(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	uint8_t *buf_ptr = buf;
 
-	buf_ptr = _serialize_answer(buf_ptr, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
+	buf_ptr = _serialize_answer(buf_ptr, hook_self, MDNS_TYPE_A, rclass, ttl, 4);
 
 	memcpy(buf_ptr, config.comm.ip, 4);
 	buf_ptr += 4;
@@ -340,11 +340,11 @@ _serialize_A_instance(uint8_t *buf)
 }
 
 static uint8_t *
-_serialize_PTR_arpa(uint8_t *buf)
+_serialize_PTR_arpa(uint8_t *buf, uint16_t rclass, uint32_t ttl)
 {
 	uint8_t *buf_ptr = buf;
 
-	buf_ptr = _serialize_answer(buf_ptr, hook_arpa, MDNS_TYPE_PTR, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, len_self);
+	buf_ptr = _serialize_answer(buf_ptr, hook_arpa, MDNS_TYPE_PTR, rclass, ttl, len_self);
 
 	memcpy(buf_ptr, hook_self, len_self);
 	buf_ptr += len_self;
@@ -357,15 +357,17 @@ _hook_services(DNS_Query *query)
 {
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
+	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
+	uint32_t ttl = MDNS_DEFAULT_TTL;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 5, 0, 0);
 	// recommended by rfc6763
-	tail = _serialize_PTR_services(tail); 
-	tail = _serialize_PTR_osc(tail);
-	tail = _serialize_TXT_instance(tail);
-	tail = _serialize_SRV_instance(tail);
-	tail = _serialize_A_instance(tail);
+	tail = _serialize_PTR_services(tail, rclass, ttl);
+	tail = _serialize_PTR_osc(tail, rclass, ttl);
+	tail = _serialize_TXT_instance(tail, rclass, ttl);
+	tail = _serialize_SRV_instance(tail, rclass, ttl);
+	tail = _serialize_A_instance(tail, rclass, ttl);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -375,14 +377,16 @@ _hook_osc(DNS_Query *query)
 {
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
+	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
+	uint32_t ttl = MDNS_DEFAULT_TTL;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 4, 0, 0);
 	// recommended by rfc6763
-	tail = _serialize_PTR_osc(tail);
-	tail = _serialize_TXT_instance(tail);
-	tail = _serialize_SRV_instance(tail);
-	tail = _serialize_A_instance(tail);
+	tail = _serialize_PTR_osc(tail, rclass, ttl);
+	tail = _serialize_TXT_instance(tail, rclass, ttl);
+	tail = _serialize_SRV_instance(tail, rclass, ttl);
+	tail = _serialize_A_instance(tail, rclass, ttl);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -392,13 +396,15 @@ _hook_instance(DNS_Query *query)
 {
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
+	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
+	uint32_t ttl = MDNS_DEFAULT_TTL;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 3, 0, 0);
 	// recommended by rfc6763
-	tail = _serialize_TXT_instance(tail);
-	tail = _serialize_SRV_instance(tail);
-	tail = _serialize_A_instance(tail);
+	tail = _serialize_TXT_instance(tail, rclass, ttl);
+	tail = _serialize_SRV_instance(tail, rclass, ttl);
+	tail = _serialize_A_instance(tail, rclass, ttl);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -408,9 +414,11 @@ _hook_arpa(DNS_Query *query)
 {
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
+	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
+	uint32_t ttl = MDNS_DEFAULT_TTL;
 
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
-	tail = _serialize_PTR_arpa(tail);
+	tail = _serialize_PTR_arpa(tail, rclass, ttl);
 
 	udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 }
@@ -662,39 +670,90 @@ mdns_dispatch(uint8_t *buf, uint16_t len)
 	}
 }
 
-void mdns_announce()
+#if 0
+void mdns_probe()
 {
 	len_self = _update_hook_self(config.name);
 	len_instance = _update_hook_instance(config.name);
 	len_arpa = _update_hook_arpa(config.comm.ip);
 
 	int i;
-	for(i=0; i<2; i++)
+	for(i=0; i<3; i++)
+	{
+		uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
+		uint8_t *tail = head;
+		
+		uint16_t id = rand() & 0xffff;
+		tail = _serialize_query(tail, id, MDNS_FLAGS_AA, 0, 1, 0, 0);
+		tail = _serialize_question(tail, hook_self, MDNS_TYPE_ANY, MDNS_CLASS_INET);
+		
+		udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
+
+		// wait 250ms second
+		uint32_t tick = systick_uptime();
+		while(systick_uptime() - tick < SNTP_SYSTICK_RATE / 4)
+			;
+
+		//FIXME listen for collisions with hook_self
+	}
+}
+#endif
+
+static void
+_mdns_tell(int count, uint16_t rclass, uint32_t ttl)
+{
+	len_self = _update_hook_self(config.name);
+	len_instance = _update_hook_instance(config.name);
+	len_arpa = _update_hook_arpa(config.comm.ip);
+
+	int i;
+	for(i=0; i<count; i++)
 	{
 		uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 		uint8_t *tail = head;
 		
 		uint16_t id = rand() & 0xffff;
 		tail = _serialize_query(tail, id, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 5, 0, 0);
-		tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
+		tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, rclass, ttl, 4);
 		
 		memcpy(tail, config.comm.ip, 4);
 		tail += 4;
 
 		// append dns-sd services here, too
-		tail = _serialize_PTR_services(tail); 
-		tail = _serialize_PTR_osc(tail);
-		tail = _serialize_TXT_instance(tail);
-		tail = _serialize_SRV_instance(tail);
-		tail = _serialize_A_instance(tail);
+		tail = _serialize_PTR_services(tail, rclass, ttl);
+		tail = _serialize_PTR_osc(tail, rclass, ttl);
+		tail = _serialize_TXT_instance(tail, rclass, ttl);
+		tail = _serialize_SRV_instance(tail, rclass, ttl);
+		tail = _serialize_A_instance(tail, rclass, ttl);
 		
 		udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
+
+		if(i == count-1)
+			break;
 
 		// wait a second
 		uint32_t tick = systick_uptime();
 		while(systick_uptime() - tick < SNTP_SYSTICK_RATE)
 			;
 	}
+}
+
+void
+mdns_announce()
+{
+	_mdns_tell(2, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL);
+}
+
+void
+mdns_update()
+{
+	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL);
+}
+
+void
+mdns_goodbye()
+{
+	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_GOODBYE_TTL);
 }
 
 void

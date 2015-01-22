@@ -503,6 +503,9 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf
 		buf_ptr = osc_get_string(buf_ptr, &s);
 		strcpy(config.name, s);
 		size = CONFIG_SUCCESS("is", uuid, path);
+
+		if(config.mdns.socket.enabled)
+			mdns_update(); // announce new name
 	}
 
 	CONFIG_SEND(size);
@@ -638,12 +641,12 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				*gateway_ptr =(*ip_ptr) & (*subnet_ptr); // default gateway =(ip & subnet)
 				wiz_gateway_set(config.comm.gateway);
 			}
+			
+			size = CONFIG_SUCCESS("is", uuid, path);
 
 			//FIXME disrupts PTP
 			if(config.mdns.socket.enabled)
-				mdns_announce(); // announce new IP
-			
-			size = CONFIG_SUCCESS("is", uuid, path);
+				mdns_update(); // announce new IP
 		}
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "ip invalid, format: x.x.x.x/x");
@@ -930,7 +933,7 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 		config_enable(enabled);
 
 		if(config.mdns.socket.enabled)
-			mdns_announce(); // announce new IP
+			mdns_update(); // announce new mode
 	}
 
 	return 1;
@@ -1026,6 +1029,9 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT);
 	bkp_disable_writes();
 
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
+
 	nvic_sys_reset();
 
 	return 1;
@@ -1050,6 +1056,9 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
 	bkp_disable_writes();
 
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
+
 	nvic_sys_reset();
 
 	return 1;
@@ -1073,6 +1082,9 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	bkp_enable_writes();
 	bkp_write(RESET_MODE_REG, RESET_MODE_SYSTEM_FLASH);
 	bkp_disable_writes();
+
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
 
 	nvic_sys_reset();
 

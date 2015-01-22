@@ -74,11 +74,14 @@ struct _DNS_Query {
 #define MDNS_TYPE_PTR					0x000c
 #define MDNS_TYPE_TXT					0x0010
 #define MDNS_TYPE_SRV					0x0021
+#define MDNS_TYPE_ANY					0x00ff
 
 #define MDNS_CLASS_INET				0x0001
 #define MDNS_CLASS_FLUSH			0x8000
+#define MDNS_CLASS_UNICAST		0x8000
 
 #define MDNS_DEFAULT_TTL			0x00001194 // 1h 15m
+#define MDNS_GOODBYE_TTL			0x00000000
 
 struct _DNS_Question {
 	uint16_t QTYPE;

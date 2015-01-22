@@ -29,6 +29,8 @@ typedef void(*mDNS_Resolve_Cb)(uint8_t *ip, void *data);
 void mdns_dispatch(uint8_t *buf, uint16_t len);
 
 void mdns_announce(void);
+void mdns_update(void);
+void mdns_goodbye(void);
 
 //TODO allow multiple concurrent resolvings
 void mdns_resolve_timeout(void);
