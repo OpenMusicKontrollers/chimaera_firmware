@@ -358,7 +358,7 @@ _hook_services(DNS_Query *query)
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
 	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
-	uint32_t ttl = MDNS_DEFAULT_TTL;
+	uint32_t ttl = MDNS_TTL_75MIN;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 5, 0, 0);
@@ -378,7 +378,7 @@ _hook_osc(DNS_Query *query)
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
 	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
-	uint32_t ttl = MDNS_DEFAULT_TTL;
+	uint32_t ttl = MDNS_TTL_75MIN;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 4, 0, 0);
@@ -397,7 +397,7 @@ _hook_instance(DNS_Query *query)
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
 	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
-	uint32_t ttl = MDNS_DEFAULT_TTL;
+	uint32_t ttl = MDNS_TTL_75MIN;
 
 	// mandatory
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 3, 0, 0);
@@ -415,7 +415,7 @@ _hook_arpa(DNS_Query *query)
 	uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
 	uint8_t *tail = head;
 	uint16_t rclass = MDNS_CLASS_FLUSH | MDNS_CLASS_INET;
-	uint32_t ttl = MDNS_DEFAULT_TTL;
+	uint32_t ttl = MDNS_TTL_75MIN;
 
 	tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
 	tail = _serialize_PTR_arpa(tail, rclass, ttl);
@@ -538,39 +538,42 @@ _dns_question(DNS_Query *query, uint8_t *buf)
 	question->QCLASS = hton(question->QCLASS);
 	buf_ptr += sizeof(DNS_Question);
 
+	// TODO answer as unicast
+	//uint_fast8_t unicast = question->QCLASS & MDNS_CLASS_UNICAST;
+
 	if( (question->QCLASS & 0x7fff) == MDNS_CLASS_INET) // check question class
-		switch(question->QTYPE)
+	{
+		// for IP mDNS lookup
+		if(  (question->QTYPE == MDNS_TYPE_A)
+			|| (question->QTYPE == MDNS_TYPE_AAAA)
+			|| (question->QTYPE == MDNS_TYPE_ANY) )
 		{
-			case MDNS_TYPE_A: // for mDNS lookup
+			// reply with current IP when there is a request for our name
+			if(!strncmp(hook_self, qname, len_self))
 			{
-				// reply with current IP when there is a request for our name
-				if(!strncmp(hook_self, qname, len_self))
-				{
-					uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
-					uint8_t *tail = head;
+				uint8_t *head = BUF_O_OFFSET(buf_o_ptr);
+				uint8_t *tail = head;
 
-					tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
-					tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL, 4);
+				tail = _serialize_query(tail, query->ID, MDNS_FLAGS_QR | MDNS_FLAGS_AA, 0, 1, 0, 0);
+				//FIXME append negative response for IPv6 via NSEC record
+				tail = _serialize_answer(tail, hook_self, MDNS_TYPE_A, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_TTL_75MIN, 4);
 
-					memcpy(tail, config.comm.ip, 4);
-					tail += 4;
+				memcpy(tail, config.comm.ip, 4);
+				tail += 4;
 
-					udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
-				}
-				break;
+				udp_send(config.mdns.socket.sock, BUF_O_BASE(buf_o_ptr), tail-head);
 			}
-			case MDNS_TYPE_PTR: // for mDNS reverse-lookup and for mDNS-SD(service discovery)
-			{
-				DNS_PTR_Method *hook;
-				for(hook=hooks; hook->name; hook++)
-					if(!strcmp(hook->name, qname)) // is there a hook with this qname registered?
-						hook->cb(query);
-				break;
-			}
-			default:
-				// ignore remaining question types, e.g. MDNS_TYPE_SRV
-				break;
 		}
+
+		// for mDNS reverse-lookup and for mDNS-SD(service discovery)
+		if( (question->QTYPE == MDNS_TYPE_PTR) || (question->QTYPE == MDNS_TYPE_ANY) )
+		{
+			DNS_PTR_Method *hook;
+			for(hook=hooks; hook->name; hook++)
+				if(!strcmp(hook->name, qname)) // is there a hook with this qname registered?
+					hook->cb(query);
+		}
+	}
 
 	return buf_ptr;
 }
@@ -596,6 +599,8 @@ _dns_answer(DNS_Query *query, uint8_t *buf)
 			// ignore when qname was not requested by us previously
 			if(!resolve.cb || strcmp(qname, resolve.name))
 				break;
+		
+			//TODO handle conflicts when probing
 
 			uint8_t *ip = (uint8_t *)buf_ptr; 
 			if(ip_part_of_subnet(ip)) // check IP for same subnet TODO make this configurable
@@ -741,19 +746,19 @@ _mdns_tell(int count, uint16_t rclass, uint32_t ttl)
 void
 mdns_announce()
 {
-	_mdns_tell(2, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL);
+	_mdns_tell(2, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_TTL_75MIN);
 }
 
 void
 mdns_update()
 {
-	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_DEFAULT_TTL);
+	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_TTL_75MIN);
 }
 
 void
 mdns_goodbye()
 {
-	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_GOODBYE_TTL);
+	_mdns_tell(1, MDNS_CLASS_FLUSH | MDNS_CLASS_INET, MDNS_TTL_NULL);
 }
 
 void

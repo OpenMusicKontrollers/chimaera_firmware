@@ -80,8 +80,9 @@ struct _DNS_Query {
 #define MDNS_CLASS_FLUSH			0x8000
 #define MDNS_CLASS_UNICAST		0x8000
 
-#define MDNS_DEFAULT_TTL			0x00001194 // 1h 15m
-#define MDNS_GOODBYE_TTL			0x00000000
+#define MDNS_TTL_75MIN			0x00001194
+#define MDNS_TTL_120SEC			0x00000078
+#define MDNS_TTL_NULL				0x00000000
 
 struct _DNS_Question {
 	uint16_t QTYPE;
