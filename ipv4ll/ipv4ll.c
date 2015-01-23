@@ -23,6 +23,7 @@
 #include <ipv4ll.h>
 #include <config.h>
 #include <arp.h>
+#include <mdns-sd.h>
 
 static const uint8_t link_local_gateway [] = {169, 254, 0, 0};
 static const uint8_t link_local_subnet [] = {255, 255, 0, 0};
@@ -67,8 +68,15 @@ IPv4LL_claim(uint8_t *ip, uint8_t *gateway, uint8_t *subnet)
 static uint_fast8_t
 _ipv4ll_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	uint8_t enabled = config.ipv4ll.enabled;
+
 	// needs a config save and reboot to take action
-	return config_check_bool(path, fmt, argc, buf, &config.ipv4ll.enabled);
+	uint_fast8_t ret = config_check_bool(path, fmt, argc, buf, &config.ipv4ll.enabled);
+
+	if(config.mdns.socket.enabled && (enabled != config.ipv4ll.enabled) )
+		mdns_update(); // announce new name
+
+	return ret;
 }
 
 /*

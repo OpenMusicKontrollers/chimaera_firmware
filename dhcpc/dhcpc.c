@@ -26,6 +26,7 @@
 #include <sntp.h>
 #include <chimutil.h>
 #include <arp.h>
+#include <mdns-sd.h>
 
 // global
 DHCPC dhcpc = {
@@ -462,8 +463,15 @@ dhcpc_refresh()
 static uint_fast8_t
 _dhcpc_enabled(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
+	uint8_t enabled = config.dhcpc.enabled;
+
 	// needs a config save and reboot to take action
-	return config_check_bool(path, fmt, argc, buf, &config.dhcpc.enabled);
+	uint_fast8_t ret = config_check_bool(path, fmt, argc, buf, &config.dhcpc.enabled);
+
+	if(config.mdns.socket.enabled && (enabled != config.dhcpc.enabled) )
+		mdns_update(); // announce new name
+
+	return ret;
 }
 
 /*

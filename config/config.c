@@ -502,10 +502,12 @@ _info_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf
 		const char *s;
 		buf_ptr = osc_get_string(buf_ptr, &s);
 		strcpy(config.name, s);
-		size = CONFIG_SUCCESS("is", uuid, path);
 
+		//FIXME we should do a probe to look for an existing name
 		if(config.mdns.socket.enabled)
 			mdns_update(); // announce new name
+
+		size = CONFIG_SUCCESS("is", uuid, path);
 	}
 
 	CONFIG_SEND(size);
@@ -641,12 +643,13 @@ _comm_ip(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 				*gateway_ptr =(*ip_ptr) & (*subnet_ptr); // default gateway =(ip & subnet)
 				wiz_gateway_set(config.comm.gateway);
 			}
-			
-			size = CONFIG_SUCCESS("is", uuid, path);
 
 			//FIXME disrupts PTP
+			//FIXME we should do a probe to look for an existing name
 			if(config.mdns.socket.enabled)
 				mdns_update(); // announce new IP
+
+			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
 			size = CONFIG_FAIL("iss", uuid, path, "ip invalid, format: x.x.x.x/x");
@@ -916,6 +919,9 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	}
 	else
 	{
+		if(config.mdns.socket.enabled)
+			mdns_goodbye(); // invalidate currently registered services
+
 		// XXX need to send reply before disabling socket...
 		size = CONFIG_SUCCESS("is", uuid, path);
 		CONFIG_SEND(size);
@@ -933,7 +939,7 @@ _config_mode(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 		config_enable(enabled);
 
 		if(config.mdns.socket.enabled)
-			mdns_update(); // announce new mode
+			mdns_announce(); // announce new mode
 	}
 
 	return 1;
@@ -1021,6 +1027,9 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
+
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
 
@@ -1028,9 +1037,6 @@ _reset_soft(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 	bkp_enable_writes();
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_SOFT);
 	bkp_disable_writes();
-
-	if(config.mdns.socket.enabled)
-		mdns_goodbye(); // invalidate currently registered IP and services
 
 	nvic_sys_reset();
 
@@ -1048,6 +1054,9 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
+
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
 
@@ -1055,9 +1064,6 @@ _reset_hard(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *bu
 	bkp_enable_writes();
 	bkp_write(RESET_MODE_REG, RESET_MODE_FLASH_HARD);
 	bkp_disable_writes();
-
-	if(config.mdns.socket.enabled)
-		mdns_goodbye(); // invalidate currently registered IP and services
 
 	nvic_sys_reset();
 
@@ -1075,6 +1081,9 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
+	if(config.mdns.socket.enabled)
+		mdns_goodbye(); // invalidate currently registered IP and services
+
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
 
@@ -1082,9 +1091,6 @@ _reset_flash(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	bkp_enable_writes();
 	bkp_write(RESET_MODE_REG, RESET_MODE_SYSTEM_FLASH);
 	bkp_disable_writes();
-
-	if(config.mdns.socket.enabled)
-		mdns_goodbye(); // invalidate currently registered IP and services
 
 	nvic_sys_reset();
 
