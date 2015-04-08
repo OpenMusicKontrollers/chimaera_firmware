@@ -20,7 +20,7 @@ export USER_MODULES := $(shell pwd)
 export USB_VENDOR := 0x0483
 export USB_PRODUCT := 0xdf11
 
-RELEASE := 0x0001
+RELEASE := 0x0004
 VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(REVISION)
 BIN := build/$(BOARD).bin
 DFU := build/chimaera_S$(SENSORS)-$(VERSION).dfu
@@ -40,7 +40,7 @@ dfu: $(DFU)
 $(DFU): $(BIN)
 	dfuse_pack \
 		-o $@ \
-		-f 0x0001 \
+		-f $(RELEASE) \
 		-v $(USB_VENDOR) \
 		-p $(USB_PRODUCT) \
 			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'. Copyright (c) 2015 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under Artistic License 2.0. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
