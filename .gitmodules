@@ -1,4 +1,3 @@
 [submodule "libmaple_F3"]
 	path = libmaple_F3
 	url = https://github.com/ventosus/libmaple.git
-	branch = F3

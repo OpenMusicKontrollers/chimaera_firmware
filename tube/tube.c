@@ -23,6 +23,7 @@
 #include <libmaple/adc.h>
 #include <libmaple/spi.h>
 
+#if(ADC_DUAL_LENGTH > 0)
 dma_tube_config adc_tube12 = {
 	.tube_src = &ADC12_BASE->CDR,
 	.tube_src_size = DMA_SIZE_32BITS,
@@ -33,7 +34,9 @@ dma_tube_config adc_tube12 = {
 	.target_data = NULL,
 	.tube_req_src = DMA_REQ_SRC_ADC1
 };
+#endif
 
+#if(ADC_SING_LENGTH > 0)
 dma_tube_config adc_tube3 = {
 	.tube_src = &ADC3_BASE->DR,
 	.tube_src_size = DMA_SIZE_16BITS,
@@ -44,6 +47,7 @@ dma_tube_config adc_tube3 = {
 	.target_data = NULL,
 	.tube_req_src = DMA_REQ_SRC_ADC3
 };
+#endif
 
 dma_tube_config spi_rx_tube = {
 	.tube_src = &WIZ_SPI_BAS->DR,

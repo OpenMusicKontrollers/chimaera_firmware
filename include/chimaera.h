@@ -199,10 +199,19 @@ extern uint8_t buf_i[1] [CHIMAERA_BUFSIZE]; // general purpose input buffer
 #define BUF_O_MAX(ptr)(buf_o[ptr] + CHIMAERA_BUFSIZE - (WIZ_SEND_OFFSET-3)) // WIZ5500
 
 #define adc_timer TIMER1
+#define NVIC_ADC_TIMER	NVIC_TIMER1_CC
+
 #define sync_timer TIMER2
-#define mdns_timer TIMER3
-#define dhcpc_timer TIMER4
-#define ptp_timer TIMER8
+#define NVIC_SYNC_TIMER NVIC_TIMER2
+
+#define ptp_timer TIMER3
+#define NVIC_PTP_TIMER NVIC_TIMER3
+
+#define mdns_timer TIMER4
+#define NVIC_MDNS_TIMER NVIC_TIMER4
+
+#define dhcpc_timer TIMER15
+#define NVIC_DHCP_TIMER NVIC_TIMER1_BRK_TIMER15
 
 void cpp_setup(void);
 

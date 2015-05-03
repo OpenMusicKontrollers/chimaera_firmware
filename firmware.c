@@ -906,7 +906,7 @@ adc_timer_reconfigure(void)
 	timer_attach_interrupt(adc_timer, TIMER_CH1, adc_timer_irq);
 	timer_generate_update(adc_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER1_CC, ADC_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_ADC_TIMER, ADC_TIMER_PRIORITY);
 }
 
 void 
@@ -923,7 +923,7 @@ sync_timer_reconfigure(void)
 	timer_attach_interrupt(sync_timer, TIMER_CH1, sync_timer_irq);
 	timer_generate_update(sync_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER2, SYNC_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_SYNC_TIMER, SYNC_TIMER_PRIORITY);
 }
 
 void 
@@ -940,7 +940,7 @@ ptp_timer_reconfigure(float sec)
 	timer_attach_interrupt(ptp_timer, TIMER_CH1, ptp_timer_irq);
 	timer_generate_update(ptp_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER8_CC, SYNC_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_PTP_TIMER, SYNC_TIMER_PRIORITY);
 }
 
 void 
@@ -957,7 +957,7 @@ dhcpc_timer_reconfigure(void)
 	timer_attach_interrupt(dhcpc_timer, TIMER_CH1, dhcpc_timer_irq);
 	timer_generate_update(dhcpc_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER4, DHCPC_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_DHCP_TIMER, DHCPC_TIMER_PRIORITY);
 }
 
 void 
@@ -974,7 +974,7 @@ mdns_timer_reconfigure(void)
 	timer_attach_interrupt(mdns_timer, TIMER_CH1, mdns_timer_irq);
 	timer_generate_update(mdns_timer);
 
-	nvic_irq_set_priority(NVIC_TIMER3, MDNS_TIMER_PRIORITY);
+	nvic_irq_set_priority(NVIC_MDNS_TIMER, MDNS_TIMER_PRIORITY);
 }
 
 void setup(void);
@@ -1187,20 +1187,28 @@ setup(void)
 		mdns_announce(); // announce new IP
 
 	// set up ADCs
+#if(ADC_DUAL_LENGTH > 0)
 	adc_disable(ADC1);
 	adc_disable(ADC2);
+#endif
+#if(ADC_SING_LENGTH > 0)
 	adc_disable(ADC3);
 	adc_disable(ADC4);
+#endif
 
 	adc_set_prescaler(ADC_PRE_PCLK_DIV_1);
 
+#if(ADC_DUAL_LENGTH > 0)
 	adc_set_exttrig(ADC1, ADC_EXTTRIG_MODE_SOFTWARE);
 	adc_set_exttrig(ADC2, ADC_EXTTRIG_MODE_SOFTWARE);
-	adc_set_exttrig(ADC3, ADC_EXTTRIG_MODE_SOFTWARE);
-
 	adc_set_sample_rate(ADC1, ADC_SMPR_181_5);
 	adc_set_sample_rate(ADC2, ADC_SMPR_181_5);
+#endif
+
+#if(ADC_SING_LENGTH > 0)
+	adc_set_exttrig(ADC3, ADC_EXTTRIG_MODE_SOFTWARE);
 	adc_set_sample_rate(ADC3, ADC_SMPR_181_5);
+#endif
 
 #if(ADC_UNUSED_LENGTH > 0)
 	// setup analog input pins
