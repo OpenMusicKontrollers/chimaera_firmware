@@ -36,7 +36,10 @@ static const char *on_str = "/s_new";
 static const char *set_str = "/n_setn";
 static const char *off_str = "/n_set";
 
-static const char *on_fmt = "siiiiisisi";
+static const char *on_fmt [2] = {
+	[0] = "siiiiisi",		// !gate
+	[1] = "siiiiisisi"	// gate
+};
 static const char *off_fmt = "isi";
 static const char *set_fmt [2] = {
 	[0] = "iiiff",	// !derivatives
@@ -99,7 +102,7 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 		{
 			buf_ptr = osc_set_path(buf_ptr, end, on_str);
-			buf_ptr = osc_set_fmt(buf_ptr, end, on_fmt);
+			buf_ptr = osc_set_fmt(buf_ptr, end, on_fmt[group->gate]);
 
 			buf_ptr = osc_set_string(buf_ptr, end, group->name); // synthdef name 
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
@@ -107,35 +110,49 @@ scsynth_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 			buf_ptr = osc_set_int32(buf_ptr, end, group->group); // group id
 			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 4);
 			buf_ptr = osc_set_int32(buf_ptr, end, bev->pid);
-			buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
-			buf_ptr = osc_set_int32(buf_ptr, end, 1);
+			if(group->gate)
+			{
+				buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
+				buf_ptr = osc_set_int32(buf_ptr, end, 1);
+			}
 			buf_ptr = osc_set_string(buf_ptr, end, (char *)out_str);
 			buf_ptr = osc_set_int32(buf_ptr, end, group->out);
 		}
 		buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 	}
-
-	// message to start synth
-	if(group->gate)
+	else if(group->gate)
 	{
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
 		{
-			buf_ptr = osc_set_path(buf_ptr, end, set_str);
-			buf_ptr = osc_set_fmt(buf_ptr, end, set_fmt[config.scsynth.derivatives]);
+			buf_ptr = osc_set_path(buf_ptr, end, off_str);
+			buf_ptr = osc_set_fmt(buf_ptr, end, off_fmt);
 
 			buf_ptr = osc_set_int32(buf_ptr, end, id);
-			buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
-			buf_ptr = osc_set_int32(buf_ptr, end, config.scsynth.derivatives ? 4 : 2);
-			buf_ptr = osc_set_float(buf_ptr, end, bev->x);
-			buf_ptr = osc_set_float(buf_ptr, end, bev->y);
-			if(config.scsynth.derivatives)
-			{
-				buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
-				buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
-			}
+			buf_ptr = osc_set_string(buf_ptr, end, (char *)gate_str);
+			buf_ptr = osc_set_int32(buf_ptr, end, 1);
+
 		}
 		buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 	}
+
+	// first set message
+	buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
+	{
+		buf_ptr = osc_set_path(buf_ptr, end, set_str);
+		buf_ptr = osc_set_fmt(buf_ptr, end, set_fmt[config.scsynth.derivatives]);
+
+		buf_ptr = osc_set_int32(buf_ptr, end, id);
+		buf_ptr = osc_set_int32(buf_ptr, end, group->arg + 0);
+		buf_ptr = osc_set_int32(buf_ptr, end, config.scsynth.derivatives ? 4 : 2);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->x);
+		buf_ptr = osc_set_float(buf_ptr, end, bev->y);
+		if(config.scsynth.derivatives)
+		{
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vx);
+			buf_ptr = osc_set_float(buf_ptr, end, bev->vy);
+		}
+	}
+	buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
 	
 	return buf_ptr;
 }
