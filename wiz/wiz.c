@@ -742,9 +742,9 @@ tcp_dispatch(uint8_t sock, uint8_t *ip, uint16_t port, uint8_t *i_buf, Wiz_UDP_D
 			size_t parsed = slip_decode(tmp_buf_i_ptr, len, &size);
 			if(parsed > 0)
 			{
+				tcp_skip(sock, parsed);
 				if(size > 0)
 					cb(ip, port, tmp_buf_i_ptr, size);
-				tcp_skip(sock, parsed);
 			}
 		}
 	}
