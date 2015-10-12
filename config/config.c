@@ -421,6 +421,31 @@ config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 }
 
 uint_fast8_t
+config_check_uint16(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint16_t *val)
+{
+	(void)fmt;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	if(argc == 1) // query
+		size = CONFIG_SUCCESS("isi", uuid, path, *val);
+	else
+	{
+		int32_t i;
+		buf_ptr = osc_get_int32(buf_ptr, &i);
+		*val = i;
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+uint_fast8_t
 config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val)
 {
 	(void)fmt;

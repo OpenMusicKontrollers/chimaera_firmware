@@ -226,40 +226,6 @@ CMC_Engine scsynth_engine = {
 	scsynth_engine_end_cb
 };
 
-static void
-scsynth_group_get(uint_fast8_t gid, char **name, uint16_t *sid, uint16_t *group, uint16_t *out, uint8_t *arg,
-										uint8_t *alloc, uint8_t *gate, uint8_t *add_action, uint8_t *is_group)
-{
-	SCSynth_Group *grp = &scsynth_groups[gid];
-
-	*name = grp->name;
-	*sid = grp->sid;
-	*group = grp->group;
-	*out = grp->out;
-	*arg = grp->arg;
-	*alloc = grp->alloc;
-	*gate = grp->gate;
-	*add_action = grp->add_action;
-	*is_group = grp->is_group;
-}
-
-static void
-scsynth_group_set(uint_fast8_t gid, const char *name, uint16_t sid, uint16_t group, uint16_t out, uint8_t arg,
-										uint8_t alloc, uint8_t gate, uint8_t add_action, uint8_t is_group)
-{
-	SCSynth_Group *grp = &scsynth_groups[gid];
-
-	strcpy(grp->name, name);
-	grp->sid = sid;
-	grp->group = group;
-	grp->out = out;
-	grp->arg = arg;
-	grp->alloc = alloc;
-	grp->gate = gate;
-	grp->add_action = add_action;
-	grp->is_group = is_group;
-}
-
 /*
  * Config
  */
@@ -276,66 +242,6 @@ static uint_fast8_t
 _scsynth_derivatives(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	return config_check_bool(path, fmt, argc, buf, &config.scsynth.derivatives);
-}
-
-static uint_fast8_t
-_scsynth_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
-{
-	(void)fmt;
-	osc_data_t *buf_ptr = buf;
-	uint16_t size;
-	uint16_t gid;
-	int32_t uuid;
-
-	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	
-	sscanf(path, "/engines/scsynth/attributes/%hu", &gid);
-
-	if(argc == 1)
-	{
-		char *name;
-		uint16_t sid;
-		uint16_t group;
-		uint16_t out;
-		uint8_t arg;
-		uint8_t alloc;
-		uint8_t gate;
-		uint8_t add_action;
-		uint8_t is_group;
-
-		scsynth_group_get(gid, &name, &sid, &group, &out, &arg, &alloc, &gate, &add_action, &is_group);
-		size = CONFIG_SUCCESS("issiiiiiiii", uuid, path, name, sid, group, out, arg,
-			alloc?1:0, gate?1:0, add_action, is_group?1:0);
-	}
-	else // argc == 11
-	{
-		const char *name;
-		int32_t sid;
-		int32_t group;
-		int32_t out;
-		int32_t arg;
-		int32_t alloc;
-		int32_t gate;
-		int32_t add_action;
-		int32_t is_group;
-
-		buf_ptr = osc_get_string(buf_ptr, &name);
-		buf_ptr = osc_get_int32(buf_ptr, &sid);
-		buf_ptr = osc_get_int32(buf_ptr, &group);
-		buf_ptr = osc_get_int32(buf_ptr, &out);
-		buf_ptr = osc_get_int32(buf_ptr, &arg);
-		buf_ptr = osc_get_int32(buf_ptr, &alloc);
-		buf_ptr = osc_get_int32(buf_ptr, &gate);
-		buf_ptr = osc_get_int32(buf_ptr, &add_action);
-		buf_ptr = osc_get_int32(buf_ptr, &is_group);
-
-		scsynth_group_set(gid, name, sid, group, out, arg, alloc, gate, add_action, is_group);
-		size = CONFIG_SUCCESS("is", uuid, path);
-	}
-
-	CONFIG_SEND(size);
-
-	return 1;
 }
 
 static uint_fast8_t
@@ -370,31 +276,152 @@ _scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	return 1;
 }
 
+#define SCSYNTH_GID(PATH) \
+({ \
+	uint16_t _gid = 0; \
+ 	sscanf(PATH, "/engines/scsynth/attributes/%hu/", &_gid); \
+ 	(&scsynth_groups[_gid]); \
+})
+
+static uint_fast8_t
+_scsynth_name(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	(void)fmt;
+	(void)argc;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	int32_t uuid;
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	if(argc == 1)
+	{
+		size = CONFIG_SUCCESS("iss", uuid, path, grp->name);
+	}
+	else // argc == 2
+	{
+		const char *name;
+		buf_ptr = osc_get_string(buf_ptr, &name);
+		strcpy(grp->name, name);
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_scsynth_sid_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_uint16(path, fmt, argc, buf, &grp->sid);
+}
+
+static uint_fast8_t
+_scsynth_gid_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_uint16(path, fmt, argc, buf, &grp->group);
+}
+
+static uint_fast8_t
+_scsynth_out(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_uint16(path, fmt, argc, buf, &grp->out);
+}
+
+static uint_fast8_t
+_scsynth_arg_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_uint8(path, fmt, argc, buf, &grp->arg);
+}
+
+static uint_fast8_t
+_scsynth_allocate(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_bool(path, fmt, argc, buf, &grp->alloc);
+}
+
+static uint_fast8_t
+_scsynth_gate(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_bool(path, fmt, argc, buf, &grp->gate);
+}
+
+static uint_fast8_t
+_scsynth_tail(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_bool(path, fmt, argc, buf, &grp->add_action);
+}
+
+static uint_fast8_t
+_scsynth_group(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	SCSynth_Group *grp = SCSYNTH_GID(path);
+
+	return config_check_bool(path, fmt, argc, buf, &grp->is_group);
+}
+
 /*
  * Query
  */
 
-static const OSC_Query_Argument scsynth_attributes_args [] = {
-	OSC_QUERY_ARGUMENT_STRING("Name", OSC_QUERY_MODE_RW, 8),
-	OSC_QUERY_ARGUMENT_INT32("Synth ID offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	OSC_QUERY_ARGUMENT_INT32("Group ID offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	OSC_QUERY_ARGUMENT_INT32("Out channel", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1),
-	OSC_QUERY_ARGUMENT_INT32("Argument offset", OSC_QUERY_MODE_RW, 0, UINT8_MAX, 1),
-	OSC_QUERY_ARGUMENT_BOOL("Allocate?", OSC_QUERY_MODE_RW),
-	OSC_QUERY_ARGUMENT_BOOL("Gate?", OSC_QUERY_MODE_RW),
-	OSC_QUERY_ARGUMENT_BOOL("AddToTail?", OSC_QUERY_MODE_RW),
-	OSC_QUERY_ARGUMENT_BOOL("Group?", OSC_QUERY_MODE_RW)
+static const OSC_Query_Argument name_args [] = {
+	OSC_QUERY_ARGUMENT_STRING("String", OSC_QUERY_MODE_RW, 8),
 };
 
-static const OSC_Query_Item scsynth_attribute_tree [] = {
-	OSC_QUERY_ITEM_METHOD("%i", "Group %i", _scsynth_attributes, scsynth_attributes_args),
+static const OSC_Query_Argument sid_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1)
+};
+
+static const OSC_Query_Argument gid_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Offset", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1)
+};
+
+static const OSC_Query_Argument out_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Channel", OSC_QUERY_MODE_RW, 0, UINT16_MAX, 1)
+};
+
+static const OSC_Query_Argument off_args [] = {
+	OSC_QUERY_ARGUMENT_INT32("Offset", OSC_QUERY_MODE_RW, 0, UINT8_MAX, 1)
+};
+
+static const OSC_Query_Item scsynth_attributes_tree [] = {
+	OSC_QUERY_ITEM_METHOD("name", "Synth name", _scsynth_name, name_args),
+	OSC_QUERY_ITEM_METHOD("sid_offset", "Synth ID offset", _scsynth_sid_offset, sid_args),
+	OSC_QUERY_ITEM_METHOD("gid_offset", "Group ID offset", _scsynth_gid_offset, gid_args),
+	OSC_QUERY_ITEM_METHOD("out", "Out channel", _scsynth_out, out_args),
+	OSC_QUERY_ITEM_METHOD("arg_offset", "Argument offset", _scsynth_arg_offset, off_args),
+	OSC_QUERY_ITEM_METHOD("allocate", "Allocate synth?", _scsynth_allocate, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("gate", "Toggle gate?", _scsynth_gate, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("tail", "Add to tail?", _scsynth_tail, config_boolean_args),
+	OSC_QUERY_ITEM_METHOD("group", "Is group?", _scsynth_group, config_boolean_args),
+};
+
+static const OSC_Query_Item group_array [] = {
+	OSC_QUERY_ITEM_NODE("%i/", "Group", scsynth_attributes_tree)
 };
 
 const OSC_Query_Item scsynth_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _scsynth_enabled, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("derivatives", "Calculate derivatives", _scsynth_derivatives, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _scsynth_reset, NULL),
-	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", scsynth_attribute_tree, GROUP_MAX)
+	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_array, GROUP_MAX)
 };
 
 #undef M

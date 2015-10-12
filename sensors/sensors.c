@@ -250,51 +250,80 @@ _group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	return 1;
 }
 
+#define SENSORS_GID(PATH) \
+({ \
+	uint16_t _gid = 0; \
+ 	sscanf(PATH, "/sensors/group/attributes/%hu/", &_gid); \
+ 	(&cmc_groups[_gid]); \
+})
+
 static uint_fast8_t
-_group_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_group_min(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
-	(void)fmt;
-	osc_data_t *buf_ptr = buf;
-	uint16_t size;
-	uint16_t gid;
-	int32_t uuid;
+	CMC_Group *grp = SENSORS_GID(path);
 
-	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+	uint_fast8_t ret = config_check_float(path, fmt, argc, buf, &grp->x0);
+	if(grp->m != CMC_NOSCALE)
+		grp->m = 1.f / (grp->x1 - grp->x0);
 
-	sscanf(path, "/sensors/group/attributes/%hu", &gid);
-	CMC_Group *grp = &cmc_groups[gid];
+	return ret;
+}
 
-	if(argc == 1) // request group info
-	{
-		size = CONFIG_SUCCESS("isffiii", uuid, path,
-			grp->x0, grp->x1,
-			grp->pid & CMC_NORTH ? 1 : 0,
-			grp->pid & CMC_SOUTH ? 1 : 0,
-			grp->m == CMC_NOSCALE ? 0 : 1);
-	}
-	else // set group info
-	{
-		float x0, x1;
-		int32_t north, south, scale;
-		buf_ptr = osc_get_float(buf_ptr, &x0);
-		buf_ptr = osc_get_float(buf_ptr, &x1);
-		buf_ptr = osc_get_int32(buf_ptr, &north);
-		buf_ptr = osc_get_int32(buf_ptr, &south);
-		buf_ptr = osc_get_int32(buf_ptr, &scale);
+static uint_fast8_t
+_group_max(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	CMC_Group *grp = SENSORS_GID(path);
 
-		grp->x0 = x0;
-		grp->x1 = x1;
-		grp->pid = 0;
-		grp->pid |= north ? CMC_NORTH : 0;
-		grp->pid |= south ? CMC_SOUTH : 0;
-		grp->m = scale ? 1.f/(grp->x1 - grp->x0) : CMC_NOSCALE;
+	uint_fast8_t ret = config_check_float(path, fmt, argc, buf, &grp->x1);
+	if(grp->m != CMC_NOSCALE)
+		grp->m = 1.f / (grp->x1 - grp->x0);
 
-		size = CONFIG_SUCCESS("is", uuid, path);
-	}
+	return ret;
+}
 
-	CONFIG_SEND(size);
+static uint_fast8_t
+_group_north(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	CMC_Group *grp = SENSORS_GID(path);
 
-	return 1;
+	uint8_t booly = grp->pid & CMC_NORTH ? 1 : 0;
+	uint_fast8_t ret = config_check_bool(path, fmt, argc, buf, &booly);
+	if(booly)
+		grp->pid |= CMC_NORTH;
+	else
+		grp->pid &= ~CMC_NORTH;
+
+	return ret;
+}
+
+static uint_fast8_t
+_group_south(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	CMC_Group *grp = SENSORS_GID(path);
+
+	uint8_t booly = grp->pid & CMC_SOUTH ? 1 : 0;
+	uint_fast8_t ret = config_check_bool(path, fmt, argc, buf, &booly);
+	if(booly)
+		grp->pid |= CMC_SOUTH;
+	else
+		grp->pid &= ~CMC_SOUTH;
+
+	return ret;
+}
+
+static uint_fast8_t
+_group_scale(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	CMC_Group *grp = SENSORS_GID(path);
+
+	uint8_t booly = grp->m == CMC_NOSCALE ? 0 : 1;
+	uint_fast8_t ret = config_check_bool(path, fmt, argc, buf, &booly);
+	if(booly)
+		grp->m = 1.f / (grp->x1 - grp->x0);
+	else
+		grp->m = CMC_NOSCALE;
+
+	return ret;
 }
 
 static uint_fast8_t
@@ -322,22 +351,42 @@ static const OSC_Query_Argument group_number_args [] = {
 	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX, 1)
 };
 
-static const OSC_Query_Argument group_attributes_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("Min", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
-	OSC_QUERY_ARGUMENT_FLOAT("Max", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f),
-	OSC_QUERY_ARGUMENT_BOOL("North?", OSC_QUERY_MODE_RW),
-	OSC_QUERY_ARGUMENT_BOOL("South?", OSC_QUERY_MODE_RW),
+static const OSC_Query_Argument min_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Min", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f)
+};
+
+static const OSC_Query_Argument max_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Max", OSC_QUERY_MODE_RW, 0.f, 1.f, 0.f)
+};
+
+static const OSC_Query_Argument north_args [] = {
+	OSC_QUERY_ARGUMENT_BOOL("North?", OSC_QUERY_MODE_RW)
+};
+
+static const OSC_Query_Argument south_args [] = {
+	OSC_QUERY_ARGUMENT_BOOL("South?", OSC_QUERY_MODE_RW)
+};
+
+static const OSC_Query_Argument scale_args [] = {
 	OSC_QUERY_ARGUMENT_BOOL("Scale?", OSC_QUERY_MODE_RW)
 };
 
-static const OSC_Query_Item group_attribute_tree [] = {
-	OSC_QUERY_ITEM_METHOD("%i", "Group %i", _group_attributes, group_attributes_args),
+static const OSC_Query_Item group_attributes_tree [] = {
+	OSC_QUERY_ITEM_METHOD("min", "Minimum", _group_min, min_args),
+	OSC_QUERY_ITEM_METHOD("max", "Maximum", _group_max, max_args),
+	OSC_QUERY_ITEM_METHOD("north", "Respond to north polarized fields", _group_north, north_args),
+	OSC_QUERY_ITEM_METHOD("south", "Respond to south polarized fields", _group_south, south_args),
+	OSC_QUERY_ITEM_METHOD("scale", "Scale output", _group_scale, scale_args),
+};
+
+static const OSC_Query_Item group_attribute_array [] = {
+	OSC_QUERY_ITEM_NODE("%i/", "Group", group_attributes_tree)
 };
 
 static const OSC_Query_Item group_tree [] = {
 	OSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
 	OSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
-	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_tree, GROUP_MAX)
+	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_array, GROUP_MAX)
 };
 
 static const OSC_Query_Argument sensors_number_args [] = {

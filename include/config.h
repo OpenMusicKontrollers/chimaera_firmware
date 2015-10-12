@@ -208,6 +208,7 @@ void CONFIG_SEND(uint16_t size);
 uint_fast8_t config_socket_enabled(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 uint_fast8_t config_address(Socket_Config *socket, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf);
 uint_fast8_t config_check_uint8(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *val);
+uint_fast8_t config_check_uint16(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint16_t *val);
 uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *boolean);
 uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val);
 

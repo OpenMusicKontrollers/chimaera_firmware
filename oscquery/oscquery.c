@@ -23,22 +23,20 @@
 const OSC_Query_Item *
 osc_query_find(const OSC_Query_Item *item, const char *path, int_fast8_t argc)
 {
-	// is array element?
-	if(argc >= 0)
-	{
-		char str [32]; //TODO how big?
-		sprintf(str, item->path, argc);
-		if(!strcmp(path, str))
-			return item;
-	}
-	else if(!strcmp(path, item->path))
+	char npath [64];
+	if(strstr(item->path, "%i") && (argc >= 0) )
+		sprintf(npath, item->path, argc);
+	else
+		sprintf(npath, "%s", item->path);
+
+	if(!strcmp(npath, path))
 		return item;
 
 	const char *end = strchr(path, '/');
 	if(!end)
 		return NULL;
 
-	if(strncmp(path, item->path, end-path))
+	if(strncmp(path, npath, end-path))
 		return NULL;
 
 	if(item->type == OSC_QUERY_NODE)
@@ -231,25 +229,9 @@ osc_query_response(char *buf, const OSC_Query_Item *item, const char *path)
 	}
 	else // OSC_QUERY_METHOD
 	{
-		char *meth = strrchr(path, '/');
-		if(meth && strcmp(item->path, meth+1)) // is array element
-		{
-			int i;
-			sscanf(meth+1, item->path, &i);
-
-			sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"", path);
-			buf += strlen(buf);
-			sprintf(buf, item->description, i);
-			buf += strlen(buf);
-			sprintf(buf, "\",\"arguments\":[");
-			buf += strlen(buf);
-		}
-		else
-		{
-			sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"%s\",\"arguments\":[",
-				path, item->description);
-			buf += strlen(buf);
-		}
+		sprintf(buf, "\"path\":\"%s\",\"type\":\"method\",\"description\":\"%s\",\"arguments\":[",
+			path, item->description);
+		buf += strlen(buf);
 
 		uint_fast8_t i;
 		for(i=0; i<item->item.method.argc; i++)

@@ -385,50 +385,42 @@ static const OSC_Query_Value oscmidi_mapping_args_values [] = {
 	[OSC_MIDI_MAPPING_CONTROL_CHANGE]			= { .s = "control_change" },
 };
 
+#define OSCMIDI_GID(PATH) \
+({ \
+	uint16_t _gid = 0; \
+ 	sscanf(PATH, "/engines/oscmidi/attributes/%hu/", &_gid); \
+ 	(&config.oscmidi_groups[_gid]); \
+})
+
 static uint_fast8_t
-_oscmidi_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_oscmidi_mapping(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
+	(void)argc;
 	osc_data_t *buf_ptr = buf;
 	uint16_t size;
-	uint16_t gid;
-	int32_t uuid;
 
+	OSC_MIDI_Group *grp = OSCMIDI_GID(path);
+
+	int32_t uuid;
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
-	
-	sscanf(path, "/engines/oscmidi/attributes/%hu", &gid);
-	OSC_MIDI_Group *group = &config.oscmidi_groups[gid];
 
 	if(argc == 1)
 	{
-		size = CONFIG_SUCCESS("issffi", uuid, path, 
-			oscmidi_mapping_args_values[group->mapping], group->offset, group->range, (int32_t)group->control);
+		size = CONFIG_SUCCESS("iss", uuid, path, oscmidi_mapping_args_values[grp->mapping]);
 	}
-	else
+	else // argc == 2
 	{
 		const char *mapping;
-		float offset;
-		float range;
-		int32_t control;
-
 		buf_ptr = osc_get_string(buf_ptr, &mapping);
-		buf_ptr = osc_get_float(buf_ptr, &offset);
-		buf_ptr = osc_get_float(buf_ptr, &range);
-		buf_ptr = osc_get_int32(buf_ptr, &control);
 
 		uint_fast8_t i;
 		for(i=0; i<sizeof(oscmidi_mapping_args_values)/sizeof(OSC_Query_Value); i++)
 			if(!strcmp(mapping, oscmidi_mapping_args_values[i].s))
 			{
-				group->mapping = i;
+				grp->mapping = i;
 				break;
 			}
-
-		group->offset = offset;
-		group->range = range;
-		group->control = control;
-		
-		mul[gid] = (float)0x1fff / group->range;
 
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -436,6 +428,30 @@ _oscmidi_attributes(const char *path, const char *fmt, uint_fast8_t argc, osc_da
 	CONFIG_SEND(size);
 
 	return 1;
+}
+
+static uint_fast8_t
+_oscmidi_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	OSC_MIDI_Group *grp = OSCMIDI_GID(path);
+
+	return config_check_float(path, fmt, argc, buf, &grp->offset);
+}
+
+static uint_fast8_t
+_oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	OSC_MIDI_Group *grp = OSCMIDI_GID(path);
+
+	return config_check_float(path, fmt, argc, buf, &grp->range);
+}
+
+static uint_fast8_t
+_oscmidi_controller(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	OSC_MIDI_Group *grp = OSCMIDI_GID(path);
+
+	return config_check_uint8(path, fmt, argc, buf, &grp->control);
 }
 
 /*
@@ -450,15 +466,31 @@ static const OSC_Query_Argument oscmidi_format_args [] = {
 	OSC_QUERY_ARGUMENT_STRING_VALUES("Format", OSC_QUERY_MODE_RW, oscmidi_format_args_values)
 };
 
-static const OSC_Query_Argument oscmidi_attributes_args [] = {
-	OSC_QUERY_ARGUMENT_STRING_VALUES("Mapping", OSC_QUERY_MODE_RW, oscmidi_mapping_args_values),
-	OSC_QUERY_ARGUMENT_FLOAT("Offset", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
-	OSC_QUERY_ARGUMENT_FLOAT("Range", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f),
+static const OSC_Query_Argument mapping_args [] = {
+	OSC_QUERY_ARGUMENT_STRING_VALUES("Mapping", OSC_QUERY_MODE_RW, oscmidi_mapping_args_values)
+};
+
+static const OSC_Query_Argument offset_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Offset", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f)
+};
+
+static const OSC_Query_Argument range_args [] = {
+	OSC_QUERY_ARGUMENT_FLOAT("Range", OSC_QUERY_MODE_RW, 0.f, 0x7f, 0.f)
+};
+
+static const OSC_Query_Argument controller_args [] = {
 	OSC_QUERY_ARGUMENT_INT32("Controller", OSC_QUERY_MODE_RW, 0, 0x7f, 1)
 };
 
-static const OSC_Query_Item oscmidi_attribute_tree [] = {
-	OSC_QUERY_ITEM_METHOD("%i", "Group %i", _oscmidi_attributes, oscmidi_attributes_args)
+static const OSC_Query_Item oscmidi_attributes_tree [] = {
+	OSC_QUERY_ITEM_METHOD("mapping", "Mapping", _oscmidi_mapping, mapping_args),
+	OSC_QUERY_ITEM_METHOD("offset", "Note offset", _oscmidi_offset, offset_args),
+	OSC_QUERY_ITEM_METHOD("range", "Pitchbend range", _oscmidi_range, range_args),
+	OSC_QUERY_ITEM_METHOD("controller", "Controller", _oscmidi_controller, controller_args),
+};
+
+static const OSC_Query_Item group_array [] = {
+	OSC_QUERY_ITEM_NODE("%i/", "Group", oscmidi_attributes_tree)
 };
 
 const OSC_Query_Item oscmidi_tree [] = {
@@ -467,5 +499,5 @@ const OSC_Query_Item oscmidi_tree [] = {
 	OSC_QUERY_ITEM_METHOD("format", "OSC Format", _oscmidi_format, oscmidi_format_args),
 	OSC_QUERY_ITEM_METHOD("path", "OSC Path", _oscmidi_path, oscmidi_path_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _oscmidi_reset, NULL),
-	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", oscmidi_attribute_tree, GROUP_MAX)
+	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_array, GROUP_MAX)
 };
