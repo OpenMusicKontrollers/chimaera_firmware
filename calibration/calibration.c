@@ -651,7 +651,7 @@ _calibration_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_da
 }
 
 static uint_fast8_t
-_calibration_curve(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_calibration_curve_c0(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
 	(void)argc;
@@ -661,7 +661,41 @@ _calibration_curve(const char *path, const char *fmt, uint_fast8_t argc, osc_dat
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
-	size = CONFIG_SUCCESS("isfff", uuid, path, range.C[0], range.C[1], range.C[2]);
+	size = CONFIG_SUCCESS("isf", uuid, path, range.C[0]);
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_curve_c1(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	(void)fmt;
+	(void)argc;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	size = CONFIG_SUCCESS("isf", uuid, path, range.C[1]);
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_calibration_curve_c2(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	(void)fmt;
+	(void)argc;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	size = CONFIG_SUCCESS("isf", uuid, path, range.C[2]);
 	CONFIG_SEND(size);
 
 	return 1;
@@ -760,9 +794,7 @@ static const OSC_Query_Argument calibration_offset_args [] = {
 };
 
 static const OSC_Query_Argument calibration_curve_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("c0", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
-	OSC_QUERY_ARGUMENT_FLOAT("c1", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f),
-	OSC_QUERY_ARGUMENT_FLOAT("c2", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+	OSC_QUERY_ARGUMENT_FLOAT("ci", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
 };
 
 const OSC_Query_Item calibration_tree [] = {
@@ -782,5 +814,7 @@ const OSC_Query_Item calibration_tree [] = {
 	OSC_QUERY_ITEM_METHOD("U", "Query calibration amplification data", _calibration_amplification, calibration_blob_args),
 
 	OSC_QUERY_ITEM_METHOD("W", "Query array calibration offset data", _calibration_offset, calibration_offset_args),
-	OSC_QUERY_ITEM_METHOD("curve", "Query curve-fit parameters", _calibration_curve, calibration_curve_args)
+	OSC_QUERY_ITEM_METHOD("c0", "Query curve-fit parameter 0", _calibration_curve_c0, calibration_curve_args),
+	OSC_QUERY_ITEM_METHOD("c1", "Query curve-fit parameter 1", _calibration_curve_c1, calibration_curve_args),
+	OSC_QUERY_ITEM_METHOD("c2", "Query curve-fit parameter 2", _calibration_curve_c2, calibration_curve_args)
 };

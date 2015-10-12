@@ -1005,7 +1005,7 @@ _output_offset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 }
 
 static uint_fast8_t
-_output_invert(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_output_invert_x(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
 	osc_data_t *buf_ptr = buf;
@@ -1017,15 +1017,40 @@ _output_invert(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	if(argc == 1) // query
 	{
 		int32_t x = config.output.invert.x;
-		int32_t z = config.output.invert.z;
-		size = CONFIG_SUCCESS("isii", uuid, path, x, z);
+		size = CONFIG_SUCCESS("isi", uuid, path, x);
 	}
 	else
 	{
-		int32_t x, z;
+		int32_t x;
 		buf_ptr = osc_get_int32(buf_ptr, &x);
-		buf_ptr = osc_get_int32(buf_ptr, &z);
 		config.output.invert.x = x;
+		size = CONFIG_SUCCESS("is", uuid, path);
+	}
+
+	CONFIG_SEND(size);
+
+	return 1;
+}
+
+static uint_fast8_t
+_output_invert_z(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	(void)fmt;
+	osc_data_t *buf_ptr = buf;
+	uint16_t size;
+	int32_t uuid;
+
+	buf_ptr = osc_get_int32(buf_ptr, &uuid);
+
+	if(argc == 1) // query
+	{
+		int32_t z = config.output.invert.z;
+		size = CONFIG_SUCCESS("isi", uuid, path, z);
+	}
+	else
+	{
+		int32_t z;
+		buf_ptr = osc_get_int32(buf_ptr, &z);
 		config.output.invert.z = z;
 		size = CONFIG_SUCCESS("is", uuid, path);
 	}
@@ -1209,15 +1234,15 @@ static const OSC_Query_Argument engines_offset_args [] = {
 };
 
 static const OSC_Query_Argument engines_invert_args [] = {
-	OSC_QUERY_ARGUMENT_BOOL("x-axis inversion", OSC_QUERY_MODE_RW),
-	OSC_QUERY_ARGUMENT_BOOL("z-axis inversion", OSC_QUERY_MODE_RW)
+	OSC_QUERY_ARGUMENT_BOOL("axis inversion", OSC_QUERY_MODE_RW)
 };
 
 static const OSC_Query_Item engines_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _output_enabled, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("address", "Single remote host", _output_address, config_address_args),
 	OSC_QUERY_ITEM_METHOD("offset", "OSC bundle offset timestamp", _output_offset, engines_offset_args),
-	OSC_QUERY_ITEM_METHOD("invert", "Enable/disable axis inversion", _output_invert, engines_invert_args),
+	OSC_QUERY_ITEM_METHOD("invert_x", "Enable/disable x-axis inversion", _output_invert_x, engines_invert_args),
+	OSC_QUERY_ITEM_METHOD("invert_z", "Enable/disable z-axis inversion", _output_invert_z, engines_invert_args),
 	OSC_QUERY_ITEM_METHOD("parallel", "Parallel processing", _output_parallel, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Disable all engines", _output_reset, NULL),
 	OSC_QUERY_ITEM_METHOD("mode", "Enable/disable UDP/TCP mode", _output_mode, config_mode_args),

@@ -345,6 +345,7 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	return 1;
 }
 
+//FIXME can we convert this into a single-argument method somehow?
 static const OSC_Query_Argument custom_append_args [] = {
 	OSC_QUERY_ARGUMENT_STRING_VALUES("Destination", OSC_QUERY_MODE_W, custom_append_destination_args_values),
 	OSC_QUERY_ARGUMENT_STRING("Name", OSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
