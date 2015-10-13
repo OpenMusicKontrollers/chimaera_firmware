@@ -292,7 +292,7 @@ static const OSC_Query_Value custom_append_destination_args_values [] = {
 };
 
 static uint_fast8_t
-_custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_custom_append(int dest, const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
 	osc_data_t *buf_ptr = buf;
@@ -317,23 +317,12 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 				break;
 		}
 
-		const char *dest;
-		const char *opath;
 		const char *argv;
-
-		buf_ptr = osc_get_string(buf_ptr, &dest);
-		buf_ptr = osc_get_string(buf_ptr, &opath);
 		buf_ptr = osc_get_string(buf_ptr, &argv);
 
-		if( (item->dest == RPN_NONE) && osc_check_path(opath) && rpn_compile(argv, item) )
+		if( (item->dest == RPN_NONE) && rpn_compile(argv, item) )
 		{
-			for(i=0; i<sizeof(custom_append_destination_args_values)/sizeof(OSC_Query_Value); i++)
-				if(!strcmp(dest, custom_append_destination_args_values[i].s))
-				{
-					item->dest = i;
-					break;
-				}
-			strcpy(item->path, opath);
+			item->dest = dest;
 			size = CONFIG_SUCCESS("is", uuid, path);
 		}
 		else
@@ -345,11 +334,53 @@ _custom_append(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	return 1;
 }
 
-//FIXME can we convert this into a single-argument method somehow?
+static uint_fast8_t
+_custom_append_frame(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_FRAME, path, fmt, argc, buf);
+}
+
+static uint_fast8_t
+_custom_append_on(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_ON, path, fmt, argc, buf);
+}
+
+static uint_fast8_t
+_custom_append_off(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_OFF, path, fmt, argc, buf);
+}
+
+static uint_fast8_t
+_custom_append_set(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_SET, path, fmt, argc, buf);
+}
+
+static uint_fast8_t
+_custom_append_end(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_END, path, fmt, argc, buf);
+}
+
+static uint_fast8_t
+_custom_append_idle(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	return _custom_append(RPN_IDLE, path, fmt, argc, buf);
+}
+
 static const OSC_Query_Argument custom_append_args [] = {
-	OSC_QUERY_ARGUMENT_STRING_VALUES("Destination", OSC_QUERY_MODE_W, custom_append_destination_args_values),
-	OSC_QUERY_ARGUMENT_STRING("Name", OSC_QUERY_MODE_W, CUSTOM_PATH_LEN),
-	OSC_QUERY_ARGUMENT_STRING("Arguments", OSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
+	OSC_QUERY_ARGUMENT_STRING("Postfix code", OSC_QUERY_MODE_W, CUSTOM_ARGS_LEN)
+};
+
+const OSC_Query_Item custom_append_tree [] = {
+	OSC_QUERY_ITEM_METHOD("frame", "Append frame hook", _custom_append_frame, custom_append_args),
+	OSC_QUERY_ITEM_METHOD("on", "Append on hook", _custom_append_on, custom_append_args),
+	OSC_QUERY_ITEM_METHOD("off", "Append off hook", _custom_append_off, custom_append_args),
+	OSC_QUERY_ITEM_METHOD("set", "Append set hook", _custom_append_set, custom_append_args),
+	OSC_QUERY_ITEM_METHOD("end", "Append end hook", _custom_append_end, custom_append_args),
+	OSC_QUERY_ITEM_METHOD("idle", "Append idle hook", _custom_append_idle, custom_append_args),
 };
 
 /*
@@ -358,7 +389,6 @@ static const OSC_Query_Argument custom_append_args [] = {
 
 const OSC_Query_Item custom_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _custom_enabled, config_boolean_args),
-
 	OSC_QUERY_ITEM_METHOD("reset", "Reset", _custom_reset, NULL),
-	OSC_QUERY_ITEM_METHOD("append", "Append format", _custom_append, custom_append_args)
+	OSC_QUERY_ITEM_NODE("append/", "Append hook", custom_append_tree),
 };

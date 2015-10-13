@@ -618,6 +618,26 @@ rpn_compile(const char *args, Custom_Item *itm)
 	const char *end = args + strlen(args);
 	uint_fast8_t counter = 0;
 
+	// look for end of OSC path
+	const char *path_end = strchr(ptr, ' ');
+	if(!path_end)
+		path_end = strchr(ptr, '\t');
+	if(!path_end)
+		path_end = strchr(ptr, '\0');
+	if(!path_end)
+		return 0; // parse error
+
+	// copy and check OSC path
+	size_t path_len = path_end + 1 - ptr;
+	if(path_len > CUSTOM_PATH_LEN)
+		return 0; // parse error
+	strlcpy(itm->path, ptr, path_len);
+	if(!osc_check_path(itm->path))
+		return 0; // parse error
+
+	// skip path
+	ptr += path_len;
+
 	while(ptr < end)
 		switch(*ptr)
 		{
