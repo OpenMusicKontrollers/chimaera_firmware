@@ -148,8 +148,8 @@ _ptp_update_offset(void)
 		OO0 = OO1;
 	}
 
-#define OFFSET_THRESH 1000.f // 1s
-	if(OO0 > OFFSET_THRESH)
+#define OFFSET_THRESH 1000.0 // 1s
+	if(fabs(OO0) > OFFSET_THRESH)
 	{
 		timer_pause(ptp_timer);
 		ptp_reset();
