@@ -240,45 +240,48 @@ Config config = {
 		}
 	},
 
+#define SYNTH_DEF(C, N) \
+		{ \
+			.name = {'s', 'y', 'n', 't', 'h', '_', C, '\0'}, \
+			.sid = 200, \
+			.group = 100 + N, \
+			.out = N, \
+			.arg = 0, \
+			.alloc = 1, \
+			.gate = 1, \
+			.add_action = SCSYNTH_ADD_TO_HEAD, \
+			.is_group = 0 \
+		}
 	.scsynth_groups = {
-		[0] = {
-			.name = {'g', 'r', 'o', 'u', 'p', '0', '\0'},
-			.sid = 1000,
-			.group = 0,
-			.out = 0, 
-			.arg = 0,
-			.alloc = 1,
-			.gate = 1,
-			.add_action = SCSYNTH_ADD_TO_HEAD,
-			.is_group = 0
-		},
-		[1] = {
-			.name = {'g', 'r', 'o', 'u', 'p', '1', '\0'},
-			.sid = 1000,
-			.group = 1,
-			.out = 1, 
-			.arg = 0,
-			.alloc = 1,
-			.gate = 1,
-			.add_action = SCSYNTH_ADD_TO_HEAD,
-			.is_group = 0
-		}
+		[0] = SYNTH_DEF('0', 0),
+		[1] = SYNTH_DEF('1', 1),
+		[2] = SYNTH_DEF('2', 2),
+		[3] = SYNTH_DEF('3', 3),
+		[4] = SYNTH_DEF('4', 4),
+		[5] = SYNTH_DEF('5', 5),
+		[6] = SYNTH_DEF('6', 6),
+		[7] = SYNTH_DEF('7', 7)
 	},
+#undef SYNTH_DEF
 
-	.oscmidi_groups = {
-		[0] = {
-			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE,
-			.control = 0x07,
-			.offset = MIDI_BOT,
-			.range = MIDI_RANGE
-		},
-		[1] = {
-			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE,
-			.control = 0x07,
-			.offset = MIDI_BOT,
-			.range = MIDI_RANGE
+#define MIDI_DEF \
+		{ \
+			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE, \
+			.control = 0x07, \
+			.offset = MIDI_BOT, \
+			.range = MIDI_RANGE \
 		}
+	.oscmidi_groups = {
+		[0] = MIDI_DEF,
+		[1] = MIDI_DEF,
+		[2] = MIDI_DEF,
+		[3] = MIDI_DEF,
+		[4] = MIDI_DEF,
+		[5] = MIDI_DEF,
+		[6] = MIDI_DEF,
+		[7] = MIDI_DEF
 	}
+#undef MIDI_DEF
 };
 
 uint16_t

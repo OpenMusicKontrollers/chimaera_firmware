@@ -46,7 +46,7 @@ static const char *set_fmt [2] = {
 	[1] = "iiiffff"	// derivatives
 };
 
-static const char *default_fmt = "group%02i";
+static const char *default_fmt = "synth_%i";
 
 static OSC_Timetag tt;
 
@@ -260,8 +260,8 @@ _scsynth_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 	{
 		SCSynth_Group *group = &scsynth_groups[i];
 		sprintf(group->name, default_fmt, i);
-		group->sid = 1000;
-		group->group = i;
+		group->sid = 200;
+		group->group = 100 + i;
 		group->out = i;
 		group->arg = 0;
 		group->alloc = 1;
