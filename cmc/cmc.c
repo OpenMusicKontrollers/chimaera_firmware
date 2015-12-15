@@ -40,6 +40,7 @@
 CMC_Engine *engines [ENGINE_MAX+1];
 uint_fast8_t cmc_engines_active = 0;
 CMC_Group *cmc_groups = config.groups;
+uint16_t cmc_groups_n = GROUP_MAX;
 
 #ifdef BENCHMARK
 Stop_Watch sw_engine_process = {.id = "engine_process", .thresh=3000};
@@ -75,8 +76,6 @@ static uint8_t va[SENSOR_N+2];
 static CMC_Blob blobs[2][BLOB_MAX];
 static uint8_t pacemaker = 0x0b; // pacemaker rate 2^11=2048
 
-static void cmc_engines_init(void);
-
 void
 cmc_velocity_stiffness_update(uint8_t stiffness)
 {
@@ -111,8 +110,8 @@ cmc_init(void)
 	cmc_old = blobs[old];
 	cmc_neu = blobs[neu];
 
-	// initialize output engines
-	cmc_engines_init();
+	// update group and initialize output engines
+	cmc_group_update();
 
 	// update engines stack
 	cmc_engines_update();
@@ -775,7 +774,7 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 }
 
 void 
-cmc_group_clear(void)
+cmc_group_reset(void)
 {
 	uint16_t gid;
 	for(gid=0; gid<GROUP_MAX; gid++)
@@ -783,11 +782,17 @@ cmc_group_clear(void)
 		CMC_Group *grp = &cmc_groups[gid];
 
 		grp->gid = gid;
-		grp->pid = CMC_BOTH;
+		grp->pid = 0;
 		grp->x0 = 0.0;
 		grp->x1 = 1.0;
 		grp->m = CMC_NOSCALE;
 	}
+
+	// define two groups by default
+	cmc_groups[0].pid = CMC_SOUTH;
+	cmc_groups[1].pid = CMC_NORTH;
+
+	cmc_group_update();
 }
 
 static void
@@ -810,6 +815,22 @@ cmc_engines_init(void)
 
 	if(custom_engine.init_cb)
 		custom_engine.init_cb();
+}
+
+void
+cmc_group_update(void)
+{
+	uint16_t gid;
+	for(gid=0; gid<GROUP_MAX; gid++)
+	{
+		if(!cmc_groups[gid].pid)
+			break; // first non-responding group found
+	}
+
+	cmc_groups_n = gid;
+
+	// reinitialize engines (e.g. oscmidi needs that for MPE mode)
+	cmc_engines_init();
 }
 
 void

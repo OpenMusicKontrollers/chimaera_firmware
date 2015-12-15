@@ -45,6 +45,6 @@ struct _OSC_MIDI_Group {
 
 extern OSC_MIDI_Group *oscmidi_groups;
 extern CMC_Engine oscmidi_engine;
-extern const OSC_Query_Item oscmidi_tree [6];
+extern const OSC_Query_Item oscmidi_tree [7];
 
 #endif // _OSCMIDI_H_

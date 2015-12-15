@@ -120,6 +120,7 @@ struct _Config {
 		uint8_t enabled;
 		uint8_t multi;
 		uint8_t format;
+		uint8_t mpe;
 		char path [64];
 	} oscmidi;
 

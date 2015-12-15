@@ -77,13 +77,15 @@ struct _CMC_Blob_Event {
 };
 
 extern CMC_Group *cmc_groups;
+extern uint16_t cmc_groups_n;
 extern uint_fast8_t cmc_engines_active;
 
 void cmc_velocity_stiffness_update(uint8_t stiffness);
 void cmc_init(void);
 osc_data_t *cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf, osc_data_t *end);
 
-void cmc_group_clear(void);
+void cmc_group_reset(void);
+void cmc_group_update(void);
 void cmc_engines_update(void);
 
 #endif // _CMC_H_

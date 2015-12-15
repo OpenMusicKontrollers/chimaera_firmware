@@ -232,7 +232,7 @@ _sensors_velocity_stiffness(const char *path, const char *fmt, uint_fast8_t argc
 }
 
 static uint_fast8_t
-_group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+_group_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	(void)fmt;
 	(void)argc;
@@ -242,7 +242,7 @@ _group_clear(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
-	cmc_group_clear();
+	cmc_group_reset();
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
@@ -293,6 +293,9 @@ _group_north(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 	else
 		grp->pid &= ~CMC_NORTH;
 
+	if(argc > 1)
+		cmc_group_update(); // there may be new groups, we need to update
+
 	return ret;
 }
 
@@ -307,6 +310,9 @@ _group_south(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *b
 		grp->pid |= CMC_SOUTH;
 	else
 		grp->pid &= ~CMC_SOUTH;
+
+	if(argc > 1)
+		cmc_group_update(); // there may be new groups, we need to update
 
 	return ret;
 }
@@ -337,7 +343,7 @@ _group_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 
 	buf_ptr = osc_get_int32(buf_ptr, &uuid);
 
-	size = CONFIG_SUCCESS("isi", uuid, path, GROUP_MAX);
+	size = CONFIG_SUCCESS("isi", uuid, path, cmc_groups_n);
 	CONFIG_SEND(size);
 
 	return 1;
@@ -348,7 +354,7 @@ _group_number(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
  */
 
 static const OSC_Query_Argument group_number_args [] = {
-	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, GROUP_MAX, GROUP_MAX, 1)
+	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, 0, GROUP_MAX, 1)
 };
 
 static const OSC_Query_Argument min_args [] = {
@@ -384,7 +390,7 @@ static const OSC_Query_Item group_attribute_array [] = {
 };
 
 static const OSC_Query_Item group_tree [] = {
-	OSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_clear, NULL),
+	OSC_QUERY_ITEM_METHOD("reset", "Reset all groups", _group_reset, NULL),
 	OSC_QUERY_ITEM_METHOD("number", "Number", _group_number, group_number_args),
 	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_attribute_array, GROUP_MAX)
 };

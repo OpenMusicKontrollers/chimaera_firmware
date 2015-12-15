@@ -97,6 +97,7 @@ Config config = {
 		.enabled = 0,
 		.multi = 1,
 		.format = OSC_MIDI_FORMAT_MIDI,
+		.mpe = 0,
 		.path = {'/', 'm', 'i', 'd', 'i', '\0'}
 	},
 

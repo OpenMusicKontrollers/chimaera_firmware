@@ -45,9 +45,12 @@ static const char *oscmidi_fmt_1 [] = {
 };
 
 static MIDI_Hash oscmidi_hash [BLOB_MAX];
+static mpe_t mpe;
 
 static osc_data_t *pack;
 static osc_data_t *bndl;
+
+static uint_fast8_t update_zones = 0;
 
 static void
 oscmidi_init(void)
@@ -55,7 +58,18 @@ oscmidi_init(void)
 	uint_fast8_t i;
 	OSC_MIDI_Group *group = config.oscmidi_groups;
 	for(i=0; i<GROUP_MAX; i++, group++)
-		mul[i] = (float)0x1fff / group->range;
+	{
+		if(config.oscmidi.mpe)
+			mul[i] = (float)0x1fff / ceil(group->range); //MPE only supports whole seminote ranges
+		else
+			mul[i] = (float)0x1fff / group->range;
+	}
+
+	// populate mpe struct
+	mpe_populate(&mpe, cmc_groups_n);
+
+	// only update zones when mpe is activated
+	update_zones = config.oscmidi.mpe;
 }
 
 static osc_data_t *
@@ -109,6 +123,41 @@ oscmidi_engine_frame_cb(osc_data_t *buf, osc_data_t *end, CMC_Frame_Event *fev)
 		buf_ptr = osc_start_bundle_item(buf_ptr, end, &pack);
 	buf_ptr = osc_start_bundle(buf_ptr, end, fev->offset, &bndl);
 
+	if(update_zones)
+	{
+		OSC_MIDI_Format format = config.oscmidi.format;
+		uint_fast8_t multi = config.oscmidi.multi;
+		osc_data_t *itm = NULL;
+
+		for(uint8_t z=0; z<cmc_groups_n; z++)
+		{
+			if(multi)
+			{
+				buf_ptr = osc_start_bundle_item(buf_ptr, end, &itm);
+				buf_ptr = osc_set_path(buf_ptr, end, config.oscmidi.path);
+				buf_ptr = osc_set_fmt(buf_ptr, end, "mmmmmm");
+			}
+
+			const zone_t *zone = &mpe.zones[z];
+
+			// define zone span
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_RPN_LSB, 0x6);
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_RPN_MSB, 0x0);
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_DATA_ENTRY, zone->span);
+
+			// define zone bend range
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base+1, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_RPN_LSB, 0x0);
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base+1, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_RPN_MSB, 0x0);
+			const uint8_t semitone_range = ceil(oscmidi_groups[z].range);
+			buf_ptr = oscmidi_serialize(buf_ptr, end, format, zone->base+1, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROLLER_DATA_ENTRY, semitone_range);
+
+			if(multi)
+				buf_ptr = osc_end_bundle_item(buf_ptr, end, itm);
+		}
+
+		update_zones = 0;
+	}
+
 	return buf_ptr;
 }
 
@@ -132,6 +181,7 @@ oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	osc_data_t *itm = NULL;
 	OSC_MIDI_Format format = config.oscmidi.format;
 	uint_fast8_t multi = config.oscmidi.multi;
+	uint_fast8_t use_mpe = config.oscmidi.mpe;
 	OSC_MIDI_Group *group = &oscmidi_groups[bev->gid];
 	OSC_MIDI_Mapping mapping = group->mapping;
 
@@ -145,10 +195,14 @@ oscmidi_engine_on_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 			buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_3[format]);
 	}
 
-	uint8_t ch = bev->gid % 0xf;
+	uint8_t ch;
+	if(use_mpe)
+		ch = mpe_acquire(&mpe, bev->gid);
+	else
+		ch = bev->gid;
 	float X = group->offset + bev->x*group->range;
 	uint8_t key = floor(X);
-	midi_add_key(oscmidi_hash, bev->sid, key);
+	midi_add_key(oscmidi_hash, bev->sid, key, ch);
 
 	uint16_t bend =(X - key)*mul[bev->gid] + 0x1fff;
 	uint16_t eff = bev->y * 0x3fff;
@@ -184,6 +238,7 @@ oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 	osc_data_t *itm = NULL;
 	OSC_MIDI_Format format = config.oscmidi.format;
 	uint_fast8_t multi = config.oscmidi.multi;
+	uint_fast8_t use_mpe = config.oscmidi.mpe;
 
 	if(multi)
 	{
@@ -192,8 +247,11 @@ oscmidi_engine_off_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 		buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_1[format]);
 	}
 
-	uint8_t ch = bev->gid % 0xf;
-	uint8_t key = midi_rem_key(oscmidi_hash, bev->sid);
+	uint8_t key;
+	uint8_t ch;
+	midi_rem_key(oscmidi_hash, bev->sid, &key, &ch);
+	if(use_mpe)
+		mpe_release(&mpe, bev->gid, ch);
 
 	// serialize
 	buf_ptr = oscmidi_serialize(buf_ptr, end, format, ch, MIDI_STATUS_NOTE_OFF, key, 0x7f);
@@ -224,9 +282,10 @@ oscmidi_engine_set_cb(osc_data_t *buf, osc_data_t *end, CMC_Blob_Event *bev)
 			buf_ptr = osc_set_fmt(buf_ptr, end, oscmidi_fmt_2[format]);
 	}
 
-	uint8_t ch = bev->gid % 0xf;
 	float X = group->offset + bev->x*group->range;
-	uint8_t key = midi_get_key(oscmidi_hash, bev->sid);
+	uint8_t key;
+	uint8_t ch;
+	midi_get_key(oscmidi_hash, bev->sid, &key, &ch);
 	uint16_t bend =(X - key)*mul[bev->gid] + 0x1fff;
 	uint16_t eff = bev->y * 0x3fff;
 
@@ -278,6 +337,15 @@ static uint_fast8_t
 _oscmidi_multi(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
 {
 	return config_check_bool(path, fmt, argc, buf, &config.oscmidi.multi);
+}
+
+static uint_fast8_t
+_oscmidi_mpe(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf)
+{
+	uint8_t res = config_check_bool(path, fmt, argc, buf, &config.oscmidi.mpe);
+	if( (argc > 1) && config.oscmidi.mpe)
+		oscmidi_init(); // send zones
+	return res;
 }
 
 static uint_fast8_t
@@ -370,11 +438,17 @@ _oscmidi_reset(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 		group->control = 0x07;
 		group->offset = MIDI_BOT;
 		group->range = MIDI_RANGE;
-		mul[i] = (float)0x1fff / group->range;
+		if(config.oscmidi.mpe)
+			mul[i] = (float)0x1fff / ceil(group->range); //MPE only supports whole semitone ranges
+		else
+			mul[i] = (float)0x1fff / group->range;
 	}
 
 	size = CONFIG_SUCCESS("is", uuid, path);
 	CONFIG_SEND(size);
+
+	if(config.oscmidi.mpe)
+		oscmidi_init(); // send zones
 
 	return 1;
 }
@@ -443,7 +517,12 @@ _oscmidi_range(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t 
 {
 	OSC_MIDI_Group *grp = OSCMIDI_GID(path);
 
-	return config_check_float(path, fmt, argc, buf, &grp->range);
+	uint_fast8_t res = config_check_float(path, fmt, argc, buf, &grp->range);
+
+	if( (argc > 1) && config.oscmidi.mpe)
+		oscmidi_init(); // send zones
+
+	return res;
 }
 
 static uint_fast8_t
@@ -497,6 +576,7 @@ const OSC_Query_Item oscmidi_tree [] = {
 	OSC_QUERY_ITEM_METHOD("enabled", "Enable/disable", _oscmidi_enabled, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("multi", "OSC Multi argument?", _oscmidi_multi, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("format", "OSC Format", _oscmidi_format, oscmidi_format_args),
+	OSC_QUERY_ITEM_METHOD("mpe", "Multidimensional polyphonic expression?", _oscmidi_mpe, config_boolean_args),
 	OSC_QUERY_ITEM_METHOD("path", "OSC Path", _oscmidi_path, oscmidi_path_args),
 	OSC_QUERY_ITEM_METHOD("reset", "Reset attributes", _oscmidi_reset, NULL),
 	OSC_QUERY_ITEM_ARRAY("attributes/", "Attributes", group_array, GROUP_MAX)

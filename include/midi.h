@@ -33,11 +33,16 @@ enum _MIDI_COMMAND {
 	
 	MIDI_CONTROLLER_MODULATION				= 0x01,
 	MIDI_CONTROLLER_BREATH						= 0x02,
+	MIDI_CONTROLLER_DATA_ENTRY				= 0x06,  /**< Data Entry */
+
 	MIDI_CONTROLLER_VOLUME						= 0x07,
 	MIDI_CONTROLLER_PAN								= 0x0a,
 	MIDI_CONTROLLER_EXPRESSION				= 0x0b,
 	MIDI_CONTROLLER_EFFECT_CONTROL_1	= 0x0c,
 	MIDI_CONTROLLER_EFFECT_CONTROL_2	= 0x0d,
+	MIDI_CONTROLLER_RPN_LSB						= 0x64,  /**< Registered Parameter Number */
+	MIDI_CONTROLLER_RPN_MSB						= 0x65,  /**< Registered Parameter Number */
+
 
 	MIDI_CONTROLLER_ALL_NOTES_OFF			= 0x7b,
 };
@@ -49,17 +54,39 @@ typedef struct _MIDI_Hash MIDI_Hash;
 
 struct _MIDI_Hash {
 	uint32_t sid;
+	uint8_t cha;
 	uint8_t key;
-	uint8_t pos;
 };
 
-void midi_add_key(MIDI_Hash *hash, uint32_t sid, uint8_t key);
-uint8_t midi_get_key(MIDI_Hash *hash, uint32_t sid);
-uint8_t midi_rem_key(MIDI_Hash *hash, uint32_t sid);
+void midi_add_key(MIDI_Hash *hash, uint32_t sid, uint8_t key, uint8_t cha);
+uint8_t midi_get_key(MIDI_Hash *hash, uint32_t sid, uint8_t *key, uint8_t *cha);
+uint8_t midi_rem_key(MIDI_Hash *hash, uint32_t sid, uint8_t *key, uint8_t *cha);
 
 //TODO create a MIDI meta engine, both OSC-MIDI and RTP-MIDI can refer to
 
 #define MIDI_BOT (3.f*12.f - 0.5f - (SENSOR_N % 18 / 6.f))
 #define MIDI_RANGE (SENSOR_N/3.f)
+
+#define CHAN_MAX 16
+#define ZONE_MAX (CHAN_MAX / 2)
+
+typedef struct _zone_t zone_t;
+typedef struct _mpe_t mpe_t;
+
+struct _zone_t {
+	uint8_t base;
+	uint8_t span;
+	uint8_t ref;
+};
+
+struct _mpe_t {
+	uint8_t n_zones;
+	zone_t zones [ZONE_MAX];
+	int8_t channels [CHAN_MAX];
+};
+
+void mpe_populate(mpe_t *mpe, uint8_t n_zones);
+uint8_t mpe_acquire(mpe_t *mpe, uint8_t zone_idx);
+void mpe_release(mpe_t *mpe, uint8_t zone_idx, uint8_t ch);
 
 #endif // _MIDI_H_ 
