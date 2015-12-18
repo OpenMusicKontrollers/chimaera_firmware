@@ -67,7 +67,7 @@ midi_rem_key(MIDI_Hash *hash, uint32_t sid, uint8_t *key, uint8_t *ch)
 inline void
 mpe_populate(mpe_t *mpe, uint8_t n_zones)
 {
-	n_zones %= ZONE_MAX; // wrap around if n_zones > ZONE_MAX
+	n_zones %= ZONE_MAX + 1; // wrap around if n_zones > ZONE_MAX
 	int8_t rem = CHAN_MAX % n_zones;
 	const uint8_t span = (CHAN_MAX - rem) / n_zones - 1;
 	uint8_t ptr = 0;
