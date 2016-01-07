@@ -412,43 +412,52 @@ addr2str(uint8_t *ip, uint16_t port, char *str)
 
 // inline SLIP encoding
 size_t
-slip_encode(uint8_t *buf, size_t len)
+slip_encode(uint8_t *dst, size_t len)
 {
-	if(!len)
+	if(len == 0)
 		return 0;
 
-	uint8_t *src;
-	uint8_t *end = buf + len;
-	uint8_t *dst;
+	const uint8_t *end = dst + len;
 
-	size_t count = 0;
-	for(src=buf; src<end; src++)
-		if( (*src == SLIP_END) || (*src == SLIP_ESC) )
-			count++;
-
-	src = end - 1;
-	dst = end + count;
-	*dst-- = SLIP_END;
-
-	while( (src >= buf) && (src != dst) )
+	// estimate new size
+	uint16_t size = 2; // double ended SLIP
+	for(const uint8_t *from=dst; from<end; from++, size++)
 	{
-		if(*src == SLIP_END)
-		{
-			*dst-- = SLIP_END_REPLACE;
-			*dst-- = SLIP_ESC;
-			src--;
-		}
-		else if(*src == SLIP_ESC)
-		{
-			*dst-- = SLIP_ESC_REPLACE;
-			*dst-- = SLIP_ESC;
-			src--;
-		}
-		else
-			*dst-- = *src--;
+		if( (*from == SLIP_END) || (*from == SLIP_ESC))
+			size ++;
 	}
 
-	return len + count + 1;
+	// fast track if no escaping needed
+	if(size == len + 2)
+	{
+		memmove(dst+1, dst, len);
+		dst[0] = SLIP_END;
+		dst[size-1] = SLIP_END;
+
+		return size;
+	}
+
+	// slow track if some escaping needed
+	uint8_t *to = dst + size - 1;
+	*to-- = SLIP_END;
+	for(const uint8_t *from=end-1; from>=dst; from--)
+	{
+		if(*from == SLIP_END)
+		{
+			*to-- = SLIP_END_REPLACE;
+			*to-- = SLIP_ESC;
+		}
+		else if(*from == SLIP_ESC)
+		{
+			*to-- = SLIP_ESC_REPLACE;
+			*to-- = SLIP_ESC;
+		}
+		else
+			*to-- = *from;
+	}
+	*to-- = SLIP_END;
+
+	return size;
 }
 
 // inline SLIP decoding
