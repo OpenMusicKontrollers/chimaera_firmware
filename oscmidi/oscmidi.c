@@ -29,19 +29,23 @@ static float mul [GROUP_MAX];
 
 static const char *oscmidi_fmt_4 [] = {
 	[OSC_MIDI_FORMAT_MIDI] = "mmmm",
-	[OSC_MIDI_FORMAT_INT32] = "iiii"
+	[OSC_MIDI_FORMAT_INT32] = "iiii",
+	[OSC_MIDI_FORMAT_BLOB] = "bbbb"
 };
 static const char *oscmidi_fmt_3 [] = {
 	[OSC_MIDI_FORMAT_MIDI] = "mmm",
-	[OSC_MIDI_FORMAT_INT32] = "iii"
+	[OSC_MIDI_FORMAT_INT32] = "iii",
+	[OSC_MIDI_FORMAT_BLOB] = "bbb"
 };
 static const char *oscmidi_fmt_2 [] = {
 	[OSC_MIDI_FORMAT_MIDI] = "mm",
-	[OSC_MIDI_FORMAT_INT32] = "ii"
+	[OSC_MIDI_FORMAT_INT32] = "ii",
+	[OSC_MIDI_FORMAT_BLOB] = "bb"
 };
 static const char *oscmidi_fmt_1 [] = {
 	[OSC_MIDI_FORMAT_MIDI] = "m",
-	[OSC_MIDI_FORMAT_INT32] = "i"
+	[OSC_MIDI_FORMAT_INT32] = "i",
+	[OSC_MIDI_FORMAT_BLOB] = "b"
 };
 
 static MIDI_Hash oscmidi_hash [BLOB_MAX];
@@ -105,6 +109,19 @@ oscmidi_serialize(osc_data_t *buf, osc_data_t *end, OSC_MIDI_Format format, uint
 		{
 			int32_t i = (dat2 << 16) | (dat1 << 8) | ( (channel | status) << 0);
 			buf_ptr = osc_set_int32(buf_ptr, end, i);
+			break;
+		}
+		case OSC_MIDI_FORMAT_BLOB:
+		{
+			uint8_t *B;
+			buf_ptr = osc_set_blob_inline(buf_ptr, end, 3, (void **)&B);
+			if(buf_ptr)
+			{
+				B[0] = channel | status;
+				B[1] = dat1;
+				B[2] = dat2;
+			}
+			break;
 		}
 	}
 
@@ -383,6 +400,7 @@ _oscmidi_path(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *
 static const OSC_Query_Value oscmidi_format_args_values [] = {
 	[OSC_MIDI_FORMAT_MIDI]			= { .s = "midi" },
 	[OSC_MIDI_FORMAT_INT32]			= { .s = "int32" },
+	[OSC_MIDI_FORMAT_BLOB]			= { .s = "blob" },
 };
 
 static uint_fast8_t
