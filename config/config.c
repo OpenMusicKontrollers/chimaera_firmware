@@ -268,7 +268,7 @@ Config config = {
 #define MIDI_DEF \
 		{ \
 			.mapping = OSC_MIDI_MAPPING_CONTROL_CHANGE, \
-			.control = 0x07, \
+			.control = 0x46, \
 			.offset = MIDI_BOT, \
 			.range = MIDI_RANGE \
 		}
