@@ -228,11 +228,11 @@ static const OSC_Query_Argument sntp_tau_args [] = {
 };
 
 static const OSC_Query_Argument sntp_offset_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, -100.f, 100.f, 0.f)
 };
 
 static const OSC_Query_Argument sntp_delay_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, 0.f, INFINITY, 0.f)
+	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_R, 0.f, 100.f, 0.f)
 };
 
 const OSC_Query_Item sntp_tree [] = {

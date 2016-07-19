@@ -790,11 +790,11 @@ static const OSC_Query_Argument calibration_blob_args [] = {
 };
 
 static const OSC_Query_Argument calibration_offset_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("W", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+	OSC_QUERY_ARGUMENT_FLOAT("W", OSC_QUERY_MODE_R, -100.f, 100.f, 0.f)
 };
 
 static const OSC_Query_Argument calibration_curve_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("ci", OSC_QUERY_MODE_R, -INFINITY, INFINITY, 0.f)
+	OSC_QUERY_ARGUMENT_FLOAT("ci", OSC_QUERY_MODE_R, -100.f, 100.f, 0.f)
 };
 
 const OSC_Query_Item calibration_tree [] = {

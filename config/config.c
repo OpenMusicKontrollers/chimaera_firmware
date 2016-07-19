@@ -1234,7 +1234,7 @@ static const OSC_Query_Item info_tree [] = { //FIXME merge with comm?
 };
 
 static const OSC_Query_Argument engines_offset_args [] = {
-	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_RW, 0.f, INFINITY, 0.0001f)
+	OSC_QUERY_ARGUMENT_FLOAT("Seconds", OSC_QUERY_MODE_RW, 0.f, 10.f, 0.0001f)
 };
 
 static const OSC_Query_Argument engines_invert_args [] = {
