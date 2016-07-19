@@ -396,7 +396,7 @@ static const OSC_Query_Item group_tree [] = {
 };
 
 static const OSC_Query_Argument sensors_number_args [] = {
-	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, SENSOR_N, SENSOR_N, 16)
+	OSC_QUERY_ARGUMENT_INT32("Number", OSC_QUERY_MODE_R, 0, 160, 16)
 };
 
 static const OSC_Query_Argument sensors_rate_args [] = {
