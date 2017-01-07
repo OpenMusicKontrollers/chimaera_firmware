@@ -1,0 +1,43 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  REVISION: "4"
+  VERSION: "0.7.0"
+
+.build_template: &build_definition
+  stage: build
+  image: ventosus/universal-linux-gnu
+  before_script:
+    - apt-get -q update
+    - apt-get install -y gcc-arm-none-eabi
+    - git submodule update --init
+  script:
+    - make
+    - mkdir image
+    - cp "build/F303CB.bin" "image/chimaera_S${SENSORS}-${VERSION}-${REVISION}.dfu"
+  artifacts:
+    name: "image/chimaera_S${SENSORS}-${VERSION}-${REVISION}"
+    paths:
+      - image
+
+# building in docker
+S128:
+  variables:
+    SENSORS: "128"
+  <<: *build_definition
+
+S160:
+  variables:
+    SENSORS: "160"
+  <<: *build_definition
+
+pack:
+  stage: deploy
+  script:
+    - echo 'packing up...'
+  artifacts:
+    name: "image/chimaera_${VERSION}-${REVISION}"
+    paths:
+      - image

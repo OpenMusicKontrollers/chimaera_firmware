@@ -22,7 +22,7 @@ do
 
 		# build
 		make clean
-		make -j5
+		make -j4
 
 		# pack
 		dfuse_pack \
