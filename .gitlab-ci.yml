@@ -23,9 +23,49 @@ variables:
       - image
 
 # building in docker
+S16:
+  variables:
+    SENSORS: "16"
+  <<: *build_definition
+
+S32:
+  variables:
+    SENSORS: "32"
+  <<: *build_definition
+
+S48:
+  variables:
+    SENSORS: "48"
+  <<: *build_definition
+
+S64:
+  variables:
+    SENSORS: "64"
+  <<: *build_definition
+
+S80:
+  variables:
+    SENSORS: "80"
+  <<: *build_definition
+
+S96:
+  variables:
+    SENSORS: "96"
+  <<: *build_definition
+
+S112:
+  variables:
+    SENSORS: "112"
+  <<: *build_definition
+
 S128:
   variables:
     SENSORS: "128"
+  <<: *build_definition
+
+S144:
+  variables:
+    SENSORS: "144"
   <<: *build_definition
 
 S160:
