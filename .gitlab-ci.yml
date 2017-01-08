@@ -4,7 +4,6 @@ stages:
 
 variables:
   REVISION: "4"
-  VERSION: "0.7.0"
 
 .build_template: &build_definition
   stage: build
@@ -15,12 +14,12 @@ variables:
   script:
     - make clean
     - make dfu
-    - mkdir "chimaera-${VERSION}-${REVISION}"
-    - cp "build/chimaera_S${SENSORS}-${VERSION}-${REVISION}.dfu" "chimaera-${VERSION}-${REVISION}/."
+    - mkdir "chimaera_$(cat VERSION)-${REVISION}"
+    - cp "build/chimaera_S${SENSORS}-$(cat VERSION)-${REVISION}.dfu" "chimaera_$(cat VERSION)-${REVISION}/."
   artifacts:
-    name: "chimaera_S${SENSORS}-${VERSION}-${REVISION}"
+    name: "chimaera_S${SENSORS}-$(cat VERSION)-${REVISION}"
     paths:
-      - image "chimaera-${VERSION}-${REVISION}"
+      - "chimaera_$(cat VERSION)-${REVISION}"
 
 # building in docker
 S16:
@@ -78,6 +77,6 @@ pack:
   script:
     - echo 'packing up...'
   artifacts:
-    name: "chimaera_${VERSION}-${REVISION}"
+    name: "chimaera_$(cat VERSION)-${REVISION}"
     paths:
-      - image "chimaera-${VERSION}-${REVISION}"
+      - "chimaera_$(cat VERSION)-${REVISION}"

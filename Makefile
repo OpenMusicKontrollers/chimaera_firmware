@@ -4,9 +4,9 @@ export LIB_MAPLE_HOME := ./libmaple_F3
 export SENSORS ?= 160
 
 # set firmware version
-export VERSION_MAJOR ?= 0
-export VERSION_MINOR ?= 7
-export VERSION_PATCH ?= 0
+export VERSION_MAJOR ?= $(shell awk -F. '{print $$1}' VERSION)
+export VERSION_MINOR ?= $(shell awk -F. '{print $$2}' VERSION)
+export VERSION_PATCH ?= $(shell awk -F. '{print $$3}' VERSION)
 
 # set revision of board design: 3, 4
 export REVISION ?= 4
@@ -20,10 +20,10 @@ export USER_MODULES := $(shell pwd)
 export USB_VENDOR := 0x0483
 export USB_PRODUCT := 0xdf11
 
-RELEASE := 0x0004
-VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(REVISION)
+RELEASE := "0x$(shell echo 'obase=16;' $$(git rev-list --count HEAD) | bc)"
+VERSION := $(shell cat VERSION)
 BIN := build/$(BOARD).bin
-DFU := build/chimaera_S$(SENSORS)-$(VERSION).dfu
+DFU := build/chimaera_S$(SENSORS)-$(VERSION)-$(REVISION).dfu
 
 .PHONY: dfu reset update download release
 .DEFAULT_GOAL := sketch
@@ -43,7 +43,7 @@ $(DFU): $(BIN)
 		-f $(RELEASE) \
 		-v $(USB_VENDOR) \
 		-p $(USB_PRODUCT) \
-			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'. Copyright (c) 2015 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under Artistic License 2.0. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
+			-n 'Chimaera S'$(SENSORS)' '$(VERSION)'-'$(REVISION)'. Copyright (c) 2015 Hanspeter Portner (dev@open-music-kontrollers.ch). Released under Artistic License 2.0. By Open Music Kontrollers (http://open-music-kontrollers.ch/chimaera/).' \
 			-m 0x08000000 -i $< \
 			-a 0
 
