@@ -8,19 +8,19 @@ variables:
 
 .build_template: &build_definition
   stage: build
-  image: ventosus/universal-linux-gnu
+  image: ventosus/arm-none-eabi
   before_script:
-    - apt-get -q update
-    - apt-get install -y gcc-arm-none-eabi
+    - export PATH="/opt/x86_64-linux-gnu/bin:${PATH}"
     - git submodule update --init
   script:
-    - make
-    - mkdir image
-    - cp "build/F303CB.bin" "image/chimaera_S${SENSORS}-${VERSION}-${REVISION}.dfu"
+    - make clean
+    - make dfu
+    - mkdir "chimaera-${VERSION}-${REVISION}"
+    - cp "build/chimaera_S${SENSORS}-${VERSION}-${REVISION}.dfu" "chimaera-${VERSION}-${REVISION}/."
   artifacts:
-    name: "image/chimaera_S${SENSORS}-${VERSION}-${REVISION}"
+    name: "chimaera_S${SENSORS}-${VERSION}-${REVISION}"
     paths:
-      - image
+      - image "chimaera-${VERSION}-${REVISION}"
 
 # building in docker
 S16:
@@ -78,6 +78,6 @@ pack:
   script:
     - echo 'packing up...'
   artifacts:
-    name: "image/chimaera_${VERSION}-${REVISION}"
+    name: "chimaera_${VERSION}-${REVISION}"
     paths:
-      - image
+      - image "chimaera-${VERSION}-${REVISION}"
