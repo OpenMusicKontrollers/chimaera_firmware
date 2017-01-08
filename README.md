@@ -21,7 +21,7 @@ The device therefore features two continuous dimensions. The X-dimension tells a
 
 ### Build Status
 
-[![Build Status](https://travis-ci.org/OpenMusicKontrollers/chimaera_firmware.svg?branch=master)](https://travis-ci.org/OpenMusicKontrollers/chimaera_firmware)
+[![build status](https://gitlab.com/OpenMusicKontrollers/chimaera_firmware/badges/master/build.svg)](https://gitlab.com/OpenMusicKontrollers/chimaera_firmware/commits/master)
 
 ### Reference
 
