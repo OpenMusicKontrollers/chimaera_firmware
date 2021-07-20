@@ -426,6 +426,8 @@ cmc_process(OSC_Timetag now, OSC_Timetag offset, int16_t *rela, osc_data_t *buf,
 				float X3 = X2 * X1;
 
 				y = -(-6.f*d3*y1 + d2*X1*(2.f*y0 + 3.f*y1 - 6.f*y2 + y3) - 3.f*d*X2*s1 + X3*s2) /(6.f*d3);
+
+				break;
 			}
 			default:
 				x = 0.f;
