@@ -213,8 +213,8 @@ uint_fast8_t config_check_uint16(const char *path, const char *fmt, uint_fast8_t
 uint_fast8_t config_check_bool(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, uint8_t *boolean);
 uint_fast8_t config_check_float(const char *path, const char *fmt, uint_fast8_t argc, osc_data_t *buf, float *val);
 
-const OSC_Query_Argument config_boolean_args [1];
-const OSC_Query_Argument config_mode_args [1];
-const OSC_Query_Argument config_address_args [1];
+extern const OSC_Query_Argument config_boolean_args [1];
+extern const OSC_Query_Argument config_mode_args [1];
+extern const OSC_Query_Argument config_address_args [1];
 
 #endif // _CONFIG_H_
